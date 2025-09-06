@@ -99,8 +99,8 @@ TEST(TestOpNormLayernorm, LayernormF16CanSupport)
     launchParam.AddInTensor({TENSOR_DTYPE_FLOAT16, TENSOR_FORMAT_ND, {3}});
     launchParam.AddInTensor({TENSOR_DTYPE_FLOAT16, TENSOR_FORMAT_ND, {3}});
     launchParam.AddOutTensor({TENSOR_DTYPE_FLOAT16, TENSOR_FORMAT_ND, {2, 3}});
-    launchParam.AddOutTensor({TENSOR_DTYPE_FLOAT16, TENSOR_FORMAT_ND, {3}});
-    launchParam.AddOutTensor({TENSOR_DTYPE_FLOAT16, TENSOR_FORMAT_ND, {3}});
+    launchParam.AddOutTensor({TENSOR_DTYPE_FLOAT16, TENSOR_FORMAT_ND, {2, 1}});
+    launchParam.AddOutTensor({TENSOR_DTYPE_FLOAT16, TENSOR_FORMAT_ND, {2, 1}});
     OpParam::Norm opParam = {OpParam::Norm::LAYER_NORM};
     opParam.beginNormAxis = 1;
     opParam.beginParamsAxis = 1;
@@ -125,8 +125,8 @@ TEST(TestOpNormLayernorm, LayernormBF16CanSupport)
     launchParam.AddInTensor({TENSOR_DTYPE_BF16, TENSOR_FORMAT_ND, {3}});
     launchParam.AddInTensor({TENSOR_DTYPE_BF16, TENSOR_FORMAT_ND, {3}});
     launchParam.AddOutTensor({TENSOR_DTYPE_BF16, TENSOR_FORMAT_ND, {2, 3}});
-    launchParam.AddOutTensor({TENSOR_DTYPE_BF16, TENSOR_FORMAT_ND, {3}});
-    launchParam.AddOutTensor({TENSOR_DTYPE_BF16, TENSOR_FORMAT_ND, {3}});
+    launchParam.AddOutTensor({TENSOR_DTYPE_BF16, TENSOR_FORMAT_ND, {2, 1}});
+    launchParam.AddOutTensor({TENSOR_DTYPE_BF16, TENSOR_FORMAT_ND, {2, 1}});
     OpParam::Norm opParam = {OpParam::Norm::LAYER_NORM};
     opParam.beginNormAxis = 1;
     opParam.beginParamsAxis = 1;
@@ -150,8 +150,8 @@ TEST(TestOpNormLayernorm, LayernormF32CanSupport)
     launchParam.AddInTensor({TENSOR_DTYPE_FLOAT, TENSOR_FORMAT_ND, {3}});
     launchParam.AddInTensor({TENSOR_DTYPE_FLOAT, TENSOR_FORMAT_ND, {3}});
     launchParam.AddOutTensor({TENSOR_DTYPE_FLOAT, TENSOR_FORMAT_ND, {2, 3}});
-    launchParam.AddOutTensor({TENSOR_DTYPE_FLOAT, TENSOR_FORMAT_ND, {3}});
-    launchParam.AddOutTensor({TENSOR_DTYPE_FLOAT, TENSOR_FORMAT_ND, {3}});
+    launchParam.AddOutTensor({TENSOR_DTYPE_FLOAT, TENSOR_FORMAT_ND, {2, 1}});
+    launchParam.AddOutTensor({TENSOR_DTYPE_FLOAT, TENSOR_FORMAT_ND, {2, 1}});
     OpParam::Norm opParam = {OpParam::Norm::LAYER_NORM};
     opParam.beginNormAxis = 1;
     opParam.beginParamsAxis = 1;
@@ -175,8 +175,8 @@ TEST(TestOpNormLayernorm, LayernormGetBestKernel)
     launchParam.AddInTensor({TENSOR_DTYPE_FLOAT, TENSOR_FORMAT_ND, {3}});
     launchParam.AddInTensor({TENSOR_DTYPE_FLOAT, TENSOR_FORMAT_ND, {3}});
     launchParam.AddOutTensor({TENSOR_DTYPE_FLOAT, TENSOR_FORMAT_ND, {2, 3}});
-    launchParam.AddOutTensor({TENSOR_DTYPE_FLOAT, TENSOR_FORMAT_ND, {3}});
-    launchParam.AddOutTensor({TENSOR_DTYPE_FLOAT, TENSOR_FORMAT_ND, {3}});
+    launchParam.AddOutTensor({TENSOR_DTYPE_FLOAT, TENSOR_FORMAT_ND, {2, 1}});
+    launchParam.AddOutTensor({TENSOR_DTYPE_FLOAT, TENSOR_FORMAT_ND, {2, 1}});
     OpParam::Norm opParam = {OpParam::Norm::LAYER_NORM};
     opParam.beginNormAxis = 1;
     opParam.beginParamsAxis = 1;
@@ -199,15 +199,15 @@ TEST(TestOpNormLayernorm, LayernormInferShape)
 {
     SVector<Tensor> outTensor;
     outTensor.push_back({TENSOR_DTYPE_FLOAT, TENSOR_FORMAT_ND, {2, 3}});
-    outTensor.push_back({TENSOR_DTYPE_FLOAT, TENSOR_FORMAT_ND, {3}});
-    outTensor.push_back({TENSOR_DTYPE_FLOAT, TENSOR_FORMAT_ND, {3}});
+    outTensor.push_back({TENSOR_DTYPE_FLOAT, TENSOR_FORMAT_ND, {2, 1}});
+    outTensor.push_back({TENSOR_DTYPE_FLOAT, TENSOR_FORMAT_ND, {2, 1}});
     LaunchParam launchParam;
     launchParam.AddInTensor({TENSOR_DTYPE_FLOAT, TENSOR_FORMAT_ND, {2, 3}});
     launchParam.AddInTensor({TENSOR_DTYPE_FLOAT, TENSOR_FORMAT_ND, {3}});
     launchParam.AddInTensor({TENSOR_DTYPE_FLOAT, TENSOR_FORMAT_ND, {3}});
     launchParam.AddOutTensor({TENSOR_DTYPE_FLOAT, TENSOR_FORMAT_ND, {2, 3}});
-    launchParam.AddOutTensor({TENSOR_DTYPE_FLOAT, TENSOR_FORMAT_ND, {3}});
-    launchParam.AddOutTensor({TENSOR_DTYPE_FLOAT, TENSOR_FORMAT_ND, {3}});
+    launchParam.AddOutTensor({TENSOR_DTYPE_FLOAT, TENSOR_FORMAT_ND, {2, 1}});
+    launchParam.AddOutTensor({TENSOR_DTYPE_FLOAT, TENSOR_FORMAT_ND, {2, 1}});
     OpParam::Norm opParam = {OpParam::Norm::LAYER_NORM};
     opParam.beginNormAxis = 1;
     opParam.beginParamsAxis = 1;
@@ -240,15 +240,15 @@ TEST(TestOpNormLayernorm, LayernormInferShapeFailed)
 {
     SVector<Tensor> outTensor;
     outTensor.push_back({TENSOR_DTYPE_FLOAT, TENSOR_FORMAT_ND, {1, 3}});
-    outTensor.push_back({TENSOR_DTYPE_FLOAT, TENSOR_FORMAT_ND, {3}});
-    outTensor.push_back({TENSOR_DTYPE_FLOAT, TENSOR_FORMAT_ND, {3}});
+    outTensor.push_back({TENSOR_DTYPE_FLOAT, TENSOR_FORMAT_ND, {2, 1}});
+    outTensor.push_back({TENSOR_DTYPE_FLOAT, TENSOR_FORMAT_ND, {2, 1}});
     LaunchParam launchParam;
     launchParam.AddInTensor({TENSOR_DTYPE_FLOAT, TENSOR_FORMAT_ND, {2, 3}});
     launchParam.AddInTensor({TENSOR_DTYPE_FLOAT, TENSOR_FORMAT_ND, {3}});
     launchParam.AddInTensor({TENSOR_DTYPE_FLOAT, TENSOR_FORMAT_ND, {3}});
     launchParam.AddOutTensor({TENSOR_DTYPE_FLOAT, TENSOR_FORMAT_ND, {1, 3}});
-    launchParam.AddOutTensor({TENSOR_DTYPE_FLOAT, TENSOR_FORMAT_ND, {3}});
-    launchParam.AddOutTensor({TENSOR_DTYPE_FLOAT, TENSOR_FORMAT_ND, {3}});
+    launchParam.AddOutTensor({TENSOR_DTYPE_FLOAT, TENSOR_FORMAT_ND, {2, 1}});
+    launchParam.AddOutTensor({TENSOR_DTYPE_FLOAT, TENSOR_FORMAT_ND, {2, 1}});
     OpParam::Norm opParam = {OpParam::Norm::LAYER_NORM};
     opParam.beginNormAxis = 1;
     opParam.beginParamsAxis = 1;
