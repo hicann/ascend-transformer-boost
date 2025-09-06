@@ -18,8 +18,8 @@ static constexpr uint32_t OFFSET_SQX = 1;        // the offset of sqx is 1
 static constexpr uint32_t OFFSET_SUM = 2;        // the offset of sum is 2
 static constexpr uint32_t OFFSET_WORKSPACE = 3;  // the offset of workspace is 3
 static constexpr uint32_t DIM_2 = 2;
-static constexpr uint32_t REPEAT_TIME_256 = 256; // 128 default stride
-static constexpr uint32_t REPEAT_TIME_128 = 128; // 128 default stride
+static constexpr uint32_t REPEAT_TIME_256 = 256; // 256 default stride
+static constexpr uint32_t REPEAT_TIME_16 = 16; // 16 default stride
 static constexpr uint32_t REPEAT_TIME_64 = 64;   // 64 default stride
 
 template <typename T, bool WITH_BETA, bool FastComputeMode = false>
@@ -44,7 +44,7 @@ public:
         gm_offset_ = static_cast<uint64_t>(row_work) * num_col_;
         if (num_col_ <= slice_size_) {
             num_col_align_int8 = (num_col_ + REPEAT_TIME_256 - 1) / REPEAT_TIME_256 * REPEAT_TIME_256;
-            num_col_align_f16 = (num_col_ + REPEAT_TIME_128 - 1) / REPEAT_TIME_128 * REPEAT_TIME_128;
+            num_col_align_f16 = (num_col_ + REPEAT_TIME_16 - 1) / REPEAT_TIME_16 * REPEAT_TIME_16;
             num_col_align_f32 = (num_col_ + REPEAT_TIME_64 - 1) / REPEAT_TIME_64 * REPEAT_TIME_64;
         } else {
             num_col_align_int8 = slice_size_;
