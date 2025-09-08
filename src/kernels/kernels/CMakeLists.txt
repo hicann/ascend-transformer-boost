@@ -16,14 +16,12 @@ include(${MKI_PACKAGE_DIR}/cmake/kernel_config.cmake)
 include_directories($ENV{ASCEND_HOME_PATH}/include
                     $ENV{ASCEND_HOME_PATH}/include/aclnn)
                     
-if(NOT EXISTS ${OP_LIST_YAML_DIR}/op_list.yaml)
-    file(MAKE_DIRECTORY ${OP_LIST_YAML_DIR})
-    execute_process(COMMAND python3 ${MKI_PACKAGE_DIR}/scripts/op_list_utils.py -s ${CMAKE_CURRENT_LIST_DIR} -d ${OP_LIST_YAML_DIR}
-                    ERROR_VARIABLE RESULT_INFO
-                    RESULT_VARIABLE RESULT)
-    if(NOT RESULT EQUAL 0)
-        message(FATAL_ERROR "create op_list.yaml failed, error code: ${RESULT}, error info:\n${RESULT_INFO}")
-    endif()
+file(MAKE_DIRECTORY ${OP_LIST_YAML_DIR})
+execute_process(COMMAND python3 ${MKI_PACKAGE_DIR}/scripts/op_list_utils.py -s ${CMAKE_CURRENT_LIST_DIR} -d ${OP_LIST_YAML_DIR}
+                ERROR_VARIABLE RESULT_INFO
+                RESULT_VARIABLE RESULT)
+if(NOT RESULT EQUAL 0)
+    message(FATAL_ERROR "create op_list.yaml failed, error code: ${RESULT}, error info:\n${RESULT_INFO}")
 endif()
 
 file(MAKE_DIRECTORY ${OPS_CONFIG_CMAKE_DIR})
