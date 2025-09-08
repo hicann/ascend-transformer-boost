@@ -284,7 +284,7 @@ Status RmsNormOperation::InferShapeImpl(const SVector<TensorDesc> &inTensorDescs
         outTensorDescs.at(OUT_TENSOR_RSTD).dtype = ACL_FLOAT;
         size_t xDimNum = inTensorDescs.at(IN_TENSOR_X).shape.dimNum;
         size_t gammaDimNum = inTensorDescs.at(IN_TENSOR_GAMMA).shape.dimNum;
-        for (size_t i = 0; i < gammaDimNum; i++) {
+        for (size_t i = 0; i < xDimNum; i++) {
             outTensorDescs[OUT_TENSOR_RSTD].shape.dims[xDimNum - gammaDimNum + i] = 1;
         }
     }
