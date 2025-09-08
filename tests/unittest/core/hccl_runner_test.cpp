@@ -12,7 +12,7 @@
 #include "atb/utils.h"
 #include "atb/runner/runner.h"
 #include "atb/runner/hccl_runner.h"
-#include "atb/core/runner_variant_pack.h"
+#include "atb/utils/runner_variant_pack.h"
 #include "test_utils/test_utils.h"
 
 using namespace atb;
