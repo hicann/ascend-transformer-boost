@@ -10,6 +10,9 @@
 #include "atb/core/node_impl/mki_node_implement.h"
 #include <securec.h>
 #include <mki/utils/time/timer.h>
+#include <asdops/ops.h>
+#include <atbops/ops.h>
+#include <atbops/params/params.h>
 #include "atb/utils/log.h"
 #include "atb/utils/config.h"
 #include "atb/utils/tensor_util.h"
@@ -87,6 +90,21 @@ bool MkiNodeImplement::BuildLaunchParam(const SVector<Mki::Tensor *> &inTensors,
 bool MkiNodeImplement::OperationGetBestKernel()
 {
     Mki::Kernel *kernel = operation_->GetBestKernel(launchParam_);
+    if (kernel == nullptr) {
+        if (operation_->GetName().find("Fusion") != std::string::npos || operation_->GetName().find("fusion") != std::string::npos) {
+            auto &fusionType = launchParam_.GetParam<const AtbOps::OpParam::Fusion>();
+            if (AtbOps::OpParam::Fusion::NON_FUSION == fusionType.fusionType) {
+                // 这个是算子自动融合之后，非主要的融合算子，也就是theMain为false的算子，
+                // 针对这种算子不进行动态注册，不做处理直接越过
+                return true;
+            }
+            // 如果不是上面类型的融合算子，调度注册融合算子二进制的接口进行融合算子的注册
+            operation_->DynamicRegisterKernelByName(launchParam_, operation_->GetName());
+            AtbOps::Ops::Instance().UpdateSchedule();
+            // AsdOps::Ops::Instance().UpdateSchedule();
+            kernel = operation_->GetBestKernel(launchParam_);
+        }
+    }
     if (kernel == nullptr) {
         ATB_LOG(ERROR) << GetLogPrefix() << " " << operation_->GetName()
                        << " get best kernel fail, kernel count:" << operation_->GetKernelList().size();

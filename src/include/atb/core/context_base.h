@@ -50,6 +50,8 @@ public:
     Status FreeArgsDeviceBuffer(void *addr);
     Status FreeArgsHostBuffer(void *addr);
     bool GetLaunchWithTilingStatus();
+    void SetAutoFusionFlag(bool flag = false) override;
+    bool GetAutoFusionFlag() const;
 
 private:
     Status CreateCopyStreamAndEvents();
@@ -70,6 +72,7 @@ private:
     Tensor overflowOutTensor_;
     static thread_local ExecuteType executeType_;
     LaunchMode mode_ = KERNEL_LAUNCH_MODE;
+    bool autoFusionFlag_{false};
     std::unique_ptr<Allocator> deviceAllocator_;  // 一开始就赋值为defaultDeviceAllocator
     std::unique_ptr<Allocator> hostAllocator_;  // 一开始就赋值为defaultHostAllocator
     std::function<void*(size_t size)> allocateFunc_;  // 默认使用defaultDeviceAllocator中的Allocate方法

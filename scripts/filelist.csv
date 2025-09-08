@@ -21,6 +21,7 @@ atb/cxx_abi_0/include/atb/types.h
 atb/cxx_abi_0/include/atb/utils.h
 atb/cxx_abi_0/include/atb/comm.h
 atb/cxx_abi_0/include/atb/operation_infra.h
+atb/cxx_abi_0/include/atb/auto_fusion.h
 atb/cxx_abi_1/include/atb/atb_infer.h
 atb/cxx_abi_1/include/atb/context.h
 atb/cxx_abi_1/include/atb/graph_op_builder.h
@@ -34,6 +35,7 @@ atb/cxx_abi_1/include/atb/types.h
 atb/cxx_abi_1/include/atb/utils.h
 atb/cxx_abi_1/include/atb/comm.h
 atb/cxx_abi_1/include/atb/operation_infra.h
+atb/cxx_abi_1/include/atb/auto_fusion.h
 atb/cxx_abi_0/lib/libasdops.so
 atb/cxx_abi_0/lib/libasdops_static.a
 atb/cxx_abi_0/lib/libatb.so

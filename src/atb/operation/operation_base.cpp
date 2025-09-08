@@ -849,7 +849,7 @@ Status OperationBase::PreExecuteThrow(const VariantPack &variantPack, uint8_t *w
     UpdateTensorData(variantPack, workspace);
 
     Status st = NO_ERROR;
-    if (!(runnerVariantPack_.context->GetLaunchWithTilingStatus())) {
+    if (!(runnerVariantPack_.context->GetLaunchWithTilingStatus()) || runnerVariantPack_.context->GetAutoFusionFlag()) {
         st = CopyTilingToDevice();
         if (st != 0) {
             return st;

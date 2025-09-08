@@ -64,11 +64,13 @@ public:
     explicit OperationWrapper(const atb::infer::TopkToppSamplingParam &param);
     explicit OperationWrapper(const atb::infer::AllToAllParam &param);
     explicit OperationWrapper(const atb::GraphParam &param);
+    explicit OperationWrapper(atb::GraphParam &param, const std::set<std::string> &fusionClassArray = {});
+    explicit OperationWrapper(const atb::infer::FusionParam &param);
     atb::Operation *ReleaseOperation();
     std::string GetName() const;
     uint32_t GetInputNum() const;
     uint32_t GetOutputNum() const;
-    std::vector<torch::Tensor> Forward(std::vector<torch::Tensor> &inTensors);
+    std::vector<torch::Tensor> Forward(std::vector<torch::Tensor> &inTensors, bool autoFusionFlag = false);
 
 private:
     template <typename OpParam> void CreateOpUniquePtr(const OpParam &param);
@@ -82,6 +84,7 @@ private:
     std::unique_ptr<atb::Operation> operation_;
     atb::VariantPack variantPack_;
     uint64_t workspaceSize_{0};
+    bool autoFusionFlag_{false};
 };
 } // namespace TorchAtb
 #endif // TORCH_ATB_OPERATION_WRAPPER_H

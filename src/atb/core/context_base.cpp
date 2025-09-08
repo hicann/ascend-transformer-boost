@@ -353,5 +353,12 @@ bool ContextBase::GetLaunchWithTilingStatus()
 {
     return mode_ != GRAPH_LAUNCH_MODE;
 }
-
+void ContextBase::SetAutoFusionFlag(bool autoFusionFlag)
+{
+    autoFusionFlag_ = autoFusionFlag;
+}
+bool ContextBase::GetAutoFusionFlag() const
+{
+    return autoFusionFlag_;
+}
 } // namespace atb

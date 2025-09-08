@@ -280,6 +280,9 @@ Status GraphRunner::SetupNodes(const RunnerVariantPack &runnerVariantPack)
     Status st = NO_ERROR;
     for (size_t nodeId = 0; nodeId < runnerGraph_.nodes.size(); ++nodeId) {
         auto &node = runnerGraph_.nodes.at(nodeId);
+        if (node.runner->GetName() == "NOT_MAIN_FUSION") {
+            continue;
+        }
 
         st = PreparseNodeVariantPack(nodeId, node, runnerVariantPack, nodeHostTilingBuffer, maxTilingSize);
         if (st != 0) {
@@ -310,6 +313,9 @@ Status GraphRunner::SetupImpl(RunnerVariantPack &runnerVariantPack)
     }
     for (size_t nodeId = 0; nodeId < runnerGraph_.nodes.size(); ++nodeId) {
         auto &node = runnerGraph_.nodes.at(nodeId);
+        if (node.runner->GetName() == "NOT_MAIN_FUSION") {
+            continue;
+        }
         ReserveSvector(node);
     }
     if (runnerGraph_.inTensors.size() != runnerVariantPack.inTensors.size() ||
@@ -359,6 +365,9 @@ Status GraphRunner::FillHostTilingBufferImpl(uint8_t *hostTilingBuffer, uint64_t
     uint64_t tilingOffset = 0;
     for (size_t nodeId = 0; nodeId < runnerGraph_.nodes.size(); ++nodeId) {
         auto &node = runnerGraph_.nodes.at(nodeId);
+        if (node.runner->GetName() == "NOT_MAIN_FUSION") {
+            continue;
+        }
         Status ret = node.runner->FillHostTilingBuffer(hostTilingBuffer + tilingOffset,
                                                        tilingBufferSizes_.at(nodeId), context);
         if (ret != NO_ERROR) {
@@ -375,6 +384,9 @@ std::vector<uint64_t> &GraphRunner::GetWorkspaceBufferSize()
 {
     for (size_t nodeId = 0; nodeId < runnerGraph_.nodes.size(); ++nodeId) {
         auto &node = runnerGraph_.nodes.at(nodeId);
+        if (node.runner->GetName() == "NOT_MAIN_FUSION") {
+            continue;
+        }
         const std::vector<uint64_t> &runnerWorkspaceBufferSize = node.runner->GetWorkspaceBufferSize();
         for (size_t i = 0; i < runnerWorkspaceBufferSize.size(); ++i) {
             multiStreamWorkspaceSizes_.at(i) =
@@ -435,6 +447,9 @@ void GraphRunner::SetSaveTensorDir(const std::string &tensorDir)
     tensorDir_ = tensorDir;
     for (size_t nodeId = 0; nodeId < runnerGraph_.nodes.size(); nodeId++) {
         auto &node = runnerGraph_.nodes.at(nodeId);
+        if (node.runner->GetName() == "NOT_MAIN_FUSION") {
+            continue;
+        }
         node.runner->SetSaveTensorDir(tensorDir + "/" + std::to_string(nodeId) + "_" + node.runner->operationName_);
     }
 }
@@ -809,6 +824,9 @@ void GraphRunner::CalcTilingBufferSize()
     tilingBufferSizes_.resize(runnerGraph_.nodes.size());
     for (size_t nodeId = 0; nodeId < runnerGraph_.nodes.size(); ++nodeId) {
         auto &node = runnerGraph_.nodes.at(nodeId);
+        if (node.runner->GetName() == "NOT_MAIN_FUSION") {
+            continue;
+        }
         uint64_t runnerTilingBufferSize = node.runner->GetTilingBufferSize();
         ATB_LOG(INFO) << GetLogPrefix() << " node[" << nodeId << "] tiling buffer size:" << runnerTilingBufferSize;
         totalTilingBufferSize_ += runnerTilingBufferSize;
@@ -824,12 +842,18 @@ void GraphRunner::CalcIntermediateBufferSize()
     if (GetSingleton<Config>().IsworkspaceMemAllocGlobal()) { // 全局mem alloc时，所有runner共用一份内存
         maxIntermediateBufferSize_ = memAllocationSolver_->GetSize();
         for (size_t nodeId = 0; nodeId < runnerGraph_.nodes.size(); ++nodeId) {
+            if (runnerGraph_.nodes.at(nodeId).runner->GetName() == "NOT_MAIN_FUSION") {
+                continue;
+            }
             intermediateBufferSizes_.at(nodeId) = maxIntermediateBufferSize_;
         }
         return;
     }
     for (size_t nodeId = 0; nodeId < runnerGraph_.nodes.size(); ++nodeId) {
         auto &node = runnerGraph_.nodes.at(nodeId);
+        if (node.runner->GetName() == "NOT_MAIN_FUSION") {
+            continue;
+        }
         uint64_t runnerIntermediateBufferSize = node.runner->GetIntermediateBufferSize();
         intermediateBufferSizes_.at(nodeId) = runnerIntermediateBufferSize;
         maxIntermediateBufferSize_ = std::max(maxIntermediateBufferSize_, runnerIntermediateBufferSize);
@@ -846,6 +870,9 @@ void GraphRunner::UpdateVariantPackBuffer(RunnerVariantPack &runnerVariantPack)
         uint64_t offset = 0;
         for (size_t nodeId = 0; nodeId < runnerGraph_.nodes.size(); ++nodeId) {
             auto &node = runnerGraph_.nodes.at(nodeId);
+            if (node.runner->GetName() == "NOT_MAIN_FUSION") {
+                continue;
+            }
             node.runnerVariantPack.tilingBuffer = runnerVariantPack.tilingBuffer + offset;
             node.runnerVariantPack.tilingBufferSize = tilingBufferSizes_.at(nodeId);
             offset += tilingBufferSizes_.at(nodeId);
@@ -856,11 +883,17 @@ void GraphRunner::UpdateVariantPackBuffer(RunnerVariantPack &runnerVariantPack)
 
     for (size_t nodeId = 0; nodeId < runnerGraph_.nodes.size(); ++nodeId) {
         auto &node = runnerGraph_.nodes.at(nodeId);
+        if (node.runner->GetName() == "NOT_MAIN_FUSION") {
+            continue;
+        }
         node.runnerVariantPack.workspaceBuffer = runnerVariantPack.workspaceBuffer;
     }
 
     for (size_t nodeId = 0; nodeId < runnerGraph_.nodes.size(); ++nodeId) {
         auto &node = runnerGraph_.nodes.at(nodeId);
+        if (node.runner->GetName() == "NOT_MAIN_FUSION") {
+            continue;
+        }
         node.runnerVariantPack.intermediateBuffer = runnerVariantPack.intermediateBuffer + selfIntermediateBufferSize_;
         node.runnerVariantPack.intermediateBufferSize = intermediateBufferSizes_.at(nodeId);
     }
@@ -869,6 +902,9 @@ void GraphRunner::UpdateVariantPackBuffer(RunnerVariantPack &runnerVariantPack)
         uint64_t offset = 0;
         for (size_t nodeId = 0; nodeId < runnerGraph_.nodes.size(); ++nodeId) {
             auto &node = runnerGraph_.nodes.at(nodeId);
+            if (node.runner->GetName() == "NOT_MAIN_FUSION") {
+                continue;
+            }
             node.runnerVariantPack.argsDeviceBuffer = runnerVariantPack.argsDeviceBuffer + offset;
             offset += node.runner->GetArgsSize();
             ATB_LOG(DEBUG) << GetLogPrefix() << "Graph node " << nodeId << " argsDeviceAddr is "
@@ -880,6 +916,9 @@ void GraphRunner::UpdateVariantPackBuffer(RunnerVariantPack &runnerVariantPack)
         uint64_t offset = 0;
         for (size_t nodeId = 0; nodeId < runnerGraph_.nodes.size(); ++nodeId) {
             auto &node = runnerGraph_.nodes.at(nodeId);
+            if (node.runner->GetName() == "NOT_MAIN_FUSION") {
+                continue;
+            }
             node.runnerVariantPack.argsHostBuffer = runnerVariantPack.argsHostBuffer + offset;
             offset += node.runner->GetArgsSize();
             ATB_LOG(DEBUG) << GetLogPrefix() << "Graph node " << nodeId << " argsHostAddr is "
@@ -908,6 +947,9 @@ void GraphRunner::UpdateVariantPackTensorData(RunnerVariantPack &runnerVariantPa
 
     for (size_t nodeId = 0; nodeId < runnerGraph_.nodes.size(); ++nodeId) {
         auto &node = runnerGraph_.nodes.at(nodeId);
+        if (node.runner->GetName() == "NOT_MAIN_FUSION") {
+            continue;
+        }
         ATB_LOG(INFO) << GetLogPrefix() << " update tensor.data node[" << nodeId << "]";
         for (size_t i = 0; i < node.runnerVariantPack.inTensors.size(); ++i) {
             auto &tensor = node.runnerVariantPack.inTensors.at(i);
@@ -943,6 +985,9 @@ Status GraphRunner::ExecuteAllRunner(RunnerVariantPack &runnerVariantPack)
 {
     for (size_t nodeId = 0; nodeId < runnerGraph_.nodes.size(); ++nodeId) {
         auto &node = runnerGraph_.nodes.at(nodeId);
+        if (node.runner->GetName() == "NOT_MAIN_FUSION") {
+            continue;
+        }
         ATB_LOG(INFO) << GetLogPrefix() << " mstx registe tensor.data node[" << nodeId << "]" << "graphrunner start";
         if (runnerVariantPack.mstxMemRegister != nullptr && !(dynamic_cast<GraphRunner*>(node.runner.get()))) {
             runnerVariantPack.mstxMemRegister->ClearMstxMemRegions();
@@ -985,6 +1030,9 @@ Status GraphRunner::PreExecuteAllRunner(RunnerVariantPack &runnerVariantPack)
 {
     for (size_t nodeId = 0; nodeId < runnerGraph_.nodes.size(); ++nodeId) {
         auto &node = runnerGraph_.nodes.at(nodeId);
+        if (node.runner->GetName() == "NOT_MAIN_FUSION") {
+            continue;
+        }
         ATB_LOG(INFO) << GetLogPrefix() << " node[" << nodeId
                       << "] PreExecute start, runner:" << node.runner->GetName();
         node.runnerVariantPack.context = runnerVariantPack.context;

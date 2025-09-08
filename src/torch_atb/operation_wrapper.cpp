@@ -11,6 +11,7 @@
 #include <stdexcept>
 #include <mki/utils/time/timer.h>
 #include "atb/utils/log.h"
+#include "atb/core/auto_fusion_tool.h"
 #include "resource/utils.h"
 #include "resource/memory_manager.h"
 #include "prof/prof_stats.h"
@@ -198,6 +199,11 @@ OperationWrapper::OperationWrapper(const RelayAttentionParam &param)
     CreateOpUniquePtr(param);
 }
 
+OperationWrapper::OperationWrapper(const FusionParam &param)
+{
+    CreateOpUniquePtr(param);
+}
+
 OperationWrapper::OperationWrapper(const TopkToppSamplingParam &param)
 {
     CreateOpUniquePtr(param);
@@ -210,6 +216,16 @@ OperationWrapper::OperationWrapper(const AllToAllParam &param)
 
 OperationWrapper::OperationWrapper(const GraphParam &param)
 {
+    CreateOpUniquePtr(param);
+}
+
+OperationWrapper::OperationWrapper(GraphParam &param, const std::set<std::string> &fusionClassArray)
+{
+    if (!fusionClassArray.empty()) {
+        AutoFusion *autoFusionTool = nullptr;
+        atb::CreateAutoFusionTool(param, &autoFusionTool);
+        autoFusionTool->DoAutoFusion(fusionClassArray);
+    }
     CreateOpUniquePtr(param);
 }
 
@@ -228,12 +244,13 @@ uint32_t OperationWrapper::GetOutputNum() const
     return operation_->GetOutputNum();
 }
 
-std::vector<torch::Tensor> OperationWrapper::Forward(std::vector<torch::Tensor> &inTensors)
+std::vector<torch::Tensor> OperationWrapper::Forward(std::vector<torch::Tensor> &inTensors, bool autoFusionFlag)
 {
     Mki::Timer runTimer;
     if (!operation_) {
         throw std::runtime_error("call Forward fail, operation is nullptr");
     }
+    autoFusionFlag_ = autoFusionFlag;
     std::vector<torch::Tensor> outTensors;
     Setup(inTensors, outTensors);
     Execute();
@@ -275,6 +292,7 @@ void OperationWrapper::Setup(std::vector<torch::Tensor> &inTensors, std::vector<
         variantPack_.outTensors.at(i) = Utils::ConvertToAtbTensor(outTensors.at(i));
     }
     atb::Context *context = Utils::GetAtbContext();
+    context->SetAutoFusionFlag(autoFusionFlag_);
     atb::Status st = operation_->Setup(variantPack_, workspaceSize_, context);
     if (st != NO_ERROR) {
         throw std::runtime_error("call operation_->Setup fail");
