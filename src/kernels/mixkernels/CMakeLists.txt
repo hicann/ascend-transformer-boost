@@ -14,7 +14,6 @@ include(${MKI_PACKAGE_DIR}/cmake/host_config.cmake)
 include(${MKI_PACKAGE_DIR}/cmake/kernel_config.cmake)
 
 include_directories(
-    ${PROJECT_SOURCE_DIR}/cann_ops_adapter/include
     ${CMAKE_CURRENT_LIST_DIR}
     $ENV{ASCEND_HOME_PATH}/include
 )
