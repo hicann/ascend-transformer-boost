@@ -373,8 +373,8 @@ function uninstall_process() {
     if [ -d $1 ];then
         delete_empty_recursion $1
     fi
-    if [ "$2" == "y" -a -z "$(ls $atb_dir)" ];then
-        [[ -d "$atb_dir" ]] && rm -rf "$atb_dir"
+    if [[ -d "$atb_dir" ]] && [ "$2" == "y" -a -z "$(ls $atb_dir)" ];then
+        rm -rf "$atb_dir"
     fi
     print "INFO" "Ascend-cann-atb $(basename $1) uninstall success!"
 }
