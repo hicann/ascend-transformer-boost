@@ -2869,10 +2869,17 @@ struct MlaPreprocessParam {
     //! \brief 指定RmsNorm量化的类型。
     //!
     QuantMode quantMode = PER_TENSOR_QUANT_ASYMM;
+    enum BackendType : int {
+        BACKEND_TYPE_ATB = 0,  //!< 默认值，使用atb算子计算
+        BACKEND_TYPE_ACLNN,    //!< 使用aclnn算子计算
+        BACKEND_TYPE_MAX,      //!< 枚举最大值, 非激活类型
+    };
+
+    BackendType backendType = BACKEND_TYPE_ATB;
     //!
     //! \brief 预留参数
     //!
-    uint8_t rsv[34] = {0};
+    uint8_t rsv[28] = {0};
 };
 
 //!

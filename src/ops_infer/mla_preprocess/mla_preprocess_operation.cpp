@@ -8,6 +8,7 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 #include "mla_preprocess_operation.h"
+#include "mla_preprocess_aclnn_runner.h"
 #include "mla_preprocess_ops_runner.h"
 #include "mla_preprocess_ops_runner_split.h"
 #include "atb/utils/log.h"
@@ -51,6 +52,18 @@ template <> Status CreateOperation(const infer::MlaPreprocessParam &opParam, Ope
     if (!GetSingleton<Config>().Is910B()) {
         ATB_LOG(ERROR) << "only support Atlas 800I A2/A3 Inference Product";
         return ERROR_INVALID_PARAM;
+    }
+    if (opParam.backendType != infer::MlaPreprocessParam::BackendType::BACKEND_TYPE_ATB &&
+        opParam.backendType != infer::MlaPreprocessParam::BackendType::BACKEND_TYPE_ACLNN) {
+        ATB_LOG(ERROR) << "MlaPreprocess only supports atb or aclnn as backend, but got " << opParam.backendType;
+        return ERROR_INVALID_PARAM;
+    }
+    if (opParam.backendType == infer::MlaPreprocessParam::BackendType::BACKEND_TYPE_ACLNN) {
+        if (opParam.quantMode != infer::MlaPreprocessParam::QuantMode::PER_TOKEN_QUANT_SYMM) {
+            ATB_LOG(ERROR) << "When MlaPreprocess uses aclnn as backend, it only support PER_TOKEN_QUANT_SYMM, but got "
+                           << opParam.quantMode;
+        }
+        // 补一个cacheMode校验
     }
     if (opParam.cacheMode > infer::MlaPreprocessParam::CacheMode::NZCACHE) {
         ATB_LOG(ERROR) << "invalid cacheMode";
@@ -221,7 +234,10 @@ Status MlaPreprocessOperation::OutTensorCheckSplit(const SVector<Tensor> &inTens
 
 Status MlaPreprocessOperation::SetupCheckImpl(const SVector<Tensor> &inTensors, const SVector<Tensor> &outTensors) const
 {
-    (void)outTensors;
+    // TODO：暂时先跳过
+    if (param_.backendType == infer::MlaPreprocessParam::BackendType::BACKEND_TYPE_ACLNN) {
+        ATB_LOG(INFO) << GetLogPrefix() << "using aclnn as backend, skip SetupCheckImpl for now";
+    }
     SVector<TensorDesc> inTensorDesc = {};
     OperationUtil::InTensorsToInTensorDescs(inTensors, inTensorDesc);
     Status st = DimCheck(inTensorDesc);
@@ -349,6 +365,9 @@ Status MlaPreprocessOperation::BlockSizeCheck(const SVector<TensorDesc> &inTenso
 std::shared_ptr<Runner> MlaPreprocessOperation::CreateRunner(Context &context) const
 {
     (void)context;
+    if (param_.backendType == infer::MlaPreprocessParam::BackendType::BACKEND_TYPE_ACLNN) {
+        return std::make_shared<MlaPreprocessAclnnRunner>(param_);
+    }
     if (param_.cacheMode == infer::MlaPreprocessParam::CacheMode::KVCACHE) {
         return std::make_shared<MlaPreprocessOpsRunner>(param_);
     }
