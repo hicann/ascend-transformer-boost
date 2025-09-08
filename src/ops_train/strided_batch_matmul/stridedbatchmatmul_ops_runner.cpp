@@ -10,7 +10,7 @@
 #include "stridedbatchmatmul_ops_runner.h"
 #include <atb/utils/log.h>
 #include <atbops/params/params.h>
-#include "atb/core/param_compare.h"
+#include "atb/utils/param_compare.h"
 
 
 namespace atb {

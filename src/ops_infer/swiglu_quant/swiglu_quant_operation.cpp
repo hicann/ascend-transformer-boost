@@ -17,9 +17,9 @@
 #include "atb/utils/param_to_json.h"
 #include "atb/utils/tensor_util.h"
 #include "atb/utils/utils_internal.h"
-#include "atb/core/atb_operation_ir_cfg.h"
+#include "atb/operation/atb_operation_ir_cfg.h"
 #include "atb/utils/singleton.h"
-#include "atb/core/op_param_funcs.h"
+#include "atb/operation/op_param_funcs.h"
 
 namespace atb {
 static const int32_t IN_TENSOR_NUM = 1;
