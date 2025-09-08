@@ -14,7 +14,7 @@
 #include "atb/utils/tensor_util.h"
 #include "atb/utils/singleton.h"
 #include "atb/utils/tensor_util.h"
-#include "atb/core/op_param_funcs.h"
+#include "atb/operation/op_param_funcs.h"
 #include "atb/core/customize_operation_ir_cfg.h"
 
 namespace {

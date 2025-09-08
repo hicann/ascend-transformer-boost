@@ -10,7 +10,7 @@
 #include <gtest/gtest.h>
 #include <acl/acl.h>
 #include "atb/core/allocator/default_host_allocator.h"
-#include "atb/core/allocator/default_device_allocator.h"
+#include "atb/context/allocator/default_device_allocator.h"
 
 using namespace atb;
 TEST(TestDefaultAllocator, TestAllocateAndDeAllocate)
