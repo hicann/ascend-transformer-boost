@@ -97,7 +97,6 @@ include_directories(
 
 link_directories(
     ${PROJECT_SOURCE_DIR}/3rdparty/mki/lib
-    ${PROJECT_SOURCE_DIR}/3rdparty/asdops/lib
     $ENV{ASCEND_HOME_PATH}/lib64
     $ENV{PYTHON_LIB_PATH}
     $ENV{PYTORCH_INSTALL_PATH}/lib
@@ -123,5 +122,4 @@ message(STATUS "CMAKE_INSTALL_PREFIX:${CMAKE_INSTALL_PREFIX}")
 install(FILES ${PROJECT_SOURCE_DIR}/scripts/set_env.sh DESTINATION ./..)
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/ops_configs DESTINATION ./configs)
 install(FILES ${PROJECT_SOURCE_DIR}/3rdparty/mki/lib/libmki.so DESTINATION lib)
-install(FILES ${PROJECT_SOURCE_DIR}/3rdparty/asdops/lib/libasdops_aicpu_kernels.so DESTINATION lib OPTIONAL)
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/atb DESTINATION include)
