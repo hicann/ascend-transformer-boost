@@ -10,9 +10,9 @@
 #include "where_operation.h"
 #include "where_ops_runner.h"
 #include "atb/utils/tensor_check.h"
-#include "atb/core/atb_operation_ir_cfg.h"
+#include "atb/operation/atb_operation_ir_cfg.h"
 #include "atb/utils/singleton.h"
-#include "atb/core/op_param_funcs.h"
+#include "atb/operation/op_param_funcs.h"
 
 namespace atb {
 static const uint32_t IN_TENSOR_NUM = 3;
