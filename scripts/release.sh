@@ -40,39 +40,6 @@ function fn_build_mki()
     rm -f mki.tar.gz
 }
 
-function fn_build_asdops()
-{
-    if [ ! -d "$THIRD_PARTY_DIR"/ascend-op-common-lib ]; then
-        [[ ! -d "$THIRD_PARTY_DIR" ]] && mkdir $THIRD_PARTY_DIR
-        cd $THIRD_PARTY_DIR
-        branch=$(git symbolic-ref -q --short HEAD || git describe --tags --exact-match 2> /dev/null || echo "commit_id") 
-        [[ "$branch" == *br_personal* || "$branch" == "commit_id" ]] && branch=master
-        echo  "current branch for atb and asdops: $branch"
-        git clone --branch $branch --depth 1 https://szv-open.codehub.huawei.com/OpenBaize/Ascend/ascend-op-common-lib.git
-    else
-        [[ -d "$THIRD_PARTY_DIR"/ascend-op-common-lib/build ]] && rm -rf $THIRD_PARTY_DIR/ascend-op-common-lib/build
-        [[ -d "$THIRD_PARTY_DIR"/ascend-op-common-lib/output ]] && rm -rf $THIRD_PARTY_DIR/ascend-op-common-lib/output
-    fi
-    cd $THIRD_PARTY_DIR/ascend-op-common-lib
-    mkdir -p $THIRD_PARTY_DIR/ascend-op-common-lib/3rdparty
-    [[ -d "$THIRD_PARTY_DIR"/ascend-op-common-lib/3rdparty/mki ]] && rm -rf $THIRD_PARTY_DIR/ascend-op-common-lib/3rdparty/mki
-
-    cp -rf $THIRD_PARTY_DIR/mki 3rdparty
-
-    echo  "current commid id of ascend-op-common-lib: $(git rev-parse HEAD)"
-    if [ "$USE_CXX11_ABI" == "ON" ];then
-        build_options="--use_cxx11_abi=1"
-    else
-        build_options="--use_cxx11_abi=0"
-    fi
-
-    build_options="$build_options --output=$THIRD_PARTY_DIR"
-    bash scripts/build.sh release $build_options
-    cd $THIRD_PARTY_DIR
-    tar -xf asdops.tar.gz
-    rm -f asdops.tar.gz
-}
-
 function fn_init_makeself()
 {
     if [ -d "$ATB_DIR/opensource/makeself" ]; then
@@ -339,7 +306,6 @@ function fn_main()
             [[ -d "$THIRD_PARTY_DIR"/asdops ]] && rm -rf $THIRD_PARTY_DIR/asdops
             [[ -d "$THIRD_PARTY_DIR"/mki ]] && rm -rf $THIRD_PARTY_DIR/mki
             fn_build_mki
-            fn_build_asdops
             fn_build_catlass
             fn_build_cann_dependency
             fn_build_tbe_dependency
