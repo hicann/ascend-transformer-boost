@@ -269,6 +269,8 @@ private:
     T offset = 0;
     bool isEnableScale = false;
     bool isVectorScale = false;
+    GM_ADDR input = nullptr;
+    GM_ADDR output = nullptr;
 };
 
 #endif // LCCL_ALLREDUCE_BIG_DATA_H
