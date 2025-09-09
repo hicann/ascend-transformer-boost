@@ -13,6 +13,8 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <memory>
+#include <string>
 #include <vector>
 #include <acl/acl.h>
 #include <aclnn/acl_meta.h>

@@ -18,6 +18,7 @@
 #define ATB_ACLNN_UTILS_H
 #include "aclnn_operation_cache.h"
 #include "atb/core/runner_variant_pack.h"
+#include "atb/core/runner_variant_pack.h"
 #include "atb/types.h"
 
 namespace atb {

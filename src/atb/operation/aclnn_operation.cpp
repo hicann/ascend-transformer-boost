@@ -17,6 +17,10 @@
 
 #include "atb/operation/aclnn_operation.h"
 
+
+
+#include "atb/operation/aclnn_operation.h"
+
 #include "atb/utils/log.h"
 // #include "atb_speed/utils/statistic.h"
 #include "atb/core/aclnn/aclnn_util.h"
@@ -62,7 +66,6 @@ atb::Status AclNNOperation::Setup(const atb::VariantPack &variantPack, uint64_t 
     // 3. 更新传入的workspaceSize
     workspaceSize = this->aclnnOpCache_->workspaceSize;
 
-    // ATB_LOG(INFO) << GetSingleton<AclNNGlobalCache>().PrintGlobalCache();
     ATB_LOG(INFO) << GetSingleton<ExecutorManager>().PrintExecutorCount();
     return atb::NO_ERROR;
 }

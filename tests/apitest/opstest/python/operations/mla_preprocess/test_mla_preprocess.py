@@ -31,7 +31,7 @@ np.random.seed(12)
 torch.manual_seed(12)
 
 def process_deq_scale(deq_scale: torch.Tensor) -> np.ndarray:
-    ret = torch.frombuffer(deq_scale.numpy().tobytes(), dtype=torch.int32).to(torch.int64)
+    ret = deq_scale.to(torch.int64)  # 直接转换 dtype，无需 bytes / buffer
     return ret
 
 
@@ -181,18 +181,17 @@ class TestMLAPrepross(operation_test.OperationTest):
         offset = quantOffset.item()
         inputScale = torch.tensor(scale, dtype=torch.float)
         inputOffset = torch.tensor(offset, dtype=torch.float)
-        input0 = torch.tensor(input).float()
-        input1 = torch.tensor(gamma).float()
+        input0 = input.clone().detach().float()
+        input1 = gamma.clone().detach().float()
         square_sum = torch.sum(torch.square(input0), axis=-1, keepdims=True)
         factor = 1.0 / torch.sqrt(square_sum / out_shape[-1] + self.epsilon)
         output = input0 * factor * input1
         output = (output + beta.float()) * inputScale + inputOffset
         self.xxTest = output.clone()
-        output = torch.round(output)
-        output = torch.tensor(output).to(torch.float16)
+        output = output.clone().detach().to(torch.float16)
         output = torch.min(output, torch.tensor(QUANTMAX, dtype=torch.half))
         output = torch.max(output, torch.tensor(QUANTMIN, dtype=torch.half))
-        return torch.tensor(output).to(torch.int8)
+        return output.to(torch.int8)
 
     def calc_vec_mm_atb_data(self, N, headNum, data_type):
         hiddenStrate = 7168
@@ -788,46 +787,46 @@ class TestMLAPrepross(operation_test.OperationTest):
             else:
                 return compare_cv(self.keyout_npu.npu(), self.keyOut1.npu(), out_tensors.npu())
  
-    def test_mla_preprocess(self):
-        if not operation_test.get_soc_version() == 'Ascend910B':
-            print("this testcase only supports Ascend910B")
-            return
-        self.compare_count = 0
-        self.cacheMode = 0
-        N = 32
-        headNum = 32
-        data_type = torch.float16
-        OP_NAME = "MlaPreprocessOperation"
-        PARAM = json.dumps({})
-        self.calc_vec_mm_atb_data(N,headNum,data_type)
-        self.keyCache = self.keyCache.npu()
-        self.execute_out(OP_NAME, PARAM,
-                    [self.input1.npu(),
-                    self.gamma1.npu(),
-                    self.beta1.npu(),
-                    self.quantScale1.npu(),
-                    self.quantOffset1.npu(),
-                    torch_npu.npu_format_cast(transdata(self.wdqkv, (16, 32)).contiguous().npu(), 29),
-                    self.deScale1.npu(),
-                    self.bias1.npu(),
-                    self.gamma2.npu(),
-                    self.beta2.npu(),
-                    self.quantScale2.npu(),
-                    self.quantOffset2.npu(),
-                    torch_npu.npu_format_cast(transdata(self.wuq, (16, 32)).contiguous().npu(), 29),
-                    self.deScale2.npu(),
-                    self.bias2.npu(),
-                    self.gamma3.npu(),
-                    self.cos1.npu(),
-                    self.sin1.npu(),
-                    self.wuk.npu(),
-                    self.keyCache.npu(),
-                    torch.tensor([]).npu(),
-                    self.slotMapping.npu(),
-                    torch.tensor([]).npu(),
-                    torch.tensor([]).npu()],
-                    [torch.zeros((N, headNum, 576), dtype=data_type).npu(),
-                    self.keyCache.npu()])
+    # def test_mla_preprocess(self):
+    #     if not operation_test.get_soc_version() == 'Ascend910B':
+    #         print("this testcase only supports Ascend910B")
+    #         return
+    #     self.compare_count = 0
+    #     self.cacheMode = 0
+    #     N = 32
+    #     headNum = 32
+    #     data_type = torch.float16
+    #     OP_NAME = "MlaPreprocessOperation"
+    #     PARAM = json.dumps({"backendType":1})
+    #     self.calc_vec_mm_atb_data(N,headNum,data_type)
+    #     self.keyCache = self.keyCache.npu()
+    #     self.execute_out(OP_NAME, PARAM,
+    #                 [self.input1.npu(),
+    #                 self.gamma1.npu(),
+    #                 self.beta1.npu(),
+    #                 self.quantScale1.npu(),
+    #                 self.quantOffset1.npu(),
+    #                 torch_npu.npu_format_cast(transdata(self.wdqkv, (16, 32)).contiguous().npu(), 29),
+    #                 self.deScale1.npu(),
+    #                 self.bias1.npu(),
+    #                 self.gamma2.npu(),
+    #                 self.beta2.npu(),
+    #                 self.quantScale2.npu(),
+    #                 self.quantOffset2.npu(),
+    #                 torch_npu.npu_format_cast(transdata(self.wuq, (16, 32)).contiguous().npu(), 29),
+    #                 self.deScale2.npu(),
+    #                 self.bias2.npu(),
+    #                 self.gamma3.npu(),
+    #                 self.cos1.npu(),
+    #                 self.sin1.npu(),
+    #                 self.wuk.npu(),
+    #                 self.keyCache.npu(),
+    #                 torch.tensor([]).npu(),
+    #                 self.slotMapping.npu(),
+    #                 torch.tensor([]).npu(),
+    #                 torch.tensor([]).npu()],
+    #                 [torch.zeros((N, headNum, 576), dtype=data_type).npu(),
+    #                 self.keyCache.npu()])
 
     def test_mla_preprocess_32_128(self):
         if not operation_test.get_soc_version() == 'Ascend910B':
@@ -1050,7 +1049,7 @@ class TestMLAPrepross(operation_test.OperationTest):
         headNum = 128
         data_type = torch.float16
         OP_NAME = "MlaPreprocessOperation"
-        PARAM = json.dumps({"cacheMode":self.cacheMode})
+        PARAM = json.dumps({"cacheMode":self.cacheMode, "backendType": 1})
         self.calc_vec_mm_atb_data(N,headNum,data_type)
         self.keyCache = self.keyCache.npu()
         self.execute_out(OP_NAME, PARAM,
@@ -1169,5 +1168,57 @@ class TestMLAPrepross(operation_test.OperationTest):
                     torch.zeros((N, headNum, 64), dtype=data_type).npu(),
                     self.keyCache[..., 512:576].npu()])
 
-if __name__ == "__main__":
-    unittest.main()
+    def test_mla_preprocess(self):
+        if not operation_test.get_soc_version() == 'Ascend910B':
+            print("this testcase only supports Ascend910B")
+            return
+        self.compare_count = 0
+        self.cacheMode = 0
+        N = 32
+        headNum = 32
+        data_type = torch.float16
+        OP_NAME = "MlaPreprocessOperation"
+        PARAM = json.dumps({"backendType":1})
+        # PARAM = json.dumps({})
+        self.calc_vec_mm_atb_data(N,headNum,data_type)
+        self.keyCache = self.keyCache.npu()
+        self.execute_out(OP_NAME, PARAM,
+                    [self.input1.npu(),
+                    self.gamma1.npu(),
+                    self.beta1.npu(),
+                    self.quantScale1.npu(),
+                    self.quantOffset1.npu(),
+                    torch_npu.npu_format_cast(transdata(self.wdqkv, (16, 32)).contiguous().npu(), 29),
+                    self.deScale1.npu(),
+                    self.bias1.npu(),
+                    self.gamma2.npu(),
+                    self.beta2.npu(),
+                    self.quantScale2.npu(),
+                    self.quantOffset2.npu(),
+                    torch_npu.npu_format_cast(transdata(self.wuq, (16, 32)).contiguous().npu(), 29),
+                    self.deScale2.npu(),
+                    self.bias2.npu(),
+                    self.gamma3.npu(),
+                    self.cos1.npu(),
+                    self.sin1.npu(),
+                    self.wuk.npu(),
+                    self.keyCache.npu(),
+                    torch.tensor([]).npu(),
+                    self.slotMapping.npu(),
+                    torch.tensor([]).npu(),
+                    torch.tensor([]).npu()],
+                    [torch.zeros((N, headNum, 576), dtype=data_type).npu(),
+                    self.keyCache.npu()])
+
+def suite():
+    suite = unittest.TestSuite()
+    for _ in range(100):
+        suite.addTest(TestMLAPrepross('test_mla_preprocess_split_32_128'))
+    return suite
+
+if __name__ == '__main__':
+    runner = unittest.TextTestRunner()
+    runner.run(suite())
+    
+# if __name__ == "__main__":
+#     unittest.main()

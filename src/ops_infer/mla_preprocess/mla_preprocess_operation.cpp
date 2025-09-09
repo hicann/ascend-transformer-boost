@@ -9,6 +9,7 @@
  */
 #include "mla_preprocess_operation.h"
 #include "mla_preprocess_aclnn_runner.h"
+#include "mla_preprocess_aclnn_runner.h"
 #include "mla_preprocess_ops_runner.h"
 #include "mla_preprocess_ops_runner_split.h"
 #include "atb/utils/log.h"
@@ -49,6 +50,7 @@ template <> Status CreateOperation(const infer::MlaPreprocessParam &opParam, Ope
     if (operation == nullptr) {
         return ERROR_INVALID_PARAM;
     }
+    ATB_LOG(INFO) << "CreateOperation with MlaPreprocessParam: " << OpParamToJson(opParam);
     if (!GetSingleton<Config>().Is910B()) {
         ATB_LOG(ERROR) << "only support Atlas 800I A2/A3 Inference Product";
         return ERROR_INVALID_PARAM;

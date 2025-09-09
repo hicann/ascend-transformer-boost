@@ -39,10 +39,10 @@ Status AclnnExecutorCache::FetchCacheSlot(const std::string &opNameStr, const Ru
     const std::vector<std::pair<RunnerVariantPack, AclnnCacheSlot>> &slotVec = it->second;
     int slotVecSize = static_cast<int>(slotVec.size());
     for (int i = 0; i < slotVecSize; ++i) {
-        // if (slotVec[i].second.executor == nullptr) {
-        //     ATB_LOG(INFO) << "ATB aclnn op: " << opNameStr << " cache index [" << i << "]'s executor is nullptr";
-        //     continue;
-        // }
+        if (slotVec[i].second.executor == nullptr) {
+            ATB_LOG(INFO) << "ATB aclnn op: " << opNameStr << " cache index [" << i << "]'s executor is nullptr";
+            continue;
+        }
         if (TensorUtil::IsRunnerVariantPackInputEqual(aclnnCacheKey, slotVec[i].first)) {
             ATB_LOG(INFO) << "ATB aclnn op: " << opNameStr << ", fetched slot at index [" << i << "]";
             outAclnnCacheSlot = slotVec[i].second;
@@ -53,8 +53,9 @@ Status AclnnExecutorCache::FetchCacheSlot(const std::string &opNameStr, const Ru
                   << ", cache slot was not found with variantPack: " << aclnnCacheKey.ToString();
     return ERROR_INVALID_PARAM;
 }
-Status AclnnExecutorCache::AddCacheSlot(const std::string &opNameStr, const RunnerVariantPack &aclnnCacheKey,
-                                        AclnnCacheSlot &inAclnnCacheSlot)
+
+Status AclnnExecutorCache::AddCacheSlot(
+    const std::string &opNameStr, const RunnerVariantPack &aclnnCacheKey, AclnnCacheSlot &inAclnnCacheSlot)
 {
 #ifdef _DEBUG
     ATB_LOG(INFO) << "ATB aclnn op: " << opNameStr
@@ -72,7 +73,7 @@ Status AclnnExecutorCache::AddCacheSlot(const std::string &opNameStr, const Runn
         return ERROR_INVALID_PARAM;
     }
     std::map<std::string, std::vector<std::pair<RunnerVariantPack, AclnnCacheSlot>>>::iterator it =
-        cachePool_.find(opNameStr);
+        cachePool_.find(opNameStr); 
     if (it == cachePool_.end()) {
         ATB_LOG(INFO) << "ATB aclnn executor cache add op: " << opNameStr;
         cachePool_[opNameStr].emplace_back(std::make_pair(aclnnCacheKey, inAclnnCacheSlot));
@@ -94,4 +95,4 @@ Status AclnnExecutorCache::AddCacheSlot(const std::string &opNameStr, const Runn
     return NO_ERROR;
 }
 
-} // namespace atb
+}  // namespace atb

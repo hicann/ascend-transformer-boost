@@ -24,15 +24,15 @@ class AclnnExecutorCache {
 public:
     AclnnExecutorCache();
     ~AclnnExecutorCache();
-    Status FetchCacheSlot(const std::string &opNameStr, const RunnerVariantPack &aclnnCacheKey,
-                          AclnnCacheSlot &outAclnnCacheSlot);
-    Status AddCacheSlot(const std::string &opNameStr, const RunnerVariantPack &aclnnCacheKey,
-                        AclnnCacheSlot &inAclnnCacheSlot);
+    Status FetchCacheSlot(
+        const std::string &opNameStr, const RunnerVariantPack &aclnnCacheKey, AclnnCacheSlot &outAclnnCacheSlot);
+    Status AddCacheSlot(
+        const std::string &opNameStr, const RunnerVariantPack &aclnnCacheKey, AclnnCacheSlot &inAclnnCacheSlot);
 
 private:
     std::map<std::string, std::vector<std::pair<RunnerVariantPack, AclnnCacheSlot>>> cachePool_;
     int nextUpdateIndex_ = 0;
     uint32_t cacheCapacity_ = 16;
 };
-} // namespace atb
+}  // namespace atb
 #endif

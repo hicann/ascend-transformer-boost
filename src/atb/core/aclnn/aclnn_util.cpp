@@ -23,8 +23,8 @@ const int DIM2 = 2;
 const int DIM3 = 3;
 }  // namespace
 
-namespace atb {
 
+namespace atb {
 template <typename T, typename U>
 typename std::common_type<T, U>::type CheckIntMulOverFlow(const T a, const U b)
 {
@@ -233,6 +233,22 @@ bool AreTensorVectorsEqual(
         }
     }
 
+    return true;
+}
+
+bool IsAclnnRunnerVariankPackEqual(const AclNNVariantPack &aclnnVariantPack, const RunnerVariantPack &runnerVariantPack)
+{
+    ATB_LOG(INFO) << "Compare AclNNVariantPack with RunnerVariantPack:";
+    ATB_LOG(INFO) << PrintAclNNVariankPack(aclnnVariantPack);
+    ATB_LOG(INFO) << runnerVariantPack.ToString();
+    if (!AreTensorVectorsEqual(aclnnVariantPack.aclInTensors, runnerVariantPack.inTensors)) {
+        return false;
+    }
+
+    if (!AreTensorVectorsEqual(aclnnVariantPack.aclOutTensors, runnerVariantPack.outTensors)) {
+        return false;
+    }
+    ATB_LOG(INFO) << "ATB aclnn Op Cache: TensorDesc match";
     return true;
 }
 
