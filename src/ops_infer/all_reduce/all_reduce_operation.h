@@ -30,7 +30,7 @@ protected:
 
 private:
     Status DtypeCheck(const TensorDesc &inTensorDesc) const;
-    Status QuantShapeCheck(const TensorDesc &scale, const TensorDesc &offset, int n) const;
+    Status QuantShapeCheck(const TensorDesc &scale, const TensorDesc &offset, int64_t n) const;
 
 private:
     infer::AllReduceParam param_;
