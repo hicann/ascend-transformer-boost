@@ -580,7 +580,7 @@ function install_torch_atb() {
         return 0
     fi
 
-    py_version=$(python -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
+    py_version=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
     py_major_version=${py_version%%.*}
     py_minor_version=${py_version##*.}
 

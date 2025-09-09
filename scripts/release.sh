@@ -151,7 +151,7 @@ function fn_init_env()
 }
 
 function rename_whl_file() {
-    python_version=$(python -c 'import sys; print(".".join(map(str, sys.version_info[:2])))')
+    python_version=$(python3 -c 'import sys; print(".".join(map(str, sys.version_info[:2])))')
     version_suffix="cp${python_version//./}"
     echo "DEBUG: Current Python version: $python_version, setting wheel file tag: $version_suffix"
     for whl in ./whl/*.whl; do
