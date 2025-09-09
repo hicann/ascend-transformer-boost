@@ -69,7 +69,7 @@ pip3 install attrs cython 'numpy>=1.19.2,<=1.24.0' decorator sympy cffi pyyaml p
     ```sh
     git clone https://gitee.com/ascend/ascend-transformer-boost.git
     ```
-   用户可自行选择需要的分支。
+   您可自行选择需要的分支。
  - 加速库编译<br>
     编译加速库，设置加速库环境变量：
     ```sh
@@ -163,7 +163,7 @@ ascend-transformer-boost
 │   ├── ops_train       //训练OP
 │   ├── torch_atb       //与PyTorch相关的atb库文件
 │   └── CMakeLists.txt
-├── tests //测试代码
+├── tests               //测试代码
 └── torch_atb
 ```
 
@@ -177,7 +177,7 @@ ATB不推荐用户直接将样例作为业务代码，也不保证此种做法�
 
 ### 日志
 - 加速库日志现在已经部分适配CANN日志 请参考
-    - **[CANN商用版文档/环境变量参考/辅助功能/日志/场景说明](https://www.hiascend.com/document/detail/zh/canncommercial/80RC22/apiref/envvar/envref_07_0109.html)**
+  **[CANN商用版文档/环境变量参考/辅助功能/日志/场景说明](https://www.hiascend.com/document/detail/zh/canncommercial/80RC22/apiref/envvar/envref_07_0109.html)**。
 - 由于CANN日志暂时没有ATB模块，ASCEND_MODULE_LOG_LEVEL请勿设置ATB
 
 ## 参与贡献
