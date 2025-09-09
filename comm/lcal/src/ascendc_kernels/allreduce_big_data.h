@@ -30,6 +30,8 @@ public:
         DumpLcclLogInfo(LogId::INIT, static_cast<Op>(op));
         if constexpr(!std::is_same_v<T, U>) {
             BuildScaleOffset(scale, scaleCount, offset);
+            this->input = input;
+            this->output = output;
         }
 
         if (blockIdx >= PING_PONG_SIZE * rankSize) {
@@ -123,6 +125,22 @@ public:
             Consumer();
         }
         DumpLcclLogInfo(LogId::PROCESS, static_cast<Op>(atomOp));
+    }
+
+    FORCE_INLINE_AICORE void SupportBigScale()
+    {
+        if constexpr(!std::is_same_v<T, U>) {
+            constexpr int32_t bigScaleFlagOffset = 2;
+            if (blockIdx == 0) {
+                inputGt.SetGlobalBuffer((__gm__ U*)input);
+                outputGt.SetGlobalBuffer((__gm__ T*)output);
+                CpGM2GMWithScale(len, inputGt, outputGt, COPYONLY);
+                sync.SetSyncFlag(magic, 0, blockNum * bigScaleFlagOffset, rank);
+            } else {
+                sync.WaitSyncFlag(magic, 0, blockNum * bigScaleFlagOffset, rank);
+            }
+        }
+        return;
     }
 private:
     FORCE_INLINE_AICORE void Producer()

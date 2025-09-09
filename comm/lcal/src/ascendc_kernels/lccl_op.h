@@ -129,6 +129,7 @@ extern "C" __global__ __aicore__ void LcalAllReduce_##type##suffix(KERNELS_ARGS_
     constexpr int32_t cceSmallDataSize = 2 * 1024 * 1024; \
     constexpr int32_t smallDataSize910a3 = 32 * 1024 * 1024; \
     constexpr int32_t rankSize910a3 = 16; \
+    constexpr int32_t scaleCountMax = 12 * 1024 * 1024; \
     __gm__ type * shareAddrs[LCAL_MAX_RANK_SIZE]; \
     GET_IPC_MEM_ARGS(type); \
     if ((extraFlag & ExtraFlag::TOPO_PCIE) != 0) { \
@@ -142,8 +143,14 @@ extern "C" __global__ __aicore__ void LcalAllReduce_##type##suffix(KERNELS_ARGS_
             CLASS_OP_QUANT_LAUNCH(AllReduceOneShot, half, int8_t); \
         } else if (len * sizeof(type) <= quantSmallDataSize) { \
             CLASS_OP_QUANT_LAUNCH(AllReduceTwoShot, half, int8_t); \
-        } else { \
+        } else if (scaleCount * rankSize <= scaleCountMax) { \
             CLASS_OP_QUANT_LAUNCH(AllReduceBigData, half, int8_t); \
+        } else { \
+            AllReduceBigData<half, int8_t> opTmp(localRank, localRankSize, extraFlag); \
+            opTmp.Init(KERNELS_ARGS_CALL()); \
+            opTmp.SupportBigScale(); \
+            input = output; \
+            CLASS_OP_LAUNCH(AllReduceBigData, half); \
         } \
     } else if ((extraFlag & ExtraFlag::TOPO_910B2C) != 0 && rankSize > smallRankSize) { \
         if (len * sizeof(type) < cceSmallDataSize) {      \
