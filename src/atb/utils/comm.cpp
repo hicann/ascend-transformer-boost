@@ -16,7 +16,7 @@
 #include <atb/utils/log.h>
 #include <mki/utils/share_memory/share_memory.h>
 #include "atb/utils/singleton.h"
-#include "atb/core/comm_pool.h"
+#include "atb/utils/comm_pool.h"
 
 namespace atb {
 struct CommInitInfo {

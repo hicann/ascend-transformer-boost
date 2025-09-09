@@ -15,7 +15,7 @@
 #include "atb/utils/config.h"
 #include "event_runner.h"
 #include "atb/utils/param_to_json.h"
-#include "atb/core/op_param_funcs.h"
+#include "atb/operation/op_param_funcs.h"
 #include "atb/utils/operation_util.h"
 
 namespace atb {

@@ -8,8 +8,8 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 #include "laser_attention_operation.h"
-#include "atb/core/atb_operation_ir_cfg.h"
-#include "atb/core/op_param_funcs.h"
+#include "atb/operation/atb_operation_ir_cfg.h"
+#include "atb/operation/op_param_funcs.h"
 #include "atb/utils/operation_util.h"
 #include "atb/utils/param_to_json.h"
 #include "atb/utils/tensor_check.h"

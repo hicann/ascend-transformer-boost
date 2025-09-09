@@ -10,14 +10,14 @@
 #include "gating_operation.h"
 #include <algorithm>
 #include <unordered_set>
-#include "atb/core/atb_operation_ir_cfg.h"
+#include "atb/operation/atb_operation_ir_cfg.h"
 #include "atb/utils/config.h"
 #include "gating_ops_runner.h"
 #include "atb/utils/operation_util.h"
 #include "atb/utils/tensor_check.h"
 #include "atb/utils/tensor_util.h"
 #include "atb/utils/singleton.h"
-#include "atb/core/op_param_funcs.h"
+#include "atb/operation/op_param_funcs.h"
 
 namespace atb {
 static const int32_t MAX_CUM_SUM_NUM = 1024;
