@@ -144,31 +144,7 @@ pip3 install attrs cython 'numpy>=1.19.2,<=1.24.0' decorator sympy cffi pyyaml p
         ```
         出现提示`xxx install success!`则安装成功
 
-### ATB编译相关说明
-- `scripts/install.sh`: 安装脚本
-- `scripts/uninstall.sh`: 卸载脚本
-- `build.sh`: 编译脚本
-- 不编译python接口
-  ```sh
-  bash scripts/build.sh --no-pybind
-  ```
-- 编译测试框架
-  ```sh
-  bash scripts/build.sh testframework
-  ```
-- 加速库算子单元测试
-    - c++
-    ```sh
-    bash scripts/build.sh unittest
-    ```
-    - python
-    ```sh
-    bash scripts/build.sh pythontest
-    ```
-    - csv
-    ```sh
-    bash scripts/build.sh csvopstest
-    ```
+ - 更多编译命令说明可访问[编译与构建](docs/编译与构建.md)
 ### 调用示例说明
 本节示例代码分别展示了如何通过Python和C++调用算子。
 #### Python
