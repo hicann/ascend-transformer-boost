@@ -38,6 +38,7 @@ MKI_BUILD_MODE=Test
 VERSION="8.0.0"
 LOG_PATH="/var/log/cann_atb_log/"
 LOG_NAME="cann_atb_install.log"
+TEMPORARY_ASCEND_SLOG_PRINT_TO_STDOUT=""
 
 BUILD_OPTION_LIST="help default testframework unittest kernelunittest pythontest torchatbtest kernelpythontest csvopstest fuzztest infratest hitest alltest clean gendoc customizeops"
 BUILD_CONFIGURE_LIST=("--verbose" "--use_cxx11_abi=0" "--use_cxx11_abi=1"
@@ -498,6 +499,17 @@ function generate_atb_version_info()
 EOF
 }
 
+function fn_disable_log_env()
+{
+    TEMPORARY_ASCEND_SLOG_PRINT_TO_STDOUT="$ASCEND_SLOG_PRINT_TO_STDOUT"
+    export ASCEND_SLOG_PRINT_TO_STDOUT=""
+}
+
+function fn_restore_log_env()
+{
+    export ASCEND_SLOG_PRINT_TO_STDOUT="$TEMPORARY_ASCEND_SLOG_PRINT_TO_STDOUT"
+}
+
 function fn_init_env()
 {
     res=$(python3 -c "import torch" &> /dev/null || echo "torch_not_exist")
@@ -512,14 +524,16 @@ function fn_init_env()
             USE_CXX11_ABI=OFF
         fi
     fi
+
+    fn_disable_log_env
+
     export PYTHON_INCLUDE_PATH="$(python3 -c 'from sysconfig import get_paths; print(get_paths()["include"])')"
     export PYTHON_LIB_PATH="$(python3 -c 'from sysconfig import get_paths; print(get_paths()["include"])')"
     export PYTORCH_INSTALL_PATH="$(python3 -c 'import torch, os; print(os.path.dirname(os.path.abspath(torch.__file__)))')"
     export PYTORCH_NPU_INSTALL_PATH="$(python3 -c 'import torch, torch_npu, os; print(os.path.dirname(os.path.abspath(torch_npu.__file__)))')"
     export LD_LIBRARY_PATH=$PYTORCH_INSTALL_PATH/../torch.libs:$LD_LIBRARY_PATH
-    export ASCEND_GLOBAL_LOG_LEVEL=""
-    export ASCEND_MODULE_LOG_LEVEL=""
-    export ASCEND_SLOG_PRINT_TO_STDOUT=""
+
+    fn_restore_log_env
 
     echo "PYTHON_INCLUDE_PATH=$PYTHON_INCLUDE_PATH"
     echo "PYTHON_LIB_PATH=$PYTHON_LIB_PATH"
