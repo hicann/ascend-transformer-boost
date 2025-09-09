@@ -45,7 +45,7 @@ void TestCreateHcclCrossMulitComm(int realRank, int subCommRankId, std::vector<u
 {
     std::cout << "realRank: " << realRank << std::endl;
     aclrtSetDevice(realRank);
-    char *rankTableFile = "/data/s30009811/ranktableFile.json";
+    char *rankTableFile = "/data/ranktableFile.json";
     uint32_t hcclBufferSize = 200;
     char commName[129] = "";
     HcclComm hcclComm = nullptr;
