@@ -16,7 +16,7 @@ Ascend Transformer Boost加速库（下文简称为ATB加速库）是一款高�
 - [从开发一个简单算子开始](docs/从开发一个简单算子出发.md)：以简单的Add算子的增加为例，介绍了ATB算子开发的交付件和开发流程。
 - [开发指南](docs/开发指南.md)：以一个融合算子为例，详细介绍了ATB算子开发的流程，以及如何对算子进行功能、精度、性能测试。
 - [贡献指南](docs/贡献指南.md)：介绍了如何向ATB库贡献代码。
-- [API文档]([docs/API参考文档.md](https://www.hiascend.com/document/detail/zh/canncommercial/82RC1/API/ascendtbapi/ascendtb_01_0098.html))：介绍了ATB库的接口和相关术语。
+- [API文档][docs/API参考文档.md](https://www.hiascend.com/document/detail/zh/canncommercial/82RC1/API/ascendtbapi/ascendtb_01_0098.html)：介绍了ATB库的接口和相关术语。
 - [问题报告](https://gitee.com/ascend/ascend-transformer-boost/issues)：通过issue提交发现的问题。
 
 ## 什么是ATB
