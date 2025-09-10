@@ -252,22 +252,6 @@ bool IsAclnnRunnerVariankPackEqual(const AclNNVariantPack &aclnnVariantPack, con
     return true;
 }
 
-bool IsAclnnRunnerVariankPackEqual(const AclNNVariantPack &aclnnVariantPack, const RunnerVariantPack &runnerVariantPack)
-{
-    ATB_LOG(INFO) << "Compare AclNNVariantPack with RunnerVariantPack:";
-    ATB_LOG(INFO) << PrintAclNNVariankPack(aclnnVariantPack);
-    ATB_LOG(INFO) << runnerVariantPack.ToString();
-    if (!AreTensorVectorsEqual(aclnnVariantPack.aclInTensors, runnerVariantPack.inTensors)) {
-        return false;
-    }
-
-    if (!AreTensorVectorsEqual(aclnnVariantPack.aclOutTensors, runnerVariantPack.outTensors)) {
-        return false;
-    }
-    ATB_LOG(INFO) << "ATB aclnn Op Cache: TensorDesc match";
-    return true;
-}
-
 bool IsAclnnAtbVariankPackEqual(const AclNNVariantPack &aclnnVariantPack, const atb::VariantPack &atbVariantPack)
 {
     ATB_LOG(INFO) << PrintAclNNVariankPack(aclnnVariantPack);

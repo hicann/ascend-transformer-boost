@@ -21,7 +21,7 @@ static const uint32_t OUT_TENSOR_NUM = 4;
 static const uint32_t Q_OUT1_INDEX = 2;
 static const uint32_t KV_CACHE_OUT1_INDEX = 3;
 static const uint32_t KV_CACHE_ROPE_INDEX = 20;
-}  // namespace
+} // namespace
 
 namespace atb {
 MlaPreprocessAclnnRunner::MlaPreprocessAclnnRunner(const infer::MlaPreprocessParam &param)
@@ -30,8 +30,14 @@ MlaPreprocessAclnnRunner::MlaPreprocessAclnnRunner(const infer::MlaPreprocessPar
     ATB_LOG(INFO) << GetLogPrefix() << "MlaPreprocessAclnnRunner::MlaPreprocessAclnnRunner called";
 }
 
-MlaPreprocessAclnnRunner::~MlaPreprocessAclnnRunner()
-{}
+MlaPreprocessAclnnRunner::MlaPreprocessAclnnRunner(const infer::MlaPreprocessParam &param, bool doRmsNorm)
+    : AclnnRunner("MlaPreprocessOpsRunner", RUNNER_TYPE_MLA_PREPROCESS_ACLNN), param_(param), doRmsNorm_(doRmsNorm)
+{
+    ATB_LOG(INFO) << GetLogPrefix()
+                  << "MlaPreprocessAclnnRunnecr::MlaPreprocessAclnnRunner called, set doRmsNorm: " << doRmsNorm;
+}
+
+MlaPreprocessAclnnRunner::~MlaPreprocessAclnnRunner() {}
 
 Status MlaPreprocessAclnnRunner::BuildAclnnVariantPack(const RunnerVariantPack &runnerVariantPack)
 {
@@ -115,6 +121,9 @@ aclError MlaPreprocessAclnnRunner::SetAclNNWorkspaceExecutor()
     aclTensor *wuk = this->aclnnVariantPack_.aclInTensors.at(inTensorStart++)->tensor;
     aclTensor *kvCache = this->aclnnVariantPack_.aclInTensors.at(inTensorStart++)->tensor;
     aclTensor *kRope = this->aclnnVariantPack_.aclInTensors.at(inTensorStart++)->tensor;
+    if (param_.cacheMode == infer::MlaPreprocessParam::CacheMode::KVCACHE) {
+        kRope = nullptr;
+    }
     aclTensor *slotmapping = this->aclnnVariantPack_.aclInTensors.at(inTensorStart++)->tensor;
     aclTensor *ctkvScale = this->aclnnVariantPack_.aclInTensors.at(inTensorStart++)->tensor;
     aclTensor *qNopeScale = this->aclnnVariantPack_.aclInTensors.at(inTensorStart++)->tensor;
@@ -136,52 +145,17 @@ aclError MlaPreprocessAclnnRunner::SetAclNNWorkspaceExecutor()
 
     ATB_LOG(FATAL) << GetLogPrefix() << "workspaceSize addr: " << &(this->atbVariantPack_.workspaceBufferSize);
 
-    aclError ret = aclnnMlaPreprocessGetWorkspaceSize(input,
-        gamma0,
-        beta0,
-        quantScale0,
-        quantOffset0,
-        wdqkv,
-        deScale0,
-        bias0,
-        gamma1,
-        beta1,
-        quantScale1,
-        quantOffset1,
-        wuq,
-        deScale1,
-        bias1,
-        gamma2,
-        cos,
-        sin,
-        wuk,
-        kvCache,
-        kRope,
-        slotmapping,
-        ctkvScale,
-        qNopeScale,
-        param_.wdqDim,
-        param_.qRopeDim,
-        param_.kRopeDim,
-        param_.epsilon,
-        param_.qRotaryCoeff,
-        param_.kRotaryCoeff,
-        param_.transposeWdq,
-        param_.transposeWuq,
-        param_.transposeWuk,
-        param_.cacheMode,
-        param_.quantMode,
-        true,  // doRmsNorm
-        1,     // wdkvSplitCount
-        qOut0,
-        kvCacheOut0,
-        qOut1,
-        kvCacheOut1,
-        &(this->atbVariantPack_.workspaceBufferSize),
-        &raw_executor_ptr);
-    bool repeatable_ = this->executorRepeatable_;
-    this->aclnnExecutor_ = std::shared_ptr<aclOpExecutor>(raw_executor_ptr, [repeatable_](aclOpExecutor *ptr) {
-        if (ptr && repeatable_) { // 可复用时才手动销毁aclOpExecutor
+    aclError ret = aclnnMlaPreprocessGetWorkspaceSize(
+        input, gamma0, beta0, quantScale0, quantOffset0, wdqkv, deScale0, bias0, gamma1, beta1, quantScale1,
+        quantOffset1, wuq, deScale1, bias1, gamma2, cos, sin, wuk, kvCache, kRope, slotmapping, ctkvScale, qNopeScale,
+        param_.wdqDim, param_.qRopeDim, param_.kRopeDim, param_.epsilon, param_.qRotaryCoeff, param_.kRotaryCoeff,
+        param_.transposeWdq, param_.transposeWuq, param_.transposeWuk, param_.cacheMode, param_.quantMode,
+        doRmsNorm_, // doRmsNorm
+        1,    // wdkvSplitCount
+        qOut0, kvCacheOut0, qOut1, kvCacheOut1, &(this->atbVariantPack_.workspaceBufferSize), &raw_executor_ptr);
+    bool repeatable = this->executorRepeatable_;
+    this->aclnnExecutor_ = std::shared_ptr<aclOpExecutor>(raw_executor_ptr, [repeatable](aclOpExecutor *ptr) {
+        if (ptr && repeatable) { // 可复用时才手动销毁aclOpExecutor
             aclDestroyAclOpExecutor(ptr);
         }
     });
@@ -192,10 +166,8 @@ Status MlaPreprocessAclnnRunner::LaunchAclnnKernel(const AclNNVariantPack &aclNN
 {
     ATB_LOG(INFO) << GetLogPrefix() << "aclnn mlaPreprocess execute start.";
     void *executeStream = GetExecuteStream(this->atbVariantPack_.context);
-    aclError ret = aclnnMlaPreprocess(this->atbVariantPack_.workspaceBuffer,
-        this->atbVariantPack_.workspaceBufferSize,
-        this->aclnnExecutor_.get(),
-        executeStream);
+    aclError ret = aclnnMlaPreprocess(this->atbVariantPack_.workspaceBuffer, this->atbVariantPack_.workspaceBufferSize,
+                                      this->aclnnExecutor_.get(), executeStream);
     if (ret != ACL_SUCCESS) {
         ATB_LOG(ERROR) << GetLogPrefix() << "Atb aclnn op kernel launch failed with return value: " << ret;
         return ERROR_CANN_ERROR;
@@ -203,4 +175,4 @@ Status MlaPreprocessAclnnRunner::LaunchAclnnKernel(const AclNNVariantPack &aclNN
     ATB_LOG(INFO) << GetLogPrefix() << "aclnn mlaPreprocess execute success.";
     return NO_ERROR;
 }
-}  // namespace atb
+} // namespace atb

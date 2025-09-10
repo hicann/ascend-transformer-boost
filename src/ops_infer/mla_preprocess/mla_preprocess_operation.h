@@ -41,8 +41,6 @@ private:
 
 private:
     infer::MlaPreprocessParam param_;
-    bool generalizedHiddenSize_ = false;
-    bool unQuant_ = false;
 };
 } // namespace atb
 #endif

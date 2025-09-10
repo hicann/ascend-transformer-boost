@@ -12,7 +12,7 @@
 #define ATB_ACLNN_EXECUTOR_CACHE_H
 #include <map>
 #include "atb/types.h"
-#include "atb/core/runner_variant_pack.h"
+#include "atb/utils/runner_variant_pack.h"
 namespace atb {
 
 struct AclnnCacheSlot {

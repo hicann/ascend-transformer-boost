@@ -27,6 +27,7 @@ static const uint32_t OUT_TENSOR_NUM_SPLIT = 4;
 static const uint32_t INPUT_INDEX = 0;
 static const uint32_t GAMMA0_INDEX = 1;
 static const uint32_t BETA0_INDEX = 2;
+static const uint32_t WDQKV_INDEX = 5;
 static const uint32_t BIAS0_INDEX = 7;
 static const uint32_t BIAS1_INDEX = 14;
 static const uint32_t WUK_INDEX = 18;
@@ -64,12 +65,10 @@ template <> Status CreateOperation(const infer::MlaPreprocessParam &opParam, Ope
         ATB_LOG(ERROR) << "invalid cacheMode";
         return ERROR_INVALID_PARAM;
     }
-    if (opParam.quantMode == infer::MlaPreprocessParam::QuantMode::PER_TOKEN_QUANT_ASYMM) {
-        ATB_LOG(ERROR) << "invalid quantMode, doesn't support PER_TOKEN_ASYMM_QUANT";
+    if (opParam.quantMode == infer::MlaPreprocessParam::QuantMode::PER_TOKEN_QUANT_ASYMM ||
+        opParam.quantMode == infer::MlaPreprocessParam::QuantMode::UNQUANT) {
+        ATB_LOG(ERROR) << "invalid quantMode, doesn't support PER_TOKEN_ASYMM_QUANT and UNQUANT";
         return ERROR_INVALID_PARAM;
-    }
-    if (opParam.quantMode == infer::MlaPreprocessParam::QuantMode::UNQUANT) {
-        unQuant_ = true;
     }
     OP_PARAM_RSV_CHECK(opParam);
     *operation = new (std::nothrow) MlaPreprocessOperation(opParam);
@@ -372,9 +371,6 @@ Status MlaPreprocessOperation::HiddenSizeCheck(const SVector<TensorDesc> &inTens
                        << MAX_HIDDEN_SIZE << "], but got: " << hiddenSize;
         return ERROR_INVALID_TENSOR_DIM;
     }
-    if (hiddenSize != INNER_DIM_7168) {
-        generalizedHiddenSize_ = true;
-    }
     if (inTensorDesc.at(GAMMA0_INDEX).shape.dimNum != 1) { // 1: input [hiddenSize]
         ATB_LOG(ERROR) << GetLogPrefix()
                        << "dimNum of gamma0 should be 1, but got: " << inTensorDesc.at(GAMMA0_INDEX).shape.dimNum;
@@ -401,8 +397,13 @@ Status MlaPreprocessOperation::HiddenSizeCheck(const SVector<TensorDesc> &inTens
 std::shared_ptr<Runner> MlaPreprocessOperation::CreateRunner(Context &context) const
 {
     (void)context;
-    if (generalizedHiddenSize_ || unQuant_) {
-        return std::make_shared<MlaPreprocessAclnnRunner>(param_);
+    // input's hiddenSize != 7168, generalize hiddenSize
+    bool generalizedHiddenSize =
+        runnerVariantPack_.inTensors.at(INPUT_INDEX).desc.shape.dims[1] == INNER_DIM_7168; // 1: hiddenSize
+    // if wdqkv's dtype is bf16, then do not rmsNorm
+    bool doRmsNorm = runnerVariantPack_.inTensors.at(WDQKV_INDEX).desc.dtype == ACL_BF16;
+    if (generalizedHiddenSize || doRmsNorm) {
+        return std::make_shared<MlaPreprocessAclnnRunner>(param_, doRmsNorm);
     }
     if (param_.cacheMode == infer::MlaPreprocessParam::CacheMode::KVCACHE) {
         return std::make_shared<MlaPreprocessOpsRunner>(param_);

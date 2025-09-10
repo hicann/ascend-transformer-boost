@@ -786,7 +786,6 @@ template <> nlohmann::json OpParamToJson(const infer::MlaPreprocessParam &opPara
     mlaPreprocessParamJson["transposeWuk"] = opParam.transposeWuk;
     mlaPreprocessParamJson["cacheMode"] = opParam.cacheMode;
     mlaPreprocessParamJson["quantMode"] = opParam.quantMode;
-    mlaPreprocessParamJson["backendType"] = opParam.backendType;
     return mlaPreprocessParamJson;
 }
 
