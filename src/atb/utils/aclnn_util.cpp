@@ -12,8 +12,8 @@
 #include <cstring>
 #include <securec.h>
 
-#include "atb/core/aclnn/aclnn_util.h"
-#include "atb/utils/log.h"
+#include "aclnn_util.h"
+#include "log.h"
 
 namespace {
 /// Constant to represent index

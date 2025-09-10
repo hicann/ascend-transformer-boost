@@ -8,10 +8,10 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
-#include "atb/core/aclnn/aclnn_executor_cache.h"
+#include "aclnn_executor_cache.h"
 #include "atb/utils/log.h"
+#include "atb/utils/aclnn_util.h"
 #include "atb/utils/tensor_util.h"
-#include "atb/core/aclnn/aclnn_util.h"
 
 namespace atb {
 AclnnExecutorCache::AclnnExecutorCache()

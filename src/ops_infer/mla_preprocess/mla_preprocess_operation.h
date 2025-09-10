@@ -36,9 +36,13 @@ private:
     Status OutTensorCheck(const SVector<Tensor> &inTensors, const SVector<Tensor> &outTensors) const;
     Status OutTensorCheckSplit(const SVector<Tensor> &inTensors, const SVector<Tensor> &outTensors) const;
     Status BlockSizeCheck(const SVector<TensorDesc> &inTensorDesc) const;
+    // check the hiddenSize of input, gamma0 and beta0
+    Status HiddenSizeCheck(const SVector<TensorDesc> &inTensorDesc) const;
 
 private:
     infer::MlaPreprocessParam param_;
+    bool generalizedHiddenSize_ = false;
+    bool unQuant_ = false;
 };
 } // namespace atb
 #endif

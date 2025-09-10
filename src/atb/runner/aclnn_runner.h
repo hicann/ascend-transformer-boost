@@ -10,7 +10,7 @@
 
 #ifndef ATB_ACLNN_RUNNER_H
 #define ATB_ACLNN_RUNNER_H
-#include "atb/core/runner_type.h"
+#include "runner_type.h"
 #include "runner.h"
 
 namespace atb {

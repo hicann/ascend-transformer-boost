@@ -10,7 +10,7 @@
 #include "mla_preprocess_aclnn_runner.h"
 
 #include "aclnn_mla_preprocess.h"
-#include "atb/core/aclnn/aclnn_util.h"
+#include "atb/utils/aclnn_util.h"
 #include "atb/utils/log.h"
 #include <atbops/params/params.h>
 

@@ -2287,9 +2287,6 @@ static atb::Status MlaPreprocessOperationCreate(const nlohmann::json &paramJson,
     if (paramJson.contains("quantMode")) {
         param.quantMode = paramJson["quantMode"].get<atb::infer::MlaPreprocessParam::QuantMode>();
     }
-    if (paramJson.contains("backendType")) {
-        param.backendType = paramJson["backendType"].get<atb::infer::MlaPreprocessParam::BackendType>();
-    }
     if (paramJson.contains("rsv")) {
         for (size_t i = 0; i < paramJson["rsv"].size(); i++) {
             param.rsv[i] = paramJson["rsv"].at(i).get<int8_t>();

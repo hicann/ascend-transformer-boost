@@ -8,8 +8,8 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 #include "atb/runner/aclnn_runner.h"
-#include "atb/core/aclnn/aclnn_executor_cache.h"
-#include "atb/core/aclnn/aclnn_util.h"
+#include "atb/kernel_cache/aclnn_executor_cache.h"
+#include "atb/utils/aclnn_util.h"
 #include "atb/utils/log.h"
 #include "atb/utils/singleton.h"
 

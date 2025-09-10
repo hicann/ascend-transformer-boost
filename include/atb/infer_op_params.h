@@ -2870,21 +2870,9 @@ struct MlaPreprocessParam {
     //!
     QuantMode quantMode = PER_TENSOR_QUANT_ASYMM;
     //!
-    //! \brief 后端指示
-    //! 当backend为"BACKEND_TYPE_ACLNN"时，支持input的hiddenSize泛化，区间[2048:8192]。
-    //! 当backend为"BACKEND_TYPE_ATB"时，仅支持input的hiddenSize = 7168
-    //!
-    enum BackendType : int {
-        BACKEND_TYPE_ATB = 0,  //!< 默认值，使用atb算子计算
-        BACKEND_TYPE_ACLNN,    //!< 使用aclnn算子计算
-        BACKEND_TYPE_MAX,      //!< 枚举最大值, 非激活类型
-    };
-
-    BackendType backendType = BACKEND_TYPE_ATB;
-    //!
     //! \brief 预留参数
     //!
-    uint8_t rsv[28] = {0};
+    uint8_t rsv[34] = {0};
 };
 
 //!
