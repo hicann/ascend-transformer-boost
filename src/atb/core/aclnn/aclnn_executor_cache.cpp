@@ -19,6 +19,7 @@ AclnnExecutorCache::AclnnExecutorCache()
     ATB_LOG(INFO) << "ATB aclnn cache init";
     cachePool_ = {};
 }
+
 AclnnExecutorCache::~AclnnExecutorCache() {}
 
 Status AclnnExecutorCache::FetchCacheSlot(const std::string &opNameStr, const RunnerVariantPack &aclnnCacheKey,
@@ -87,7 +88,7 @@ Status AclnnExecutorCache::AddCacheSlot(
         ATB_LOG(INFO) << "ATB aclnn executor cache add op: " << opNameStr << " at index[" << slotVecSize << "]";
     }
 
-    // TODO(ivan)：淘汰方式目前使用等长vector+FIFO，待确认
+    // 淘汰方式：使用等长vector+FIFO
     ATB_LOG(INFO) << "ATB aclnn executor cache full for op: " << opNameStr << "update index [" << nextUpdateIndex_
                   << "]";
     cachePool_[opNameStr][nextUpdateIndex_] = std::make_pair(aclnnCacheKey, inAclnnCacheSlot);
