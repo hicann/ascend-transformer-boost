@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Technologies Co., Ltd.
+ * Copyright (c) 2025 Huawei Technologies Co., Ltd.
  * This file is a part of the CANN Open Software.
  * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
@@ -11,9 +11,11 @@
 #define ATB_TYPES_H
 #include <cstdint>
 #include <functional>
-#include <vector>
+#include <memory>
 #include <string>
+#include <vector>
 #include <acl/acl.h>
+#include <aclnn/acl_meta.h>
 #include "atb/svector.h"
 
 //!
@@ -188,6 +190,69 @@ struct GraphParam {
     std::vector<Node> nodes;
     //! \brief inferShape函数指针。
     InferShapeFunc inferShapeFunc = nullptr;
+};
+
+//!
+//! \struct AclNNIntArray
+//!
+//! \brief aclnn host tensor
+//!
+struct AclNNIntArray {
+    /// This struct is created by calling `aclCreateIntArray` and should be destroyed by calling `aclDestroyIntArray`.
+    /// \brief It is used to create the `aclOpExecutor`.
+    aclIntArray *intArray = nullptr;
+    /// \brief Data used to create the `aclIntArray*`. It is copied from atb::Tensor's hostData.
+    std::vector<int64_t> data = {};
+    /// \brief the origin of the data
+    std::vector<int32_t> dataOri = {};
+    /// \brief The size of `data` in bytes.
+    uint64_t dataSize = 0;
+};
+
+//!
+//! \struct AclNNTensor
+//!
+//! \brief 用于aclnn算子，包装Tensor和intArray等信息
+//!
+class AclNNTensor {
+public:
+    /// An const value to indicate that the `tensorListidx` is invalid.
+    static const int64_t notInTensorList = -1;
+
+    /// \brief Tensor passed through the ATB framework.
+    atb::Tensor atbTensor;
+    /// \brief The stride of each dimension in the tensor's view shape. Used when creating `aclTensor`.
+    atb::SVector<int64_t> strides = {};
+    /// \brief Tensor passed into the AclNN operation.
+    aclTensor *tensor = nullptr;
+    /// \brief An AclNNIntArray object contain tensor's host data in the int array format.
+    AclNNIntArray intArrayHostData;
+    /// \brief The index of the tensor in the tensor list. Used when `aclTensor` is passed into `aclTensorList`.
+    int tensorListidx = notInTensorList;
+    /// \brief The index of the tensor in `aclOpExecutor`'s parameter list.
+    int tensorIdx = -1;
+    /// An indicator that shows whether the tensor's device data needs to be updated in the execution.
+    bool needUpdateTensorDataPtr = false;
+};
+
+//!
+//! \struct AclNNVariantPack
+//!
+//! \brief aclnn算子
+//!
+struct AclNNVariantPack {
+    /// \brief A container stores an AclNN operation's in tensor in order.
+    /// Each `AclNNTensor` object contains one `aclTensor`.
+    atb::SVector<std::shared_ptr<AclNNTensor>> aclInTensors;
+    /// \brief A container stores an AclNN operation's out tensor in order.
+    /// Each `AclNNTensor` object contains one `aclTensor`.
+    atb::SVector<std::shared_ptr<AclNNTensor>> aclOutTensors;
+    /// \brief A container stores an AclNN operation's input `aclTensorList` in order.
+    /// Each `aclTensorList` object may contain multiple `aclTensor`.
+    atb::SVector<aclTensorList *> aclInTensorList;
+    /// \brief A container stores an AclNN operation's output `aclTensorList` in order.
+    /// Each `aclTensorList` object may contain multiple `aclTensor`.
+    atb::SVector<aclTensorList *> aclOutTensorList;
 };
 } // namespace atb
 #endif
