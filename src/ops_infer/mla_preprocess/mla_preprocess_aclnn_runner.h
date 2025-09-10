@@ -17,7 +17,7 @@ namespace atb {
 class MlaPreprocessAclnnRunner : public AclnnRunner {
 public:
     explicit MlaPreprocessAclnnRunner(const infer::MlaPreprocessParam &param);
-    explicit MlaPreprocessAclnnRunner(const infer::MlaPreprocessParam &param, bool doRmsNorm=true);
+    explicit MlaPreprocessAclnnRunner(const infer::MlaPreprocessParam &param, bool doRmsNorm = true);
     ~MlaPreprocessAclnnRunner() override;
 
 protected:
@@ -29,5 +29,5 @@ private:
     infer::MlaPreprocessParam param_;
     bool doRmsNorm_ = true;
 };
-}  // namespace atb
+} // namespace atb
 #endif

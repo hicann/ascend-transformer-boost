@@ -15,10 +15,9 @@
 
 namespace atb {
 
-AclnnRunner::AclnnRunner(const std::string &name, RunnerType runnerType) : Runner(name), runnerType_(runnerType){}
+AclnnRunner::AclnnRunner(const std::string &name, RunnerType runnerType) : Runner(name), runnerType_(runnerType) {}
 
-AclnnRunner::~AclnnRunner()
-{}
+AclnnRunner::~AclnnRunner() {}
 
 Status AclnnRunner::SetupImpl(RunnerVariantPack &runnerVariantPack)
 {
@@ -104,13 +103,12 @@ Status AclnnRunner::PreExecuteImpl(RunnerVariantPack &runnerVariantPack)
         }
         this->aclnnVariantPack_.aclInTensors[i]->atbTensor = runnerVariantPack.inTensors.at(i);
         if (this->aclnnVariantPack_.aclInTensors[i]->tensorListidx == AclNNTensor::notInTensorList) {
-            ret = aclSetInputTensorAddr(this->aclnnExecutor_.get(),
-                this->aclnnVariantPack_.aclInTensors[i]->tensorIdx,
-                this->aclnnVariantPack_.aclInTensors[i]->tensor,
-                this->aclnnVariantPack_.aclInTensors[i]->atbTensor.deviceData);
+            ret = aclSetInputTensorAddr(this->aclnnExecutor_.get(), this->aclnnVariantPack_.aclInTensors[i]->tensorIdx,
+                                        this->aclnnVariantPack_.aclInTensors[i]->tensor,
+                                        this->aclnnVariantPack_.aclInTensors[i]->atbTensor.deviceData);
         } else {
-            ret = aclSetDynamicInputTensorAddr(this->aclnnExecutor_.get(),
-                this->aclnnVariantPack_.aclInTensors[i]->tensorListidx,
+            ret = aclSetDynamicInputTensorAddr(
+                this->aclnnExecutor_.get(), this->aclnnVariantPack_.aclInTensors[i]->tensorListidx,
                 this->aclnnVariantPack_.aclInTensors[i]->tensorIdx,
                 this->aclnnVariantPack_.aclInTensorList[this->aclnnVariantPack_.aclInTensors[i]->tensorListidx],
                 this->aclnnVariantPack_.aclInTensors[i]->atbTensor.deviceData);
@@ -128,13 +126,13 @@ Status AclnnRunner::PreExecuteImpl(RunnerVariantPack &runnerVariantPack)
         }
         this->aclnnVariantPack_.aclOutTensors[i]->atbTensor = runnerVariantPack.outTensors.at(i);
         if (this->aclnnVariantPack_.aclOutTensors[i]->tensorListidx == AclNNTensor::notInTensorList) {
-            ret = aclSetOutputTensorAddr(this->aclnnExecutor_.get(),
-                this->aclnnVariantPack_.aclOutTensors[i]->tensorIdx,
-                this->aclnnVariantPack_.aclOutTensors[i]->tensor,
-                this->aclnnVariantPack_.aclOutTensors[i]->atbTensor.deviceData);
+            ret =
+                aclSetOutputTensorAddr(this->aclnnExecutor_.get(), this->aclnnVariantPack_.aclOutTensors[i]->tensorIdx,
+                                       this->aclnnVariantPack_.aclOutTensors[i]->tensor,
+                                       this->aclnnVariantPack_.aclOutTensors[i]->atbTensor.deviceData);
         } else {
-            ret = aclSetDynamicOutputTensorAddr(this->aclnnExecutor_.get(),
-                this->aclnnVariantPack_.aclOutTensors[i]->tensorListidx,
+            ret = aclSetDynamicOutputTensorAddr(
+                this->aclnnExecutor_.get(), this->aclnnVariantPack_.aclOutTensors[i]->tensorListidx,
                 this->aclnnVariantPack_.aclOutTensors[i]->tensorIdx,
                 this->aclnnVariantPack_.aclOutTensorList[this->aclnnVariantPack_.aclOutTensors[i]->tensorListidx],
                 this->aclnnVariantPack_.aclOutTensors[i]->atbTensor.deviceData);
@@ -158,4 +156,4 @@ Status AclnnRunner::ExecuteImpl(RunnerVariantPack &runnerVariantPack)
     return LaunchAclnnKernel(this->aclnnVariantPack_);
 }
 
-}  // namespace atb
+} // namespace atb

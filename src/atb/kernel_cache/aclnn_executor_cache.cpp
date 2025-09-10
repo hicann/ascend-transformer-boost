@@ -55,8 +55,8 @@ Status AclnnExecutorCache::FetchCacheSlot(const std::string &opNameStr, const Ru
     return ERROR_INVALID_PARAM;
 }
 
-Status AclnnExecutorCache::AddCacheSlot(
-    const std::string &opNameStr, const RunnerVariantPack &aclnnCacheKey, AclnnCacheSlot &inAclnnCacheSlot)
+Status AclnnExecutorCache::AddCacheSlot(const std::string &opNameStr, const RunnerVariantPack &aclnnCacheKey,
+                                        AclnnCacheSlot &inAclnnCacheSlot)
 {
 #ifdef _DEBUG
     ATB_LOG(INFO) << "ATB aclnn op: " << opNameStr
@@ -65,16 +65,16 @@ Status AclnnExecutorCache::AddCacheSlot(
     ATB_LOG(INFO) << "ATB aclnn op: " << opNameStr << ", add to fetch cache slot";
 #endif
     if (inAclnnCacheSlot.workspaceSize < 0) {
-    ATB_LOG(ERROR) << "ATB aclnn AddCacheSlot with op: " << opNameStr
-    << " expect non-negative workspaceSize but got: " << inAclnnCacheSlot.workspaceSize;
-    return ERROR_INVALID_WORKSPACE_SIZE;
+        ATB_LOG(ERROR) << "ATB aclnn AddCacheSlot with op: " << opNameStr
+                       << " expect non-negative workspaceSize but got: " << inAclnnCacheSlot.workspaceSize;
+        return ERROR_INVALID_WORKSPACE_SIZE;
     }
     if (inAclnnCacheSlot.executor == nullptr) {
         ATB_LOG(ERROR) << "ATB aclnn AddCacheSlot with op: " << opNameStr << " got null aclOpExecutor";
         return ERROR_INVALID_PARAM;
     }
     std::map<std::string, std::vector<std::pair<RunnerVariantPack, AclnnCacheSlot>>>::iterator it =
-        cachePool_.find(opNameStr); 
+        cachePool_.find(opNameStr);
     if (it == cachePool_.end()) {
         ATB_LOG(INFO) << "ATB aclnn executor cache add op: " << opNameStr;
         cachePool_[opNameStr].emplace_back(std::make_pair(aclnnCacheKey, inAclnnCacheSlot));
@@ -96,4 +96,4 @@ Status AclnnExecutorCache::AddCacheSlot(
     return NO_ERROR;
 }
 
-}  // namespace atb
+} // namespace atb

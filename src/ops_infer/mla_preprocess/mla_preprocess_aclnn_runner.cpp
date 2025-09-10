@@ -67,7 +67,6 @@ Status MlaPreprocessAclnnRunner::BuildAclnnVariantPack(const RunnerVariantPack &
         this->aclnnVariantPack_.aclInTensors[i] = aclnnTensorPtr;
     }
 
-    // uint32_t outputNum = isRopeCache ? ROPE_OUT_TENSOR_NUM : OUT_TENSOR_NUM;
     this->aclnnVariantPack_.aclOutTensors.reserve(IN_TENSOR_NUM);
     this->aclnnVariantPack_.aclOutTensors.resize(OUT_TENSOR_NUM);
     for (size_t i = 0; i < this->aclnnVariantPack_.aclOutTensors.size(); ++i) {
@@ -151,7 +150,7 @@ aclError MlaPreprocessAclnnRunner::SetAclNNWorkspaceExecutor()
         param_.wdqDim, param_.qRopeDim, param_.kRopeDim, param_.epsilon, param_.qRotaryCoeff, param_.kRotaryCoeff,
         param_.transposeWdq, param_.transposeWuq, param_.transposeWuk, param_.cacheMode, param_.quantMode,
         doRmsNorm_, // doRmsNorm
-        1,    // wdkvSplitCount
+        1,          // wdkvSplitCount
         qOut0, kvCacheOut0, qOut1, kvCacheOut1, &(this->atbVariantPack_.workspaceBufferSize), &raw_executor_ptr);
     bool repeatable = this->executorRepeatable_;
     this->aclnnExecutor_ = std::shared_ptr<aclOpExecutor>(raw_executor_ptr, [repeatable](aclOpExecutor *ptr) {
