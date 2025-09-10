@@ -199,13 +199,13 @@ struct GraphParam {
 //!
 struct AclNNIntArray {
     /// This struct is created by calling `aclCreateIntArray` and should be destroyed by calling `aclDestroyIntArray`.
-    /// It is used to create the `aclOpExecutor`.
+    /// \brief It is used to create the `aclOpExecutor`.
     aclIntArray *intArray = nullptr;
-    /// Data used to create the `aclIntArray*`. It is copied from atb::Tensor's hostData.
+    /// \brief Data used to create the `aclIntArray*`. It is copied from atb::Tensor's hostData.
     std::vector<int64_t> data = {};
-    // the origin of the data
+    /// \brief the origin of the data
     std::vector<int32_t> dataOri = {};
-    /// The size of `data` in bytes.
+    /// \brief The size of `data` in bytes.
     uint64_t dataSize = 0;
 };
 
@@ -219,17 +219,17 @@ public:
     /// An const value to indicate that the `tensorListidx` is invalid.
     static const int64_t notInTensorList = -1;
 
-    /// Tensor passed through the ATB framework.
+    /// \brief Tensor passed through the ATB framework.
     atb::Tensor atbTensor;
-    /// The stride of each dimension in the tensor's view shape. Used when creating `aclTensor`.
+    /// \brief The stride of each dimension in the tensor's view shape. Used when creating `aclTensor`.
     atb::SVector<int64_t> strides = {};
-    /// Tensor passed into the AclNN operation.
+    /// \brief Tensor passed into the AclNN operation.
     aclTensor *tensor = nullptr;
-    /// An AclNNIntArray object contain tensor's host data in the int array format.
+    /// \brief An AclNNIntArray object contain tensor's host data in the int array format.
     AclNNIntArray intArrayHostData;
-    /// The index of the tensor in the tensor list. Used when `aclTensor` is passed into `aclTensorList`.
+    /// \brief The index of the tensor in the tensor list. Used when `aclTensor` is passed into `aclTensorList`.
     int tensorListidx = notInTensorList;
-    /// The index of the tensor in `aclOpExecutor`'s parameter list.
+    /// \brief The index of the tensor in `aclOpExecutor`'s parameter list.
     int tensorIdx = -1;
     /// An indicator that shows whether the tensor's device data needs to be updated in the execution.
     bool needUpdateTensorDataPtr = false;
@@ -241,16 +241,16 @@ public:
 //! \brief aclnn算子
 //!
 struct AclNNVariantPack {
-    /// A container stores an AclNN operation's in tensor in order.
+    /// \brief A container stores an AclNN operation's in tensor in order.
     /// Each `AclNNTensor` object contains one `aclTensor`.
     atb::SVector<std::shared_ptr<AclNNTensor>> aclInTensors;
-    /// A container stores an AclNN operation's out tensor in order.
+    /// \brief A container stores an AclNN operation's out tensor in order.
     /// Each `AclNNTensor` object contains one `aclTensor`.
     atb::SVector<std::shared_ptr<AclNNTensor>> aclOutTensors;
-    /// A container stores an AclNN operation's input `aclTensorList` in order.
+    /// \brief A container stores an AclNN operation's input `aclTensorList` in order.
     /// Each `aclTensorList` object may contain multiple `aclTensor`.
     atb::SVector<aclTensorList *> aclInTensorList;
-    /// A container stores an AclNN operation's output `aclTensorList` in order.
+    /// \brief A container stores an AclNN operation's output `aclTensorList` in order.
     /// Each `aclTensorList` object may contain multiple `aclTensor`.
     atb::SVector<aclTensorList *> aclOutTensorList;
 };
