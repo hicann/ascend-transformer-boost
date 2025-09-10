@@ -8,6 +8,7 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 #include "mla_preprocess_operation.h"
+#include "mla_preprocess_aclnn_runner.h"
 #include "mla_preprocess_ops_runner.h"
 #include "mla_preprocess_ops_runner_split.h"
 #include "atb/utils/log.h"
@@ -23,6 +24,10 @@ namespace {
 static const uint32_t IN_TENSOR_NUM = 24;
 static const uint32_t OUT_TENSOR_NUM = 2;
 static const uint32_t OUT_TENSOR_NUM_SPLIT = 4;
+static const uint32_t INPUT_INDEX = 0;
+static const uint32_t GAMMA0_INDEX = 1;
+static const uint32_t BETA0_INDEX = 2;
+static const uint32_t WDQKV_INDEX = 5;
 static const uint32_t BIAS0_INDEX = 7;
 static const uint32_t BIAS1_INDEX = 14;
 static const uint32_t WUK_INDEX = 18;
@@ -39,6 +44,8 @@ static const uint32_t INNER_DIM_192 = 192;
 static const uint32_t INNER_DIM_128 = 128;
 static const uint32_t INNER_DIM_64 = 64;
 static const int64_t MAX_TOKEN_NUM = 1024;
+static const int64_t MAX_HIDDEN_SIZE = 8192;
+static const int64_t MIN_HIDDEN_SIZE = 2048;
 } // namespace
 
 namespace atb {
@@ -48,17 +55,19 @@ template <> Status CreateOperation(const infer::MlaPreprocessParam &opParam, Ope
     if (operation == nullptr) {
         return ERROR_INVALID_PARAM;
     }
+    ATB_LOG(INFO) << "CreateOperation with MlaPreprocessParam: " << OpParamToJson(opParam);
     if (!GetSingleton<Config>().Is910B()) {
         ATB_LOG(ERROR) << "only support Atlas 800I A2/A3 Inference Product";
         return ERROR_INVALID_PARAM;
     }
+
     if (opParam.cacheMode > infer::MlaPreprocessParam::CacheMode::NZCACHE) {
         ATB_LOG(ERROR) << "invalid cacheMode";
         return ERROR_INVALID_PARAM;
     }
     if (opParam.quantMode == infer::MlaPreprocessParam::QuantMode::PER_TOKEN_QUANT_ASYMM ||
         opParam.quantMode == infer::MlaPreprocessParam::QuantMode::UNQUANT) {
-        ATB_LOG(ERROR) << "invalid quantMode,dont support PER_TOKEN_ASYMM_QUANT and UNQUANT yet";
+        ATB_LOG(ERROR) << "invalid quantMode, doesn't support PER_TOKEN_ASYMM_QUANT and UNQUANT";
         return ERROR_INVALID_PARAM;
     }
     OP_PARAM_RSV_CHECK(opParam);
@@ -221,7 +230,6 @@ Status MlaPreprocessOperation::OutTensorCheckSplit(const SVector<Tensor> &inTens
 
 Status MlaPreprocessOperation::SetupCheckImpl(const SVector<Tensor> &inTensors, const SVector<Tensor> &outTensors) const
 {
-    (void)outTensors;
     SVector<TensorDesc> inTensorDesc = {};
     OperationUtil::InTensorsToInTensorDescs(inTensors, inTensorDesc);
     Status st = DimCheck(inTensorDesc);
@@ -295,31 +303,35 @@ Status MlaPreprocessOperation::DimCheck(const SVector<TensorDesc> &inTensorDesc)
     if (st != NO_ERROR) {
         return st;
     }
+    st = HiddenSizeCheck(inTensorDesc);
+    if (st != NO_ERROR) {
+        return st;
+    }
     std::vector<std::vector<int64_t>> inTensorShapes = {
-        {tokenNum, INNER_DIM_7168}, // input
-        {INNER_DIM_7168},           // gamma0
-        {INNER_DIM_7168},           // beta0
-        {1},                        // quantScale0
-        {1},                        // quantOffset0
-        {},                         // wdqkv
-        {INNER_DIM_2112},           // deScale0
-        {},                         // bias0
-        {INNER_DIM_1536},           // gamma1
-        {INNER_DIM_1536},           // beta1
-        {1},                        // quantScale1
-        {1},                        // quantOffset1
-        {},                         // wuq
-        {headNum * INNER_DIM_192},  // deScale1
-        {},                         // bias1
-        {INNER_DIM_512},            // gamma2
-        {tokenNum, INNER_DIM_64},   // cos
-        {tokenNum, INNER_DIM_64},   // sin
-        {},                         // wuk
-        {},                         // ctkv
-        {},                         // kRope
-        {tokenNum},                 // slotmapping
-        {},                         // ctkvScale
-        {},                         // qNopeScale
+        {},                        // input
+        {},                        // gamma0
+        {},                        // beta0
+        {1},                       // quantScale0
+        {1},                       // quantOffset0
+        {},                        // wdqkv
+        {INNER_DIM_2112},          // deScale0
+        {},                        // bias0
+        {INNER_DIM_1536},          // gamma1
+        {INNER_DIM_1536},          // beta1
+        {1},                       // quantScale1
+        {1},                       // quantOffset1
+        {},                        // wuq
+        {headNum * INNER_DIM_192}, // deScale1
+        {},                        // bias1
+        {INNER_DIM_512},           // gamma2
+        {tokenNum, INNER_DIM_64},  // cos
+        {tokenNum, INNER_DIM_64},  // sin
+        {},                        // wuk
+        {},                        // ctkv
+        {},                        // kRope
+        {tokenNum},                // slotmapping
+        {},                        // ctkvScale
+        {},                        // qNopeScale
     };
     ModifyInTensorShapeTable(inTensorDesc, inTensorShapes, headNum);
     st = TensorShapeCheck(inTensorDesc, inTensorShapes);
@@ -346,9 +358,53 @@ Status MlaPreprocessOperation::BlockSizeCheck(const SVector<TensorDesc> &inTenso
     return NO_ERROR;
 }
 
+Status MlaPreprocessOperation::HiddenSizeCheck(const SVector<TensorDesc> &inTensorDesc) const
+{
+    if (inTensorDesc.at(INPUT_INDEX).shape.dimNum != 2) { // 2: input [tokenNum, hiddenSize]
+        ATB_LOG(ERROR) << GetLogPrefix()
+                       << "dimNum of input should be 2, but got: " << inTensorDesc.at(INPUT_INDEX).shape.dimNum;
+        return ERROR_INVALID_TENSOR_DIM_NUM;
+    }
+    int64_t hiddenSize = inTensorDesc.at(INPUT_INDEX).shape.dims[1]; // 1: input hiddenSize index
+    if (hiddenSize < MIN_HIDDEN_SIZE || hiddenSize > MAX_HIDDEN_SIZE) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "expect hiddenSize of input to be in range [" << MIN_HIDDEN_SIZE << ","
+                       << MAX_HIDDEN_SIZE << "], but got: " << hiddenSize;
+        return ERROR_INVALID_TENSOR_DIM;
+    }
+    if (inTensorDesc.at(GAMMA0_INDEX).shape.dimNum != 1) { // 1: input [hiddenSize]
+        ATB_LOG(ERROR) << GetLogPrefix()
+                       << "dimNum of gamma0 should be 1, but got: " << inTensorDesc.at(GAMMA0_INDEX).shape.dimNum;
+        return ERROR_INVALID_TENSOR_DIM_NUM;
+    }
+    if (inTensorDesc.at(GAMMA0_INDEX).shape.dims[1] != hiddenSize) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "hiddenSize of gamma0 should be the same as input's, " << hiddenSize
+                       << ", but got: " << inTensorDesc.at(GAMMA0_INDEX).shape.dims[0]; // gamma0 hiddenSize index
+        return ERROR_INVALID_TENSOR_DIM;
+    }
+    if (inTensorDesc.at(BETA0_INDEX).shape.dimNum != 1) { // 1: input [hiddenSize]
+        ATB_LOG(ERROR) << GetLogPrefix()
+                       << "dimNum of beta0 should be 1, but got: " << inTensorDesc.at(BETA0_INDEX).shape.dimNum;
+        return ERROR_INVALID_TENSOR_DIM_NUM;
+    }
+    if (inTensorDesc.at(BETA0_INDEX).shape.dims[1] != hiddenSize) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "hiddenSize of beta0 should be the same as input's, " << hiddenSize
+                       << ", but got: " << inTensorDesc.at(BETA0_INDEX).shape.dims[0]; // beta0 hiddenSize index
+        return ERROR_INVALID_TENSOR_DIM;
+    }
+    return NO_ERROR;
+}
+
 std::shared_ptr<Runner> MlaPreprocessOperation::CreateRunner(Context &context) const
 {
     (void)context;
+    // input's hiddenSize != 7168, generalize hiddenSize
+    bool generalizedHiddenSize =
+        runnerVariantPack_.inTensors.at(INPUT_INDEX).desc.shape.dims[1] == INNER_DIM_7168; // 1: hiddenSize
+    // if wdqkv's dtype is bf16, then do not rmsNorm
+    bool doRmsNorm = runnerVariantPack_.inTensors.at(WDQKV_INDEX).desc.dtype == ACL_BF16;
+    if (generalizedHiddenSize || doRmsNorm) {
+        return std::make_shared<MlaPreprocessAclnnRunner>(param_, doRmsNorm);
+    }
     if (param_.cacheMode == infer::MlaPreprocessParam::CacheMode::KVCACHE) {
         return std::make_shared<MlaPreprocessOpsRunner>(param_);
     }
