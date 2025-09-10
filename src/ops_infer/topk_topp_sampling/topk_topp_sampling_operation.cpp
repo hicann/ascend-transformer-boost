@@ -11,11 +11,11 @@
 #include "atb/utils/tensor_check.h"
 #include "topk_topp_sampling_ops_runner.h"
 #include "atb/utils/param_to_json.h"
-#include "atb/core/atb_operation_ir_cfg.h"
+#include "atb/operation/atb_operation_ir_cfg.h"
 #include "atb/utils/operation_util.h"
 #include "atb/utils/singleton.h"
 #include "atb/utils/tensor_util.h"
-#include "atb/core/op_param_funcs.h"
+#include "atb/operation/op_param_funcs.h"
 namespace {
 static const uint32_t SINGLE_TOPK_IN_TENSOR_NUM = 2;
 static const uint32_t BATCH_TOPK_MULTI_IN_TENSOR_NUM = 3;
@@ -84,6 +84,7 @@ TopkToppSamplingOperation::TopkToppSamplingOperation(const infer::TopkToppSampli
         ATB_LOG(ERROR) << "GetOperationIrForTopkToppSampling failed.";
     }
 }
+
 TopkToppSamplingOperation::~TopkToppSamplingOperation() {}
 
 uint32_t TopkToppSamplingOperation::GetInputNum() const

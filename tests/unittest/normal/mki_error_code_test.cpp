@@ -13,7 +13,7 @@
 #include <map>
 #include <cpp-stub/src/stub.h>
 #include <gtest/gtest.h>
-#include "atb/core/node_impl/mki_node_implement.h"
+#include "atb/runner/mki_node_implement.h"
 #include "asdops/params/elewise.h"
 #include "asdops/ops.h"
 #include "mki/base/kernel_base.h"

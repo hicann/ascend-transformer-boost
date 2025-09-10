@@ -1256,10 +1256,61 @@ class GatherOperation(DataGen):
                             golden_result[idx] = in_tensors[0].flatten()[inputIdx + indice * dim2 + k]
                             idx += 1
                 golden_result = golden_result.reshape(outputSize)
-            elif batchDims > 0:
-                # 使用 torch.gather 进行批量维度的处理
-                golden_result = torch.gather(in_tensors[0], axis, in_tensors[1].to(torch.int64))
+            else:
+                params = in_tensors[0]
+                indices = in_tensors[1]
+                
+                # 计算实际要索引的维度
+                slice_axis = axis - batchDims
+                
+                # 获取 batch 维度的大小
+                batch_shape = params.shape[:batchDims]
+                
+                # 使用 torch 的高级索引展开所有 batch 维度
+                # 将前 batchDims 维度展平为一个维度，方便迭代
+                flat_batch_size = 1
+                for dim in batch_shape:
+                    flat_batch_size *= dim
 
+                # 展平 batch 维度，得到 [N, ...] 的形式，N 是总 batch 数
+                # 注意：view(-1, ...) 不能直接用，因为每个 batch 的处理是独立的，在这使用 reshape + 迭代
+                params_flat = params.reshape((flat_batch_size,) + params.shape[batchDims:])
+                indices_flat = indices.reshape((flat_batch_size,) + indices.shape[batchDims:])
+                
+                results = []
+                for i in range(flat_batch_size):
+                    param_slice = params_flat[i]  # 形状: (D0, D1, ...)
+                    index_slice = indices_flat[i]  # 形状: (I1, I2, ..., Ik)
+                    
+                    # 展平索引为 1D
+                    flat_indices = index_slice.reshape(-1)
+                    
+                    # 在 slice_axis 上选择
+                    selected = torch.index_select(param_slice, dim=slice_axis, index=flat_indices)
+                    
+                    # 计算目标形状
+                    selection_shape = index_slice.shape  # 原始 indices 的形状
+                    pre_axis_shape = selected.shape[:slice_axis]  # slice_axis 前的形状
+                    post_axis_shape = selected.shape[slice_axis + 1:]  # slice_axis 后的形状（注意 index_select 会替换该维度）
+                    
+                    # 新形状 = pre_axis + selection_shape + post_axis
+                    new_shape = list(pre_axis_shape) + list(selection_shape) + list(post_axis_shape)
+                    
+                    try:
+                        selected = selected.view(new_shape)
+                    except Exception as e:
+                        raise RuntimeError(f"Failed to view selected tensor. "
+                                        f"Current shape: {selected.shape}, "
+                                        f"Target shape: {new_shape}, "
+                                        f"Total elements: {selected.numel()}") from e
+                    
+                    results.append(selected)
+                
+                # 将结果堆叠回原始 batch 结构
+                golden_result = torch.stack(results, dim=0)
+                # 重新 reshape 到原始 batch shape + 输出空间形状
+                output_shape = batch_shape + golden_result.shape[1:]
+                golden_result = golden_result.reshape(output_shape)
         # 返回结果
         return [golden_result.cpu()]
 
@@ -1319,7 +1370,7 @@ class AllReduceOperation(DataGen):
         random_seed = int(os.environ["random_seed"])
         json_data = json.loads(op_params)
         torch.manual_seed(random_seed)
-        if "quantType" in json_data:
+        if "quantType" in json_data and json_data["quantType"] != 0:
             if i == 0:
                 return AllReduceOperation.gen_input(shapes[i], datatype, format, data_gen_ranges, op_params)
             if i == 1:
@@ -1348,7 +1399,7 @@ class AllReduceOperation(DataGen):
 
     def sum_cal(inTensors, op_params):
         json_data = json.loads(op_params)
-        if "quantType" in json_data or inTensors[0].dtype == torch.bfloat16:
+        if ("quantType" in json_data and json_data["quantType"] != 0) or inTensors[0].dtype == torch.bfloat16:
             result = inTensors[0].clone().to(torch.float)
         else:
             result = inTensors[0].clone()
@@ -1418,7 +1469,7 @@ class AllReduceOperation(DataGen):
     @staticmethod
     def get_op_type(op_params):
         json_data = json.loads(op_params)
-        if "quantType" in json_data:
+        if "quantType" in json_data and json_data["quantType"] != 0:
             return OpTypes.COMPUTE_QUANT
         return OpTypes.COMPUTE_FLOAT
 
@@ -2209,13 +2260,14 @@ class TopkToppSamplingOperation(DataGen):
             rand_seed = json_data["randSeed"]
             libc.srand(rand_seed)
             rand_list = [libc.rand() / 0x7fffffff for i in range(512)]
-            probs = in_tensors[0].cpu().to(torch.float32).numpy()
-            topp = in_tensors[1].cpu().to(torch.float32).numpy()
-            probs_sorted = np.sort(probs, axis=-1)[..., ::-1][..., :topk]
-            indices_sorted = np.argsort(-probs, kind='mergesort', axis=-1)[..., :topk]
+            probs = in_tensors[0].npu()
+            topp = in_tensors[1].npu()
+            probs_sorted, indices_sorted = torch.topk(probs, k=topk, dim=-1, sorted=True)
+            probs_cumsumed = torch.cumsum(probs_sorted, dim=-1)
             # 转npu计算以提高精度
-            probs_sorted_sumed = torch.cumsum(torch.from_numpy(probs_sorted.copy()).npu().to(in_tensors[0].dtype), dim=-1).cpu().to(torch.float32).numpy()
-            bool_judge = (probs_sorted_sumed < topp)
+            probs_sorted_sumed = probs_cumsumed.cpu().to(torch.float32).numpy()
+            topp_cpu = topp.cpu().to(torch.float32).numpy()
+            bool_judge = (probs_sorted_sumed < topp_cpu)
             sum_val = np.sum(bool_judge, axis=-1, keepdims=True) - 1
             sum_val[sum_val < 0] = 0
             topp_v = np.take_along_axis(probs_sorted_sumed, sum_val, axis=-1)
@@ -2223,27 +2275,21 @@ class TopkToppSamplingOperation(DataGen):
             bool_judge_one = probs_sorted_sumed <= topp_v
             res = np.sum(bool_judge_one, axis=-1, keepdims=True)
             res[res < 0] = 0
-            indices_sampled = np.take_along_axis(indices_sorted, res, axis=-1)
-            probs_sampled = np.take_along_axis(probs_sorted, res, axis=-1)
-            return [torch.from_numpy(indices_sampled.astype(np.int32)),
-                    torch.from_numpy(probs_sampled).to(in_tensors[0].dtype)]
+            res_torch = torch.from_numpy(res).npu()
+            indices_sampled = torch.gather(indices_sorted, dim=-1, index=res_torch.long())
+            probs_sampled = torch.gather(probs_sorted, dim=-1, index=res_torch.long())
+            return [indices_sampled.cpu(), probs_sampled.cpu()]
         else:
-            probs = in_tensors[0].cpu().to(torch.float32)
-            topk = in_tensors[1].cpu().to(torch.int64)
-            topp = in_tensors[2].cpu().to(torch.float32)
+            probs = in_tensors[0].npu()
+            topk = in_tensors[1].npu()
+            topp = in_tensors[2].npu()
             probs_sorted, idx_sorted = torch.sort(probs, descending=True, stable=True)
             gather_topk = torch.gather(probs_sorted, dim=1, index=topk)
             topk_mask = torch.lt(probs_sorted, gather_topk).to(torch.bool)
             probs_masked_topk = probs_sorted.masked_fill(topk_mask, 0)
-            probs_masked_topk = probs_masked_topk.numpy()
-            if in_tensors[0].dtype == torch.float16:
-                probs_cumsumed = np.cumsum(probs_masked_topk, axis=-1, dtype=np.float16).astype(np.float32)
-            elif in_tensors[0].dtype == torch.bfloat16:
-                probs_cumsumed = torch.cumsum(torch.from_numpy(probs_masked_topk.copy()).bfloat16(), dim=-1).to(torch.float32).numpy()
-            probs_cumsumed = torch.from_numpy(probs_cumsumed)
-            probs_masked_topk = torch.from_numpy(probs_masked_topk)
+            probs_cumsumed = torch.cumsum(probs_masked_topk, dim=-1)
             if topktopp_sampling_type == 2 or topktopp_sampling_type == 4:
-                exp = in_tensors[3].cpu()
+                exp = in_tensors[3].npu()
                 topp_mask = torch.gt(probs_cumsumed, topp).to(torch.bool)
                 probs_masked_topp = probs_masked_topk.masked_fill(topp_mask, 0)
                 divided_probs = torch.div(probs_masked_topp.to(exp.dtype), exp)
@@ -2254,21 +2300,21 @@ class TopkToppSamplingOperation(DataGen):
                 outtensor_idx = torch.gather(idx_sorted, dim=1, index=argmax_idx)
                 if topktopp_sampling_type == 4:
                     logProbsSize = json_data["logProbsSize"]
-                    mask_tensor = torch.logical_or(topp_mask, topk_mask)
+                    mask_tensor = torch.logical_or(topp_mask, topk_mask).cpu()
                     mask_tensor[:, 0] = 0
                     sum_val = np.sum(~mask_tensor.numpy(), axis=-1, keepdims=True) - 1
                     sum_val[sum_val < 0] = 0
-                    topp_v = np.take_along_axis(probs_cumsumed.numpy().astype(np.float32), sum_val, axis=-1)
-                    logprobs_output = probs_sorted[:, :logProbsSize]
+                    topp_v = np.take_along_axis(probs_cumsumed.to(torch.float32).cpu().numpy(), sum_val, axis=-1)
+                    logprobs_output = probs_sorted[:, :logProbsSize].cpu()
                     logprobs_output = logprobs_output.div(torch.from_numpy(topp_v)).log()
                     logprobs_output = logprobs_output.masked_fill(mask=mask_tensor[:, :logProbsSize], value=-9999.0)
-                    return [outtensor_idx.to(torch.int32), outtensor_probs.to(torch.float16),
-                            logprobs_output.to(torch.float32)]
+                    return [outtensor_idx.to(torch.int32).cpu(), outtensor_probs.to(torch.float16).cpu(),
+                            logprobs_output.to(torch.float32).cpu()]
 
-                return [outtensor_idx.to(torch.int32), outtensor_probs.to(torch.float16)]
+                return [outtensor_idx.to(torch.int32).cpu(), outtensor_probs.to(torch.float16).cpu()]
             if topktopp_sampling_type == 1 or topktopp_sampling_type == 3:
-                topp = topp.numpy().astype(np.float32)
-                probs_cumsumed = probs_cumsumed.numpy().astype(np.float32)
+                topp = topp.to(torch.float32).cpu().numpy()
+                probs_cumsumed = probs_cumsumed.to(torch.float32).cpu().numpy()
                 bool_judge = (probs_cumsumed < topp)
                 sum_val = np.sum(bool_judge, axis=-1, keepdims=True) - 1
                 sum_val[sum_val < 0] = 0
@@ -2288,21 +2334,21 @@ class TopkToppSamplingOperation(DataGen):
                 bool_judge_one = (probs_cumsumed < topp_v_new)
                 res = np.sum(bool_judge_one, axis=-1, keepdims=True)
                 res[res < 0] = 0
-                res_idx = torch.from_numpy(res).to(torch.int64)
+                res_idx = torch.from_numpy(res).to(torch.int64).npu()
                 outtensor_probs = torch.gather(probs_sorted, dim=1, index=res_idx)
                 outtensor_idx = torch.gather(idx_sorted, dim=1, index=res_idx)
                 if topktopp_sampling_type == 3:
                     bool_judge[:, 0] = 1
                     logProbsSize = json_data["logProbsSize"]
-                    logprobs_output = probs_sorted[:, :logProbsSize]
+                    logprobs_output = probs_sorted[:, :logProbsSize].to(torch.float32).cpu()
                     logprobs_output = logprobs_output.div(torch.from_numpy(topp_v)).log()
 
                     logprobs_output = logprobs_output.masked_fill(mask=~torch.from_numpy(bool_judge[:, :logProbsSize]),
                                                                   value=-9999.0)
-                    return [outtensor_idx.to(torch.int32), outtensor_probs.to(torch.float16),
-                            logprobs_output.to(torch.float32)]
+                    return [outtensor_idx.to(torch.int32).cpu(), outtensor_probs.to(torch.float16).cpu(),
+                            logprobs_output.to(torch.float32).cpu()]
                 else:
-                    return [outtensor_idx.to(torch.int32), outtensor_probs.to(torch.float16)]
+                    return [outtensor_idx.to(torch.int32).cpu(), outtensor_probs.to(torch.float16).cpu()]
 
     @staticmethod
     def get_op_type(op_params):
@@ -7366,11 +7412,16 @@ class FaUpdateOperation(DataGen):
     def get_op_type(op_params) -> OpTypes:
         return OpTypes.COMPUTE_FLOAT
 
+class MlaPreprocessOperation(DataGen):
+    @staticmethod
+    def get_op_type(op_params) -> OpTypes:
+        return OpTypes.COMPUTE_FLOAT
 
 class MultiLatentAttentionOperation(DataGen):
     @staticmethod
     def get_op_type(op_params) -> OpTypes:
         return OpTypes.COMPUTE_FLOAT
+
 class PagedCacheLoadOperation(DataGen):
     @staticmethod
     def customize(shapes, i, datatype, format, data_gen_ranges, op_params):

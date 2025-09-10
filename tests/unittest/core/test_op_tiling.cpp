@@ -17,12 +17,12 @@
 #include "test_utils/operation_test.h"
 #include "atb/utils/config.h"
 #include "atb_torch/utils/utils.h"
-#include "atb/core/current_op_tiling.h"
+#include "atb/utils/current_op_tiling.h"
 #include "atb/infer_op_params.h"
 #include "atb/operation.h"
 #include "test_utils/test_common.h"
 #include <cpp-stub/src/stub.h>
-#include "atb/core/context_base.h"
+#include "atb/context/context_base.h"
 using namespace atb;
 using namespace Mki;
 

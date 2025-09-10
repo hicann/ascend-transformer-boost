@@ -25,8 +25,8 @@
 #include "self_attention_encoder_fusion_ops_runner_910a.h"
 #include "atb/utils/param_to_json.h"
 #include "atb/utils/singleton.h"
-#include "atb/core/atb_operation_ir_cfg.h"
-#include "atb/core/op_param_funcs.h"
+#include "atb/operation/atb_operation_ir_cfg.h"
+#include "atb/operation/op_param_funcs.h"
 
 namespace atb {
 static constexpr uint32_t FUSION_IN_TENSOR_NUM = 8;
@@ -51,13 +51,16 @@ template <> Status CreateOperation(const infer::SelfAttentionParam &opParam, Ope
         return ERROR_INVALID_PARAM;
     }
     OP_PARAM_RSV_CHECK(opParam);
-    ATB_LOG(INFO) << "SelfAttentionParam headNum:" << opParam.headNum << ", qScale:" << opParam.qScale
-                  << ", qkScale:" << opParam.qkScale << ", maskType:" << opParam.maskType
-                  << ", kvHeadNum:" << opParam.kvHeadNum << ", calcType:" << opParam.calcType
-                  << ", clampType:" << opParam.clampType << ", kvcacheCfg:" << opParam.kvcacheCfg
-                  << ", scaleType:" << opParam.scaleType << ", inputLayout:" << opParam.inputLayout
-                  << ", mlaVHeadSize:" << opParam.mlaVHeadSize << ", windowSize:" << opParam.windowSize
-                  << ", cacheType: " << opParam.cacheType;
+    ATB_LOG(INFO) << "SelfAttentionParam headNum: " << opParam.headNum << ", qScale: " << opParam.qScale
+                  << ", qkScale: " << opParam.qkScale << ", maskType: " << opParam.maskType
+                  << ", kvHeadNum: " << opParam.kvHeadNum << ", calcType: " << opParam.calcType
+                  << ", clampType: " << opParam.clampType << ", kvcacheCfg: " << opParam.kvcacheCfg
+                  << ", scaleType: " << opParam.scaleType << ", inputLayout: " << opParam.inputLayout
+                  << ", mlaVHeadSize: " << opParam.mlaVHeadSize << ", windowSize: " << opParam.windowSize
+                  << ", cacheType: " << opParam.cacheType << ", kernelType: " << opParam.kernelType
+                  << ", quantType: " << opParam.quantType << ", outDataType: " << opParam.outDataType
+                  << ", batchRunStatusEnable: " << opParam.batchRunStatusEnable << ", isTriuMask: "
+                  << opParam.isTriuMask << ", clampMin: " << opParam.clampMin << ", clampMax: " << opParam.clampMax;
     if (opParam.headNum <= 0) {
         ATB_LOG(ERROR) << "headNum should be greater than zero!";
         return ERROR_INVALID_PARAM;
@@ -92,10 +95,6 @@ template <> Status CreateOperation(const infer::SelfAttentionParam &opParam, Ope
     if (opParam.scaleType >= infer::SelfAttentionParam::SCALE_TYPE_MAX ||
         opParam.scaleType < infer::SelfAttentionParam::SCALE_TYPE_TOR) {
         ATB_LOG(ERROR) << "scaleType should be in the range of its enum value";
-        return ERROR_INVALID_PARAM;
-    }
-    if (opParam.scaleType == infer::SelfAttentionParam::SCALE_TYPE_LOGN && needQKVQuant) {
-        ATB_LOG(ERROR) << "both scaleType and QKVQuant are enable";
         return ERROR_INVALID_PARAM;
     }
     if (opParam.calcType == infer::SelfAttentionParam::PA_ENCODER &&
@@ -307,9 +306,9 @@ bool PrefixEncoderParamCheck(const infer::SelfAttentionParam &opParam)
         {opParam.outDataType == ACL_DT_UNDEFINED,
          "PREFIX_ENCODER doesn't support quantification, use default outDataType"},
         {opParam.headNum >= opParam.kvHeadNum, "PREFIX_ENCODER expects headNum >= kvHeadNum"},
-        {std::abs(opParam.qScale - 1.0f) < FLT_EPSILON, "PREFIX_ENCODER expect qScale to be 1.0f"},
+        {std::abs(opParam.qScale - 1.0f) < FLT_EPSILON, "PREFIX_ENCODER expects qScale to be 1.0f"},
         {!opParam.batchRunStatusEnable, "PREFIX_ENCODER doesn't support dynamic batch"},
-        {opParam.isTriuMask == 1, "PREFIX_ENCODER expect isTriuMask to be 1 for alibi mask"},
+        {opParam.isTriuMask == 1, "PREFIX_ENCODER expects isTriuMask to be 1 for alibi mask"},
         {opParam.kernelType == infer::SelfAttentionParam::KERNELTYPE_HIGH_PRECISION,
          "PREFIX_ENCODER expects kernelType to be KERNELTYPE_HIGH_PRECISION for alibi mask"},
         {opParam.clampType == infer::SelfAttentionParam::CLAMP_TYPE_UNDEFINED, "PREFIX_ENCODER doesn't support clamp"},
@@ -1126,7 +1125,7 @@ Status SelfAttentionOperation::MaxHeadSizeCheck910B(const int64_t headSizeK, con
     }
     if (param_.maskType == infer::SelfAttentionParam::MASK_TYPE_ALIBI_COMPRESS ||
         param_.maskType == infer::SelfAttentionParam::MASK_TYPE_ALIBI_COMPRESS_SQRT ||
-        param_.maskType == infer::SelfAttentionParam::MASK_TYPE_ALIBI_COMPRESS_SQRT) {
+        param_.maskType == infer::SelfAttentionParam::MASK_TYPE_ALIBI_COMPRESS_LEFT_ALIGN) {
         maxHeadSize = 128; // 128: 压缩alibi情况headsize小于等于128
     }
     if (headSizeK > maxHeadSize) {
@@ -1145,13 +1144,13 @@ Status SelfAttentionOperation::HeadSizeDimCheck310P(const SVector<TensorDesc> &i
     int64_t headSizeK = 0;
     int64_t headSizeV = 0;
     if (!TensorUtil::TensorDescEqual(inTensorDescs.at(1), inTensorDescs.at(2))) { // 2: cacheV
-        ATB_LOG(ERROR) << "shape of internsor1 and intensor2 should be same";
+        ATB_LOG(ERROR) << GetLogPrefix() << "shape of internsor1 and intensor2 should be same";
         return ERROR_INVALID_TENSOR_DIM;
     }
     if (param_.kvcacheCfg == atb::infer::SelfAttentionParam::K_BYPASS_V_BYPASS) {
         if (inTensorDescs.at(1).shape.dims[2] * 16 % kvHeadNum_ != 0 || // 2: hiddenSize/16 16: 16对齐
             inTensorDescs.at(2).shape.dims[2] * 16 % kvHeadNum_ != 0) { // 2: value 2: hiddenSize/16 16: 16对齐
-            ATB_LOG(ERROR) << "hiddenSize of key and value should be multiples of kvHeadNum";
+            ATB_LOG(ERROR) << GetLogPrefix() << "hiddenSize of key and value should be multiples of kvHeadNum";
             return ERROR_INVALID_TENSOR_DIM;
         }
         headSizeK = inTensorDescs.at(1).shape.dims[2] * 16 / kvHeadNum_; // 2: hiddenSize/16 16: 16对齐
@@ -1159,7 +1158,7 @@ Status SelfAttentionOperation::HeadSizeDimCheck310P(const SVector<TensorDesc> &i
     } else if (inTensorDescs.at(1).shape.dimNum == 2) {                  // 2: [nTokens, hiddenSize]
         if (inTensorDescs.at(1).shape.dims[1] % kvHeadNum_ != 0 ||
             inTensorDescs.at(2).shape.dims[1] % kvHeadNum_ != 0) { // 2: value
-            ATB_LOG(ERROR) << "hiddenSize of key and value should be multiples of kvHeadNum";
+            ATB_LOG(ERROR) << GetLogPrefix() << "hiddenSize of key and value should be multiples of kvHeadNum";
             return ERROR_INVALID_TENSOR_DIM;
         }
         headSizeK = inTensorDescs.at(1).shape.dims[1] / kvHeadNum_;
@@ -1172,18 +1171,19 @@ Status SelfAttentionOperation::HeadSizeDimCheck310P(const SVector<TensorDesc> &i
     }
     if (param_.maskType == infer::SelfAttentionParam::MASK_TYPE_ALIBI_COMPRESS ||
         param_.maskType == infer::SelfAttentionParam::MASK_TYPE_ALIBI_COMPRESS_SQRT ||
-        param_.maskType == infer::SelfAttentionParam::MASK_TYPE_ALIBI_COMPRESS_SQRT) {
+        param_.maskType == infer::SelfAttentionParam::MASK_TYPE_ALIBI_COMPRESS_LEFT_ALIGN) {
         if (headSizeK > 128 || headSizeV > 128) { // 128: 压缩alibi情况headsize小于等于128
-            ATB_LOG(ERROR) << "headSize of key and value should be no greater than 128 with alibi compress mask";
+            ATB_LOG(ERROR) << GetLogPrefix()
+                           << "headSize of key and value should be no greater than 128 with alibi compress mask";
             return ERROR_INVALID_TENSOR_DIM;
         }
     }
     if (headSizeK > MAX_HEAD_SIZE || headSizeV > MAX_HEAD_SIZE) {
-        ATB_LOG(ERROR) << "headSize of key and value should be no greater than 256";
+        ATB_LOG(ERROR) << GetLogPrefix() << "headSize of key and value should be no greater than 256";
         return ERROR_INVALID_TENSOR_DIM;
     }
     if (headSizeK % 16 != 0 || headSizeV % 16 != 0) { // 16: kvcache约束 16 ：kvcache约束
-        ATB_LOG(ERROR) << "headSize of key and value should be multiples of 16.";
+        ATB_LOG(ERROR) << GetLogPrefix() << "headSize of key and value should be multiples of 16.";
         return ERROR_INVALID_TENSOR_DIM;
     }
     return NO_ERROR;
@@ -1420,16 +1420,18 @@ Status SelfAttentionOperation::InferShapeDimNumCheck(const SVector<TensorDesc> &
 Status SelfAttentionOperation::InferShapePADimNumCheckBNSD(const SVector<TensorDesc> &inTensorDescs) const
 {
     if (inTensorDescs.at(0).shape.dimNum != 4) { // 4: [batch, head_num, seq_len, head_size]
-        ATB_LOG(ERROR) << "dimNum of query should be 4";
+        ATB_LOG(ERROR) << GetLogPrefix() << "dimNum of query should be 4, bot got: "
+                       << inTensorDescs.at(0).shape.dimNum;
         return ERROR_INVALID_TENSOR_DIM_NUM;
     }
     if (inTensorDescs.at(kcacheId_).shape.dimNum != 4) { // 4: [batch, head_num, seq_len, head_size]
-        ATB_LOG(ERROR) << "dimNum of key should be 4";
+        ATB_LOG(ERROR) << GetLogPrefix() << "dimNum of key should be 4, bot got: "
+                       << inTensorDescs.at(kcacheId_).shape.dimNum;
         return ERROR_INVALID_TENSOR_DIM_NUM;
     }
-    if (inTensorDescs.at(tokenOffsetId_).shape.dimNum != 1 &&
-        inTensorDescs.at(tokenOffsetId_).shape.dimNum != 2) { // 2: seqlen: [2, batch]
-        ATB_LOG(ERROR) << "dimNum of seqlen should be 1 or 2";
+    uint64_t seqLenDimNum = inTensorDescs.at(tokenOffsetId_).shape.dimNum;
+    if (seqLenDimNum != 1 && seqLenDimNum != 2) { // 2: seqlen: [2, batch]
+        ATB_LOG(ERROR) << GetLogPrefix() << "dimNum of seqlen should be 1 or 2, bot got: " << seqLenDimNum;
         return ERROR_INVALID_TENSOR_DIM_NUM;
     }
     return NO_ERROR;

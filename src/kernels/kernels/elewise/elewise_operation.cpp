@@ -19,7 +19,6 @@
 #include <mki_loader/op_register.h>
 
 #include "asdops/params/elewise.h"
-#include "sink_common.h"
 
 namespace AsdOps {
 using namespace Mki;
@@ -237,13 +236,13 @@ public:
                 MKI_LOG(ERROR) << "No kernel for ELEWISE_EQUAL inDtype " << GetStrWithDType(inDtype);
                 return nullptr;
             case OpParam::Elewise::ELEWISE_QUANT_PER_CHANNEL:
-                return GetKernelByName("QuantPerChannelKernel");
+                return GetKernelByName("AtbQuantPerChannelKernel");
             case OpParam::Elewise::ELEWISE_DEQUANT_PER_CHANNEL:
                 if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_310P) {
                     MKI_LOG(ERROR) << "No kernel for dequantperchannel";
                     return nullptr;
                 }
-                return GetKernelByName("DequantPerChannelKernel");
+                return GetKernelByName("AtbDequantPerChannelKernel");
             default:
                 return nullptr;
         }
@@ -447,32 +446,14 @@ protected:
                 return status;
             }
             case OpParam::Elewise::ELEWISE_QUANT_PER_CHANNEL: {
-                MKI_LOG(INFO) << "ELEWISE_QUANT_PER_CHANNEL enter";
-
-                Mki::PlatformType platform = Mki::PlatformInfo::Instance().GetPlatformType();
-                if (platform == Mki::PlatformType::ASCEND_910A || platform == Mki::PlatformType::ASCEND_310B) {
-                    Status status = SimplyBroadcastInferShape(launchParam, outTensors);
-                    outTensors[0].desc.dtype = TENSOR_DTYPE_INT8;
-                    return status;
-                }
-
-                for (auto &t: outTensors) {
-                    Mki::TensorDesc desc;
-                    desc.format = Mki::TENSOR_FORMAT_ND;
-                    t.desc = desc;
-                }
-                return opInferShape::CallGeInferShape("QuantPerChannel", launchParam, outTensors,
-                                                      AsdOps::GetMkiSpecificAttr<OpParam::Elewise>);
+                Status status = SimplyBroadcastInferShape(launchParam, outTensors);
+                outTensors[0].desc.dtype = TENSOR_DTYPE_INT8;
+                return status;
             }
             case OpParam::Elewise::ELEWISE_DEQUANT_PER_CHANNEL: {
-                MKI_LOG(INFO) << "ELEWISE_DEQUANT_PER_CHANNEL enter";
-                for (auto &t: outTensors) {
-                    Mki::TensorDesc desc;
-                    desc.format = Mki::TENSOR_FORMAT_ND;
-                    t.desc = desc;
-                }
-                return opInferShape::CallGeInferShape("DequantPerChannel", launchParam, outTensors,
-                                                      AsdOps::GetMkiSpecificAttr<OpParam::Elewise>);
+                Status status = SimplyBroadcastInferShape(launchParam, outTensors);
+                outTensors[0].desc.dtype = TENSOR_DTYPE_FLOAT16;
+                return status;
             }
             default:
                 return Status::FailStatus(ERROR_INVALID_VALUE, "no matched elewiseType");

@@ -14,9 +14,9 @@
 #include "gather_ops_runner.h"
 #include "atb/utils/tensor_check.h"
 #include "atb/utils/param_to_json.h"
-#include "atb/core/atb_operation_ir_cfg.h"
+#include "atb/operation/atb_operation_ir_cfg.h"
 #include "atb/utils/singleton.h"
-#include "atb/core/op_param_funcs.h"
+#include "atb/operation/op_param_funcs.h"
 
 namespace atb {
 static const uint32_t IN_TENSOR_COUNT = 2;
@@ -127,9 +127,8 @@ Status GatherOperation::ParamCheck(const TensorDesc &xTensorDesc, const TensorDe
         ATB_LOG(ERROR) << GetLogPrefix() << "param_.batchDims should  <= inTensorDescs(1) dimNum";
         return ERROR_INVALID_PARAM;
     }
-    // x dim + indices dim <= 9
-    if (xTensorDesc.shape.dimNum + indicesTensorDesc.shape.dimNum > 9) {
-        ATB_LOG(ERROR) << GetLogPrefix() << "x dim + indices dim should <= 9";
+    if (xTensorDesc.shape.dimNum + indicesTensorDesc.shape.dimNum - 1 - param_.batchDims > 8) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "x dim + indices dim should - 1 - batchDims <= 8";
         return ERROR_INVALID_TENSOR_DIM_NUM;
     }
     return NO_ERROR;

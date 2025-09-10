@@ -9,7 +9,7 @@
 */
 #include <gtest/gtest.h>
 #include <atb/operation.h>
-#include "atb/core/allocator/default_device_allocator.h"
+#include "atb/context/allocator/default_device_allocator.h"
 using namespace atb;
 
 TEST(TestCustomAllocatorTiling, TestCustomCase)

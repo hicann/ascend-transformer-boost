@@ -13,7 +13,7 @@
 #include <atb/utils/log.h>
 #include <acl/acl.h>
 #include "atb/utils/config.h"
-#include "atb/core/comm_pool.h"
+#include "atb/utils/comm_pool.h"
 #include "atb/utils/singleton.h"
 
 namespace atb {

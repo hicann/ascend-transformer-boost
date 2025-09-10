@@ -20,6 +20,8 @@ namespace atb {
 void TransQViewFuncBypass910a(const Mki::SVector<int64_t> &oldDims, Mki::SVector<int64_t> &newDims)
 {
     if (oldDims.size() < 2) { // 2: 最小维度
+        ATB_LOG(ERROR) << "qunery intensor expects dimNum to be at least 2";
+        newDims.clear();
         return;
     }
     if (oldDims.size() != 4) {                       // 4: 维度长度
@@ -33,6 +35,7 @@ void TransAttnMaskViewFuncBypass910a(const Mki::SVector<int64_t> &oldDims, Mki::
 {
     if (oldDims.size() != 4) { // 4: 维度长度
         ATB_LOG(ERROR) << "attnMask intensor support alibi, shape should exceed four dim";
+        newDims.clear();
         return;
     }
     newDims = {oldDims.at(0) * oldDims.at(1), oldDims.at(2), oldDims.at(3)}; // 2, 3: remains the same
@@ -41,7 +44,7 @@ void TransAttnMaskViewFuncBypass910a(const Mki::SVector<int64_t> &oldDims, Mki::
 void FlashAttentionInferShapePreFuncBypass910a(Mki::LaunchParam &launchParam)
 {
     if (launchParam.GetInTensors().size() < 4) { // 4: inTensor数量不少于4
-        ATB_LOG(ERROR) << "inTensor num should be at least 5";
+        ATB_LOG(ERROR) << "inTensor num should be at least 4";
         return;
     }
     launchParam.GetInTensor(3).desc.dtype = Mki::TENSOR_DTYPE_UINT32; // 3: 设置第四个输入张量的dtype
@@ -149,6 +152,7 @@ Status SelfAttentionFusionBypassOpsRunner910A::SetupKernelGraph(const OpsTensorP
             newDims = {1, oldDims.at(0), oldDims.at(1) * oldDims.at(2), oldDims.at(3)};
         } else {
             ATB_LOG(ERROR) << "oldDim should be at least 4";
+            newDims.clear();
         }
     };
     mulsQNode.outTensors = {&divOut};
@@ -191,6 +195,7 @@ Status SelfAttentionFusionBypassOpsRunner910A::SetupKernelGraph(const OpsTensorP
             newDims = {oldDims.at(1), batch_, oldDims.at(2) / batch_, oldDims.at(3)};
         } else {
             ATB_LOG(ERROR) << "oldDim should be at least 4";
+            newDims.clear();
         }
     };
     permuteContextNode.outTensors = {&contextTranspose};

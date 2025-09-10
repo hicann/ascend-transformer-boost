@@ -14,11 +14,15 @@
 #include "atb/utils/tensor_check.h"
 #include "atb/utils/param_to_json.h"
 #include "atb/utils/singleton.h"
-#include "atb/core/atb_operation_ir_cfg.h"
-#include "atb/core/op_param_funcs.h"
+#include "atb/operation/atb_operation_ir_cfg.h"
+#include "atb/operation/op_param_funcs.h"
 namespace {
 static const uint32_t IN_TENSOR_NUM = 1;
 static const uint32_t OUT_TENSOR_NUM = 2;
+static const int64_t LIMITED_NUM = 580000000;
+static const int64_t ZERO = 0;
+static const int64_t ONE = 1;
+static const int64_t SIXTEEN = 16;
 bool ParamCheck(const atb::infer::SortParam &opParam)
 {
     (void)opParam;
@@ -91,6 +95,18 @@ Status SortOperation::ParamCheckImpl(const TensorDesc &xTensorDesc) const
     if (param_.num.at(0) <= 0 || xTensorDesc.shape.dims[xTensorDesc.shape.dimNum - 1] < param_.num.at(0)) {
         ATB_LOG(ERROR) << "ParamCheckImpl:param.num should >0 && <= lastdim";
         return ERROR_INVALID_PARAM;
+    }
+    int64_t numSize = param_.num.size();
+    if (GetSingleton<Config>().Is310P() && numSize == ONE && param_.num[ZERO] < SIXTEEN) {
+        uint64_t xDimNum = xTensorDesc.shape.dimNum;
+        for (size_t i = 0; i < xDimNum - 1; i++) {
+            int64_t dim = xTensorDesc.shape.dims[i];
+            if (dim > LIMITED_NUM) {
+                ATB_LOG(ERROR) << "ParamCheckImpl: dim should be less than or equal to " << LIMITED_NUM
+                            << " in Atlas 300I Duo inference products.";
+                return ERROR_INVALID_TENSOR_DIM;
+            }
+        }
     }
     return NO_ERROR;
 }
