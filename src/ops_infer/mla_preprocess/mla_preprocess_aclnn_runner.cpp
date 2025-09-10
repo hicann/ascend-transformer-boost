@@ -41,7 +41,7 @@ MlaPreprocessAclnnRunner::~MlaPreprocessAclnnRunner() {}
 
 Status MlaPreprocessAclnnRunner::BuildAclnnVariantPack(const RunnerVariantPack &runnerVariantPack)
 {
-    ATB_LOG(INFO) << GetLogPrefix() << "create aclTensor by aclCreateTensor failed!";
+    ATB_LOG(INFO) << GetLogPrefix() << "BuildAclnnVariantPack";
     this->atbVariantPack_ = runnerVariantPack;
     Status ret = NO_ERROR;
     bool isRopeCache = param_.cacheMode != infer::MlaPreprocessParam::CacheMode::KVCACHE;

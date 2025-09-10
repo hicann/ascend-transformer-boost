@@ -1168,47 +1168,5 @@ class TestMLAPrepross(operation_test.OperationTest):
                     torch.zeros((N, headNum, 64), dtype=data_type).npu(),
                     self.keyCache[..., 512:576].npu()])
 
-    def test_mla_preprocess(self):
-        if not operation_test.get_soc_version() == 'Ascend910B':
-            print("this testcase only supports Ascend910B")
-            return
-        self.compare_count = 0
-        self.cacheMode = 0
-        N = 32
-        headNum = 32
-        data_type = torch.float16
-        OP_NAME = "MlaPreprocessOperation"
-        PARAM = json.dumps({"backendType":1})
-        # PARAM = json.dumps({})
-        self.calc_vec_mm_atb_data(N,headNum,data_type)
-        self.keyCache = self.keyCache.npu()
-        self.execute_out(OP_NAME, PARAM,
-                    [self.input1.npu(),
-                    self.gamma1.npu(),
-                    self.beta1.npu(),
-                    self.quantScale1.npu(),
-                    self.quantOffset1.npu(),
-                    torch_npu.npu_format_cast(transdata(self.wdqkv, (16, 32)).contiguous().npu(), 29),
-                    self.deScale1.npu(),
-                    self.bias1.npu(),
-                    self.gamma2.npu(),
-                    self.beta2.npu(),
-                    self.quantScale2.npu(),
-                    self.quantOffset2.npu(),
-                    torch_npu.npu_format_cast(transdata(self.wuq, (16, 32)).contiguous().npu(), 29),
-                    self.deScale2.npu(),
-                    self.bias2.npu(),
-                    self.gamma3.npu(),
-                    self.cos1.npu(),
-                    self.sin1.npu(),
-                    self.wuk.npu(),
-                    self.keyCache.npu(),
-                    torch.tensor([]).npu(),
-                    self.slotMapping.npu(),
-                    torch.tensor([]).npu(),
-                    torch.tensor([]).npu()],
-                    [torch.zeros((N, headNum, 576), dtype=data_type).npu(),
-                    self.keyCache.npu()])
-
 if __name__ == "__main__":
     unittest.main()

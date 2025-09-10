@@ -192,21 +192,28 @@ struct GraphParam {
     InferShapeFunc inferShapeFunc = nullptr;
 };
 
+//!
+//! \struct AclNNIntArray
+//!
+//! \brief aclnn host tensor
+//!
 struct AclNNIntArray {
     /// This struct is created by calling `aclCreateIntArray` and should be destroyed by calling `aclDestroyIntArray`.
     /// It is used to create the `aclOpExecutor`.
-    aclIntArray* intArray = nullptr;
+    aclIntArray *intArray = nullptr;
     /// Data used to create the `aclIntArray*`. It is copied from atb::Tensor's hostData.
     std::vector<int64_t> data = {};
-    /// The size of `data` in bytes.
+    // the origin of the data
     std::vector<int32_t> dataOri = {};
+    /// The size of `data` in bytes.
     uint64_t dataSize = 0;
 };
 
-/// A class contains tensor information.
-///
-/// AclNN operations and ATB operations organize tensor in different format.
-/// This class stores the information necessary for easy conversion and tensor usage.
+//!
+//! \struct AclNNTensor
+//!
+//! \brief 用于aclnn算子，包装Tensor和intArray等信息
+//!
 class AclNNTensor {
 public:
     /// An const value to indicate that the `tensorListidx` is invalid.
@@ -228,6 +235,11 @@ public:
     bool needUpdateTensorDataPtr = false;
 };
 
+//!
+//! \struct AclNNVariantPack
+//!
+//! \brief aclnn算子
+//!
 struct AclNNVariantPack {
     /// A container stores an AclNN operation's in tensor in order.
     /// Each `AclNNTensor` object contains one `aclTensor`.

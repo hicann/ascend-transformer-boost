@@ -21,7 +21,7 @@ AclnnRunner::~AclnnRunner() {}
 
 Status AclnnRunner::SetupImpl(RunnerVariantPack &runnerVariantPack)
 {
-    ATB_LOG(INFO) << GetLogPrefix() << " aclnn runner setupImpl";
+    ATB_LOG(INFO) << GetLogPrefix() << "aclnn runner setupImpl";
     if (!runnerVariantPack.context) {
         ATB_LOG(ERROR) << GetLogPrefix() << "context is not ContextBase, setup fail";
         return ERROR_INVALID_CONTEXT_ADDR;
