@@ -12,6 +12,7 @@
 #include <mutex>
 #include <mki/utils/log/log.h>
 #include "platform_infos_impl.h"
+#include "acl/acl_rt.h"
 
 namespace fe {
 constexpr uint32_t MAX_CORE_NUM = 128;
@@ -102,46 +103,61 @@ void PlatFormInfos::SetFixPipeDtypeMap(const std::map<std::string, std::vector<s
 
 void PlatFormInfos::SetCoreNumByCoreType(const std::string &core_type)
 {
-    std::string coreNumStr;
-    std::string coreTypeStr;
-    if (core_type == "VectorCore") {
-        coreTypeStr = "vector_core_cnt";
+    uint32_t coreNum = 0;
+    aclrtDevResLimitType resType = core_type == "VectorCore" ? ACL_RT_DEV_RES_VECTOR_CORE : ACL_RT_DEV_RES_CUBE_CORE;
+    aclError getResRet = aclrtGetResInCurrentThread(resType, &coreNum);
+    if (getResRet == ACL_SUCCESS) {
+        core_num_ = coreNum;
+        MKI_LOG(DEBUG) << "Get ThreadResource::core_num_ to " << core_type << ": " << coreNum;
     } else {
-        coreTypeStr = "ai_core_cnt";
-    }
-    std::lock_guard<std::mutex> lockGuard(g_asdopsFePlatMutex);
-    (void)GetPlatformRes("SoCInfo", coreTypeStr, coreNumStr);
-    MKI_LOG(DEBUG) << "Set PlatFormInfos::core_num_ to " << coreTypeStr << ": " << coreNumStr;
-    if (coreNumStr.empty()) {
-        core_num_ = 1;
-        MKI_LOG(ERROR) << "CoreNumStr is empty!";
-    } else {
-        core_num_ = std::strtoul(coreNumStr.c_str(), nullptr, 10); // 10 进制
-        if (core_num_ > MAX_CORE_NUM) {
-            core_num_ = 1;
-            MKI_LOG(ERROR) << "core_num is out of range : " << core_num_;
+        std::string coreNumStr;
+        std::string coreTypeStr;
+        if (core_type == "VectorCore") {
+            coreTypeStr = "vector_core_cnt";
+        } else {
+            coreTypeStr = "ai_core_cnt";
         }
+        std::lock_guard<std::mutex> lockGuard(g_asdopsFePlatMutex);
+        (void)GetPlatformRes("SoCInfo", coreTypeStr, coreNumStr);
+        MKI_LOG(DEBUG) << "Set PlatFormInfos::core_num_ to " << coreTypeStr << ": " << coreNumStr;
+        if (coreNumStr.empty()) {
+            core_num_ = 1;
+            MKI_LOG(ERROR) << "CoreNumStr is empty!";
+        } else {
+            core_num_ = std::strtoul(coreNumStr.c_str(), nullptr, 10); // 10 进制
+        }
+    }
+    if (core_num_ == 0 || core_num_ > MAX_CORE_NUM) {
+        MKI_LOG(ERROR) << "core_num is out of range : " << core_num_;
+        core_num_ = 1;
     }
 }
 
 uint32_t PlatFormInfos::GetCoreNumByType(const std::string &core_type)
 {
-    std::string coreNumStr;
-    std::string coreTypeStr = core_type == "VectorCore" ? "vector_core_cnt" : "ai_core_cnt";
-    std::lock_guard<std::mutex> lockGuard(g_asdopsFePlatMutex);
-    (void)GetPlatformRes("SoCInfo", coreTypeStr, coreNumStr);
-    MKI_LOG(DEBUG) << "Get PlatFormInfos::core_num_ to " << coreTypeStr << ": " << coreNumStr;
-    if (coreNumStr.empty()) {
-        MKI_LOG(ERROR) << "CoreNumStr is empty!";
-        return 1;
+    uint32_t coreNum = 0;
+    aclrtDevResLimitType resType = core_type == "VectorCore" ? ACL_RT_DEV_RES_VECTOR_CORE : ACL_RT_DEV_RES_CUBE_CORE;
+    aclError getResRet = aclrtGetResInCurrentThread(resType, &coreNum);
+    if (getResRet == ACL_SUCCESS) {
+        MKI_LOG(DEBUG) << "Get ThreadResource::core_num_ to " << core_type << ": " << coreNum;
     } else {
-        uint32_t coreTypeNum = std::strtoul(coreNumStr.c_str(), nullptr, 10); // 10 进制
-        if (coreTypeNum > MAX_CORE_NUM) {
-            MKI_LOG(ERROR) << "core_num is out of range : " << coreTypeNum;
+        std::string coreNumStr;
+        std::string coreTypeStr = core_type == "VectorCore" ? "vector_core_cnt" : "ai_core_cnt";
+        std::lock_guard<std::mutex> lockGuard(g_asdopsFePlatMutex);
+        (void)GetPlatformRes("SoCInfo", coreTypeStr, coreNumStr);
+        MKI_LOG(DEBUG) << "Get PlatFormInfos::core_num_ to " << coreTypeStr << ": " << coreNumStr;
+        if (coreNumStr.empty()) {
+            MKI_LOG(ERROR) << "CoreNumStr is empty!";
             return 1;
+        } else {
+            coreNum = std::strtoul(coreNumStr.c_str(), nullptr, 10); // 10 进制
         }
-        return coreTypeNum;
     }
+    if (coreNum == 0 || coreNum > MAX_CORE_NUM) {
+        MKI_LOG(ERROR) << "core_num is out of range : " << coreNum;
+        return 1;
+    }
+    return coreNum;
 }
 
 void PlatFormInfos::SetCoreNum(const uint32_t &coreNum)
