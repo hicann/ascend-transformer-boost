@@ -1,5 +1,3 @@
-****
-
 ## Ascend社区评论命令一览
 
 Ascend社区中所有项目均由Bot维护，这意味着开发人员可以在每个Pull Request或者Issue下面通过评论触发Bot命令。
