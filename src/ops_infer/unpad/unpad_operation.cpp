@@ -8,11 +8,11 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 #include "unpad_operation.h"
-#include "atb/core/atb_operation_ir_cfg.h"
+#include "atb/operation/atb_operation_ir_cfg.h"
 #include "unpad_ops_runner.h"
 #include "atb/utils/tensor_check.h"
 #include "atb/utils/singleton.h"
-#include "atb/core/op_param_funcs.h"
+#include "atb/operation/op_param_funcs.h"
 
 static const uint32_t IN_TENSOR_NUM = 4;
 static const uint32_t OUT_TENSOR_NUM = 3;
