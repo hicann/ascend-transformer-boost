@@ -268,7 +268,7 @@ private:
     {
         AscendC::LocalTensor<int32_t> int32BlkBuf = int32Buf_.Get<int32_t>();
         AscendC::LocalTensor<int32_t> selectRangeBlkBuf = selectRangeBlkBuf_.Get<int32_t>();
-        if (blockIdx_ != realCore_ - 1){
+        if (blockIdx_ != realCore_ - 1) {
             uint32_t dynamicRoundAlign_ = DEFAULT_STRIDE * ((dynamicRound_ + DEFAULT_STRIDE - 1) / DEFAULT_STRIDE);
             DataCopy(zGm_[static_cast<uint64_t>(blockIdx_) * nlCoreRun_], int32BlkBuf, dynamicRoundAlign_);
             DataCopy(selectRangeGm_[static_cast<uint64_t>(blockIdx_) * nlCoreRun_], selectRangeBlkBuf,
