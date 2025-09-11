@@ -14,6 +14,12 @@
   (1) 驱动和固件  
   (2) CANN软件包  
 开发者可访问[昇腾文档-昇腾社区](https://www.hiascend.com/document)->CANN商用版->软件安装，查看CANN软件安装引导，根据机器环境、操作系统和业务场景选择后阅读详细安装步骤。
+以OpenEuler环境下使用yum安装为例， 命令如下：
+
+```shell
+sudo curl https://repo.oepkgs.net/ascend/cann/ascend.repo -o /etc/yum.repos.d/ascend.repo && yum makecache
+sudo yum install -y Ascend-cann-toolkit-8.2.RC1
+```
 
 安装完成重启机器后，使用`npu-smi info`可以看到回显结果表示安装成功。
 
@@ -23,6 +29,14 @@
 
 * 访问[CANN依赖列表-CANN商用版8.2.RC1-昇腾社区](https://www.hiascend.com/document/detail/zh/canncommercial/82RC1/softwareinst/instg/instg_0045.html?Mode=PmIns&InstallType=local&OS=Debian&Software=cannToolKit)（左上角选择最新版本），可获取最新依赖列表。
 * 访问[安装后操作-CANN商用版8.2.RC1-昇腾社区](https://www.hiascend.com/document/detail/zh/canncommercial/82RC1/softwareinst/instg/instg_0094.html?Mode=PmIns&InstallType=local&OS=Debian&Software=cannToolKit)（左上角选择最新版本）可获取安装命令。
+
+安装后配置
+
+配置环境变量脚本set_env.sh，当前安装路径以${HOME}/Ascend为例。
+
+```shell
+source ${HOME}/Ascend/ascend-toolkit/set_env.sh
+```
 
 # 快速上手
 ## ATB编译
