@@ -37,7 +37,6 @@ MKI_BUILD_MODE=Test
 VERSION="8.0.0"
 LOG_PATH="/var/log/cann_atb_log/"
 LOG_NAME="cann_atb_install.log"
-ATB_BUILD_DEPENDENCY_PATH=$ATB_HOME_PATH
 
 BUILD_OPTION_LIST="help default testframework unittest kernelunittest pythontest torchatbtest kernelpythontest csvopstest fuzztest infratest hitest alltest clean gendoc customizeops"
 BUILD_CONFIGURE_LIST=("--verbose" "--use_cxx11_abi=0" "--use_cxx11_abi=1"
@@ -324,6 +323,10 @@ function fn_get_cxx_abi_string()
 
 function fn_copy_tbe_adapter()
 {
+    if [ -z $ATB_BUILD_DEPENDENCY_PATH ]; then
+        ATB_BUILD_DEPENDENCY_PATH=/usr/local/Ascned/nnal/atb/latest/$(fn_get_cxx_abi_string)
+    fi
+
     if [ ! -f $ATB_BUILD_DEPENDENCY_PATH/lib/libtbe_adapter.so ]; then
         echo "error:$ATB_BUILD_DEPENDENCY_PATH/lib/libtbe_adapter.so dose not exist, please source set_env.sh."
         return 0
