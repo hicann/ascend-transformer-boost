@@ -276,9 +276,11 @@ private:
         }
         else {
             uint32_t dynamicRoundAlign_ = dynamicRound_ / DEFAULT_STRIDE * DEFAULT_STRIDE;
-            DataCopy(zGm_[static_cast<uint64_t>(blockIdx_) * nlCoreRun_], int32BlkBuf, dynamicRound_);
-            DataCopy(selectRangeGm_[static_cast<uint64_t>(blockIdx_) * nlCoreRun_], selectRangeBlkBuf,
-                     dynamicRound_);
+            if (dynamicRoundAlign_ > 0) {
+                DataCopy(zGm_[static_cast<uint64_t>(blockIdx_) * nlCoreRun_], int32BlkBuf, dynamicRound_);
+                DataCopy(selectRangeGm_[static_cast<uint64_t>(blockIdx_) * nlCoreRun_], selectRangeBlkBuf,
+                         dynamicRound_);
+            }
             for (int i = dynamicRoundAlign_; i < dynamicRound_; i++) {
                 zGm_(static_cast<uint64_t>(blockIdx_) * nlCoreRun_ + i) = int32BlkBuf.GetValue(i);
                 selectRangeGm_(static_cast<uint64_t>(blockIdx_) * nlCoreRun_ + i) = selectRangeBlkBuf.GetValue(i);
