@@ -121,7 +121,7 @@ Status ActivationOperation::CheckSwigluBackwardInTensor(const SVector<TensorDesc
     for (uint64_t i = 0; i < inTensorDescs.at(0).shape.dimNum; i++) {
         if (static_cast<uint64_t>(splitDim) == i) {
             if (inTensorDescs.at(1).shape.dims[i] != SPLIT_NUM * inTensorDescs.at(0).shape.dims[i]) {
-                ATB_LOG(ERROR) << GetLogPrefix() << "Dims[" << i << "] of inTensor0 should be half of inTnesor1.";
+                ATB_LOG(ERROR) << GetLogPrefix() << "Dims[" << i << "] of inTensor0 should be half of inTensor1.";
                 return ERROR_INVALID_TENSOR_DIM;
             }
         } else {
