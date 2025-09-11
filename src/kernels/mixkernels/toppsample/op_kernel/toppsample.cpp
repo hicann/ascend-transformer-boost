@@ -273,8 +273,8 @@ private:
         DataCopy(selectRangeGm_[static_cast<uint64_t>(blockIdx_) * nlCoreRun_], selectRangeBlkBuf,
                  dynamicRound_);
         for (int i = dynamicRoundAlign_; i < dynamicRound_; i++) {
-            zGm_.SetValue((static_cast<uint64_t>(blockIdx_) * nlCoreRun_ + i), int32BlkBuf.GetValue(i));
-            selectRangeGm_.SetValue((static_cast<uint64_t>(blockIdx_) * nlCoreRun_ + i), selectRangeBlkBuf.GetValue(i));
+            zGm_[static_cast<uint64_t>(blockIdx_) * nlCoreRun_ + i] = int32BlkBuf.GetValue(i);
+            selectRangeGm_[static_cast<uint64_t>(blockIdx_) * nlCoreRun_ + i] = selectRangeBlkBuf.GetValue(i);
         }
     }
 
