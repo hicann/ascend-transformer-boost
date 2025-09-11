@@ -24,6 +24,8 @@ const uint32_t HEAD_SIZE = 8;    // 头大小
 atb::Status PrepareOperation(atb::Operation **ropeOp)
 {
     atb::infer::RopeParam opParam;
+    opParam.rotaryCoeff = 4;
+    opParam.cosFormat = 0;
     return atb::CreateOperation(opParam, ropeOp);
 }
 
