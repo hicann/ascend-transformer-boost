@@ -24,6 +24,7 @@ if(NOT EXISTS ${OP_LIST_YAML_DIR}/op_list.yaml)
     if(NOT RESULT EQUAL 0)
         message(FATAL_ERROR "create op_list.yaml failed, error code: ${RESULT}, error info:\n${RESULT_INFO}")
     endif()
+endif()
 
 file(MAKE_DIRECTORY ${OPS_CONFIG_CMAKE_DIR})
 set(OP_LIST_CMD_PARAMS "'${OP_LIST_YAML_DIR}/op_list.yaml', '${OPS_CONFIG_CMAKE_DIR}/op_build.cmake'")
