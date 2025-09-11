@@ -8,7 +8,7 @@
 # See LICENSE in the root of the software repository for the full text of the License.
 #
 
-set(CMAKE_CXX_FLAGS "{CMAKE_CXX_FLAGS} -w")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -w")
 
 file(GLOB_RECURSE pybind11_source_files "*.cpp")
 pybind11_add_module(_C ${pybind11_source_files})
