@@ -64,11 +64,6 @@ Status AclnnExecutorCache::AddCacheSlot(const std::string &opNameStr, const Runn
 #else
     ATB_LOG(INFO) << "ATB aclnn op: " << opNameStr << ", add to fetch cache slot";
 #endif
-    if (inAclnnCacheSlot.workspaceSize < 0) {
-        ATB_LOG(ERROR) << "ATB aclnn AddCacheSlot with op: " << opNameStr
-                       << " expect non-negative workspaceSize but got: " << inAclnnCacheSlot.workspaceSize;
-        return ERROR_INVALID_WORKSPACE_SIZE;
-    }
     if (inAclnnCacheSlot.executor == nullptr) {
         ATB_LOG(ERROR) << "ATB aclnn AddCacheSlot with op: " << opNameStr << " got null aclOpExecutor";
         return ERROR_INVALID_PARAM;

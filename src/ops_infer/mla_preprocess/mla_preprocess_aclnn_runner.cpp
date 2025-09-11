@@ -163,6 +163,7 @@ aclError MlaPreprocessAclnnRunner::SetAclNNWorkspaceExecutor()
 
 Status MlaPreprocessAclnnRunner::LaunchAclnnKernel(const AclNNVariantPack &aclNNVariantPack)
 {
+    (void) aclNNVariantPack;
     ATB_LOG(INFO) << GetLogPrefix() << "aclnn mlaPreprocess execute start.";
     void *executeStream = GetExecuteStream(this->atbVariantPack_.context);
     aclError ret = aclnnMlaPreprocess(this->atbVariantPack_.workspaceBuffer, this->atbVariantPack_.workspaceBufferSize,
