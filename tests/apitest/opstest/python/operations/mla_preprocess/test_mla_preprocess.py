@@ -31,7 +31,7 @@ np.random.seed(12)
 torch.manual_seed(12)
 
 def process_deq_scale(deq_scale: torch.Tensor) -> np.ndarray:
-    ret = deq_scale.to(torch.int64)  # 直接转换 dtype，无需 bytes / buffer
+    ret = torch.frombuffer(deq_scale.numpy().tobytes(), dtype=torch.int32).to(torch.int64)
     return ret
 
 
@@ -181,17 +181,18 @@ class TestMLAPrepross(operation_test.OperationTest):
         offset = quantOffset.item()
         inputScale = torch.tensor(scale, dtype=torch.float)
         inputOffset = torch.tensor(offset, dtype=torch.float)
-        input0 = input.clone().detach().float()
-        input1 = gamma.clone().detach().float()
+        input0 = torch.tensor(input).float()
+        input1 = torch.tensor(gamma).float()
         square_sum = torch.sum(torch.square(input0), axis=-1, keepdims=True)
         factor = 1.0 / torch.sqrt(square_sum / out_shape[-1] + self.epsilon)
         output = input0 * factor * input1
         output = (output + beta.float()) * inputScale + inputOffset
         self.xxTest = output.clone()
-        output = output.clone().detach().to(torch.float16)
+        output = torch.round(output)
+        output = torch.tensor(output).to(torch.float16)
         output = torch.min(output, torch.tensor(QUANTMAX, dtype=torch.half))
         output = torch.max(output, torch.tensor(QUANTMIN, dtype=torch.half))
-        return output.to(torch.int8)
+        return torch.tensor(output).to(torch.int8)
 
     def calc_vec_mm_atb_data(self, N, headNum, data_type):
         hiddenStrate = 7168
@@ -797,7 +798,7 @@ class TestMLAPrepross(operation_test.OperationTest):
         headNum = 32
         data_type = torch.float16
         OP_NAME = "MlaPreprocessOperation"
-        PARAM = json.dumps({"backendType":1})
+        PARAM = json.dumps({})
         self.calc_vec_mm_atb_data(N,headNum,data_type)
         self.keyCache = self.keyCache.npu()
         self.execute_out(OP_NAME, PARAM,
@@ -1049,7 +1050,7 @@ class TestMLAPrepross(operation_test.OperationTest):
         headNum = 128
         data_type = torch.float16
         OP_NAME = "MlaPreprocessOperation"
-        PARAM = json.dumps({"cacheMode":self.cacheMode, "backendType": 1})
+        PARAM = json.dumps({"cacheMode":self.cacheMode})
         self.calc_vec_mm_atb_data(N,headNum,data_type)
         self.keyCache = self.keyCache.npu()
         self.execute_out(OP_NAME, PARAM,
