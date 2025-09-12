@@ -28,8 +28,6 @@ USE_MSDEBUG=OFF
 USE_ASCENDC_DUMP=OFF
 SKIP_BUILD=OFF
 BUILD_TBE_ADAPTER=OFF
-DEPENDENCY_DIR=2025-06-18
-ASDOPS_SOURCE_DIR=/tmp/asdops_dependency/$DEPENDENCY_DIR
 CSVOPSTEST_OPTIONS=""
 BUILD_PYBIND=ON
 SRC_ONLY=OFF
@@ -347,39 +345,6 @@ function fn_copy_tbe_adapter()
         fi
         cp ${ATB_BUILD_DEPENDENCY_PATH}/lib/libtbe_adapter.so $LOCAL_TBE_ADAPTER_PATH/lib
     fi
-}
-
-function fn_check_dependency_cache()
-{
-    [[ ! -d "$ASDOPS_SOURCE_DIR" ]] && mkdir -p $ASDOPS_SOURCE_DIR
-    cd $ASDOPS_SOURCE_DIR
-    if [ ! -d "$ASDOPS_SOURCE_DIR/opp_kernel" ]; then
-        [[ ! -f "$ASDOPS_SOURCE_DIR/asdops_opp_kernel.tar.gz" ]] && wget --no-check-certificate $CMC_URL/asdops_opp_kernel.tar.gz
-        tar xf asdops_opp_kernel.tar.gz
-        rm asdops_opp_kernel.tar.gz
-    fi
-    echo "$ASDOPS_SOURCE_DIR!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-    if [ ! -d "$ASDOPS_SOURCE_DIR/canndev" ]; then
-        [[ ! -f "$ASDOPS_SOURCE_DIR/canndev.tar.gz" ]] && wget --no-check-certificate $CMC_URL/canndev.tar.gz
-        tar xf canndev.tar.gz
-        rm canndev.tar.gz
-    fi
-    if [ ! -d "$ASDOPS_SOURCE_DIR/metadef" ]; then
-        [[ ! -f "$ASDOPS_SOURCE_DIR/metadef.tar.gz" ]] && wget --no-check-certificate $CMC_URL/metadef.tar.gz
-        tar xf metadef.tar.gz
-        rm metadef.tar.gz
-    fi
-    if [ ! -d "$ASDOPS_SOURCE_DIR/cann-ops-adv" ]; then
-        [[ ! -f "$ASDOPS_SOURCE_DIR/cann-ops-adv.tar.gz" ]] && wget --no-check-certificate $CMC_URL/cann-ops-adv.tar.gz
-        tar xf cann-ops-adv.tar.gz
-        rm cann-ops-adv.tar.gz
-    fi
-    if [ ! -d "$ASDOPS_SOURCE_DIR/api" ]; then
-        [[ ! -f "$ASDOPS_SOURCE_DIR/api.tar.gz" ]] && wget --no-check-certificate $CMC_URL/api.tar.gz
-        tar xf api.tar.gz
-        rm api.tar.gz
-    fi
-    echo "dependency_cache is ready"
 }
 
 function fn_build_tbe_dependency()
