@@ -10,7 +10,7 @@
 #ifndef TORCH_ATB_GRAPH_NODE_H
 #define TORCH_ATB_GRAPH_NODE_H
 #include <acl/acl_rt.h>
-#include "atb/core/context_base.h"
+#include "atb/context/context_base.h"
 #include "atb/operation.h"
 #include "atb/operation/operation_base.h"
 #include "atb/types.h"

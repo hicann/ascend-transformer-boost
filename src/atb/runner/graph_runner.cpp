@@ -12,7 +12,7 @@
 #include <string>
 #include <acl/acl_rt.h>
 #include "atb/utils/log.h"
-#include "atb/core/mem_allocation_solver/mem_allocation_solver_creator.h"
+#include "atb/utils/mem_allocation_solver/mem_allocation_solver_creator.h"
 #include "atb/utils/tensor_util.h"
 #include "atb/utils/config.h"
 #include "atb/utils/statistic.h"

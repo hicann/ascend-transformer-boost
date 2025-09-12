@@ -13,7 +13,7 @@ try:
     import torch
     print("1" if torch.compiled_with_cxx11_abi() else "0")
 except ImportError:
-    print("0")
+    print("1")
 ')
 
 echo "Using cxx_abi=$cxx_abi"

@@ -12,7 +12,7 @@
 #include <gtest/gtest.h>
 #include "customize_block_copy_operation.h"
 #include "customize_op_params.h"
-#include "atb/core/op_param_funcs.h"
+#include "atb/operation/op_param_funcs.h"
 #include "atb/utils.h"
 #include "atb/context.h"
 

@@ -19,7 +19,7 @@
 // #include "tests/pythontest/pytorch/adapter/utils/utils.h"
 // #include "test_utils/context/memory_context.h"
 // #include "atb/types.h"
-// #include "atb/core/context_base.h"
+// #include "atb/context/context_base.h"
 // #include "atb/operation/operation_base.h"
 // #include "core/ops/split/split_operation.h"
 

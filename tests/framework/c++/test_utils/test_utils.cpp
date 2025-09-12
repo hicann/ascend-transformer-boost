@@ -11,7 +11,7 @@
 #include <string>
 #include <acl/acl_rt.h>
 #include <atb/utils/log.h>
-#include "atb/core/context_base.h"
+#include "atb/context/context_base.h"
 #include "atb/types.h"
 
 namespace atb {
