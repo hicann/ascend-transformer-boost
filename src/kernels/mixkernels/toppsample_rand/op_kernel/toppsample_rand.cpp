@@ -203,6 +203,8 @@ private:
                 DataCopy(selectRangeGm_[static_cast<uint64_t>(blockIdx_) * nlCoreRun_], selectRangeBlkBuf,
                          dynamicRound_);
             }
+            AscendC::SetFlag<HardEvent::MTE3_S>(EVENT_ID0);
+            AscendC::WaitFlag<HardEvent::MTE3_S>(EVENT_ID0);
             for (int i = dynamicRoundAlign_; i < dynamicRound_; i++) {
                 zGm_(static_cast<uint64_t>(blockIdx_) * nlCoreRun_ + i) = int32BlkBuf.GetValue(i);
                 selectRangeGm_(static_cast<uint64_t>(blockIdx_) * nlCoreRun_ + i) = selectRangeBlkBuf.GetValue(i);
