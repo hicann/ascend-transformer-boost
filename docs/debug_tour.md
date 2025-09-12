@@ -4,7 +4,7 @@
 
 加速库日志相关的几个环境变量：
 
-### 8.3.B050之前版本
+### 8.3之前版本
 
 * `ASDOPS_LOG_LEVEL`: 用于设置加速库日志等级，严重程度从高到低有TRACE、DEBUG、WARN、ERROR、FATAL。默认为ERROR，调试时建议设置为DEBUG或INFO。
 * `ASDOPS_LOG_TO_STDOUT`: 用于设置加速库日志是否输出到控制台, 0: 关闭, 1: 开启输出到控制台。
@@ -12,27 +12,30 @@
 * `ASDOPS_LOG_TO_FILE_FLUSH`: 用于设置加速库日志写文件时是否刷新，0: 关闭, 1: 开启。调试时建议设置为1, 会将缓冲区中的日志内容刷新到文件中，程序异常退出时能避免日志内容丢失。
 * `ASDOPS_LOG_PATH`: 用于设置加速库日志保存路径， 需要传递合法路径。
 
-### 8.3.B050之后版本
+### 8.3之后版本
 
 * `ASCEND_PROCESS_LOG_PATH`: 用于指定日志落盘路径为任意有读写权限的目录
-* `ASCEND_SLOG_PRINT_TO_STDOUT`: 用于设置加速库日志是否输出到控制台，0: 关闭, 1: 开启输出到控制台。
-* `ASCEND_MODULE_LOG_LEVEL=ATB=0`: 设置加速库日志级别, 0: DEBUG、1：INFO、2：WARNING、3：ERROR、4：NULL (不输出日志)
-* 需要注意的是，ATB日志与CANN日志统一之后，日志内容会自动存储到对应目录的日志文件中。
+* `ASCEND_SLOG_PRINT_TO_STDOUT`: 用于设置CANN日志(包含加速库)是否输出到控制台，0: 关闭, 1: 开启输出到控制台。
+* `ASCEND_GLOBAL_LOG_LEVEL=0`: 设置CANN日志级别(包含加速库), 0: DEBUG、1：INFO、2：WARNING、3：ERROR、4：NULL (不输出日志)
 
 ## 日志阅读
 
 接下来通过一个Deepseek模型例子简单介绍如何看懂加速库日志，并且通过日志获得想要的信息。
 
 ![image](images/log_1.png)
+
 其中Decoder_layerRunner_87:12表示：第87层的Decoder_layerRunner的第12次执行。
 
 ![image](images/log_2.png)
+
 如果想要知道该Decoder_layerRunner的第0个节点AttentionRunner的详细信息可以搜索: `AttentionRunner_87_0:12 runner graph`。其中AttentionRunner表示是这个节点的名字，87_0表示第87层的Decoder_layerRunner的第0个节点。
 
 ![image](images/log_3.png)
 
 ![image](images/log_4.png)
+
 接下来如果想查看MultiLatentAttention算子实际运行时的param、inTensors、outTensors的内容可以搜索: `MultiLatentAttentionOpsRunner_87_0_1[0]` 找到`launchParam`关键字，其中和上面类似，87_0_1[0]表示：MultiLatentAttentionOpsRunner作为第87层的Decoder_layerRunner的第0个节点AttentionRunner的第1个节点的第0个算子。
+
 ![image](images/log_5.png)
 
 按照上述方法既可以找到组图中除pluginOp以外加速库算子的信息。
@@ -60,7 +63,7 @@
    进行性能数据采集之后，msprof工具会在所设置的output目录下生成相应的数据文件`mindstudio_profiler_output`目录，其中在此简单介绍两个最常用的文件：
    
    * `msprof_{timestamp}.json`: 可以通过`chrome://tracing`或`MindStudio Insight`打开查看组图中Host侧和Device侧的流水排布情况和算子执行耗时。
-   * `op_summary_{timestamp}.csv`: 可以查看在执行组图时所用到的各个算子名、类型、输入输出tensor的信息、执行时间等信息，可以用于分析性能数据，寻找优化点等。
+   * `op_summary_{timestamp}.csv`: 可以查看在执行组图时所用到的各个算子名、类型、输入输出tensor的信息、执行时间、cache命中情况等信息，可以用于分析性能数据，寻找优化点等。
 4. 例子
    
     * `msprof --application="bash build.sh"`：运行mla_preprocess的用例
@@ -142,25 +145,25 @@
    * 调其对应算子`msdebug {可执行文件或程序}`，以加速库中的测试脚本为例：`msdebug python3 test_faster_gelu.py`
    * 常用命令表
      
-        |  命令  |  命令缩写  |  作用  |  示例  |
-        | ------ | ---------- | ------ | ------- |
-        |  breakpoint filename:lineNo | b | 增加断点 |  b add\_custom.cpp:85<br>b my\_function |
-        |  run  | r | 重新运行 | r |
-        |  continue | c |  继续运行 | c |
-        |  print | p | 打印变量| p zLocal |
-        |  frame variable | var | 打印当前帧所有变量 | var |
-        |  memory read | x | 读内存<br>-m 指定内存位置，支持GM/UB/L0A/L0B/L0C<br>-f 指定[字节转换格式](#附录1)<br>-s 指定每行打印字节数<br>-c 指定打印的行数 |  x -m GM -f float16[] 1000-c 2 -s 128  |
-        |  register read | re r | 读取寄存器值<br>-a 读取所有寄存器值<br>\$REG\_NAME 读取指定名称的寄存器值 | register read -are r \$PC |
-        |  thread step-over |  next<br>n                          |  在同一个调用栈中，移动到下一个可执行的代码行                                                                                                                              |  n |
-        |  ascend info devices |  /  |  查询device信息  |  ascend info devices |
-        |  ascend info cores  |  /  |  查询算子所运行的aicore相关信息 |  ascend info cores  |
-        |  ascend info tasks  |  /  |  查询算子所运行的task相关信息  |  ascend info tasks  |
-        |  ascend info stream  |  /    |  查询算子所运行的stream相关信息 |  ascend info stream  |
-        |  ascend info blocks  |  /  |  查询算子所运行的block相关信息<br>可选参数： -d/–details显示所有blocks当前中断处代码                                                                                        |  ascend info blocks  |
-        |  ascend aic core  |  /  |  切换调试器所聚焦的cube核 |  ascend aic 1  |
-        |  ascend aiv core  |  /  |  切换调试器所聚焦的vector核  |  ascend aiv 5 |
-        |  target modules addkernel.o  |  image addkernel.o  |  PyTorch框架拉起算子时，导入算子调试信息 <br>（注：当程序执行run命令后再执行本命令导入调试信息，<br>则还需额外执行image load命令以使调试信息生效） |  image addAddCustom\_xxx.o  |
-        |  target modules load –f kernel.o –s address  |  image load -f kernel.o -s address  |  在程序运行后，使导入的调试信息生效                                                                                                                                       |  image load -f AddCustom\_xxx.o -s 0  |
+        | 命令                                       | 命令缩写                          | 作用                                                                                                                                              | 示例                                   |
+        | ------------------------------------------ | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------- |
+        | breakpoint filename:lineNo                 | b                                 | 增加断点                                                                                                                                          | b add\_custom.cpp:85<br>b my\_function |
+        | run                                        | r                                 | 重新运行                                                                                                                                          | r                                      |
+        | continue                                   | c                                 | 继续运行                                                                                                                                          | c                                      |
+        | print                                      | p                                 | 打印变量                                                                                                                                          | p zLocal                               |
+        | frame variable                             | var                               | 打印当前帧所有变量                                                                                                                                | var                                    |
+        | memory read                                | x                                 | 读内存<br>-m 指定内存位置，支持GM/UB/L0A/L0B/L0C<br>-f 指定[字节转换格式](#附录1)<br>-s 指定每行打印字节数<br>-c 指定打印的行数                   | x -m GM -f float16[] 1000-c 2 -s 128   |
+        | register read                              | re r                              | 读取寄存器值<br>-a 读取所有寄存器值<br>\$REG\_NAME 读取指定名称的寄存器值                                                                         | register read -are r \$PC              |
+        | thread step-over                           | next<br>n                         | 在同一个调用栈中，移动到下一个可执行的代码行                                                                                                      | n                                      |
+        | ascend info devices                        | /                                 | 查询device信息                                                                                                                                    | ascend info devices                    |
+        | ascend info cores                          | /                                 | 查询算子所运行的aicore相关信息                                                                                                                    | ascend info cores                      |
+        | ascend info tasks                          | /                                 | 查询算子所运行的task相关信息                                                                                                                      | ascend info tasks                      |
+        | ascend info stream                         | /                                 | 查询算子所运行的stream相关信息                                                                                                                    | ascend info stream                     |
+        | ascend info blocks                         | /                                 | 查询算子所运行的block相关信息<br>可选参数： -d/–details显示所有blocks当前中断处代码                                                               | ascend info blocks                     |
+        | ascend aic core                            | /                                 | 切换调试器所聚焦的cube核                                                                                                                          | ascend aic 1                           |
+        | ascend aiv core                            | /                                 | 切换调试器所聚焦的vector核                                                                                                                        | ascend aiv 5                           |
+        | target modules addkernel.o                 | image addkernel.o                 | PyTorch框架拉起算子时，导入算子调试信息 <br>（注：当程序执行run命令后再执行本命令导入调试信息，<br>则还需额外执行image load命令以使调试信息生效） | image addAddCustom\_xxx.o              |
+        | target modules load –f kernel.o –s address | image load -f kernel.o -s address | 在程序运行后，使导入的调试信息生效                                                                                                                | image load -f AddCustom\_xxx.o -s 0    |
      
      
 5. 例子
@@ -189,37 +192,37 @@
      
      * 函数接口：`void AscendC::printf(__gm__ const char* fmt, Args&&... args)`
      * 参数说明:
-        | 参数名 | 输入/输出 | 描述 |
-        | --- | --- | --- |
-        | fmt | 输入 | 格式控制字符串，包含两种类型的对象：普通字符和转换说。支持的转化类型：<br>%d/%i: 输出十进制整数，支持打印数据类型：bool、int8_t、int16_t、int32_t、int64_t <br>%f: 输出实数，支持打印数据类型：float/half/bfloat16_t <br>%x: 输出十六进制整数，支持打印的数据类型：int8_t、int16_t、int32_t、int64_t、uint8_t、uint16_t、uint32_t、uint64_t <br> %s: 输出字符串 <br> %u: 输出unsigned类型数据，支持打印的数据类型：bool、uint8_t、uint16_t、uint32_t、uint64_t <br>%p: 输出指针地址 |
-        | args | 输入 | 附加参数，个数和类型可变的参数列表：根据不同的fmt字符串，函数可能需要一系列的附加参数，每个参数包含了一个要被插入的值，替换了fmt参数中指定的每个%标签。参数的个数应与%标签的个数相同。 |
+        | 参数名 | 输入/输出 | 描述                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+        | ------ | --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+        | fmt    | 输入      | 格式控制字符串，包含两种类型的对象：普通字符和转换说。支持的转化类型：<br>%d/%i: 输出十进制整数，支持打印数据类型：bool、int8_t、int16_t、int32_t、int64_t <br>%f: 输出实数，支持打印数据类型：float/half/bfloat16_t <br>%x: 输出十六进制整数，支持打印的数据类型：int8_t、int16_t、int32_t、int64_t、uint8_t、uint16_t、uint32_t、uint64_t <br> %s: 输出字符串 <br> %u: 输出unsigned类型数据，支持打印的数据类型：bool、uint8_t、uint16_t、uint32_t、uint64_t <br>%p: 输出指针地址 |
+        | args   | 输入      | 附加参数，个数和类型可变的参数列表：根据不同的fmt字符串，函数可能需要一系列的附加参数，每个参数包含了一个要被插入的值，替换了fmt参数中指定的每个%标签。参数的个数应与%标签的个数相同。                                                                                                                                                                                                                                                                                              |
             
        
 
 * AscendC::DumpTensor：使用该接口Dump指定Tensor的内容, 目前只支持打印存储位置为Unified Buffer、L1 Buffer、L0C Buffer、Global Memory的Tensor信息。[官方文档](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/83RC1alpha001/API/ascendcopapi/atlasascendc_api_07_0192.html)
   * 函数接口:
 
-```
-# 不带Tensor shape的打印
-   template <typename T>
-   __aicore__ inline void DumpTensor(const LocalTensor<T> &tensor, uint32_t desc, uint32_t dumpSize)
-   template <typename T>
-   __aicore__ inline void DumpTensor(const GlobalTensor<T>& tensor, uint32_t desc, uint32_t dumpSize)
-# 带Tensor shape的打印
-   template <typename T>
-   __aicore__ inline void DumpTensor(const LocalTensor<T>& tensor, uint32_t desc, uint32_t dumpSize, const ShapeInfo& shapeInfo)
-   template <typename T>
-   __aicore__ inline void DumpTensor(const GlobalTensor<T>& tensor, uint32_t desc, uint32_t dumpSize, const ShapeInfo& shapeInfo)
-```
+      ```
+      # 不带Tensor shape的打印
+         template <typename T>
+         __aicore__ inline void DumpTensor(const LocalTensor<T> &tensor, uint32_t desc, uint32_t dumpSize)
+         template <typename T>
+         __aicore__ inline void DumpTensor(const GlobalTensor<T>& tensor, uint32_t desc, uint32_t dumpSize)
+      # 带Tensor shape的打印
+         template <typename T>
+         __aicore__ inline void DumpTensor(const LocalTensor<T>& tensor, uint32_t desc, uint32_t dumpSize, const ShapeInfo& shapeInfo)
+         template <typename T>
+         __aicore__ inline void DumpTensor(const GlobalTensor<T>& tensor, uint32_t desc, uint32_t dumpSize, const ShapeInfo& shapeInfo)
+      ```
 
 * 参数说明：
 
-    | 参数名| 输入/输出 | 描述 |
-    | --- | --- | --- |
-    | tensor | 输入 | 需要dump的Tensor |
-    | decs | 输入 | 用户自定义的附加信息，用于区分Dump内容的来源 |
-    | dumpSize | 输入 | 需要dump的元素个数 |
-    | shapeInfo | 输入 | 传入Tensor的shape信息时，可以按照shape信息进行打印 |
+    | 参数名    | 输入/输出 | 描述                                               |
+    | --------- | --------- | -------------------------------------------------- |
+    | tensor    | 输入      | 需要dump的Tensor                                   |
+    | decs      | 输入      | 用户自定义的附加信息，用于区分Dump内容的来源       |
+    | dumpSize  | 输入      | 需要dump的元素个数                                 |
+    | shapeInfo | 输入      | 传入Tensor的shape信息时，可以按照shape信息进行打印 |
 
 3. 进行带有该功能的加速库编译
    在编译加速库的时候添加编译选项: `--ascendc_dump`，如果想直接使用加速库中的算子测试用例(kerneltest目录下)需要搭配上testframework进行编译。例如: `bash scripts/build.sh testframework --ascendc_dump --no-pybind`
