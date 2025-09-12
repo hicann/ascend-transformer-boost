@@ -92,7 +92,9 @@ Status ToppsampleRandTiling(const LaunchParam &launchParam, KernelInfo &kernelIn
                   << " perCoreRunNum "<< tilingDataPtr->perCoreRunNum
                   << " nlElePerCorePerRun " << tilingDataPtr->nlElePerCorePerRun
                   << " lElePerCoreLastRun " << tilingDataPtr->lElePerCoreLastRun
-                  << " tempUbEleAligened " << tilingDataPtr->tempUbEleAligened;
+                  << " tempUbEleAligened " << tilingDataPtr->tempUbEleAligened
+                  << "maxCore" << maxCore
+                  << " realCore " << realCore;
     return Status::OkStatus();
 }
 } // namespace AtbOps
