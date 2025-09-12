@@ -74,6 +74,9 @@ else()
     set(cxx_abi 0)
 endif()
 
+set(CMAKE_INSTALL_PREFIX "${CMAKE_SOURCE_DIR}/output/atb/cxx_abi_${cxx_abi}")
+message(STATUS "CMAKE_INSTALL_PREFIX:${CMAKE_INSTALL_PREFIX}")
+
 if(BUILD_PYBIND AND NOT USE_CXX11_ABI)
     add_subdirectory(${PROJECT_SOURCE_DIR}/3rdparty/pybind11)
 endif()
@@ -83,9 +86,9 @@ include_directories(
     ${PROJECT_SOURCE_DIR}/include
     ${PROJECT_SOURCE_DIR}/src
     ${PROJECT_SOURCE_DIR}/src/kernels/include
-    ${PROJECT_SOURCE_DIR}/comm/lcal/include
-    ${PROJECT_SOURCE_DIR}/comm/lcal/include/lcoc
-    ${PROJECT_SOURCE_DIR}/comm/lcal/include/lcoc/tiling
+    ${PROJECT_SOURCE_DIR}/src/kernels/lcal/include
+    ${PROJECT_SOURCE_DIR}/src/kernels/lcal/include/lcoc
+    ${PROJECT_SOURCE_DIR}/src/kernels/lcal/include/lcoc/tiling
     ${PROJECT_SOURCE_DIR}/3rdparty/mki/include
     ${PROJECT_SOURCE_DIR}/3rdparty/nlohmannJson/include
     $ENV{ASCEND_HOME_PATH}/include/aclnn
@@ -115,10 +118,6 @@ add_subdirectory(src)
 if (BUILD_CUSTOMIZE_OPS)
     add_subdirectory(ops_customize)
 endif()
-
-set(CMAKE_INSTALL_PREFIX "${CMAKE_SOURCE_DIR}/output/atb/cxx_abi_${cxx_abi}")
-add_subdirectory(comm/lcal)
-message(STATUS "CMAKE_INSTALL_PREFIX:${CMAKE_INSTALL_PREFIX}")
 
 install(FILES ${PROJECT_SOURCE_DIR}/scripts/set_env.sh DESTINATION ./..)
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/ops_configs DESTINATION ./configs)

@@ -12,7 +12,6 @@ set(ops_train_directory ${CMAKE_CURRENT_LIST_DIR}/ops_train)
 set(ops_infer_directory ${CMAKE_CURRENT_LIST_DIR}/ops_infer)
 set(ops_common_directory ${CMAKE_CURRENT_LIST_DIR}/ops_common)
 set(atb_directory ${CMAKE_CURRENT_LIST_DIR}/atb)
-set(c_interface_directory ${CMAKE_CURRENT_LIST_DIR}/cinterface)
 set(MSTX_PATH $ENV{ASCEND_HOME_PATH}/tools/mstx/include)
 set(ATB_INCLUDE_DIR $ENV{ASCEND_HOME_PATH}/include)
 
@@ -22,7 +21,6 @@ file(GLOB_RECURSE INFER_OP_SOURCE "${ops_infer_directory}/*.cpp")
 file(GLOB_RECURSE TRAIN_OP_SOURCE "${ops_train_directory}/*.cpp")
 file(GLOB_RECURSE COMMON_OP_SOURCE "${ops_common_directory}/*.cpp")
 file(GLOB_RECURSE ATB_FRAMEWORK_SOURCE "${atb_directory}/*.cpp")
-file(GLOB_RECURSE C_INTERFACE_SOURCE "${c_interface_directory}/*.cpp")
 
 add_subdirectory(kernels)
 
