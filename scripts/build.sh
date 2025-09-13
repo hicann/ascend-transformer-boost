@@ -322,7 +322,7 @@ function fn_get_cxx_abi_string()
 function fn_copy_tbe_adapter()
 {
     if [ -z $ATB_BUILD_DEPENDENCY_PATH ]; then
-        ATB_BUILD_DEPENDENCY_PATH=/usr/local/Ascned/nnal/atb/latest/$(fn_get_cxx_abi_string)
+        ATB_BUILD_DEPENDENCY_PATH=/usr/local/Ascend/nnal/atb/latest/$(fn_get_cxx_abi_string)
     fi
 
     if [ ! -f $ATB_BUILD_DEPENDENCY_PATH/lib/libtbe_adapter.so ]; then
