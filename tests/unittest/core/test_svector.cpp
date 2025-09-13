@@ -15,7 +15,7 @@
 #include <gtest/gtest.h>
 #include <iostream>
 #include <atb/utils/log.h>
-#include <atb/core/runner_variant_pack.h>
+#include <atb/utils/runner_variant_pack.h>
 #include "atb/utils/tensor_util.h"
 #include "atb/utils/config.h"
 

@@ -9,7 +9,7 @@
     2. source [nnal安装路径]/set_env.sh
         默认：source /usr/local/Ascend/nnal/atb/set_env.sh
         1. 如果使用加速库源码编译，source [加速库源码路径]/output/atb/set_env.sh
-        e.g. source ./ascend-transformer-boost/atb/set_env.sh
+        e.g. source ./ascend-transformer-boost/output/atb/set_env.sh
 
 - 编译、运行demo
     - bash build.sh

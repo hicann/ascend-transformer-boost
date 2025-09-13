@@ -11,11 +11,11 @@
 #include "atb/utils/param_to_json.h"
 #include "dynamic_ntk_ops_runner.h"
 #include "atb/utils/tensor_check.h"
-#include "atb/core/atb_operation_ir_cfg.h"
+#include "atb/operation/atb_operation_ir_cfg.h"
 #include "atb/utils/config.h"
 #include "atb/utils/tensor_util.h"
 #include "atb/utils/operation_util.h"
-#include "atb/core/op_param_funcs.h"
+#include "atb/operation/op_param_funcs.h"
 
 static const uint32_t IN_TENSOR_SEQLENS = 2;
 static const uint32_t OUT_TENSOR_NUM = 2;

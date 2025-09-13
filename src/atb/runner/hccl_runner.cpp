@@ -12,7 +12,7 @@
 #include <mki/utils/file_system/file_system.h>
 #include <atb/utils/log.h>
 #include <mki/utils/share_memory/share_memory.h>
-#include "atb/core/comm_pool.h"
+#include "atb/utils/comm_pool.h"
 #include "atb/utils.h"
 #include "atb/utils/log.h"
 #include "atb/utils/config.h"
