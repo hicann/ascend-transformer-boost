@@ -42,9 +42,27 @@
 
 # 调试相关环境变量
 
-* `ATB_STREAM_SYNC_EVERY_KERNEL_ENABLE`: 用于问题定位，确定报错所在的算子kernel。当变量配置为1时，每个算子kernel的Execute结束时就做流同步(`aclrtSynchronizeStream`)。
+## 环境变量介绍
+
+* `ATB_STREAM_SYNC_EVERY_OPERATION_ENABLE`: 用于问题定位，确定报错所在的Operation。当变量配置为1时，每个Operation的Execute结束时就做流同步(`aclrtSynchronizeStream`)。
 * `ATB_STREAM_SYNC_EVERY_RUNNER_ENABLE`: 用于问题定位，确定报错所在的Runner。当变量配置为1时，每个Runner的Execute结束时就做流同步。
-* `ATB_STREAM_SYNC_EVERY_OPERATION_ENABLE`: 用于问题定位，确定报错所在的Operation。当变量配置为1时，每个Operation的Execute结束时就做流同步。
+* `ATB_STREAM_SYNC_EVERY_KERNEL_ENABLE`: 用于问题定位，确定报错所在的算子kernel。当变量配置为1时，每个算子kernel的Execute结束时就做流同步。
+
+## 例子
+
+以llama模型的Decoder_layer为例
+* 当不开启环境变量时
+
+   ![image](images/llama_normal.png)
+* 当开启环境变量`export ATB_STREAM_SYNC_EVERY_OPERATION_ENABLE=1`
+
+   ![image](images/llama_sync_op.png)
+* 当开启环境变量`export ATB_STREAM_SYNC_EVERY_RUNNER_ENABLE=1`
+
+   ![image](images/llama_sync_runner.png)
+* 当开启环境变量`export ATB_STREAM_SYNC_EVERY_KERNEL_ENABLE=1`
+
+   ![image](images/llama_sync_kernel.png)
 
 # 调试工具推荐
 
