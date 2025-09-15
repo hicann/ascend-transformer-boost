@@ -70,7 +70,7 @@ tests/apitest/opstest/python/operations/rms_norm/
 
 - **rms_norm_qwen_demo_1.cpp**
 
-    【注】：编译脚本内替换 rms_norm_demo.cpp 为 rope_qwen_demo_2.cpp 可编译运行
+    【注】：编译脚本内替换 rms_norm_demo.cpp 为 rms_norm_qwen_demo_1.cpp 可编译运行
 
     **参数设置**
     |        Param        |                        value                         |
@@ -94,7 +94,7 @@ tests/apitest/opstest/python/operations/rms_norm/
 
 - **rms_norm_qwen_demo_2.cpp**
 
-    【注】：编译脚本内替换 rms_norm_demo.cpp 为 rope_qwen_demo_0.cpp 可编译运行
+    【注】：编译脚本内替换 rms_norm_demo.cpp 为 rms_norm_qwen_demo_2.cpp 可编译运行
 
     **参数设置**
     |        Param        |                        value                         |
