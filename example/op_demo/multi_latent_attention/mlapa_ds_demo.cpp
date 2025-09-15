@@ -137,6 +137,11 @@ atb::Status RunDemo(atb::Operation *mlaOp, atb::Context *context, void *stream, 
 
 int main(int argc, char **argv)
 {
+    if (!Is910B()) {
+        std::cout << "This malpa demo only supports A2/A3 products" << std::endl;
+        return 0;
+    }
+
     std::string dtypeStr;
     int tokenNum = 32;
     int headNum = 128;
@@ -156,12 +161,6 @@ int main(int argc, char **argv)
     void *stream = nullptr;
 
     CHECK_STATUS(aclInit(nullptr));
-    if (!Is910B()) {
-        std::cout << "This malpa demo only supports A2/A3 products" << std::endl;
-        CHECK_STATUS(aclFinalize());
-        return 0;
-    }
-
     CHECK_STATUS(aclrtSetDevice(DEVICE_ID));
     CHECK_STATUS(atb::CreateContext(&context));
     CHECK_STATUS(aclrtCreateStream(&stream));
