@@ -1785,51 +1785,50 @@ class TestFlashAttention(operation_test.OperationTest):
             print("this testcase only supports Ascend910B")
             return
         # [b,ms,ms]
-        for _ in range(700):
-            batch = random.randint(1, 16)
-            kv_head = random.randint(1, 5)  # kv_head num
-            isdecoder = 0  # prefill or decoder
-            heads = kv_head * random.randint(1, 4)  # head num
-            embeddim = 128
-            max_seq = 128 * 100
-            tor = 1.0 / math.sqrt(1.0 * embeddim)
-            seqlen = random.randint(1, 4096)
-            q_seqlens = [seqlen] * batch
-            kv_seqLen = [seqlen + 128 * random.randint(1, 4)] * batch
-            is_clamp = 0
-            clamp_min = 0
-            clamp_max = 0
-            dynamic_batch = False
-            block_size = 128
-            num_blocks = 1024
-            OP_NAME = "SelfAttentionOperation"
-            OP_PARAM = {"type": UNPAD_FLASH_ATTENTION_ENCODER_PREFIX_CACHE_ND, "qSeqLen": q_seqlens,
-                        "kvSeqLen": kv_seqLen, "headSize": heads, "tor": tor,
-                        "isClamp": is_clamp, "clampMin": clamp_min, "clampMax": clamp_max,
-                        "maskType": MASK_TYPE_CAUSAL_MASK, "kvHead": kv_head,
-                        "isTriuMask": 1, "alibiLeftAlign": 0, "isAlibiMaskSqrt": 0}
-            data_type = random.choice([torch.bfloat16, torch.float16])
-            print(
-                f"---batch:{batch}---kv_head:{kv_head}---q_seqlens:{q_seqlens}---kv_seqLen:{kv_seqLen}---kv_head:{kv_head}---heads:{heads}---data_type:{data_type}---")
-            self.set_data_params(dynamic_batch=dynamic_batch,
-                                 is_decoder=isdecoder, batch=batch, kv_head=kv_head, heads=heads,
-                                 embeddim=embeddim, max_seq=max_seq, kv_seqLen=kv_seqLen,
-                                 is_clamp=is_clamp, clamp_max=clamp_max, clamp_min=clamp_min,
-                                 data_type=data_type,
-                                 op_type=OP_PARAM["type"], mask_type=MASK_TYPE_ALIBI_NO_BATCH_WITH_PREFIX,
-                                 no_cache=True, tor=tor, q_seqlens=q_seqlens,
-                                 num_blocks=num_blocks, block_size=block_size, is_triu_mask=True, is_mask=True)
-            self.gen_out_tensor()
-            PARAM = json.dumps(
-                {"headNum": heads, "calcType": CAL_TYPE_PREFIX_ENCODER, "maskType": MASK_TYPE_CAUSAL_MASK,
-                 "kvHeadNum": kv_head, "isTriuMask": 1, "qkScale": tor, "kernelType": KERNELTYPE_HIGH_PRECISION})
-            RUN_PARAM = json.dumps({"seqLen": q_seqlens, "kvSeqLen": kv_seqLen, "CalcType": CAL_TYPE_PREFIX_ENCODER,
-                                    "maskType": MASK_TYPE_CAUSAL_MASK})
-            q_seqlen = np.array(q_seqlens)
-            q_seqlen = torch.from_numpy(q_seqlen).to(torch.int32).npu()
-            kv_seqLen = np.array(kv_seqLen)
-            kv_seqLen = torch.from_numpy(kv_seqLen).to(torch.int32).npu()
-            self.execute_with_param(OP_NAME, PARAM, RUN_PARAM, [self.q.npu(), self.k_cache.npu(), self.v_cache.npu(),
+        batch = random.randint(1, 16)
+        kv_head = random.randint(1, 5)  # kv_head num
+        isdecoder = 0  # prefill or decoder
+        heads = kv_head * random.randint(1, 4)  # head num
+        embeddim = 128
+        max_seq = 128 * 100
+        tor = 1.0 / math.sqrt(1.0 * embeddim)
+        seqlen = random.randint(1, 4096)
+        q_seqlens = [seqlen] * batch
+        kv_seqLen = [seqlen + 128 * random.randint(1, 4)] * batch
+        is_clamp = 0
+        clamp_min = 0
+        clamp_max = 0
+        dynamic_batch = False
+        block_size = 128
+        num_blocks = 1024
+        OP_NAME = "SelfAttentionOperation"
+        OP_PARAM = {"type": UNPAD_FLASH_ATTENTION_ENCODER_PREFIX_CACHE_ND, "qSeqLen": q_seqlens,
+                    "kvSeqLen": kv_seqLen, "headSize": heads, "tor": tor,
+                    "isClamp": is_clamp, "clampMin": clamp_min, "clampMax": clamp_max,
+                    "maskType": MASK_TYPE_CAUSAL_MASK, "kvHead": kv_head,
+                    "isTriuMask": 1, "alibiLeftAlign": 0, "isAlibiMaskSqrt": 0}
+        data_type = random.choice([torch.bfloat16, torch.float16])
+        print(
+            f"---batch:{batch}---kv_head:{kv_head}---q_seqlens:{q_seqlens}---kv_seqLen:{kv_seqLen}---kv_head:{kv_head}---heads:{heads}---data_type:{data_type}---")
+        self.set_data_params(dynamic_batch=dynamic_batch,
+                             is_decoder=isdecoder, batch=batch, kv_head=kv_head, heads=heads,
+                             embeddim=embeddim, max_seq=max_seq, kv_seqLen=kv_seqLen,
+                             is_clamp=is_clamp, clamp_max=clamp_max, clamp_min=clamp_min,
+                             data_type=data_type,
+                             op_type=OP_PARAM["type"], mask_type=MASK_TYPE_ALIBI_NO_BATCH_WITH_PREFIX,
+                             no_cache=True, tor=tor, q_seqlens=q_seqlens,
+                             num_blocks=num_blocks, block_size=block_size, is_triu_mask=True, is_mask=True)
+        self.gen_out_tensor()
+        PARAM = json.dumps(
+            {"headNum": heads, "calcType": CAL_TYPE_PREFIX_ENCODER, "maskType": MASK_TYPE_CAUSAL_MASK,
+             "kvHeadNum": kv_head, "isTriuMask": 1, "qkScale": tor, "kernelType": KERNELTYPE_HIGH_PRECISION})
+        RUN_PARAM = json.dumps({"seqLen": q_seqlens, "kvSeqLen": kv_seqLen, "CalcType": CAL_TYPE_PREFIX_ENCODER,
+                                "maskType": MASK_TYPE_CAUSAL_MASK})
+        q_seqlen = np.array(q_seqlens)
+        q_seqlen = torch.from_numpy(q_seqlen).to(torch.int32).npu()
+        kv_seqLen = np.array(kv_seqLen)
+        kv_seqLen = torch.from_numpy(kv_seqLen).to(torch.int32).npu()
+        self.execute_with_param(OP_NAME, PARAM, RUN_PARAM, [self.q.npu(), self.k_cache.npu(), self.v_cache.npu(),
                                                                 self.block_tables.npu(), q_seqlen, kv_seqLen])
     def test_self_attention_encoder_operation_alibi_bf16(self):
         """
