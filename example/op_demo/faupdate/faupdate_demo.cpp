@@ -17,6 +17,7 @@ const uint32_t LOCALOUT_DIM_0 = 8;
 const uint32_t LOCALOUT_DIM_1 = 512;
 const uint32_t LOCALOUT_DIM_2 = 8;
 const uint32_t SP_PARA_DEGREE = 8;
+
 /**
  * @brief 准备atb::VariantPack
  * @param contextPtr context指针
@@ -60,6 +61,12 @@ int main(int argc, char **argv)
     void *stream = nullptr;
 
     CHECK_STATUS(aclInit(nullptr));
+    if (!Is910B()) {
+        std::cout << "This faupdate demo only supports A2/A3 products" << std::endl;
+        CHECK_STATUS(aclFinalize());
+        return 0;
+    }
+
     CHECK_STATUS(aclrtSetDevice(DEVICE_ID));
     CHECK_STATUS(atb::CreateContext(&context));
     CHECK_STATUS(aclrtCreateStream(&stream));

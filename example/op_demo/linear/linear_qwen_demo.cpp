@@ -63,6 +63,12 @@ int main(int argc, char **argv)
     void *stream = nullptr;
 
     CHECK_STATUS(aclInit(nullptr));
+    if (!Is910B()) {
+        std::cout << "This linear demo only supports A2/A3 products" << std::endl;
+        CHECK_STATUS(aclFinalize());
+        return 0;
+    }
+
     CHECK_STATUS(aclrtSetDevice(DEVICE_ID));
     CHECK_STATUS(atb::CreateContext(&context));
     CHECK_STATUS(aclrtCreateStream(&stream));

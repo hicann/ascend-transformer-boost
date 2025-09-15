@@ -39,15 +39,15 @@
 
 ## 产品支持情况
 
-本op在Atlas A2/A3系列和Atlas 推理系列产品上实现有所区别
+本op在Atlas A2/A3系列和Atlas 推理系列产品上实现有所区别。
 
 ### 场景说明
 
 提供demo分别对应，编译运行时需要对应更改build脚本：
 
 1. 基础场景：
-    - linear_demo.cpp<br>
-    默认编译脚本可编译运行  
+    - linear_demo.cpp  
+    默认编译脚本可编译运行，若未特别说明，则该demo支持Atlas A2/A3系列和Atlas 推理系列产品上运行。  
         **参数设置**：
 
         |  成员名称    | 取值               |
@@ -68,8 +68,8 @@
         | `bias`     | float16  | nd       | [1, 2]   | npu     |
         | `output`   | float16  | nd       | [2, 2]   | npu     |
 
-    - linear_ds_demo.cpp
-
+    - linear_ds_demo.cpp  
+        该demo仅支持在Atlas A2/A3系列产品上运行。  
         **参数设置**：
 
         | 成员名称     | 取值               |
@@ -87,10 +87,10 @@
         | ---------- | -------- | -------- | ----------- | :------ |
         | `x`        | float    | nd       | [512, 7168] | npu     |
         | `weight`   | float    | nd       | [256, 7168] | npu     |
-        | `output`   | bf16     | nd       | [512, 256]  | npu     |
+        | `output`   | float    | nd       | [512, 256]  | npu     |
 
-    - linear_qwen_demo.cpp
-
+    - linear_qwen_demo.cpp  
+        该demo仅支持在Atlas A2/A3系列产品上运行。  
         **参数设置**：
 
         |  成员名称    | 取值               |
@@ -109,8 +109,8 @@
         | `x`        | bf16     | nd       | [1, 1728]    | npu     |
         | `weight`   | bf16     | nz       | [1728, 5120] | npu     |
         | `output`   | bf16     | nd       | [1, 5120]    | npu     |
-    - linear_qwen_bias_demo.cpp
-
+    - linear_qwen_bias_demo.cpp  
+        该demo仅支持在Atlas A2/A3系列产品上运行。  
         **参数设置**：
 
         | 成员名称     | 取值               |
@@ -137,6 +137,7 @@
     `g++ -D_GLIBCXX_USE_CXX11_ABI=$cxx_abi -I "${ATB_HOME_PATH}/include" -I "${ASCEND_HOME_PATH}/include" -L "${ATB_HOME_PATH}/lib" -L "${ASCEND_HOME_PATH}/lib64" linear_einsum_demo.cpp demo_util.h -l atb -l ascendcl -o linear_einsum_demo`
     - 运行时调用：
     `./linear_einsum_demo`
+    - 该demo仅支持在Atlas A2/A3系列产品上运行
     - linear_einsum_demo.cpp
 
         **参数设置**：
@@ -152,15 +153,15 @@
 
         **数据规格**：  
 
-        | tensor名字 | 数据类型  | 数据格式  | 维度信息  | cpu/npu |
-        | ---------- | -------- | -------- | --------- | ------- |
-        | `x`        | float16  | nd       | [2, 1, 3] | npu     |
-        | `weight`   | float16  | nd       | [1, 3, 2] | npu     |
-        | `output`   | float16  | nd       | [2, 1, 2] | npu     |
+        | tensor名字 | 数据类型  | 数据格式  |  维度信息        | cpu/npu |
+        | ---------- | -------- | -------- | --------------- | ------- |
+        | `x`        | float16  | nd       | [32, 128, 512]  | npu     |
+        | `weight`   | float16  | nd       | [128, 512, 128] | npu     |
+        | `output`   | float16  | nd       | [32, 128, 512]  | npu     |
 3. 量化场景
 
-    - linear_dequant_demo.cpp
-
+    - linear_dequant_demo.cpp  
+        该demo仅支持在Atlas A2/A3系列产品上运行。  
         **参数设置**：
 
         | 成员名称     | 取值               |
@@ -184,7 +185,6 @@
 
 
     - linear_dequant_ds_demo.cpp  
-
         **参数设置**：
 
         | 成员名称     | 取值               |
@@ -203,5 +203,5 @@
         | `x`        | int8     | nd       | [32, 16384]   | npu     |
         | `weight`   | int8     | nd       | [7168, 16384] | npu     |
         | `bias`     | int32    | nd       | [1, 7168]     | npu     |
-        | `deqScale` | float    | nd       | [1, 7168]     | npu     |
-        | `output`   | bf16     | nd       | [32, 7168]    | npu     |
+        | `deqScale` | int64    | nd       | [1, 7168]     | npu     |
+        | `output`   | fp16     | nd       | [32, 7168]    | npu     |

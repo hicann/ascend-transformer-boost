@@ -72,7 +72,7 @@ int main(int argc, char **argv)
 
     CHECK_STATUS(aclInit(nullptr));
     if (!Is910B()) {
-        std::cout << "This linear demo only supports A2/A3" << std::endl;
+        std::cout << "This linear demo only supports A2/A3 products" << std::endl;
         CHECK_STATUS(aclFinalize());
         return 0;
     }
