@@ -40,6 +40,12 @@
 
 按照上述方法既可以找到组图中除pluginOp以外加速库算子的信息。
 
+# 调试相关环境变量
+
+* `ATB_STREAM_SYNC_EVERY_KERNEL_ENABLE`: 用于问题定位，确定报错所在的算子kernel。当变量配置为1时，每个算子kernel的Execute结束时就做流同步(`aclrtSynchronizeStream`)。
+* `ATB_STREAM_SYNC_EVERY_RUNNER_ENABLE`: 用于问题定位，确定报错所在的Runner。当变量配置为1时，每个Runner的Execute结束时就做流同步。
+* `ATB_STREAM_SYNC_EVERY_OPERATION_ENABLE`: 用于问题定位，确定报错所在的Operation。当变量配置为1时，每个Operation的Execute结束时就做流同步。
+
 # 调试工具推荐
 
 ## 组图整网场景
@@ -67,15 +73,21 @@
 4. 例子
    
     * `msprof --application="bash build.sh"`：运行mla_preprocess的用例
-     ![image](images/performance_1.png)
-     ![image](images/performance_2.png)
+         
+         ![image](images/performance_1.png)
+
+         ![image](images/performance_2.png)
     * 查看性能数据：
-     ![image](images/performance_3.png)
+         
+         ![image](images/performance_3.png)
+
         * profiling流水：
-       通过`chrome://tracing`打开`msprof_{timestamp}.json`文件
-       ![image](images/performance_4.png)
+            通过`chrome://tracing`打开`msprof_{timestamp}.json`文件
+            
+            ![image](images/performance_4.png)
         * 算子性能数据：
-        ![image](images/performance_5.png)
+
+            ![image](images/performance_5.png)
 
 ### 精度
 
@@ -97,13 +109,17 @@
 4. 例子
    
    * 运行一个topktoppSamplingOp（其中有多个node）的csv用例：
-     ![image](images/precision_1.png)
+     
+      ![image](images/precision_1.png)
    * 查看dump tensor内容，其中前面的序号表示的是算子执行的顺序，如第一个算子为`TopKDescF16Kernel`、最后一个为`LogProbsSampleKernel`
-     ![image](images/precision_2.png)
+     
+      ![image](images/precision_2.png)
    * 以第一个算子TopkDescF16Kernel为例，`after目录`中存放的是`outTensors`、`before目录`中存放的是`inTensors`
-     ![image](images/precision_3.png)
+     
+      ![image](images/precision_3.png)
    * 读取tensor内容，以intensor0为例
-     ![image](images/precision_4.png)
+     
+      ![image](images/precision_4.png)
 
 ## 单算子调测场景
 
@@ -169,15 +185,19 @@
 5. 例子
    
    * `export LAUNCH_KERNEL_PATH={kernel.o}` ：设置需要调试的算子
-     ![image](images/msdebug_3.png)
+     
+      ![image](images/msdebug_3.png)
    * `msdebug python3 test_faster_gelu.py`：运行算子用例
-     ![image](images/msdebug_4.png)
+     
+      ![image](images/msdebug_4.png)
    * `b faster_gelu_forward.h:{row_num}`：设置断点并且运行
-     ![image](images/msdebug_5.png)
+     
+      ![image](images/msdebug_5.png)
    * `p inputGM`：打印变量的内容
-     ![image](images/msdebug_6.png)
+     
+      ![image](images/msdebug_6.png)
    * `x -m GM -f float16[] -c 1 -s 768 0x000012c041200000`：读取对应内存的内容
-     ![image](images/msdebug_7.png)
+      ![image](images/msdebug_7.png)
 
 ### AscendC_Dump
 
@@ -237,9 +257,11 @@
 5. 例子
    
    * 在faster_gelu_forward算子核函数中添加对应的打印内容：
-     ![image](images/ascendcDump_1.png)
-     ![image](images/ascendcDump_2.png)
+
+      ![image](images/ascendcDump_1.png)
+     
+      ![image](images/ascendcDump_2.png)
    * `bash scripts/build.sh testframework --ascendc_dump --no-pybind`：编译带有测试框架的加速库源码
    * `python3 activation/test_faster_gelu.py`：运行faster_gelu_forward算子用例
-     ![image](images/ascendcDump_3.png)
+      ![image](images/ascendcDump_3.png)
   
