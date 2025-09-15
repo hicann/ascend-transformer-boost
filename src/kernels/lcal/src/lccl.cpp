@@ -13,6 +13,7 @@
 #include <chrono>
 #include <mutex>
 #include <thread>
+#include <dlfcn.h>
 #include <acl/acl.h>
 
 #include <mki/utils/log/log.h>
@@ -25,6 +26,42 @@ using namespace chrono;
 using namespace Mki;
 
 namespace Lcal {
+using PFN_aclrtGetResInCurrentThread = int(*)(aclrtDevResLimitType type, uint32_t *);
+static PFN_aclrtGetResInCurrentThread g_aclGetResFunc = nullptr;
+static void *g_libHandle = nullptr;
+static std::mutex g_initMutex;
+
+bool InitAclFunctions()
+{
+    std::lock_guard<std::mutex> lock(g_initMutex);
+
+    if (g_libHandle != nullptr) {
+        return true;
+    }
+
+    const char *libPath = "libascendcl.so";
+    g_libHandle = dlopen(libPath, RTLD_LAZY | RTLD_LOCAL);
+    if (g_libHandle == nullptr) {
+        MKI_LOG(ERROR) << "Failed to load " << libPath << ": " << dlerror();
+        return false;
+    }
+
+    dlerror();
+
+    const char *funcName = "aclrtGetResInCurrentThread";
+    g_aclGetResFunc = reinterpret_cast<PFN_aclrtGetResInCurrentThread>(dlsym(g_libHandle, funcName));
+    const char *dlsymError = dlerror();
+    if (dlsymError != nullptr) {
+        MKI_LOG(WARN) << "Failed to load " << funcName << ": " << dlsymError;
+        dlclose(g_libHandle);
+        g_libHandle = nullptr;
+        g_aclGetResFunc = nullptr;
+        return false;
+    }
+
+    MKI_LOG(DEBUG) << "Successfully loaded " << libPath << "::" << funcName;
+    return true;
+}
 
 uint32_t GetLocalReduceBlockDum(int64_t dataSize)
 {
@@ -241,11 +278,15 @@ uint32_t Lccl::GetBlockNum(LcalType cclType, uint32_t rankSize, int64_t dataSize
         blockNum = blockNum / aivNumPerAic;
         limitType = aclrtDevResLimitType::ACL_RT_DEV_RES_CUBE_CORE;
     }
-    aclrtGetResInCurrentThread(limitType, &limitVal);
-    if (blockNum > limitVal) {
-        MKI_LOG(ERROR) << "Insufficient blockDim: Required blockNum(" << blockNum <<
-            ") exceeds limit (limitVal=" << limitVal << ", limitType=" << static_cast<int>(limitType) << ")";
-        return 0;
+    if (InitAclFunctions() && g_aclGetResFunc != nullptr) {
+        g_aclGetResFunc(limitType, &limitVal);
+        MKI_LOG(ERROR) << "Required blockNum(" << blockNum <<
+            ") limit:(limitVal=" << limitVal << ", limitType=" << static_cast<int>(limitType) << ")";
+        if (blockNum > limitVal) {
+            MKI_LOG(ERROR) << "Insufficient blockDim: Required blockNum(" << blockNum <<
+                ") exceeds limit (limitVal=" << limitVal << ", limitType=" << static_cast<int>(limitType) << ")";
+            return 0;
+        }
     }
     return blockNum;
 }
