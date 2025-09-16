@@ -13,7 +13,6 @@
 #include <chrono>
 #include <mutex>
 #include <thread>
-#include <dlfcn.h>
 #include <acl/acl.h>
 
 #include <mki/utils/log/log.h>
@@ -26,6 +25,7 @@ using namespace chrono;
 using namespace Mki;
 
 namespace Lcal {
+
 uint32_t GetLocalReduceBlockDum(int64_t dataSize)
 {
     constexpr int oneDataSize = 190 * 1024;
@@ -241,9 +241,10 @@ uint32_t Lccl::GetBlockNum(LcalType cclType, uint32_t rankSize, int64_t dataSize
         blockNum = blockNum / aivNumPerAic;
         limitType = aclrtDevResLimitType::ACL_RT_DEV_RES_CUBE_CORE;
     }
-    if (InitAclFunctions() && g_aclGetResFunc != nullptr) {
-        g_aclGetResFunc(limitType, &limitVal);
-        MKI_LOG(ERROR) << "Required blockNum(" << blockNum <<
+    
+    int res = comm_->CallAclRtGetRes(static_cast<int>(limitType), &limitVal);
+    if (res == LCAL_SUCCESS) {
+        MKI_LOG(DEBUG) << "Required blockNum(" << blockNum <<
             ") limit:(limitVal=" << limitVal << ", limitType=" << static_cast<int>(limitType) << ")";
         if (blockNum > limitVal) {
             MKI_LOG(ERROR) << "Insufficient blockDim: Required blockNum(" << blockNum <<
