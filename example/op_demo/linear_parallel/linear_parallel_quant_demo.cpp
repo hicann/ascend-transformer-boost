@@ -86,6 +86,7 @@ atb::Status LinearParallelSample(int rank, int rankSize)
     CHECK_STATUS(atb::DestroyContext(context)); // 销毁context
     CHECK_STATUS(aclFinalize());
     std::cout << "demo excute success" << std::endl;
+    return atb::ErrorType::NO_ERROR;
 }
 
 int main(int argc, const char *argv[])
