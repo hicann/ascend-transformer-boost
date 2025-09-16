@@ -26,8 +26,8 @@ using namespace chrono;
 using namespace Mki;
 
 namespace Lcal {
-using PFN_aclrtGetResInCurrentThread = int(*)(aclrtDevResLimitType type, uint32_t *);
-static PFN_aclrtGetResInCurrentThread g_aclGetResFunc = nullptr;
+using LCAL_GET_RES_IN_CUR_THREAD = int(*)(aclrtDevResLimitType type, uint32_t *);
+static LCAL_GET_RES_IN_CUR_THREAD g_aclGetResFunc = nullptr;
 static void *g_libHandle = nullptr;
 static std::mutex g_initMutex;
 
@@ -45,11 +45,12 @@ bool InitAclFunctions()
         MKI_LOG(ERROR) << "Failed to load " << libPath << ": " << dlerror();
         return false;
     }
-
+    
+    // 清理错误信息
     dlerror();
 
     const char *funcName = "aclrtGetResInCurrentThread";
-    g_aclGetResFunc = reinterpret_cast<PFN_aclrtGetResInCurrentThread>(dlsym(g_libHandle, funcName));
+    g_aclGetResFunc = reinterpret_cast<LCAL_GET_RES_IN_CUR_THREAD>(dlsym(g_libHandle, funcName));
     const char *dlsymError = dlerror();
     if (dlsymError != nullptr) {
         MKI_LOG(WARN) << "Failed to load " << funcName << ": " << dlsymError;
@@ -61,6 +62,17 @@ bool InitAclFunctions()
 
     MKI_LOG(DEBUG) << "Successfully loaded " << libPath << "::" << funcName;
     return true;
+}
+
+void CleanupAclFunctions()
+{
+    std::lock_guard<std::mutex> lock(g_initMutex);
+
+    if (g_libHandle != nullptr) {
+        dlclose(g_libHandle);
+        g_libHandle = nullptr;
+    }
+    g_aclGetResFunc = nullptr;
 }
 
 uint32_t GetLocalReduceBlockDum(int64_t dataSize)
@@ -263,7 +275,7 @@ uint32_t Lccl::GetBlockNum(LcalType cclType, uint32_t rankSize, int64_t dataSize
                            int localRankSize, uint32_t extraFlag) const
 {
     if (comm_ == nullptr) {
-        MKI_LOG(ERROR) << "comm is nullptr" << __LINE__;
+        MKI_LOG(ERROR) << "comm is nullptr " << __LINE__;
         return 0;
     }
     uint32_t limitVal = 0;
@@ -530,6 +542,7 @@ Lccl::~Lccl()
     if (rankSize_ == -1 and comm_ != nullptr) {
         delete comm_;
     }
+    CleanupAclFunctions();
 }
 
 Lccl::Lccl(LcalComm *comm) : comm_(comm)
@@ -545,11 +558,13 @@ Lccl::Lccl(LcalComm *comm) : comm_(comm)
         }
         rankSize_ = -1;
     }
+    InitAclFunctions();
 }
 
 Lccl::Lccl(LcalComm &comm) : comm_(&comm)
 {
     rank_ = comm.rank_;
     rankSize_ = comm.rankSize_;
+    InitAclFunctions();
 }
 }
