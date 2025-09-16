@@ -88,6 +88,7 @@ int main(int argc, char **argv)
         std::cout << "This paged attention demo only supports Atlas inference products" << std::endl;
         return 0;
     }
+
     // 设置卡号、创建context、设置stream
     CHECK_STATUS(aclInit(nullptr));
     int32_t deviceId = 0;
