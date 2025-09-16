@@ -213,6 +213,7 @@ Status AllReduceOperation::QuantShapeCheck(const TensorDesc &scale, const Tensor
             return ERROR_INVALID_TENSOR_DIM;
         }
     }
+    
     if (param_.quantType == atb::infer::AllReduceParam::QUANT_TYPE_PER_CHANNEL) {
         // scale形状为[1,n]
         const int32_t scaleShapeNum = 2;
