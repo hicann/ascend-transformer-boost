@@ -26,55 +26,6 @@ using namespace chrono;
 using namespace Mki;
 
 namespace Lcal {
-using LCAL_GET_RES_IN_CUR_THREAD = int(*)(aclrtDevResLimitType type, uint32_t *);
-static LCAL_GET_RES_IN_CUR_THREAD g_aclGetResFunc = nullptr;
-static void *g_libHandle = nullptr;
-static std::mutex g_initMutex;
-
-bool InitAclFunctions()
-{
-    std::lock_guard<std::mutex> lock(g_initMutex);
-
-    if (g_libHandle != nullptr) {
-        return true;
-    }
-
-    const char *libPath = "libascendcl.so";
-    g_libHandle = dlopen(libPath, RTLD_LAZY | RTLD_LOCAL);
-    if (g_libHandle == nullptr) {
-        MKI_LOG(ERROR) << "Failed to load " << libPath << ": " << dlerror();
-        return false;
-    }
-    
-    // 清理错误信息
-    dlerror();
-
-    const char *funcName = "aclrtGetResInCurrentThread";
-    g_aclGetResFunc = reinterpret_cast<LCAL_GET_RES_IN_CUR_THREAD>(dlsym(g_libHandle, funcName));
-    const char *dlsymError = dlerror();
-    if (dlsymError != nullptr) {
-        MKI_LOG(WARN) << "Failed to load " << funcName << ": " << dlsymError;
-        dlclose(g_libHandle);
-        g_libHandle = nullptr;
-        g_aclGetResFunc = nullptr;
-        return false;
-    }
-
-    MKI_LOG(DEBUG) << "Successfully loaded " << libPath << "::" << funcName;
-    return true;
-}
-
-void CleanupAclFunctions()
-{
-    std::lock_guard<std::mutex> lock(g_initMutex);
-
-    if (g_libHandle != nullptr) {
-        dlclose(g_libHandle);
-        g_libHandle = nullptr;
-    }
-    g_aclGetResFunc = nullptr;
-}
-
 uint32_t GetLocalReduceBlockDum(int64_t dataSize)
 {
     constexpr int oneDataSize = 190 * 1024;
@@ -542,7 +493,6 @@ Lccl::~Lccl()
     if (rankSize_ == -1 and comm_ != nullptr) {
         delete comm_;
     }
-    CleanupAclFunctions();
 }
 
 Lccl::Lccl(LcalComm *comm) : comm_(comm)
@@ -558,13 +508,11 @@ Lccl::Lccl(LcalComm *comm) : comm_(comm)
         }
         rankSize_ = -1;
     }
-    InitAclFunctions();
 }
 
 Lccl::Lccl(LcalComm &comm) : comm_(&comm)
 {
     rank_ = comm.rank_;
     rankSize_ = comm.rankSize_;
-    InitAclFunctions();
 }
 }
