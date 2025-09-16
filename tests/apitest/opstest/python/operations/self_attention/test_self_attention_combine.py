@@ -1274,7 +1274,7 @@ class TestFlashAttention(operation_test.OperationTest):
         self.dynamic_batch = False
         kv_seqLen = [114] * batch
         qSeqLen = [1] * batch
-        self.max_seq = max(max(kv_seqLen), max(qSeqLen))
+        self.max_seq = 256
         self.window_size = 16
         self.q_seqlen, self.q_ntokens = self.gen_seq_len(batch, [1] * batch)
         self.kv_seqlen, self.kv_ntokens = self.gen_seq_len(batch, kv_seqLen)
@@ -1285,20 +1285,20 @@ class TestFlashAttention(operation_test.OperationTest):
 
         self.q_scale = 1
         self.qk_scale = tor
-        self.cache_type = 1
+        self.cache_type = 0
         
         OP_NAME = "SelfAttentionOperation"
         OP_PARAM = {"type": 1}
         self.set_data_params(cache_type=self.cache_type, is_decoder=self.is_decoder, batch=batch, kv_head=kv_head, heads=self.heads,
                              embeddim=self.embeddim, max_seq=self.max_seq, kv_seqLen=kv_seqLen,
-                             data_type=data_type, long_seq = True,
-                             op_type=OP_PARAM["type"], mask_type = MASK_TYPE_SWA,
+                             data_type=data_type, long_seq = True, window_size=self.window_size,
+                             op_type=OP_PARAM["type"], mask_type = MASK_TYPE_NO_HEAD_DECODER,
                              no_cache=False, is_sqrt=False, tor=tor, q_seqlens=self.q_seqlen)
         self.gen_out_tensor()
         self.window_size = 16
         param = json.dumps(
             {"headNum": self.heads, "qScale": float(self.q_scale), "qkScale": float(self.qk_scale), "maskType": 7,
-             "kvcacheCfg": self.cache_type, "calcType": 2, "windowSize": self.window_size})
+             "kvcacheCfg": 1, "calcType": 2, "windowSize": self.window_size})
         
         self.param_seqlen = self.q_seqlen
         self.param_token_offset = self.kv_seqlen
@@ -1389,7 +1389,7 @@ class TestFlashAttention(operation_test.OperationTest):
         kv_seqLen = [32, 1024] * 4
         self.max_seq = 1024
         self.window_size = 64
-        self.cacheType = 1
+        self.cache_type = 1
         self.q_seqlen, self.q_ntokens = self.gen_seq_len(batch, [1] * batch)
         self.kv_seqlen, self.kv_ntokens = self.gen_seq_len(batch, kv_seqLen)
         self.layer_id = torch.from_numpy(np.array([0], dtype=np.int32)).to(torch.int32)
@@ -1405,8 +1405,8 @@ class TestFlashAttention(operation_test.OperationTest):
         OP_PARAM = {"type": 1}
         self.set_data_params(cache_type=self.cache_type, is_decoder=self.is_decoder, batch=batch, kv_head=self.kv_head,
                              heads=self.heads, embeddim=self.embeddim, max_seq=self.max_seq, kv_seqLen=kv_seqLen,
-                             data_type=data_type, long_seq = False, op_type=OP_PARAM["type"], mask_type = MASK_TYPE_SWA,
-                             no_cache=False, is_sqrt=False, tor=tor, q_seqlens=self.q_seqlen)
+                             data_type=data_type, long_seq = False, op_type=OP_PARAM["type"], mask_type = MASK_TYPE_NO_HEAD_DECODER,
+                             no_cache=False, is_sqrt=False, tor=tor, q_seqlens=self.q_seqlen, window_size=self.window_size)
         self.gen_out_tensor()
         self.window_size = 64
         
