@@ -141,7 +141,8 @@ Status ReshapeAndCacheTilingNdSiso(const LaunchParam &launchParam, KernelInfo &k
         for (uint32_t i = 0; i < SHAPE_DIMS; ++i) {
             tilingDataPtr->stride[i] = static_cast<uint32_t>(key.desc.strides[i]);
         }
-        if (tilingDataPtr->numTokens < SMALL_SHAPE) {
+        bool isAlign = (tilingDataPtr->numHeads * tilingDataPtr->headSizeK * tilingDataPtr->typeByte) % ALIGN == 0;
+        if (tilingDataPtr->numTokens < SMALL_SHAPE && isAlign) {
             tilingKey = TILING_ID_DTYPE * tilingDataPtr->typeByte
                         + TILING_ID_MODE * static_cast<uint32_t>(OpParam::ReshapeAndCache::RESHAPE_AND_CACHE_ND_SISO)
                         + TILING_ID_NCT;
@@ -158,7 +159,8 @@ Status ReshapeAndCacheTilingNdSiso(const LaunchParam &launchParam, KernelInfo &k
         ReshapeAndCacheTilingData *tilingDataPtr =
             reinterpret_cast<AtbOps::ReshapeAndCacheTilingData *>(kernelInfo.GetTilingHostAddr());
         blockDim = tilingDataPtr->numTokens < blockDim ? tilingDataPtr->numTokens : blockDim;
-        if (tilingDataPtr->numTokens < SMALL_SHAPE) {
+        bool isAlign = (tilingDataPtr->numHeads * tilingDataPtr->headSizeK * tilingDataPtr->typeByte) % ALIGN == 0;
+        if (tilingDataPtr->numTokens < SMALL_SHAPE && isAlign) {
             tilingKey = TILING_ID_DTYPE * tilingDataPtr->typeByte
                         + TILING_ID_MODE * static_cast<uint32_t>(OpParam::ReshapeAndCache::RESHAPE_AND_CACHE_ND_SISO);
         } else {

@@ -130,6 +130,7 @@ template <> Status CreateOperation(const infer::RmsNormParam &opParam, Operation
     OP_PARAM_RSV_CHECK(opParam.normParam);
     OP_PARAM_RSV_CHECK(opParam.preNormParam);
     OP_PARAM_RSV_CHECK(opParam.postNormParam);
+    ATB_LOG(INFO) << "CreateOperation with RmsNormParam: " << OpParamToJson(opParam);
     if (!EpsilonCheck(opParam)) {
         ATB_LOG(ERROR) << "Invalid epsilon, it's recommended to init a nonzero value for eps.";
         return ERROR_INVALID_PARAM;
