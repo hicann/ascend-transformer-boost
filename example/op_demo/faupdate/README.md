@@ -34,8 +34,6 @@
 本op在Atlas A2/A3系列和Atlas 推理系列产品上实现有所区别
 
 ## 场景说明
-所给Demo的场景说明如下：
-## 场景说明
 所给Demo的场景说明如下：  
 - faupdate_demo.cpp  
   该demo仅支持在Atlas A2/A3系列产品上运行。  
