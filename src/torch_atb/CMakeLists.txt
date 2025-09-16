@@ -11,6 +11,6 @@
 file(GLOB_RECURSE pybind11_source_files "*.cpp")
 pybind11_add_module(_C ${pybind11_source_files})
 set_target_properties(_C PROPERTIES OUTPUT_NAME "_C" SUFFIX ".so")
-target_link_options(_C PRIVATE -rdynamic -ldl -Wl,-z,relro -Wl,-z,now -Wl,-z,noexecstack -Wl,--build-id=none -fexceptions)
+target_link_options(_C PRIVATE -Wno-odr -rdynamic -ldl -Wl,-z,relro -Wl,-z,now -Wl,-z,noexecstack -Wl,--build-id=none -fexceptions)
 target_link_libraries(_C PRIVATE torch_npu)
 install(TARGETS _C DESTINATION ${CMAKE_SOURCE_DIR}/output/torch_atb)
