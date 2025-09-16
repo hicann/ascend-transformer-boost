@@ -150,11 +150,6 @@ atb::Status RunDemo(atb::Context *context, void *stream, aclDataType dtype, int 
 
 int main(int argc, char **argv)
 {
-    if (!Is910B()) {
-        std::cout << "This malpa demo only supports A2/A3 products" << std::endl;
-        return 0;
-    }
-    
     std::string dtypeStr;
     int tokenNum = 4;
     int headNum = 128;

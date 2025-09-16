@@ -130,11 +130,6 @@ atb::Status PrepareOperation(atb::Operation **reshapeAndCacheOp)
 
 int main(int argc, char **argv)
 {
-    if (!Is310P()) {
-        std::cout << "This ReshapeAndCache demo only supports Atlas inference products" << std::endl;
-        return 0;
-    }
-
     // 设置卡号、创建context、设置stream
     CHECK_STATUS(aclInit(nullptr));
     int32_t deviceId = 0;

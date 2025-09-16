@@ -115,11 +115,6 @@ atb::Status PrepareOperation(atb::Operation **encoderOp)
 
 int main(int argc, char **argv)
 {
-    if (!Is910B()) {
-        std::cout << "This self attention demo only supports Atlas A2/A3 products" << std::endl;
-        return 0;
-    }
-
     // kv隐藏层大小，用于输出tensor shape
     uint32_t kvHiddenSize = KV_HEAD_NUM * HEAD_SIZE;
     // 设置卡号、创建context、设置stream

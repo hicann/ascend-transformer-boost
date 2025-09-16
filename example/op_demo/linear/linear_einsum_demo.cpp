@@ -28,16 +28,16 @@ atb::Status PrepareInTensor(atb::Context *contextPtr, aclrtStream stream, atb::S
 {
     // 创建shape为[32, 128, 512]的输入x tensor
     atb::Tensor xFloat;
-    CreateTensorFromVector(contextPtr, stream, std::vector<float>{1, 2, 3, 4, 5, 6}, aclDataType::ACL_FLOAT16,
-                           aclFormat::ACL_FORMAT_ND, {XDIM_0, BATCHSIZE, XDIM_1}, xFloat);
+    CreateTensorFromVector(contextPtr, stream, std::vector<float>(XDIM_0 * BATCHSIZE * XDIM_1, 1),
+                           aclDataType::ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, {XDIM_0, BATCHSIZE, XDIM_1}, xFloat);
     // 创建shape为[128, 512, 128]的输入weight tensor
     atb::Tensor weightFloat;
-    CreateTensorFromVector(contextPtr, stream, std::vector<float>{1, 2, 3, 4, 5, 6}, aclDataType::ACL_FLOAT16,
-                           aclFormat::ACL_FORMAT_ND, {BATCHSIZE, WEIGHTDIM_0, WEIGHTDIM_1}, weightFloat);
+    CreateTensorFromVector(contextPtr, stream, std::vector<float>(BATCHSIZE * WEIGHTDIM_0 * WEIGHTDIM_1, 2),
+                           aclDataType::ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, {BATCHSIZE, WEIGHTDIM_0, WEIGHTDIM_1},
+                           weightFloat);
     inTensors = {xFloat, weightFloat};
     return atb::ErrorType::NO_ERROR;
 }
-
 
 /**
  * @brief 创建一个linear operation
@@ -59,11 +59,6 @@ atb::Status CreateLinearOperation(atb::Operation **linearOp)
 
 int main(int argc, char **argv)
 {
-    if (!Is910B()) {
-        std::cout << "This linear demo only supports A2/A3 products" << std::endl;
-        return 0;
-    }
-
     // 设置卡号、创建context、设置stream
     atb::Context *context = nullptr;
     void *stream = nullptr;

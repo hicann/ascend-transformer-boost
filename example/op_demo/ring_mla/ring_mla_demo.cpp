@@ -164,10 +164,6 @@ atb::Status RunRingMLADemo(atb::Context *contextPtr, aclrtStream stream, atb::Op
 int main(int argc, char **argv)
 {
     CHECK_STATUS(aclInit(nullptr));
-    if (!Is910B()) {
-        std::cout << "RingMLA demo only supports Atlas A2/A3 products" << std::endl;
-        return 0;
-    }
     // 设置卡号、创建context、设置stream
     int32_t deviceId = 1;
     CHECK_STATUS(aclrtSetDevice(deviceId));

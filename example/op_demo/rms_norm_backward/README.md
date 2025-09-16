@@ -26,3 +26,6 @@
 ## 额外说明
 示例中生成的数据不代表实际场景，如需数据生成参考请查看python用例目录：
 tests/apitest/opstest/python/operations/rms_norm_backward/
+
+## 产品支持情况
+rms_norm_backward_demo.cpp仅支持Atlas A2/A3系列

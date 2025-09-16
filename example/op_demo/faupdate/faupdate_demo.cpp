@@ -12,10 +12,10 @@
 
 const int32_t DEVICE_ID = 0;
 const uint32_t LES_DIM_0 = 8;
-const uint32_t LES_DIM_1 = 512;
+const uint32_t LES_DIM_1 = 16384;
 const uint32_t LOCALOUT_DIM_0 = 8;
-const uint32_t LOCALOUT_DIM_1 = 512;
-const uint32_t LOCALOUT_DIM_2 = 8;
+const uint32_t LOCALOUT_DIM_1 = 16384;
+const uint32_t HEAD_SIZE = 128;
 const uint32_t SP_PARA_DEGREE = 8;
 
 /**
@@ -27,14 +27,14 @@ const uint32_t SP_PARA_DEGREE = 8;
  */
 atb::Status PrepareInTensor(atb::Context *contextPtr, aclrtStream stream, atb::SVector<atb::Tensor> &inTensors)
 {
-    // 创建shape为[8, 512]的输入grad tensor
+    // 创建shape为[8, 16384]的输入grad tensor
     atb::Tensor lse;
     CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<float>{1, 2, 3, 4, 5, 6}, ACL_FLOAT,
                                         aclFormat::ACL_FORMAT_ND, {LES_DIM_0, LES_DIM_1}, lse));
-    // 创建shape为[8, 512, 8]的输入weight tensor
+    // 创建shape为[8, 16384, 128]的输入weight tensor
     atb::Tensor localout;
     CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<float>{1, 2, 3, 4, 5, 6}, ACL_FLOAT,
-                                        aclFormat::ACL_FORMAT_ND, {LOCALOUT_DIM_0, LOCALOUT_DIM_1, LOCALOUT_DIM_2},
+                                        aclFormat::ACL_FORMAT_ND, {LOCALOUT_DIM_0, LOCALOUT_DIM_1, HEAD_SIZE},
                                         localout));
     inTensors = {lse, localout};
     return atb::ErrorType::NO_ERROR;
@@ -56,11 +56,6 @@ atb::Status CreateFaUpdateOperation(atb::Operation **faupdateOp)
 
 int main(int argc, char **argv)
 {
-    if (!Is910B()) {
-        std::cout << "This faupdate demo only supports A2/A3 products" << std::endl;
-        return 0;
-    }
-
     // 设置卡号、创建context、设置stream
     atb::Context *context = nullptr;
     void *stream = nullptr;
@@ -79,7 +74,7 @@ int main(int argc, char **argv)
     CHECK_STATUS(PrepareInTensor(context, stream, variantPack.inTensors)); // 放入输入tensor
     // 准备输出tensor
     atb::Tensor output;
-    CHECK_STATUS(CreateTensor(ACL_FLOAT, aclFormat::ACL_FORMAT_ND, {LOCALOUT_DIM_1, LOCALOUT_DIM_2}, output));
+    CHECK_STATUS(CreateTensor(ACL_FLOAT, aclFormat::ACL_FORMAT_ND, {LOCALOUT_DIM_1, HEAD_SIZE}, output));
     variantPack.outTensors = {output}; // 放入输出tensor
 
     uint64_t workspaceSize = 0;
