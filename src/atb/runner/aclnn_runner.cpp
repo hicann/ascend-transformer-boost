@@ -64,7 +64,7 @@ Status AclnnRunner::SetupImpl(RunnerVariantPack &runnerVariantPack)
     aclnnRet = aclSetAclOpExecutorRepeatable(this->aclnnExecutor_.get());
     if (aclnnRet != 0) {
         // 设置算子可复用失败，标记cache中executor不可复用
-        ATB_LOG(INFO) << this->GetName() << " call aclSetAclOpExecutorRepeatable fail: " << ret;
+        ATB_LOG(INFO) << this->GetName() << " call aclSetAclOpExecutorRepeatable fail with error code: " << aclnnRet;
         this->executorRepeatable_ = false;
     } else {
         // 设置算子可复用成功，标记cache中executor可复用

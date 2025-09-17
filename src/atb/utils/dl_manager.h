@@ -8,6 +8,9 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
+#ifndef ATB_DISKUTIL_H
+#define ATB_DISKUTIL_H
+
 #include <dlfcn.h>
 #include "atb/utils/log.h"
 
@@ -23,3 +26,4 @@ private:
     void *handle_ = nullptr;
 };
 } // namespace atb
+#endif
