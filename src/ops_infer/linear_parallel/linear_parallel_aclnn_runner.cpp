@@ -60,7 +60,7 @@ Status LinearParallelAclnnRunner::BuildAclnnVariantPack(const RunnerVariantPack 
     this->aclnnVariantPack_.aclInTensors.resize(LINEAR_REDUCE_SCATTER_IN_TENSOR_NUM);
     for (size_t i = 0; i < this->aclnnVariantPack_.aclInTensors.size(); ++i) {
         std::shared_ptr<AclNNTensor> aclnnTensorPtr = std::make_shared<AclNNTensor>();
-        if (i >= 3 && i != BIAS_TENSOR_INDEX) {
+        if (i >= 3 || (!param_.hasResidual && i == BIAS_TENSOR_INDEX)) {
             this->aclnnVariantPack_.aclInTensors[i] = aclnnTensorPtr;
             continue;
         }
