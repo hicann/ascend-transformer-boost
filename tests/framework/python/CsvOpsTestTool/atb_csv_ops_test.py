@@ -1012,6 +1012,7 @@ def get_abs_path_files_from_dir(input_dir):
             (file_name, ext) = os.path.splitext(file)
             if not re.search("_csvopstest_", file_name) and ext == '.csv':
                 abs_path_files.append(os.path.join(root, file))
+    abs_path_files.sort()
     return abs_path_files
 
 torch_load_framework()
