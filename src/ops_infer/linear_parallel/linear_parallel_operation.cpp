@@ -112,7 +112,7 @@ template <> Status CreateOperation(const infer::LinearParallelParam &opParam, Op
         return ERROR_INVALID_PARAM;
     }
     int rankSize = opParam.rankSize;
-    if (opParam.rankSize <= 0 || (rankSize & (rankSize - 1)) != 0) {
+    if ((opParam.rankSize <= 0 || (rankSize & (rankSize - 1)) != 0) && opParam.backend == "lcoc") {
         ATB_LOG(ERROR) << "LinearParallel rankSize support power of 2 but got [" << opParam.rankSize << "]";
         return ERROR_INVALID_PARAM;
     }
