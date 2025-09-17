@@ -62,7 +62,7 @@ Status AclnnRunner::SetupImpl(RunnerVariantPack &runnerVariantPack)
                   << "getWorkspace success, workspaceSize: " << this->atbVariantPack_.workspaceBufferSize
                   << ", workspace addr: " << this->atbVariantPack_.workspaceBuffer;
     aclnnRet = aclSetAclOpExecutorRepeatable(this->aclnnExecutor_.get());
-    if (ret != 0) {
+    if (aclnnRet != 0) {
         // 设置算子可复用失败，标记cache中executor不可复用
         ATB_LOG(INFO) << this->GetName() << " call aclSetAclOpExecutorRepeatable fail: " << ret;
         this->executorRepeatable_ = false;
@@ -143,6 +143,7 @@ Status AclnnRunner::PreExecuteImpl(RunnerVariantPack &runnerVariantPack)
 void AclnnRunner::UpdateWorkspace(const RunnerVariantPack &runnerVariantPack)
 {
     this->atbVariantPack_.workspaceBufferSize = runnerVariantPack.workspaceBufferSize;
+    this->atbVariantPack_.workspaceBuffer = runnerVariantPack.workspaceBuffer;
 }
 
 Status AclnnRunner::ExecuteImpl(RunnerVariantPack &runnerVariantPack)
