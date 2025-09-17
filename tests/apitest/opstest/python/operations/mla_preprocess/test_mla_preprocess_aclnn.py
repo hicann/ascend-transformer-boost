@@ -744,6 +744,108 @@ class TestMLAPrepross(operation_test.OperationTest):
             return [self.qOut_npu[..., 0:512], self.keyout_npu[..., 0:512], self.qOut_npu[..., 512:576], self.keyout_npu[..., 512:576]]
         else:
             return [self.qOut_npu, self.keyout_npu]
+    
+    def __test_mlapo_impl(
+        self,
+        data_type: torch.dtype,
+        num_tokens: int,
+        num_heads: int,
+        cache_mode: int,
+        quant_mode: int,
+        weight_format: int,
+    ) -> None:
+        self.calc_vec_mm_atb_data(num_tokens, num_heads, data_type, cache_mode, quant_mode)
+        self.set_param(
+            "MlaPreprocessOperation",
+            {"N": num_tokens, "headNum": num_heads, "cacheMode": cache_mode, "quantMode": quant_mode},
+        )
+        self.set_input_formats(
+            [
+                self.format_nd,
+                self.format_nd,
+                self.format_nd,
+                self.format_nd,
+                self.format_nd,
+                self.format_nz,  # self.wdqkv,
+                self.format_nd,
+                self.format_nd,
+                self.format_nd,
+                self.format_nd,
+                self.format_nd,
+                self.format_nd,
+                self.format_nd,
+                self.format_nd,
+                self.format_nd,
+                self.format_nd,
+                self.format_nd,
+                self.format_nd,
+                self.format_nz,  # self.wuq,
+                self.format_nd,
+                weight_format,  # self.wuk
+                self.format_nd,
+                self.format_nd,
+                self.format_nd,
+                self.format_nd,
+            ]
+        )
+        in_tensors = [
+            self.input1,
+            self.gamma1,
+            self.beta1,
+            self.quantScale1,
+            self.quantOffset1,
+            transdata(self.wdqkv, (16, 32)),  # self.wdqkv,
+            self.bias1,
+            self.gamma2,
+            self.beta2,
+            self.quantScale2,
+            self.quantOffset2,
+            self.gamma3,
+            self.sin1,
+            self.cos1,
+            self.sin2,
+            self.cos2,
+            self.keyCache,
+            self.slotMapping,
+            transdata(self.wuq, (16, 32)),  # self.wuq,
+            self.bias2,
+            self.wuk if weight_format == self.format_nd else transdata_3d(self.wuk),
+            self.deScale1,
+            self.deScale2,
+            self.quantScale3,
+            self.qNopeScale,
+        ]
+        if cache_mode == 0:
+            out_tensors = [
+                torch.zeros_like(self.qOut, dtype=data_type),
+                self.keyOutTensor,
+                torch.tensor([]),
+                torch.tensor([]),
+            ]
+        elif cache_mode == 1:
+            out_tensors = [
+                torch.zeros_like(self.qOut[..., :512], dtype=data_type),
+                self.keyOutTensor[..., :512],
+                torch.zeros_like(self.qOut[..., 512:], dtype=data_type),
+                self.keyOutTensor[..., 512:],
+            ]
+        elif cache_mode == 2:
+            out_tensors = [
+                torch.zeros_like(self.qOut[..., :512], dtype=torch.int8),
+                self.I8keyCache1,
+                torch.zeros_like(self.qOut[..., 512:], dtype=data_type),
+                self.keyCache2,
+            ]
+        else:
+            out_tensors = [
+                torch.zeros_like(self.qOut[..., :512], dtype=data_type),
+                self.FPkeyCache1,
+                torch.zeros_like(self.qOut[..., 512:], dtype=data_type),
+                self.keyCache2,
+            ]
+
+        self.execute(in_tensors, out_tensors)
+        return
 
     def compare_data(self, tensor1, tensor2):
         out = tensor1.flatten()
@@ -770,9 +872,9 @@ class TestMLAPrepross(operation_test.OperationTest):
     def golden_compare(self, out_tensors, golden_tensors):
         # self.compare_data(out_tensors.npu(), golden_tensors.npu())
         if self.cacheMode == 1:
-            print(f"qOut_npu npu max {torch.max(self.qOut_npu.clone()[..., 0:512].cpu())} min {torch.min(self.qOut_npu.clone()[..., 0:512].cpu())}")
+            print(f"qOut_npu npu max {torch.max(self.qOut_npu.clone().detach()[..., 0:512].cpu())} min {torch.min(self.qOut_npu.clone().detach()[..., 0:512].cpu())}")
             print(f"qout max {torch.max(self.qOut.clone()[..., 0:512].cpu())} min {torch.min(self.qOut.clone()[..., 0:512].cpu())}")
-            print(f"out_tensors max {torch.max(out_tensors.clone()[..., 0:512].cpu())} min {torch.min(out_tensors.clone()[..., 0:512].cpu())}")
+            print(f"out_tensors max {torch.max(out_tensors[..., 0:512].cpu())} min {torch.min(out_tensors[..., 0:512].cpu())}")
             if self.compare_count == 0:
                 self.compare_count += 1
                 return compare_cv(self.qOut_npu[..., 0:512].npu(), self.qOut[..., 0:512].npu(), out_tensors.npu())
@@ -797,7 +899,6 @@ class TestMLAPrepross(operation_test.OperationTest):
             return
         self.compare_count = 0
         self.cacheMode = 1
-        N = 32
         headNum = 32
         data_type = torch.float16
         hidden_size = 8000
@@ -840,7 +941,6 @@ class TestMLAPrepross(operation_test.OperationTest):
                     torch.tensor([]).to(data_type).npu(),
                     torch.tensor([]).to(data_type).npu()],
                     [qOut, kvCacheOut, qRopeOut, krCacheOut]) # float16
-        print("================================qOut=============================", qOut)
 
 
     def test_mla_preprocess_no_rms_norm(self):
@@ -848,7 +948,7 @@ class TestMLAPrepross(operation_test.OperationTest):
             print("this testcase only supports Ascend910B")
             return
         self.compare_count = 0
-        self.cacheMode = 0
+        self.cacheMode = 1
         N = 32
         headNum = 32
         data_type = torch.float16
@@ -858,40 +958,42 @@ class TestMLAPrepross(operation_test.OperationTest):
         self.calc_vec_mm_atb_data(N,headNum,data_type, hidden_size)
         self.keyCache = self.keyCache.npu()
         print("test_mla_preprocess_no_rms_norm")
+        qOut: torch.Tensor = torch.zeros((N, headNum, 512), dtype=data_type).npu() # float16
+        kvCacheOut: torch.Tensor = self.keyCache[..., 0:512].npu() # float16
+        qRopeOut: torch.Tensor = torch.zeros((N, headNum, 64), dtype=data_type).npu() # float16
+        krCacheOut: torch.Tensor = self.keyCache[..., 512:576].npu()
+        print("type  -------------- [qOut, kvCacheOut, qRopeOut, krCacheOut]", type([qOut, kvCacheOut, qRopeOut, krCacheOut]))
         self.execute_out(OP_NAME, PARAM,
-                    [self.input1.npu(),
-                    self.gamma1.npu(),
-                    self.beta1.npu(),
-                    self.quantScale1.npu(),
-                    self.quantOffset1.npu(),
-                    torch_npu.npu_format_cast(transdata(self.wdqkv, (16, 32)).contiguous().to(torch.bfloat16).npu(), 29),
-                    self.deScale1.to(torch.float32).npu(),
-                    self.bias1.npu(),
-                    self.gamma2.npu(),
-                    self.beta2.npu(),
-                    self.quantScale2.npu(),
-                    self.quantOffset2.npu(),
-                    torch_npu.npu_format_cast(transdata(self.wuq, (16, 32)).contiguous().npu(), 29),
-                    self.deScale2.to(torch.float32).npu(),
-                    self.bias2.npu(),
-                    self.gamma3.npu(),
-                    self.cos1.npu(),
-                    self.sin1.npu(),
-                    self.wuk.npu(),
-                    self.keyCache[..., 0:512].npu(),
-                    self.keyCache[..., 512:576].npu(),
-                    self.slotMapping.npu(),
-                    torch.tensor([]).npu(),
-                    torch.tensor([]).npu()],
-                    [torch.zeros((N, headNum, 512), dtype=data_type).npu(),
-                    self.keyCache[..., 0:512].npu(),
-                    ])
+                    [self.input1.npu(), # float16
+                    self.gamma1.npu(), # float16
+                    self.beta1.npu(), # float16
+                    self.quantScale1.npu(), # float16
+                    self.quantOffset1.npu(), # int8
+                    torch_npu.npu_format_cast(transdata(self.wdqkv.to(torch.float16), (16, 32)).contiguous().npu(), 29),  # float16,nz
+                    self.deScale1.to(torch.int64).npu(), # int64
+                    self.bias1.npu(), # int32
+                    self.gamma2.npu(), # float16
+                    self.beta2.npu(), # float16
+                    self.quantScale2.npu(), # float16
+                    self.quantOffset2.npu(), # int8
+                    torch_npu.npu_format_cast(transdata(self.wuq.to(torch.float16), (16, 32)).contiguous().npu(), 29), # float16,nz
+                    self.deScale2.to(torch.int64).npu(), # int64
+                    self.bias2.npu(), # int32
+                    self.gamma3.npu(), # float16
+                    self.cos1.npu(), # float16
+                    self.sin1.npu(), # float16
+                    self.wuk.npu(), # float16
+                    self.keyCache[..., 0:512].npu(), # float16
+                    self.keyCache[..., 512:576].npu(), # float16
+                    self.slotMapping.npu(), # int32
+                    torch.tensor([]).to(data_type).npu(),
+                    torch.tensor([]).to(data_type).npu()],
+                    [qOut, kvCacheOut, qRopeOut, krCacheOut]) # float16
 
 def suite():
     suite = unittest.TestSuite()
     for _ in range(1):
         suite.addTest(TestMLAPrepross('test_mla_preprocess'))
-        # suite.addTest(TestMLAPrepross('test_mla_preprocess_no_rms_norm'))
     return suite
 
 if __name__ == '__main__':

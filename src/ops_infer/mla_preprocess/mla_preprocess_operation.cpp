@@ -417,8 +417,10 @@ Status MlaPreprocessOperation::CheckAclnnKernel(const SVector<TensorDesc> &inTen
     ATB_LOG(INFO) << GetLogPrefix() << "CheckAclnnKernel start";
     // input's hiddenSize != 7168, generalize hiddenSize
     bool generalizedHiddenSize = inTensorDesc.at(INPUT_INDEX).shape.dims[1] != INNER_DIM_7168; // 1: hiddenSize
-    // if wdqkv's dtype is bf16, then do not rmsNorm
-    doRmsNorm_ = inTensorDesc.at(WDQKV_INDEX).dtype != ACL_BF16;
+    // if wdqkv's dtype is the same as the input and is either float16/bf16, then do not do rmsNormQuant
+    aclDataType inputDtype = inTensorDesc.at(INPUT_INDEX).dtype;
+    doRmsNorm_ =
+        inTensorDesc.at(WDQKV_INDEX).dtype == inputDtype && (inputDtype == ACL_FLOAT16 || inputDtype == ACL_BF16);
     if (!generalizedHiddenSize && doRmsNorm_) {
         ATB_LOG(INFO) << GetLogPrefix()
                       << "no need to use aclnn kernel for non-generalized hiddenSize and rmsNormQuant for input is on";
