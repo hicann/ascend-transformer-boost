@@ -14,6 +14,7 @@
 #include "ge_error_codes.h"
 #include "common/util/error_manager/error_manager.h"
 #include "external/ge_common/ge_api_error_codes.h"
+#include "external/base/err_msg.h"
 
 using string = std::string;
 
