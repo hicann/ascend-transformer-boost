@@ -148,58 +148,6 @@ function fn_gen_doc()
     sphinx-build -M html $CODE_ROOT/docs $sphinx_output_dir
 }
 
-function fn_build_asdops()
-{
-    if [ -d "$THIRD_PARTY_DIR/asdops/lib" ]; then
-        return 0
-    fi
-    if [ -n "$ATB_BUILD_DEPENDENCY_PATH" -a "$SRC_ONLY" == "OFF" ]; then
-        echo "Get required asdops binary files from $ATB_BUILD_DEPENDENCY_PATH"
-        mkdir -p $THIRD_PARTY_DIR/asdops/
-        cp -Lrf $ATB_BUILD_DEPENDENCY_PATH/lib $THIRD_PARTY_DIR/asdops/
-        rm -f $THIRD_PARTY_DIR/asdops/lib/libatb.so 2> /dev/null
-        rm -f $THIRD_PARTY_DIR/asdops/lib/libatb_static.a 2> /dev/null
-        rm -f $THIRD_PARTY_DIR/asdops/lib/libatb_train.so 2> /dev/null
-        rm -f $THIRD_PARTY_DIR/asdops/lib/libatb_train_static.a 2> /dev/null
-        rm -f $THIRD_PARTY_DIR/asdops/lib/libasdops.so 2> /dev/null
-        rm -f $THIRD_PARTY_DIR/asdops/lib/libasdops_static.a 2> /dev/null
-        rm -f $THIRD_PARTY_DIR/asdops/lib/libatb_mixops.so 2> /dev/null
-        rm -f $THIRD_PARTY_DIR/asdops/lib/libatb_mixops_static.a 2> /dev/null
-        rm -f $THIRD_PARTY_DIR/asdops/lib/libmki.so 2> /dev/null
-        rm -f $THIRD_PARTY_DIR/asdops/lib/libtbe_adapter.so 2> /dev/null
-        return 0
-    fi
-    cd $THIRD_PARTY_DIR
-    rm -rf ascend-op-common-lib
-    branch=$(git symbolic-ref -q --short HEAD || git describe --tags --exact-match 2> /dev/null || echo "commit_id")
-    [[ "$branch" == *br_personal* || "$branch" == "commit_id" || "$branch" == *revert-mr* ]] && branch=master
-    echo  "current branch for atb and asdops: $branch"
-    git clone --branch $branch --depth 1 https://szv-open.codehub.huawei.com/OpenBaize/Ascend/ascend-op-common-lib.git
-    cd ascend-op-common-lib
-    echo  "current commid id of ascend-op-common-lib: $(git rev-parse HEAD)"
-    [[ -d "$THIRD_PARTY_DIR/Mind-KernelInfra" ]] && mkdir -p 3rdparty && [[ -d "$THIRD_PARTY_DIR/mki" ]] && cp -r $THIRD_PARTY_DIR/mki 3rdparty
-    if [ ! -d "$THIRD_PARTY_DIR/ascend-op-common-lib/3rdparty/ascend-transformer-boost" ]; then
-        mkdir -p $THIRD_PARTY_DIR/ascend-op-common-lib/3rdparty/ascend-transformer-boost
-        ln -s $CODE_ROOT/src $THIRD_PARTY_DIR/ascend-op-common-lib/3rdparty/ascend-transformer-boost/
-    fi
-
-    if [ "$USE_CXX11_ABI" == "ON" ]; then
-        build_options="$build_options --use_cxx11_abi=1"
-    else
-        build_options="$build_options --use_cxx11_abi=0"
-    fi
-    if [ "$CMAKE_BUILD_TYPE" == "Debug" ]; then
-        build_type=debug
-    else
-        build_type=dev
-    fi
-    if [ "$USE_MSSANITIZER" == "ON" ]; then
-        build_options="$build_options --mssanitizer"
-    fi
-    build_options="$build_options --output=$THIRD_PARTY_DIR --no_werror $COMPILE_VERBOSE"
-    bash scripts/build.sh $build_type $build_options
-}
-
 function fn_build_mki()
 {
     if [ "$MKI_BUILD_MODE" == "Test" -a -d "$THIRD_PARTY_DIR/mki/tests" ]; then
@@ -432,7 +380,6 @@ function fn_build_3rdparty_for_compile()
     fn_build_nlohmann_json
     fn_build_mki
     fn_build_catlass
-    fn_build_asdops
     fn_build_cann_dependency
     fn_build_tbe_dependency
     if [ "$BUILD_PYBIND" == "ON" -a "$USE_CXX11_ABI" != "ON" ]; then
