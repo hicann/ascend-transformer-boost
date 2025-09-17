@@ -9,7 +9,7 @@
     2. source [nnal安装路径]/set_env.sh
         默认：source /usr/local/Ascend/nnal/atb/set_env.sh
         1. 如果使用加速库源码编译，source [加速库源码路径]/output/atb/set_env.sh
-        e.g. source ./ascend-transformer-boost/atb/set_env.sh
+        e.g. source ./ascend-transformer-boost/output/atb/set_env.sh
 
 - 编译、运行demo
     - bash build.sh
@@ -28,7 +28,7 @@ tests/apitest/opstest/python/operations/rope/
     |    Param    | value |
     | :---------: | :---: |
     |  cosFormat  |   0   |
-    | rotaryCoeff |   2   |
+    | rotaryCoeff |   4   |
 
     **输入**
     | TensorName | DataType | DataFormat |  Shape  |
@@ -37,7 +37,7 @@ tests/apitest/opstest/python/operations/rope/
     |    key     | float16  |     nd     | [4, 16] |
     |    cos     | float16  |     nd     | [4,  8] |
     |    sin     | float16  |     nd     | [4,  8] |
-    |   seqlen   | float16  |     nd     |   [1]   |
+    |   seqlen   |  uint32  |     nd     |   [1]   |
     
     **输出**
     | TensorName | DataType | DataFormat |  Shape  |
@@ -64,7 +64,7 @@ tests/apitest/opstest/python/operations/rope/
     |    key     |   bf16   |     nd     | [1024, 128] |
     |    cos     |   bf16   |     nd     | [1024, 128] |
     |    sin     |   bf16   |     nd     | [1024, 128] |
-    |   seqlen   |   bf16   |     nd     |     [1]     |
+    |   seqlen   |  uint32  |     nd     |     [1]     |
 
     **输出**
     | TensorName | DataType | DataFormat |    Shape    |
@@ -91,7 +91,7 @@ tests/apitest/opstest/python/operations/rope/
     |    key     |   bf16   |     nd     | [1, 128] |
     |    cos     |   bf16   |     nd     | [1, 128] |
     |    sin     |   bf16   |     nd     | [1, 128] |
-    |   seqlen   |   bf16   |     nd     |   [1]    |
+    |   seqlen   |  uint32  |     nd     |   [1]    |
 
     **输出**
     | TensorName | DataType | DataFormat |  Shape   |
@@ -118,7 +118,7 @@ tests/apitest/opstest/python/operations/rope/
     |    key     |   bf16   |     nd     | [5, 128] |
     |    cos     |   bf16   |     nd     | [5, 128] |
     |    sin     |   bf16   |     nd     | [5, 128] |
-    |   seqlen   |   bf16   |     nd     |   [1]    |
+    |   seqlen   |  uint32  |     nd     |   [1]    |
     
     **输出**
     | TensorName | DataType | DataFormat |  Shape   |

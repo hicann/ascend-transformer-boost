@@ -16,9 +16,9 @@
 #include "atb/utils/operation_util.h"
 #include "atb/utils/config.h"
 #include "atb/utils/param_to_json.h"
-#include "atb/core/atb_operation_ir_cfg.h"
+#include "atb/operation/atb_operation_ir_cfg.h"
 #include "atb/utils/singleton.h"
-#include "atb/core/op_param_funcs.h"
+#include "atb/operation/op_param_funcs.h"
 
 namespace {
 static const uint32_t IN_TENSOR_NUM = 5;

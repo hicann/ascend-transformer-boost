@@ -16,9 +16,9 @@
 #include "atb/utils/log.h"
 #include "atb/utils/param_to_json.h"
 #include "atb/utils.h"
-#include "atb/core/atb_operation_ir_cfg.h"
+#include "atb/operation/atb_operation_ir_cfg.h"
 #include "atb/utils/singleton.h"
-#include "atb/core/op_param_funcs.h"
+#include "atb/operation/op_param_funcs.h"
 
 static const int32_t IN_TENSOR_NUM = 1;
 static const int32_t OUT_TENSOR_NUM = 2;

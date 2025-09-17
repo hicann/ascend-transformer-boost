@@ -9,7 +9,7 @@
     2. source [nnal安装路径]/set_env.sh
         默认：source /usr/local/Ascend/nnal/atb/set_env.sh
         1. 如果使用加速库源码编译，source [加速库源码路径]/output/atb/set_env.sh
-        e.g. source ./ascend-transformer-boost/atb/set_env.sh
+        e.g. source ./ascend-transformer-boost/output/atb/set_env.sh
 
 - 编译、运行demo
     - bash build.sh
@@ -70,7 +70,7 @@ tests/apitest/opstest/python/operations/rms_norm/
 
 - **rms_norm_qwen_demo_1.cpp**
 
-    【注】：编译脚本内替换 rms_norm_demo.cpp 为 rope_qwen_demo_2.cpp 可编译运行
+    【注】：编译脚本内替换 rms_norm_demo.cpp 为 rms_norm_qwen_demo_1.cpp 可编译运行
 
     **参数设置**
     |        Param        |                        value                         |
@@ -94,7 +94,7 @@ tests/apitest/opstest/python/operations/rms_norm/
 
 - **rms_norm_qwen_demo_2.cpp**
 
-    【注】：编译脚本内替换 rms_norm_demo.cpp 为 rope_qwen_demo_0.cpp 可编译运行
+    【注】：编译脚本内替换 rms_norm_demo.cpp 为 rms_norm_qwen_demo_2.cpp 可编译运行
 
     **参数设置**
     |        Param        |                        value                         |

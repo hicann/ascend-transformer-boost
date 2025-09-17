@@ -46,16 +46,14 @@ atb::Status PrepareInTensor(atb::Context *contextPtr, aclrtStream stream, atb::S
     atb::Tensor tensorK;
     CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, kData, ACL_BF16, aclFormat::ACL_FORMAT_ND,
                                         {NTOKENS, HIDDENSIZEK}, tensorK));
-    // cos 和 sin 需要在最后一维上 cat
-    // python 风格的描述： cos = torch.cat((cos, cos), dim=-1)
-    std::vector<float> cos(NTOKENS * HEAD_SIZE * 2, 1.0);
+    std::vector<float> cos(NTOKENS * HEAD_SIZE, 1.0);
     atb::Tensor tensorCos;
     CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, cos, ACL_BF16, aclFormat::ACL_FORMAT_ND,
-                                        {NTOKENS, HEAD_SIZE * 2}, tensorCos));
-    std::vector<float> sin(NTOKENS * HEAD_SIZE * 2, 1.0);
+                                        {NTOKENS, HEAD_SIZE}, tensorCos));
+    std::vector<float> sin(NTOKENS * HEAD_SIZE, 1.0);
     atb::Tensor tensorSin;
     CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, sin, ACL_BF16, aclFormat::ACL_FORMAT_ND,
-                                        {NTOKENS, HEAD_SIZE * 2}, tensorSin));
+                                        {NTOKENS, HEAD_SIZE}, tensorSin));
     std::vector<int32_t> seqLenHost(BATCH_SIZE, 4);
     atb::Tensor tensorSeqLen;
     CHECK_STATUS(CreateTensor(ACL_INT32, aclFormat::ACL_FORMAT_ND, {BATCH_SIZE}, tensorSeqLen));
