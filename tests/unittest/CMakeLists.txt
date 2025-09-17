@@ -21,5 +21,5 @@ target_include_directories(atb_unittest PRIVATE ${ASCEND_HOME_PATH}/include/acln
 target_link_directories(atb_unittest PRIVATE ${PROJECT_SOURCE_DIR}/3rdparty/googletest/lib ${ASCEND_HOME_PATH}/lib64/)
 target_compile_options(atb_unittest PRIVATE "-Wno-write-strings")
 target_compile_options(atb_unittest PRIVATE -Wno-sign-compare -Wno-narrowing)
-target_link_libraries(atb_unittest PRIVATE atb_test_utils tbe_adapter -lgtest -lgtest_main -lc_sec -lopapi)
+target_link_libraries(atb_unittest PRIVATE atb_test_utils tbe_adapter -lgtest -lgtest_main -lc_sec)
 install(TARGETS atb_unittest DESTINATION bin)
