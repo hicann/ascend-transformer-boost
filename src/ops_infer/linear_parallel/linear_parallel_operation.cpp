@@ -104,6 +104,21 @@ bool CheckType(const infer::LinearParallelParam &opParam, Status &isOK)
 
 bool CheckTypeMc2(const infer::LinearParallelParam &opParam, Status &isOK)
 {
+    if (opParam.transWeight) {
+        ATB_LOG(ERROR) << "When LinearParallel backend is mc2, not support transWeight";
+        isOK = ERROR_INVALID_PARAM;
+        return true;
+    }
+    if (opParam.commMode != atb::infer::CommMode::COMM_MULTI_THREAD) {
+        ATB_LOG(ERROR) << "When LinearParallel backend is mc2, only support commMode[COMM_MULTI_THREAD]";
+        isOK = ERROR_INVALID_PARAM;
+        return true;
+    }
+    if (opParam.quantType != atb::infer::LinearParallelParam::QuantType::QUANT_TYPE_UNQUANT) {
+        ATB_LOG(ERROR) << "When LinearParallel backend is mc2, only support quantType[QUANT_TYPE_UNQUANT]";
+        isOK = ERROR_INVALID_PARAM;
+        return true;
+    }
     if (opParam.type != infer::LinearParallelParam::ParallelType::LINEAR_REDUCE_SCATTER) {
         ATB_LOG(ERROR)
             << "When LinearParallel backend is mc2, only support type[LINEAR_REDUCE_SCATTER], LinearParallel type:"
@@ -399,6 +414,14 @@ Status LinearParallelOperation::InferShapeCheckLinearReduceScatter(const SVector
         ATB_LOG(ERROR) << GetLogPrefix() << "inTensor0 m [" << xTensorM
                        << "] should be an integer multiple of rankSize :" << param_.rankSize;
         return ERROR_INVALID_TENSOR_DIM;
+    }
+    if (param_.backend == "mc2") {
+        int64_t xTensorK = OperationUtil::GetXTensorK(inTensorDescs.at(0));
+        if (xTensorK < 256 || xTensorK > 65535) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "inTensor0 k [" << xTensorK
+                           << "] should be an integer between [256 ~ 65535]";
+            return ERROR_INVALID_TENSOR_DIM;
+        }
     }
     return CheckResidual(inTensorDescs);
 }

@@ -60,14 +60,14 @@ Status LinearParallelAclnnRunner::BuildAclnnVariantPack(const RunnerVariantPack 
     this->aclnnVariantPack_.aclInTensors.resize(LINEAR_REDUCE_SCATTER_IN_TENSOR_NUM);
     for (size_t i = 0; i < this->aclnnVariantPack_.aclInTensors.size(); ++i) {
         std::shared_ptr<AclNNTensor> aclnnTensorPtr = std::make_shared<AclNNTensor>();
-        if (i >= 2) {
+        if (i >= 3 && i != BIAS_TENSOR_INDEX) {
             this->aclnnVariantPack_.aclInTensors[i] = aclnnTensorPtr;
             continue;
         }
         atb::Tensor atbTensor = runnerVariantPack.inTensors.at(i);
         aclnnTensorPtr->atbTensor = atbTensor;
-        aclnnTensorPtr->strides = (i != 1 || !param_.transWeight) ? GetCopyTensorStride(atbTensor.desc.shape) :
-                                                                    GetTransposeTensorStride(atbTensor.desc.shape);
+        aclnnTensorPtr->strides = (i == 1 && param_.transWeight) ? GetTransposeTensorStride(atbTensor.desc.shape) :
+                                                                   GetCopyTensorStride(atbTensor.desc.shape);
         ret = CallAclCreateTensor(atbTensor.desc.shape, atbTensor.desc.shape, atbTensor, aclnnTensorPtr);
         if (ret != NO_ERROR) {
             ATB_LOG(ERROR) << GetLogPrefix() << "create aclTensor by aclCreateTensor failed!";

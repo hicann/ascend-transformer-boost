@@ -15,7 +15,7 @@ namespace atb {
 DlManager::DlManager(std::string path) : path_(path)
 {
     // 在构造函数中加载动态库
-    handle_ = dlopen(path.c_str(), RTLD_LAZY);
+    handle_ = dlopen(path.c_str(), RTLD_NOW | RTLD_GLOBAL);
     if (handle_ == nullptr) {
         ATB_LOG(ERROR) << "Dynamic library handle is null, please check the path: " << path_;
     }
