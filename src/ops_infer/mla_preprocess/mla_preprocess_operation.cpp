@@ -394,7 +394,7 @@ Status MlaPreprocessOperation::HiddenSizeCheck(const SVector<TensorDesc> &inTens
                        << "dimNum of gamma0 should be 1, but got: " << inTensorDesc.at(GAMMA0_INDEX).shape.dimNum;
         return ERROR_INVALID_TENSOR_DIM_NUM;
     }
-    if (inTensorDesc.at(GAMMA0_INDEX).shape.dims[1] != hiddenSize) {
+    if (inTensorDesc.at(GAMMA0_INDEX).shape.dims[0] != hiddenSize) {
         ATB_LOG(ERROR) << GetLogPrefix() << "hiddenSize of gamma0 should be the same as input's, " << hiddenSize
                        << ", but got: " << inTensorDesc.at(GAMMA0_INDEX).shape.dims[0]; // gamma0 hiddenSize index
         return ERROR_INVALID_TENSOR_DIM;
@@ -404,7 +404,7 @@ Status MlaPreprocessOperation::HiddenSizeCheck(const SVector<TensorDesc> &inTens
                        << "dimNum of beta0 should be 1, but got: " << inTensorDesc.at(BETA0_INDEX).shape.dimNum;
         return ERROR_INVALID_TENSOR_DIM_NUM;
     }
-    if (inTensorDesc.at(BETA0_INDEX).shape.dims[1] != hiddenSize) {
+    if (inTensorDesc.at(BETA0_INDEX).shape.dims[0] != hiddenSize) {
         ATB_LOG(ERROR) << GetLogPrefix() << "hiddenSize of beta0 should be the same as input's, " << hiddenSize
                        << ", but got: " << inTensorDesc.at(BETA0_INDEX).shape.dims[0]; // beta0 hiddenSize index
         return ERROR_INVALID_TENSOR_DIM;
