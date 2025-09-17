@@ -1520,7 +1520,7 @@ struct LinearParallelParam {
     int rankRoot = 0;
     //! \brief 是否叠加残差。配置为false时不叠加残差，为true时叠加残差。默认不叠加残差。
     bool hasResidual = false;
-    //! \brief 通信后端指示。支持"hccl"，"lccl"，"lcoc"。
+    //! \brief 通信后端指示。支持"hccl"，"lccl"，"lcoc", "mc2"。
     std::string backend = "hccl";
     //! \brief HCCL通信域接口获取的地址指针，仅当"hcclComm"不为nullptr时可用。
     HcclComm hcclComm = nullptr;
