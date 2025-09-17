@@ -444,6 +444,8 @@ Status MlaPreprocessOperation::CheckAclnnKernel(const SVector<TensorDesc> &inTen
             return ret;
         }
     }
+    ATB_LOG(INFO) << GetLogPrefix() << "aclnn kernel is required and usable, generalizedHiddenSize: " << generalizedHiddenSize
+                  << ", doRmsNorm: " << doRmsNorm_;
     return NO_ERROR;
 }
 
