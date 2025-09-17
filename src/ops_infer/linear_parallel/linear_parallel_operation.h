@@ -47,8 +47,7 @@ private:
     Status SetupCheckLinearReduceScatter(const SVector<TensorDesc> &inTensorDescs, TensorDesc &outTensorDesc) const;
     Status SetupCheckAllGatherLinear(SVector<TensorDesc> &inTensorDescs,
                                      const SVector<TensorDesc> &outTensorDescs) const;
-    Status SetupCheckAllGatherLinearReduceScatter(SVector<TensorDesc> &inTensorDescs,
-                                                  TensorDesc &outTensorDesc) const;
+    Status SetupCheckAllGatherLinearReduceScatter(SVector<TensorDesc> &inTensorDescs, TensorDesc &outTensorDesc) const;
     Status SetupCheckAllToAllvcAllGatherGmm(const SVector<TensorDesc> &inTensorDescs,
                                             const TensorDesc &outTensorDesc) const;
 

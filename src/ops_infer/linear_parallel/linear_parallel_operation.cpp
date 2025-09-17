@@ -16,6 +16,7 @@
 #include "atb/utils/param_to_json.h"
 #include "atb/operation/atb_operation_ir_cfg.h"
 #include "linear_parallel_graph_runner.h"
+#include "linear_parallel_aclnn_runner.h"
 #include "linear_parallel_lcoc_runner.h"
 #include "atb/utils/singleton.h"
 #include "atb/operation/op_param_funcs.h"
@@ -26,7 +27,7 @@ static const uint32_t IN_TENSOR_NUM_WITHOUT_RESIDUAL = 2;
 static const uint32_t IN_TENSOR_NUM_WITH_MOE = 2;
 static const uint32_t EXTRA_IN_TENSOR_NUM_WITH_QUANT = 2;
 static const uint32_t MOE_IN_TENSOR_NUM_REMOVE_OFFSET = 1;
-static const uint32_t EXTRA_IN_TENSOR_NUM_WITH_PER_TOKEN_QUANT  = 1;
+static const uint32_t EXTRA_IN_TENSOR_NUM_WITH_PER_TOKEN_QUANT = 1;
 static const uint32_t OUT_TENSOR_NUM = 1;
 static const uint32_t OUT_TENSOR_NUM_WITH_MID = 2;
 static const uint32_t LOCAL_EXPERT_NUMS_MIN = 1;
@@ -101,6 +102,23 @@ bool CheckType(const infer::LinearParallelParam &opParam, Status &isOK)
     return false;
 }
 
+bool CheckTypeMc2(const infer::LinearParallelParam &opParam, Status &isOK)
+{
+    if (opParam.type != infer::LinearParallelParam::ParallelType::LINEAR_REDUCE_SCATTER) {
+        ATB_LOG(ERROR)
+            << "When LinearParallel backend is mc2, only support type[LINEAR_REDUCE_SCATTER], LinearParallel type:"
+            << opParam.type << " is invalid ParallelType";
+        isOK = ERROR_INVALID_PARAM;
+        return true;
+    }
+    if (opParam.quantType == atb::infer::LinearParallelParam::QuantType::QUANT_TYPE_PER_TOKEN) {
+        ATB_LOG(ERROR) << "When LinearParallel backend is mc2, not support quantType[QUANT_TYPE_PER_TOKEN]";
+        isOK = ERROR_INVALID_PARAM;
+        return true;
+    }
+    return false;
+}
+
 template <> Status CreateOperation(const infer::LinearParallelParam &opParam, Operation **operation)
 {
     if (operation == nullptr) {
@@ -116,14 +134,25 @@ template <> Status CreateOperation(const infer::LinearParallelParam &opParam, Op
         ATB_LOG(ERROR) << "LinearParallel rankSize support power of 2 but got [" << opParam.rankSize << "]";
         return ERROR_INVALID_PARAM;
     }
-    if (opParam.backend != "hccl" && opParam.backend != "lccl" && opParam.backend != "lcoc") {
-        ATB_LOG(ERROR) << "LinearParallel backend support hccl/lccl/lcoc but get [" << opParam.backend << "]";
+    if (opParam.backend != "hccl" && opParam.backend != "lccl" && opParam.backend != "lcoc" &&
+        opParam.backend != "mc2") {
+        ATB_LOG(ERROR) << "LinearParallel backend support hccl/lccl/lcoc/mc2 but get [" << opParam.backend << "]";
         return ERROR_INVALID_PARAM;
     }
     if (opParam.backend == "lcoc") {
         Status isOk;
         if (CheckType(opParam, isOk))
             return isOk;
+    }
+    if (opParam.backend == "mc2") {
+        Status isOk;
+        if (CheckTypeMc2(opParam, isOk)) {
+            return isOk;
+        }
+        isOk = LinearParallelAclnnRunner::LoadMethodMatmulReduceScatter();
+        if (isOk != NO_ERROR) {
+            return isOk;
+        }
     }
     *operation = new (std::nothrow) LinearParallelOperation(opParam);
     if (*operation == nullptr) {
@@ -140,8 +169,8 @@ LinearParallelOperation::LinearParallelOperation(const infer::LinearParallelPara
     std::stringstream opIrKeySs;
     std::string withStr = param_.hasResidual ? "With" : "Without";
     opIrKeySs << "LinearParallelOperation" << withStr << "Residual";
-    if (param_.backend == "lcoc") {
-        opIrKeySs << "Lcoc";
+    if (param_.backend == "lcoc" || param_.backend == "mc2") {
+        opIrKeySs << (param_.backend == "lcoc" ? "Lcoc" : "Mc2");
         if (param_.keepIntermediate) {
             opIrKeySs << "KeepIntermediate";
         }
@@ -193,7 +222,7 @@ uint32_t LinearParallelOperation::GetOutputNum() const
 Status LinearParallelOperation::InferShapeImpl(const SVector<TensorDesc> &inTensorDescs,
                                                SVector<TensorDesc> &outTensorDescs) const
 {
-    if (param_.backend != "lcoc") {
+    if (param_.backend != "lcoc" && param_.backend != "mc2") {
         return OperationUtil::MatmulInferShape(inTensorDescs, outTensorDescs, commonCheckParam_);
     }
     switch (param_.type) {
@@ -291,7 +320,7 @@ Status LinearParallelOperation::InferShapeAllToAllvcAllGatherGmm(const SVector<T
 
 Status LinearParallelOperation::InferShapeCheckImpl(const SVector<TensorDesc> &inTensorDescs) const
 {
-    if (param_.backend != "lcoc") {
+    if (param_.backend != "lcoc" && param_.backend != "mc2") {
         return InferShapeCheckLinearAllReduce(inTensorDescs);
     }
     switch (param_.type) {
@@ -341,10 +370,10 @@ Status LinearParallelOperation::InferShapeCheckLinearAllReduce(const SVector<Ten
     }
 
     bool isQuant = param_.quantType > infer::LinearParallelParam::QuantType::QUANT_TYPE_UNQUANT &&
-                param_.quantType < infer::LinearParallelParam::QuantType::QUANT_TYPE_MAX;
+                   param_.quantType < infer::LinearParallelParam::QuantType::QUANT_TYPE_MAX;
     if (isQuant && inTensorDescs.at(3).dtype == ACL_FLOAT && param_.outDataType == ACL_FLOAT16) {
         ATB_LOG(ERROR) << GetLogPrefix() << "when perChannelScale's type is float, "
-                                         << "outputDataType do not support float16_t";
+                       << "outputDataType do not support float16_t";
         return ERROR_INVALID_TENSOR_INI_MATCH;
     }
 
@@ -358,10 +387,10 @@ Status LinearParallelOperation::InferShapeCheckLinearReduceScatter(const SVector
     }
 
     bool isQuant = param_.quantType > infer::LinearParallelParam::QuantType::QUANT_TYPE_UNQUANT &&
-                param_.quantType < infer::LinearParallelParam::QuantType::QUANT_TYPE_MAX;
+                   param_.quantType < infer::LinearParallelParam::QuantType::QUANT_TYPE_MAX;
     if (isQuant && inTensorDescs.at(3).dtype == ACL_FLOAT && param_.outDataType == ACL_FLOAT16) {
         ATB_LOG(ERROR) << GetLogPrefix() << "when perChannelScale's type is float, "
-                                         << "outputDataType do not support float16_t";
+                       << "outputDataType do not support float16_t";
         return ERROR_INVALID_TENSOR_INI_MATCH;
     }
 
@@ -377,10 +406,10 @@ Status LinearParallelOperation::InferShapeCheckLinearReduceScatter(const SVector
 Status LinearParallelOperation::InferShapeCheckAllGatherLinear(const SVector<TensorDesc> &inTensorDescs) const
 {
     bool isQuant = param_.quantType > infer::LinearParallelParam::QuantType::QUANT_TYPE_UNQUANT &&
-                param_.quantType < infer::LinearParallelParam::QuantType::QUANT_TYPE_MAX;
+                   param_.quantType < infer::LinearParallelParam::QuantType::QUANT_TYPE_MAX;
     if (isQuant && inTensorDescs.at(3).dtype == ACL_FLOAT && param_.outDataType == ACL_FLOAT16) {
         ATB_LOG(ERROR) << GetLogPrefix() << "when perChannelScale's type is float, "
-                                         << "outputDataType do not support float16_t";
+                       << "outputDataType do not support float16_t";
         return ERROR_INVALID_TENSOR_INI_MATCH;
     }
 
@@ -394,8 +423,8 @@ Status LinearParallelOperation::InferShapeCheckAllGatherLinear(const SVector<Ten
     return CheckResidual(inTensorDescs);
 }
 
-Status LinearParallelOperation::InferShapeCheckAllGatherLinearReduceScatter(
-    const SVector<TensorDesc> &inTensorDescs) const
+Status
+LinearParallelOperation::InferShapeCheckAllGatherLinearReduceScatter(const SVector<TensorDesc> &inTensorDescs) const
 {
     if (param_.twoDimTPInfo.rsDim * param_.twoDimTPInfo.agDim != param_.rankSize) {
         ATB_LOG(ERROR) << "agDim * rsDim should equal to rankSize";
@@ -425,10 +454,10 @@ Status LinearParallelOperation::InferShapeCheckAllGatherLinearReduceScatter(
 Status LinearParallelOperation::InferShapeCheckAllToAllvcAllGatherGmm(const SVector<TensorDesc> &inTensorDescs) const
 {
     bool isQuant = param_.quantType > infer::LinearParallelParam::QuantType::QUANT_TYPE_UNQUANT &&
-                param_.quantType < infer::LinearParallelParam::QuantType::QUANT_TYPE_MAX;
+                   param_.quantType < infer::LinearParallelParam::QuantType::QUANT_TYPE_MAX;
     if (isQuant && inTensorDescs.at(2).dtype == ACL_FLOAT && param_.outDataType == ACL_FLOAT16) {
         ATB_LOG(ERROR) << GetLogPrefix() << "when perChannelScale's type is float, "
-                                         << "outputDataType do not support float16_t";
+                       << "outputDataType do not support float16_t";
         return ERROR_INVALID_TENSOR_INI_MATCH;
     }
 
@@ -438,8 +467,7 @@ Status LinearParallelOperation::InferShapeCheckAllToAllvcAllGatherGmm(const SVec
     if (globalTokensPerExpertMatrixM != param_.moeInfo.epSize || globalTokensPerExpertMatrixK != expertNums) {
         ATB_LOG(ERROR) << GetLogPrefix() << "globalTokensPerExpertMatrix m [" << globalTokensPerExpertMatrixM
                        << "] should equal to ep [" << param_.moeInfo.epSize << "] and globalTokensPerExpertMatrix k ["
-                       << globalTokensPerExpertMatrixK << "] should equal to ep*localExpertNums [" << expertNums
-                       << "]";
+                       << globalTokensPerExpertMatrixK << "] should equal to ep*localExpertNums [" << expertNums << "]";
         return ERROR_INVALID_TENSOR_DIM;
     }
     return CheckResidual(inTensorDescs);
@@ -568,6 +596,12 @@ std::shared_ptr<Runner> LinearParallelOperation::CreateRunner(Context &context) 
         return std::make_shared<LinearParallelGraphRunner>(param_, *contextBase);
     } else if (param_.backend == "lcoc") {
         return std::make_shared<LinearParallelLcocRunner>(param_, context);
+    } else if (param_.backend == "mc2") {
+        if (param_.hcclComm == nullptr) {
+            return std::make_shared<LinearParallelAclnnRunner>(param_, !param_.rankTableFile.empty());
+        } else {
+            return std::make_shared<LinearParallelAclnnRunner>(param_, param_.hcclComm);
+        }
     }
     return std::shared_ptr<Runner>();
 }
