@@ -102,13 +102,14 @@ void PlatFormInfos::SetFixPipeDtypeMap(const std::map<std::string, std::vector<s
     platform_infos_impl_->SetFixPipeDtypeMap(fixpipeDtypeMap);
 }
 
-typedef int (*aclrtGetResInCurrentThreadFunc)(int, uint32_t*);
+using AclrtGetResInCurrentThreadFunc = int(*)(int, uint32_t*);
 
 void PlatFormInfos::SetCoreNumByCoreType(const std::string &core_type)
 {
     uint32_t coreNum = 0;
     Mki::Dl dl = Mki::Dl(std::string(Mki::GetEnv("ASCEND_HOME_PATH")) + "/runtime/lib64/libascendcl.so", false);
-    aclrtGetResInCurrentThreadFunc aclrtGetResInCurrentThread = (aclrtGetResInCurrentThreadFunc)dl.GetSymbol("aclrtGetResInCurrentThread");
+    AclrtGetResInCurrentThreadFunc aclrtGetResInCurrentThread =
+        (AclrtGetResInCurrentThreadFunc)dl.GetSymbol("aclrtGetResInCurrentThread");
     if (aclrtGetResInCurrentThread != nullptr) {
         int8_t resType = core_type == "VectorCore" ? 1 : 0;
         int getResRet = aclrtGetResInCurrentThread(resType, &coreNum);
