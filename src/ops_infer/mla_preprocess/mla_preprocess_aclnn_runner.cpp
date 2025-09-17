@@ -40,7 +40,7 @@ MlaPreprocessAclnnRunner::MlaPreprocessAclnnRunner(const infer::MlaPreprocessPar
 }
 
 MlaPreprocessAclnnRunner::MlaPreprocessAclnnRunner(const infer::MlaPreprocessParam &param, bool doRmsNorm)
-    : AclnnRunner("MlaPreprocessOpsRunner", RUNNER_TYPE_MLA_PREPROCESS_ACLNN), param_(param), doRmsNorm_(doRmsNorm)
+    : AclnnRunner("MlaPreprocessAclnnRunner", RUNNER_TYPE_MLA_PREPROCESS_ACLNN), param_(param), doRmsNorm_(doRmsNorm)
 {
     ATB_LOG(INFO) << GetLogPrefix()
                   << "MlaPreprocessAclnnRunnecr::MlaPreprocessAclnnRunner called, set doRmsNorm: " << doRmsNorm;
