@@ -1,6 +1,6 @@
 # 加速库RmsNormOperation C++ Demo
 ## 介绍
-该目录下为加速库RmsNormOperation C++调用示例。
+该目录下为加速库RmsNormOperation C++调用示例，以下示例仅适用于Atlas A2/A3训练系列产品、Atlas 800I A2推理产品、Atlas A3 推理系列产品。
 
 ## 使用说明
 - 首先source 对应的CANN和nnal包
