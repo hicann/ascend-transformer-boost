@@ -854,7 +854,7 @@ class LinearParallelOperation(DataGen):
             ag_dim = json_data['twoDimTPInfo']['agDim']
             rs_dim = json_data['twoDimTPInfo']['rsDim']
             inner_dim_is_ag = json_data['twoDimTPInfo']['innerDimIsAg']
-        if backend != 'lcoc':
+        if backend != 'lcoc' and backend != 'mc2':
             return LinearParallelOperation.golden_linear_all_reduce(in_tensors, rank_size)
         type = 0
         quant_type = -1

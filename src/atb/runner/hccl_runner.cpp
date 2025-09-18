@@ -62,6 +62,11 @@ HcclRunner::~HcclRunner()
     ATB_LOG(INFO) << "HcclRunner deconstruct";
 }
 
+HcclCommSharedPtr HcclRunner::GetHcclCommSharedPtr() const
+{
+    return hcclComm_;
+}
+
 void HcclRunner::Init()
 {
     hcclComm_ = GetSingleton<CommPool<void>>().GetComm(std::to_string(rank_) + "_" + commDomain_,
