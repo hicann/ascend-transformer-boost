@@ -323,6 +323,7 @@ function fn_copy_tbe_adapter()
 {
     if [ -z $ATB_BUILD_DEPENDENCY_PATH ]; then
         ATB_BUILD_DEPENDENCY_PATH=/usr/local/Ascend/nnal/atb/latest/atb/$(fn_get_cxx_abi_string)
+        echo "warning: ATB_BUILD_DEPENDENCY_PATH is not set. Using default path: /usr/local/Ascend/nnal/atb/latest/atb/$(fn_get_cxx_abi_string)"
     fi
 
     if [ ! -f $ATB_BUILD_DEPENDENCY_PATH/lib/libtbe_adapter.so ]; then
