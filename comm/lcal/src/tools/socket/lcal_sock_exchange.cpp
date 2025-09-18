@@ -271,7 +271,7 @@ int LcalSockExchange::Connect()
     }
 
     int sleepTimeS = 1;
-    int maxRetryCount = 1800;
+    int maxRetryCount = 1800; // 增加retry时间为30分钟
     int retryCount = 0;
     bool success = false;
     struct sockaddr *addrPtr = &lcalCommId_.handle.addr.sa;
