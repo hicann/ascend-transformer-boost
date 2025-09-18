@@ -118,8 +118,8 @@ void PlatFormInfos::SetCoreNumByCoreType(const std::string &core_type)
             MKI_LOG(DEBUG) << "Get ThreadResource::core_num_ to " << core_type << ": " << coreNum;
             if (core_num_ == 0 || core_num_ > MAX_CORE_NUM) {
                 MKI_LOG(ERROR) << "core_num is out of range : " << core_num_;
-                core_num_ = 1; 
-            } 
+                core_num_ = 1;
+            }
             return;
         } else {
             MKI_LOG(WARN) << "Failed to get thread core num!";
@@ -142,15 +142,15 @@ void PlatFormInfos::SetCoreNumByCoreType(const std::string &core_type)
         MKI_LOG(ERROR) << "CoreNumStr is empty!";
     } else {
         core_num_ = std::strtoul(coreNumStr.c_str(), nullptr, 10); // 10 进制
-    }       
+    }
     if (core_num_ == 0 || core_num_ > MAX_CORE_NUM) {
         MKI_LOG(ERROR) << "core_num is out of range : " << core_num_;
-        core_num_ = 1; 
-    }  
+        core_num_ = 1;
+    }
 }
 
 uint32_t PlatFormInfos::GetCoreNumByType(const std::string &core_type)
-{   
+{
     uint32_t coreNum = 0;
     Mki::Dl dl = Mki::Dl(std::string(Mki::GetEnv("ASCEND_HOME_PATH")) + "/runtime/lib64/libascendcl.so", false);
     aclrtGetResInCurrentThreadFunc aclrtGetResInCurrentThread = (aclrtGetResInCurrentThreadFunc)dl.GetSymbol("aclrtGetResInCurrentThread");
@@ -179,7 +179,7 @@ uint32_t PlatFormInfos::GetCoreNumByType(const std::string &core_type)
         MKI_LOG(ERROR) << "CoreNumStr is empty!";
         return 1;
     } else {
-        coreNum = std::strtoul(coreNumStr.c_str(), nullptr, 10); // 10 进制            
+        coreNum = std::strtoul(coreNumStr.c_str(), nullptr, 10); // 10 进制
     }
     if (coreNum > MAX_CORE_NUM) {
         MKI_LOG(ERROR) << "core_num is out of range : " << coreNum;
