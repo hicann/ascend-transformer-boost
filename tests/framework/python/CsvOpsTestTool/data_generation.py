@@ -3297,7 +3297,7 @@ class ReduceOperation(DataGen):
 class RopeOperation(DataGen):
     @staticmethod
     def customize(shapes, i, datatype, format, data_gen_ranges, op_params):
-        if (i == 2 or i == 3) and json.loads(op_params)["rotaryCoeff"] == 64:
+        if (i == 2 or i == 3) and json.loads(op_params)["rotaryCoeff"] != 2 and json.loads(op_params)["rotaryCoeff"] != 4:
             ntoken = shapes[i][0]
             head_size = shapes[i][1]
             # op需要cos/sin重复一次
@@ -3396,7 +3396,32 @@ class RopeOperation(DataGen):
                 q = torch.concat([q0, q1], dim=(q0.ndim - 1)).view(ntoken, hidden_size)
                 k = torch.concat([k0, k1], dim=(k0.ndim - 1)).view(ntoken, hidden_size)
                 return [q, k]
-        elif json_data['rotaryCoeff'] == 64:
+        elif json_data['rotaryCoeff'] == 2:
+            dtype = in_tensors[0].dtype
+            if dtype == torch.bfloat16:
+                in_tensors[0] = in_tensors[0].to(torch.float32)
+                in_tensors[1] = in_tensors[1].to(torch.float32)
+                in_tensors[2] = in_tensors[2].to(torch.float32)
+                in_tensors[3] = in_tensors[3].to(torch.float32)
+            ntoken = in_tensors[0].size()[0]
+            seqlen = int(in_tensors[4][0])
+            batch = ntoken // seqlen
+            if batch == 0:
+                batch = 1
+                seqlen = ntoken
+            hidden_size = in_tensors[0].size()[1]
+            hidden_size1 = in_tensors[1].size()[1]
+            head_size = in_tensors[2].size()[1]
+            head_num = hidden_size // head_size
+            head_num1 = hidden_size1 // head_size
+            q = in_tensors[0].view(batch, seqlen, head_num, head_size)
+            k = in_tensors[1].view(batch, seqlen, head_num1, head_size)
+            cos = in_tensors[2].view(batch, seqlen, head_size).unsqueeze(2)
+            sin = in_tensors[3].view(batch, seqlen, head_size).unsqueeze(2)
+            q_embed = ((q * cos) + (RopeOperation.rotate_half(q) * sin)).view(ntoken, hidden_size)
+            k_embed = ((k * cos) + (RopeOperation.rotate_half(k) * sin)).view(ntoken, hidden_size1)
+            return [q_embed.to(dtype), k_embed.to(dtype)]
+        else:
             if len(in_tensors[0].size()) == 4:
                 seqlen = in_tensors[0].size()[1]
                 batch = in_tensors[0].size()[0]
@@ -3451,31 +3476,6 @@ class RopeOperation(DataGen):
                 return [q_out2, k_out2]
             else:
                 return [q_out2.view(ntoken, hidden_sizeq), k_out2.view(ntoken, hidden_sizek)]
-        else:
-            dtype = in_tensors[0].dtype
-            if dtype == torch.bfloat16:
-                in_tensors[0] = in_tensors[0].to(torch.float32)
-                in_tensors[1] = in_tensors[1].to(torch.float32)
-                in_tensors[2] = in_tensors[2].to(torch.float32)
-                in_tensors[3] = in_tensors[3].to(torch.float32)
-            ntoken = in_tensors[0].size()[0]
-            seqlen = int(in_tensors[4][0])
-            batch = ntoken // seqlen
-            if batch == 0:
-                batch = 1
-                seqlen = ntoken
-            hidden_size = in_tensors[0].size()[1]
-            hidden_size1 = in_tensors[1].size()[1]
-            head_size = in_tensors[2].size()[1]
-            head_num = hidden_size // head_size
-            head_num1 = hidden_size1 // head_size
-            q = in_tensors[0].view(batch, seqlen, head_num, head_size)
-            k = in_tensors[1].view(batch, seqlen, head_num1, head_size)
-            cos = in_tensors[2].view(batch, seqlen, head_size).unsqueeze(2)
-            sin = in_tensors[3].view(batch, seqlen, head_size).unsqueeze(2)
-            q_embed = ((q * cos) + (RopeOperation.rotate_half(q) * sin)).view(ntoken, hidden_size)
-            k_embed = ((k * cos) + (RopeOperation.rotate_half(k) * sin)).view(ntoken, hidden_size1)
-            return [q_embed.to(dtype), k_embed.to(dtype)]
 
     @staticmethod
     def get_op_type(op_params):
