@@ -58,9 +58,9 @@ struct MatmulCommonCheckParam {
         this->transposeB = linearParallelParam.transWeight;
         this->isMoe =
             (linearParallelParam.type == atb::infer::LinearParallelParam::ParallelType::ALLTOALLVC_ALL_GATHER_GMM ||
-            linearParallelParam.type == atb::infer::LinearParallelParam::ParallelType::GMM_REDUCE_SCATTER_ALLTOALLVC);
+             linearParallelParam.type == atb::infer::LinearParallelParam::ParallelType::GMM_REDUCE_SCATTER_ALLTOALLVC);
         this->isQuant =
-            linearParallelParam.backend == "lcoc" &&
+            (linearParallelParam.backend == "lcoc" || linearParallelParam.backend == "mc2") &&
             (linearParallelParam.type == atb::infer::LinearParallelParam::ParallelType::LINEAR_ALL_REDUCE ||
              linearParallelParam.type == atb::infer::LinearParallelParam::ParallelType::PURE_LINEAR ||
              linearParallelParam.type == atb::infer::LinearParallelParam::ParallelType::LINEAR_REDUCE_SCATTER ||
