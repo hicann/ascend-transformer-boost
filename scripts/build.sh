@@ -327,7 +327,7 @@ function fn_copy_tbe_adapter()
     fi
 
     if [ ! -f $ATB_BUILD_DEPENDENCY_PATH/lib/libtbe_adapter.so ]; then
-        echo "error:$ATB_BUILD_DEPENDENCY_PATH/lib/libtbe_adapter.so dose not exist, please source set_env.sh."
+        echo "error:$ATB_BUILD_DEPENDENCY_PATH/lib/libtbe_adapter.so dose not exist, please set correct ATB_BUILD_DEPENDENCY_PATH"
         return 0
     fi
 
