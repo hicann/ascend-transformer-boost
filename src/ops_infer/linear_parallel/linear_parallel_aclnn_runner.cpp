@@ -66,9 +66,15 @@ Status LinearParallelAclnnRunner::BuildAclnnVariantPack(const RunnerVariantPack 
         }
         atb::Tensor atbTensor = runnerVariantPack.inTensors.at(i);
         aclnnTensorPtr->atbTensor = atbTensor;
-        aclnnTensorPtr->strides = (i == 1 && param_.transWeight) ? GetTransposeTensorStride(atbTensor.desc.shape) :
-                                                                   GetCopyTensorStride(atbTensor.desc.shape);
-        ret = CallAclCreateTensor(atbTensor.desc.shape, atbTensor.desc.shape, atbTensor, aclnnTensorPtr);
+        atb::Dims viewDims = atbTensor.desc.shape;
+        if (i == 1 && param_.transWeight) {
+            aclnnTensorPtr->strides = GetTransposeTensorStride(viewDims);
+            viewDims.dims[0] = atbTensor.desc.shape.dims[1];
+            viewDims.dims[1] = atbTensor.desc.shape.dims[0];
+        } else {
+            aclnnTensorPtr->strides = GetCopyTensorStride(viewDims);
+        }
+        ret = CallAclCreateTensor(viewDims, atbTensor.desc.shape, atbTensor, aclnnTensorPtr);
         if (ret != NO_ERROR) {
             ATB_LOG(ERROR) << GetLogPrefix() << "create aclTensor by aclCreateTensor failed!";
             return ret;
