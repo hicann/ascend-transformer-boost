@@ -140,13 +140,13 @@ ATB加速库日志相关的几个环境变量：
 
 ## 单算子调试场景
 
-本章节介绍ATB加速库单算子(Operation)的调试场景，适用于在ATB加速库中开发算子核函数(Kernel)代码是的调试。下文介绍两种调试功能MSDEBUG和AscendC_Dump。
+本章节介绍ATB加速库单算子(Operation)的调试场景，适用于在ATB加速库中开发算子核函数(Kernel)代码时的调试。下文介绍两种调试功能MSDEBUG和AscendC_Dump。
 
 ### MSDEBUG
 
 `msdebug`允许用户对昇腾单算子程序设置断点、单步运行、查看核函数变量、NPU侧内存数据等能力，实现在同一个应用中同时调试CPU和NPU代码。就像`AscendC编程`是`C编程`的扩展一样，使用`msdebug`调试也是使用`gdb/lldb`调试的自然扩展。[官方文档](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/83RC1alpha001/devaids/optool/atlasopdev_16_0062.html)
 
-1. 确保环境中是否有该功能
+1. 确认环境中是否有该功能
    
    若要使能msDebug工具，需要通过一下两种方式安装NPU驱动固件（CANN 8.1.RC1之后的版本且驱动为25.0.RC1之后的版本，推荐使用方法一）：
 
@@ -220,7 +220,7 @@ ATB加速库日志相关的几个环境变量：
 
 ATB加速库的`AscendC_Dump`功能支持用户在调试ATB加速库中的算子时，在核函数中添加AscendC::printf、AscendC::DumpTensor接口打印相应的值，方便用户进行调试定位。需要注意的是该功能为调试功能，开启后会对算子实际下发和运行带来一定影响，不推荐在模型场景下开启该功能。
 
-1. 确保环境中是否有该工具
+1. 确认环境中有该工具
    
    首先需要查看环境是否安装CANN/ascend-toolkit并且配置好环境变量: `echo $ASCEND_HOME_PATH`。如果没有返回相应的路径，需要重新`source ${install_path}/set_env.sh`，其中${install_path}为CANN软件的安装目录。
 2. 添加AscendC::printf、AscendC::DumpTensor到对应算子的核函数中。
