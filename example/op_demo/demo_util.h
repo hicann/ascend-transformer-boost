@@ -224,32 +224,4 @@ atb::Status CreateTensorFromVector(atb::Context *contextPtr, aclrtStream stream,
     return atb::ErrorType::NO_ERROR;
 }
 
-// 判断soc型号是否为Atlas A2/A3
-bool Is910B()
-{
-    const char *socName = aclrtGetSocName();
-    if (!socName) {
-        std::cout << "aclrtGetSocName failed!";
-        return false;
-    }
-    const uint32_t LEN_OF_ASCEND_910B = 10;
-    std::cout << "SocVersion: " << std::string(socName) << std::endl;
-    return (std::string(socName).find("Ascend910B") != std::string::npos &&
-            std::string(socName).length() > LEN_OF_ASCEND_910B) ||
-           std::string(socName).find("Ascend910_93") != std::string::npos;
-}
-
-// 判断soc型号是否为Atlas推理系列
-bool Is310P()
-{
-    const char *socName = aclrtGetSocName();
-    if (!socName) {
-        std::cout << "aclrtGetSocName failed!";
-        return false;
-    }
-    const uint32_t LEN_OF_ASCEND_910B = 10;
-    std::cout << "SocVersion: " << std::string(socName) << std::endl;
-    return std::string(socName).find("Ascend310P") != std::string::npos;
-}
-
 #endif

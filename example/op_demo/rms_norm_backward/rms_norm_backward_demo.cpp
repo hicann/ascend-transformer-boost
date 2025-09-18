@@ -58,10 +58,6 @@ int main(int argc, char **argv)
     atb::Context *context = nullptr;
     void *stream = nullptr;
     CHECK_STATUS(aclInit(nullptr));
-    if (!Is910B()) {
-        std::cout << "This self attention demo only supports Atlas A2/A3 products" << std::endl;
-        return 0;
-    }
     CHECK_STATUS(aclrtSetDevice(DEVICE_ID));
     CHECK_STATUS(atb::CreateContext(&context));
     CHECK_STATUS(aclrtCreateStream(&stream));

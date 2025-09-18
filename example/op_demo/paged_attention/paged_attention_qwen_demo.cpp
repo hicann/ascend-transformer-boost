@@ -86,10 +86,6 @@ int main(int argc, char **argv)
 {
     // 设置卡号、创建context、设置stream
     CHECK_STATUS(aclInit(nullptr));
-    if (!Is910B()) {
-        std::cout << "This paged attention demo only supports Atlas A2/A3 products" << std::endl;
-        return 0;
-    }
     int32_t deviceId = 0;
     CHECK_STATUS(aclrtSetDevice(deviceId));
     atb::Context *context = nullptr;

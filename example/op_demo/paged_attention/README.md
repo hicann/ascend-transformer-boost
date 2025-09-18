@@ -31,109 +31,91 @@ tests/apitest/opstest/python/operations/paged_attention/
 ## 产品支持情况
 本op在Atlas A2/A3系列和Atlas 推理系列产品上实现有所区别
 
-### 场景说明
-提供demo分别对应不同产品，编译运行时需要对应更改build脚本：
+## 场景说明
+提供demo编译运行时需要对应更改build脚本：  
 1. 不开启并行解码且带mask场景：
-    paged_attention_demo.cpp
-    - 默认编译脚本可编译运行
-    - 该demo仅支持在Atlas A2/A3系列上运行
+    - paged_attention_demo.cpp  
+        默认编译脚本可编译运行,该demo仅支持在Atlas A2/A3系列上运行。  
+        **参数设置**：
+
+        | 成员名称        | 取值                      |
+        | :------------- | :------------------------ |
+        | headNum        | 32                        |
+        | qkScale        | 1 / sqrt(HEAD_SIZE)       |
+        | kvHeadNum      | 32                        |
+        | batchRunStatus | 0                         |
+        | quantType      | `TYPE_QUANT_UNQUANT`      |
+        | hasQuantOffset | false                     |
+        | calcType       | `CALC_TYPE_UNDEFINED`     |
+        | compressType   | `COMPRESS_TYPE_UNDEFINED` |
+        | maskType       | `MASK_TYPE_NORM`          |
+        | mlaVHeadSize   | 0                         |
+        
+        **数据规格**：
+
+        | tensor名字    | 数据类型 | 数据格式   | 维度信息            | cpu/npu |
+        | ------------- | -------- | -------- | ------------------ |-------- |
+        | `query`       | float16  | nd       | [2, 32, 128]       | npu     |
+        | `keyCache`    | float16  | nd       | [16, 128, 32, 128] | npu     |
+        | `valueCache`  | float16  | nd       | [16, 128, 32, 128] | npu     |
+        | `blockTables` | int32    | nd       | [2, 8]             | npu     |
+        | `contextLens` | int32    | nd       | [2]                | cpu     |
+        | `mask`        | int32    | nd       | [2, 1, 1024]       | npu     |
+        | `attnOut`     | float16  | nd       | [2, 32, 128]       | npu     |
+
+   - paged_attention_qwen_demo.cpp  
+        该demo仅支持在Atlas A2/A3系列上运行。  
+        **参数设置**：
+
+        | 成员名称        | 取值                      |
+        | :------------- | :------------------------ |
+        | headNum        | 5                         |
+        | qkScale        | 1 / sqrt(HEAD_SIZE)       |
+        | kvHeadNum      | 1                         |
+        | batchRunStatus | 0                         |
+        | quantType      | `TYPE_QUANT_UNDEFINED`    |
+        | hasQuantOffset | false                     |
+        | calcType       | `CALC_TYPE_UNDEFINED`     |
+        | compressType   | `COMPRESS_TYPE_UNDEFINED` |
+        | maskType       | `UNDEFINED`               |
+        | mlaVHeadSize   | 0                         |
+
+        **数据规格**：
+
+        | tensor名字    | 数据类型  | 数据格式 |  维度信息         | cpu/npu |
+        | ------------- | -------- | -------- | ---------------- |---------|
+        | `query`       | bf16     | nd       | [1, 5, 128]      | npu     |
+        | `qkScale`     | bf16     | nd       | [9, 128, 1, 128] | npu     |
+        | `valueCache`  | bf16     | nd       | [9, 128, 1, 128] | npu     |
+        | `blockTables` | int32    | nd       | [1, 8]           | npu     |
+        | `contextLens` | int32    | nd       | [1]              | cpu     |
+        | `attnOut`     | bf16     | nd       | [1, 5, 128]      | npu     |
 
 2. 不带mask：
-    paged_attention_inference_demo.cpp
-    - 更改编译脚本为：
-    `g++ -D_GLIBCXX_USE_CXX11_ABI=$cxx_abi -I "${ATB_HOME_PATH}/include" -I "${ASCEND_HOME_PATH}/include" -L "${ATB_HOME_PATH}/lib" -L "${ASCEND_HOME_PATH}/lib64" \
-        paged_attention_inference_demo.cpp demo_util.h -l atb -l ascendcl -o paged_attention_inference_demo`
-    - 运行时调用：
-    `./paged_attention_inference_demo`
-    - 该demo仅支持在Atlas推理系列产品上运行
-
-## 场景说明
-
-  所给Demo的场景说明如下：
-
-- paged_attention_demo.cpp
-  
+   - paged_attention_inference_demo.cpp  
+    该demo仅支持在Atlas推理系列产品上运行。  
     **参数设置**：
 
-    | 成员名称        | 取值                      |
-    | :------------- | :------------------------ |
-    | headNum        | 32                        |
-    | qkScale        | 1 / sqrt(HEAD_SIZE)       |
-    | kvHeadNum      | 32                        |
-    | batchRunStatus | 0                         |
-    | quantType      | `TYPE_QUANT_UNQUANT`      |
-    | hasQuantOffset | false                     |
-    | calcType       | `CALC_TYPE_UNDEFINED`     |
-    | compressType   | `COMPRESS_TYPE_UNDEFINED` |
-    | maskType       | `MASK_TYPE_NORM`          |
-    | mlaVHeadSize   | 0                         |
-    
-    **数据规格**：
+        | 成员名称        | 取值                      |
+        | :------------- | :------------------------ |
+        | headNum        | 32                        |
+        | qkScale        | 1 / sqrt(HEAD_SIZE)       |
+        | kvHeadNum      | 32                        |
+        | batchRunStatus | 0                         |
+        | quantType      | `TYPE_QUANT_UNQUANT`      |
+        | hasQuantOffset | false                     |
+        | calcType       | `CALC_TYPE_UNDEFINED`     |
+        | compressType   | `COMPRESS_TYPE_UNDEFINED` |
+        | maskType       | `UNDEFINED`               |
+        | mlaVHeadSize   | 0                         |
 
-    | tensor名字    | 数据类型 | 数据格式   | 维度信息            | cpu/npu |
-    | ------------- | -------- | -------- | ------------------ |-------- |
-    | `query`       | float16  | nd       | [2, 32, 128]       | npu     |
-    | `keyCache`    | float16  | nd       | [16, 128, 32, 128] | npu     |
-    | `valueCache`  | float16  | nd       | [16, 128, 32, 128] | npu     |
-    | `blockTables` | int32    | nd       | [2, 8]             | npu     |
-    | `contextLens` | int32    | nd       | [2]                | cpu     |
-    | `mask`        | int32    | nd       | [2, 1, 1024]       | npu     |
-    | `attnOut`     | float16  | nd       | [2, 32, 128]       | npu     |
+        **数据规格**：
 
-- paged_attention_qwen_demo.cpp  
-
-   **参数设置**：
-
-    | 成员名称        | 取值                      |
-    | :------------- | :------------------------ |
-    | headNum        | 5                         |
-    | qkScale        | 1 / sqrt(HEAD_SIZE)       |
-    | kvHeadNum      | 1                         |
-    | batchRunStatus | 0                         |
-    | quantType      | `TYPE_QUANT_UNDEFINED`    |
-    | hasQuantOffset | false                     |
-    | calcType       | `CALC_TYPE_UNDEFINED`     |
-    | compressType   | `COMPRESS_TYPE_UNDEFINED` |
-    | maskType       | `UNDEFINED`               |
-    | mlaVHeadSize   | 0                         |
-    
-
-
-    **数据规格**：
-
-    | tensor名字    | 数据类型  | 数据格式 |  维度信息         | cpu/npu |
-    | ------------- | -------- | -------- | ---------------- |---------|
-    | `query`       | bf16     | nd       | [1, 5, 128]      | npu     |
-    | `qkScale`     | bf16     | nd       | [9, 128, 1, 128] | npu     |
-    | `valueCache`  | bf16     | nd       | [9, 128, 1, 128] | npu     |
-    | `blockTables` | int32    | nd       | [1, 8]           | npu     |
-    | `contextLens` | int32    | nd       | [1]              | cpu     |
-    | `attnOut`     | bf16     | nd       | [1, 5, 128]      | npu     |
-
-- paged_attention_inference_demo.cpp  
-
-   **参数设置**：
-
-    | 成员名称        | 取值                      |
-    | :------------- | :------------------------ |
-    | headNum        | 32                        |
-    | qkScale        | 1 / sqrt(HEAD_SIZE)       |
-    | kvHeadNum      | 32                        |
-    | batchRunStatus | 0                         |
-    | quantType      | `TYPE_QUANT_UNQUANT`      |
-    | hasQuantOffset | false                     |
-    | calcType       | `CALC_TYPE_UNDEFINED`     |
-    | compressType   | `COMPRESS_TYPE_UNDEFINED` |
-    | maskType       | `UNDEFINED`               |
-    | mlaVHeadSize   | 0                         |
-
-    **数据规格**：
-
-    | tensor名字    | 数据类型  | 数据格式  | 维度信息            | cpu/npu |
-    | ------------- | -------- | -------- | ------------------- |---------|
-    | `query`       | bf16     | nd       | [2, 32, 128]        | npu     |
-    | `qkScale`     | bf16     | nd       | [16, 1024, 128, 16] | npu     |
-    | `valueCache`  | bf16     | nd       | [16, 1024, 128, 16] | npu     |
-    | `blockTables` | int32    | nd       | [2, 8]              | npu     |
-    | `contextLens` | int32    | nd       | [2]                 | cpu     |
-    | `attnOut`     | bf16     | nd       | [2, 32, 128]        | npu     |
+        | tensor名字    | 数据类型  | 数据格式  | 维度信息            | cpu/npu |
+        | ------------- | -------- | -------- | ------------------- |---------|
+        | `query`       | bf16     | nd       | [2, 32, 128]        | npu     |
+        | `qkScale`     | bf16     | nd       | [16, 1024, 128, 16] | npu     |
+        | `valueCache`  | bf16     | nd       | [16, 1024, 128, 16] | npu     |
+        | `blockTables` | int32    | nd       | [2, 8]              | npu     |
+        | `contextLens` | int32    | nd       | [2]                 | cpu     |
+        | `attnOut`     | bf16     | nd       | [2, 32, 128]        | npu     |

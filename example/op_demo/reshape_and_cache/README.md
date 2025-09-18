@@ -33,10 +33,60 @@ tests/apitest/opstest/python/operations/reshape_and_cache/
 
 ### 场景说明
 提供demo分别对应不同产品的基础场景，编译运行时需要对应更改build脚本：
-1. Atlas A2/A3：
-    reshape_and_cache_demo.cpp
-    - 默认编译脚本可编译运行
-    - 该demo仅支持在Atlas A2/A3系列上运行
+1. Atlas A2/A3：  
+   **参数设置：**
+
+    | 成员名称     | 取值                    |
+    | :----------- | :---------------------- |
+    | compressType | COMPRESS_TYPE_UNDEFINED |
+    | kvCacheCfg   | K_CACHE_V_CACHE         |
+
+    以下demo仅支持在Atlas A2/A3系列上运行。  
+
+    - reshape_and_cache_demo.cpp  
+        | tensor名字      | 数据类型 | 数据格式 | 维度信息            |
+        | :-------------- | :------- | :------- | :------------------ |
+        | `key`           | float16  | nd       | [2, 32, 128]        |
+        | `value`         | float16  | nd       | [2, 32, 128]        |
+        | `keyCache`      | float16  | nd       | [512, 128, 32, 128] |
+        | `valueCache`    | float16  | nd       | [512, 128, 32, 128] |
+        | `slotMapping`   | int32    | nd       | [2]                 |
+        | `keyCacheOut`   | float16  | nd       | [512, 128, 32, 128] |
+        | `valueCacheOut` | float16  | nd       | [512, 128, 32, 128] |
+
+    - reshape_and_cache_demo_ds1.cpp  
+        | tensor名字      | 数据类型 | 数据格式 | 维度信息         |
+        | :-------------- | :------- | :------- | :--------------- |
+        | `key`           | bf16     | nd       | [5, 1, 128]      |
+        | `value`         | bf16     | nd       | [5, 1, 128]      |
+        | `keyCache`      | bf16     | nd       | [9, 128, 1, 128] |
+        | `valueCache`    | bf16     | nd       | [9, 128, 1, 128] |
+        | `slotMapping`   | int32    | nd       | [5]              |
+        | `keyCacheOut`   | bf16     | nd       | [9, 128, 1, 128] |
+        | `valueCacheOut` | bf16     | nd       | [9, 128, 1, 128] |
+
+    - reshape_and_cache_demo_ds2.cpp  
+        | tensor名字      | 数据类型 | 数据格式 | 维度信息         |
+        | :-------------- | :------- | :------- | :--------------- |
+        | `key`           | bf16     | nd       | [1024, 1, 128]   |
+        | `value`         | bf16     | nd       | [1024, 1, 128]   |
+        | `keyCache`      | bf16     | nd       | [9, 128, 1, 128] |
+        | `valueCache`    | bf16     | nd       | [9, 128, 1, 128] |
+        | `slotMapping`   | int32    | nd       | [1024]           |
+        | `keyCacheOut`   | bf16     | nd       | [9, 128, 1, 128] |
+        | `valueCacheOut` | bf16     | nd       | [9, 128, 1, 128] |
+
+    - reshape_and_cache_demo_ds3.cpp  
+        | tensor名字      | 数据类型 | 数据格式 | 维度信息         |
+        | :-------------- | :------- | :------- | :--------------- |
+        | `key`           | bf16     | nd       | [1, 1, 128]      |
+        | `value`         | bf16     | nd       | [1, 1, 128]      |
+        | `keyCache`      | bf16     | nd       | [9, 128, 1, 128] |
+        | `valueCache`    | bf16     | nd       | [9, 128, 1, 128] |
+        | `slotMapping`   | int32    | nd       | [1]              |
+        | `keyCacheOut`   | bf16     | nd       | [9, 128, 1, 128] |
+        | `valueCacheOut` | bf16     | nd       | [9, 128, 1, 128] |
+  
 
 2. Atlas推理系列产品：
     reshape_and_cache_inference_demo.cpp
@@ -49,57 +99,3 @@ tests/apitest/opstest/python/operations/reshape_and_cache/
     - 运行时调用：
     `./reshape_and_cache_inference_demo`
     - 该demo仅支持在Atlas 推理系列产品上运行
-
-所给Demo的场景说明如下：
-### 参数设置
-
-| 成员名称       | 取值          |
-| :------------- | :------------ |
-| compressType | COMPRESS_TYPE_UNDEFINED |
-| kvCacheCfg   | K_CACHE_V_CACHE         |
-
-### 数据规格
-
-reshape_and_cache_demo.cpp
-| tensor名字      | 数据类型 | 数据格式 | 维度信息    |
-| :-------------- | :------- | :------- | :---------- |
-| `key`  | float16    | nd       | [2, 32, 128]    |
-| `value`  | float16    | nd       | [2, 32, 128] |
-| `keyCache`  | float16    | nd       | [512, 128, 32, 128] |
-| `valueCache`  | float16    | nd       | [512, 128, 32, 128] |
-| `slotMapping`  | int32    | nd       | [2] |
-| `keyCacheOut` | float16    | nd       | [512, 128, 32, 128]    |
-| `valueCacheOut` | float16    | nd       | [512, 128, 32, 128]    |
-
-reshape_and_cache_demo_ds1.cpp
-| tensor名字      | 数据类型 | 数据格式 | 维度信息    |
-| :-------------- | :------- | :------- | :---------- |
-| `key`  | bf16    | nd       | [5, 1, 128]    |
-| `value`  | bf16    | nd       | [5, 1, 128] |
-| `keyCache`  | bf16    | nd       | [9, 128, 1, 128] |
-| `valueCache`  | bf16    | nd       | [9, 128, 1, 128] |
-| `slotMapping`  | int32    | nd       | [5] |
-| `keyCacheOut` | bf16    | nd       | [9, 128, 1, 128]    |
-| `valueCacheOut` | bf16    | nd       | [9, 128, 1, 128]    |
-
-reshape_and_cache_demo_ds2.cpp
-| tensor名字      | 数据类型 | 数据格式 | 维度信息    |
-| :-------------- | :------- | :------- | :---------- |
-| `key`  | bf16    | nd       | [1024, 1, 128]    |
-| `value`  | bf16    | nd       | [1024, 1, 128] |
-| `keyCache`  | bf16    | nd       | [9, 128, 1, 128] |
-| `valueCache`  | bf16    | nd       | [9, 128, 1, 128] |
-| `slotMapping`  | int32    | nd       | [1024] |
-| `keyCacheOut` | bf16    | nd       | [9, 128, 1, 128]    |
-| `valueCacheOut` | bf16    | nd       | [9, 128, 1, 128]    |
-
-reshape_and_cache_demo_ds3.cpp
-| tensor名字      | 数据类型 | 数据格式 | 维度信息    |
-| :-------------- | :------- | :------- | :---------- |
-| `key`  | bf16    | nd       | [1, 1, 128]    |
-| `value`  | bf16    | nd       | [1, 1, 128] |
-| `keyCache`  | bf16    | nd       | [9, 128, 1, 128] |
-| `valueCache`  | bf16    | nd       | [9, 128, 1, 128] |
-| `slotMapping`  | int32    | nd       | [1] |
-| `keyCacheOut` | bf16    | nd       | [9, 128, 1, 128]    |
-| `valueCacheOut` | bf16    | nd       | [9, 128, 1, 128]    |

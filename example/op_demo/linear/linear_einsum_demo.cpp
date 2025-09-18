@@ -11,12 +11,11 @@
 #include "../demo_util.h"
 
 const int32_t DEVICE_ID = 0;
-const uint32_t XDIM_0 = 2;
-const uint32_t XDIM_1 = 3;
-const uint32_t WEIGHTDIM_0 = 3;
-const uint32_t WEIGHTDIM_1 = 2;
-const uint32_t BIASDIM_0 = 2;
-const uint32_t BATCHSIZE = 1;
+const uint32_t XDIM_0 = 32;
+const uint32_t XDIM_1 = 512;
+const uint32_t WEIGHTDIM_0 = 512;
+const uint32_t WEIGHTDIM_1 = 128;
+const uint32_t BATCHSIZE = 128;
 
 /**
  * @brief 准备atb::VariantPack
@@ -27,18 +26,18 @@ const uint32_t BATCHSIZE = 1;
  */
 atb::Status PrepareInTensor(atb::Context *contextPtr, aclrtStream stream, atb::SVector<atb::Tensor> &inTensors)
 {
-    // 创建shape为[2, 3]的输入x tensor
+    // 创建shape为[32, 128, 512]的输入x tensor
     atb::Tensor xFloat;
-    CreateTensorFromVector(contextPtr, stream, std::vector<float>{1, 2, 3, 4, 5, 6}, aclDataType::ACL_FLOAT16,
-                           aclFormat::ACL_FORMAT_ND, {XDIM_0, BATCHSIZE, XDIM_1}, xFloat);
-    // 创建shape为[3, 2]的输入weight tensor
+    CreateTensorFromVector(contextPtr, stream, std::vector<float>(XDIM_0 * BATCHSIZE * XDIM_1, 1),
+                           aclDataType::ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, {XDIM_0, BATCHSIZE, XDIM_1}, xFloat);
+    // 创建shape为[128, 512, 128]的输入weight tensor
     atb::Tensor weightFloat;
-    CreateTensorFromVector(contextPtr, stream, std::vector<float>{1, 2, 3, 4, 5, 6}, aclDataType::ACL_FLOAT16,
-                           aclFormat::ACL_FORMAT_ND, {BATCHSIZE, WEIGHTDIM_0, WEIGHTDIM_1}, weightFloat);
+    CreateTensorFromVector(contextPtr, stream, std::vector<float>(BATCHSIZE * WEIGHTDIM_0 * WEIGHTDIM_1, 2),
+                           aclDataType::ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, {BATCHSIZE, WEIGHTDIM_0, WEIGHTDIM_1},
+                           weightFloat);
     inTensors = {xFloat, weightFloat};
     return atb::ErrorType::NO_ERROR;
 }
-
 
 /**
  * @brief 创建一个linear operation

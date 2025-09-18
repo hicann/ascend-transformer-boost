@@ -106,10 +106,6 @@ atb::Status PrepareOperation(atb::Operation **prefixEncoderOp)
 
 int main(int argc, char **argv)
 {
-    if (!Is910B()) {
-        std::cout << "Self attention PrefixEncoder demo only supports Atlas A2/A3 products" << std::endl;
-        return 0;
-    }
     // 设置卡号、创建context、设置stream
     CHECK_STATUS(aclInit(nullptr));
     int32_t deviceId = 0;
