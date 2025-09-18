@@ -9,10 +9,10 @@
  */
 
 #include "platform/platform_infos_def.h"
+#include <mutex>
 #include "mki/utils/dl/dl.h"
 #include "mki/utils/env/env.h"
-#include <mutex>
-#include <mki/utils/log/log.h>
+#include "mki/utils/log/log.h"
 #include "platform_infos_impl.h"
 
 namespace fe {
@@ -127,8 +127,8 @@ void PlatFormInfos::SetCoreNumByCoreType(const std::string &core_type)
     } else {
         MKI_LOG(WARN) << "Failed to acl function!";
     }
-    std::string coreNumStr;
-    std::string coreTypeStr;
+    std::string coreNumStr = "";
+    std::string coreTypeStr = "";
     if (core_type == "VectorCore") {
         coreTypeStr = "vector_core_cnt";
     } else {
