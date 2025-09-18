@@ -19,10 +19,6 @@ namespace atb {
 static const uint32_t LINEAR_REDUCE_SCATTER_IN_TENSOR_NUM = 6;
 static const uint32_t LINEAR_REDUCE_SCATTER_OUT_TENSOR_NUM = 2;
 
-
-static const uint32_t BIAS_TENSOR_INDEX = 2;
-
-
 aclnnStatus (*LinearParallelAclnnRunner::aclnnMatmulReduceScatterV2GetWorkspaceSizeFunc_)(
     const aclTensor *, const aclTensor *, const aclTensor *, const aclTensor *, const aclTensor *, const aclTensor *,
     int64_t, const char *, const char *, int64_t, int64_t, int64_t, const char *, const aclTensor *, const aclTensor *,
@@ -60,7 +56,7 @@ Status LinearParallelAclnnRunner::BuildAclnnVariantPack(const RunnerVariantPack 
     this->aclnnVariantPack_.aclInTensors.resize(LINEAR_REDUCE_SCATTER_IN_TENSOR_NUM);
     for (size_t i = 0; i < this->aclnnVariantPack_.aclInTensors.size(); ++i) {
         std::shared_ptr<AclNNTensor> aclnnTensorPtr = std::make_shared<AclNNTensor>();
-        if (i >= 3 || (!param_.hasResidual && i == BIAS_TENSOR_INDEX)) {
+        if (i > 1) {
             this->aclnnVariantPack_.aclInTensors[i] = aclnnTensorPtr;
             continue;
         }
