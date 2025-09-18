@@ -14,13 +14,13 @@
 #include <chrono>
 #include <vector>
 #include <mutex>
-#include <dlfcn.h>
 #include <map>
 #include <set>
 #include <thread>
 #include <sstream>
 #include <iomanip>
 
+#include <dlfcn.h>
 #include <hccl/hccl.h>
 #include "mki/utils/log/log.h"
 #include "mki/utils/env/env.h"
