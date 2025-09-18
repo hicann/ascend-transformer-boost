@@ -28,7 +28,7 @@ tests/apitest/opstest/python/operations/multi_latent_attention/
 
 ## 场景说明
 
-  所给Demo的场景说明如下：
+  该算子所给demo仅支持在Atlas A2/A3系列产品上运行，demo的场景说明如下：
 
 - mlapa_demo.cpp
   

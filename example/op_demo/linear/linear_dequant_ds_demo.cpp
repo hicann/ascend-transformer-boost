@@ -73,12 +73,6 @@ int main(int argc, char **argv)
     void *stream = nullptr;
 
     CHECK_STATUS(aclInit(nullptr));
-    if (!Is910B()) {
-        std::cout << "This linear demo only supports A2/A3" << std::endl;
-        CHECK_STATUS(aclFinalize());
-        return 0;
-    }
-
     CHECK_STATUS(aclrtSetDevice(DEVICE_ID));
     CHECK_STATUS(atb::CreateContext(&context));
     CHECK_STATUS(aclrtCreateStream(&stream));
@@ -120,6 +114,6 @@ int main(int argc, char **argv)
     CHECK_STATUS(aclrtDestroyStream(stream));
     CHECK_STATUS(DestroyContext(context)); // context，全局资源，后释放
     CHECK_STATUS(aclFinalize());
-    std::cout << "Linear dequant demo for A2/A3 success!" << std::endl;
+    std::cout << "Linear dequant demo success!" << std::endl;
     return 0;
 }

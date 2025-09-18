@@ -34,18 +34,21 @@
 本op在Atlas A2/A3系列和Atlas 推理系列产品上实现有所区别
 
 ## 场景说明
-所给Demo的场景说明如下：
-### 参数设置
+所给Demo的场景说明如下：  
+- faupdate_demo.cpp  
+  该demo仅支持在Atlas A2/A3系列产品上运行。  
+    **参数设置**
 
-| 成员名称       | 取值          |
-| :------------- | :------------ |
-| `faUpdateType` | DECODE_UPDATE |
-| sp             | 8             |
+    | 成员名称       | 取值          |
+    | :------------- | :------------ |
+    | `faUpdateType` | DECODE_UPDATE |
+    | sp             | 8             |
 
-### 数据规格
+    **数据规格**
 
-| tensor名字 | 数据类型 | 数据格式  | 维度信息     | cpu/npu |
-| :--------- | :------- | :------- | :---------- | ------- |
-| `lse`      | float    | nd       | [8, 512]    | npu     |
-| `localout` | float    | nd       | [8, 512, 8] | npu     |
-| `output`   | float    | nd       | [512, 8]    | npu     |
+    | tensor名字 | 数据类型  | 数据格式  | 维度信息        | cpu/npu |
+    | :--------- | :------- | :------- | :-------------- | ------- |
+    | `lse`      | float    | nd       | [8, 16384]      | npu     |
+    | `localout` | float    | nd       | [8, 16384, 128] | npu     |
+    | `output`   | float    | nd       | [16384, 128]    | npu     |
+

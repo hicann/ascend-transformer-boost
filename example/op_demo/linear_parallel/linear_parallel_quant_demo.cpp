@@ -33,10 +33,6 @@ atb::Status ExcuteImpl(atb::Operation *op, atb::VariantPack variantPack, atb::Co
 atb::Status LinearParallelSample(int rank, int rankSize)
 {
     int ret = aclInit(nullptr);
-    if (!Is910B()) {
-        std::cout << "Linear parallel only supports A2/A3" << std::endl;
-        return atb::ErrorType::NO_ERROR;
-    }
     // 设置每个进程对应的deviceId
     int deviceId = rank;
     CHECK_STATUS(aclrtSetDevice(deviceId));
@@ -90,6 +86,7 @@ atb::Status LinearParallelSample(int rank, int rankSize)
     CHECK_STATUS(atb::DestroyContext(context)); // 销毁context
     CHECK_STATUS(aclFinalize());
     std::cout << "demo excute success" << std::endl;
+    return atb::ErrorType::NO_ERROR;
 }
 
 int main(int argc, const char *argv[])

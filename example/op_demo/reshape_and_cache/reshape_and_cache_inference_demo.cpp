@@ -132,10 +132,6 @@ int main(int argc, char **argv)
 {
     // 设置卡号、创建context、设置stream
     CHECK_STATUS(aclInit(nullptr));
-    if (!Is310P()) {
-        std::cout << "This ReshapeAndCache demo only supports Atlas inference products" << std::endl;
-        return 0;
-    }
     int32_t deviceId = 0;
     CHECK_STATUS(aclrtSetDevice(deviceId));
     atb::Context *context = nullptr;
