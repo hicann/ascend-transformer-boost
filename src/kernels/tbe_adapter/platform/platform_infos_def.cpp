@@ -170,7 +170,7 @@ uint32_t PlatFormInfos::GetCoreNumByType(const std::string &core_type)
     } else {
         MKI_LOG(WARN) << "Failed to load acl Function!";
     }
-    std::string coreNumStr;
+    std::string coreNumStr = "";
     std::string coreTypeStr = core_type == "VectorCore" ? "vector_core_cnt" : "ai_core_cnt";
     std::lock_guard<std::mutex> lockGuard(g_asdopsFePlatMutex);
     (void)GetPlatformRes("SoCInfo", coreTypeStr, coreNumStr);
