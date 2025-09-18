@@ -1,26 +1,26 @@
-# 加速库日志
+# ATB加速库日志
 
-## 环境变量
+## 环境变量介绍
 
-加速库日志相关的几个环境变量：
+ATB加速库日志相关的几个环境变量：
 
 ### 8.3之前版本
 
-* `ASDOPS_LOG_LEVEL`: 用于设置加速库日志等级，严重程度从高到低有TRACE、DEBUG、WARN、ERROR、FATAL。默认为ERROR，调试时建议设置为DEBUG或INFO。
-* `ASDOPS_LOG_TO_STDOUT`: 用于设置加速库日志是否输出到控制台, 0: 关闭, 1: 开启输出到控制台。
-* `ASDOPS_LOG_TO_FILE`: 用于设置加速库日志是否输出到文件, 0: 关闭, 1: 开启输出到文件。
-* `ASDOPS_LOG_TO_FILE_FLUSH`: 用于设置加速库日志写文件时是否刷新，0: 关闭, 1: 开启。调试时建议设置为1, 会将缓冲区中的日志内容刷新到文件中，程序异常退出时能避免日志内容丢失。
-* `ASDOPS_LOG_PATH`: 用于设置加速库日志保存路径， 需要传递合法路径。
+* `ASDOPS_LOG_LEVEL`: 用于设置ATB加速库日志等级，严重程度从高到低有TRACE、DEBUG、WARN、ERROR、FATAL。默认为ERROR，调试时建议设置为DEBUG或INFO。
+* `ASDOPS_LOG_TO_STDOUT`: 用于设置ATB加速库日志是否输出到控制台, 0: 关闭, 1: 开启输出到控制台。
+* `ASDOPS_LOG_TO_FILE`: 用于设置ATB加速库日志是否输出到文件, 0: 关闭, 1: 开启输出到文件。
+* `ASDOPS_LOG_TO_FILE_FLUSH`: 用于设置ATB加速库日志写文件时是否刷新，0: 关闭, 1: 开启。调试时建议设置为1, 会将缓冲区中的日志内容刷新到文件中，程序异常退出时能避免日志内容丢失。
+* `ASDOPS_LOG_PATH`: 用于设置ATB加速库日志保存路径， 需要传递合法路径。
 
 ### 8.3之后版本
 
 * `ASCEND_PROCESS_LOG_PATH`: 用于指定日志落盘路径为任意有读写权限的目录
-* `ASCEND_SLOG_PRINT_TO_STDOUT`: 用于设置CANN日志(包含加速库)是否输出到控制台，0: 关闭, 1: 开启输出到控制台。
-* `ASCEND_GLOBAL_LOG_LEVEL=0`: 设置CANN日志级别(包含加速库), 0: DEBUG、1：INFO、2：WARNING、3：ERROR、4：NULL (不输出日志)
+* `ASCEND_SLOG_PRINT_TO_STDOUT`: 用于设置CANN日志(包含ATB加速库)是否输出到控制台，0: 关闭, 1: 开启输出到控制台。
+* `ASCEND_GLOBAL_LOG_LEVEL=0`: 设置CANN日志级别(包含ATB加速库), 0: DEBUG、1：INFO、2：WARNING、3：ERROR、4：NULL (不输出日志)
 
 ## 日志阅读
 
-接下来通过一个Deepseek模型例子简单介绍如何看懂加速库日志，并且通过日志获得想要的信息。
+接下来通过一个Deepseek模型例子简单介绍如何看懂ATB加速库日志，并且通过日志获得想要的信息。
 
 ![image](images/log_1.png)
 
@@ -38,9 +38,8 @@
 
 ![image](images/log_5.png)
 
-按照上述方法既可以找到组图中除pluginOp以外加速库算子的信息。
 
-# 调试相关环境变量
+# ATB加速库调试相关环境变量
 
 ## 环境变量介绍
 
@@ -48,9 +47,9 @@
 * `ATB_STREAM_SYNC_EVERY_RUNNER_ENABLE`: 用于问题定位，确定报错所在的Runner。当变量配置为1时，每个Runner的Execute结束时就做流同步。
 * `ATB_STREAM_SYNC_EVERY_KERNEL_ENABLE`: 用于问题定位，确定报错所在的算子kernel。当变量配置为1时，每个算子kernel的Execute结束时就做流同步。
 
-## 例子
+## 使用示例
 
-以llama模型的Decoder_layer为例
+以通过msprof采集到的llama模型的Decoder_layer为例
 * 当不开启环境变量时
 
    ![image](images/llama_normal.png)
@@ -68,11 +67,11 @@
 
 ## 组图整网场景
 
-本章节主要侧重于加速库GraphOperation的调测场景，也就是通过加速库组图在模型场景下的调测。
+本章节介绍使用ATB加速库Graph Operation进行模型组图时常用的两个调试工具：msprof和msit dump，分别对应性能和精度两个不同的场景。
 
 ### 性能
 
-想要了解使用加速库组图中各个算子下发和运行的性能数据，可以通过msprof工具进行数据采集，并且通过`chrome://tracing`查看
+想要了解使用ATB加速库组图中各个算子下发和运行的性能数据，可以通过msprof工具进行数据采集，并且通过`chrome://tracing`查看
 
 1. 确保环境中是否有该工具
    
@@ -81,14 +80,14 @@
    
    执行`msprof [options] --application=<app>`, 具体命令参数描述请查看：[MindStudio文档](https://www.hiascend.com/document/detail/zh/mindstudio/81RC1/T&ITools/Profiling/atlasprofiling_16_0008.html)
    
-   * 以加速库中的demo为例：`cd ${home_path}/example/op_demo/mla_preprocess && msprof --application="bash build.sh"`
+   * 以ATB加速库中的demo为例：`cd ${home_path}/example/op_demo/mla_preprocess && msprof --application="bash build.sh"`
 3. 查看profiling性能数据
    
    进行性能数据采集之后，msprof工具会在所设置的output目录下生成相应的数据文件`mindstudio_profiler_output`目录，其中在此简单介绍两个最常用的文件：
    
    * `msprof_{timestamp}.json`: 可以通过`chrome://tracing`或`MindStudio Insight`打开查看组图中Host侧和Device侧的流水排布情况和算子执行耗时。
    * `op_summary_{timestamp}.csv`: 可以查看在执行组图时所用到的各个算子名、类型、输入输出tensor的信息、执行时间、cache命中情况等信息，可以用于分析性能数据，寻找优化点等。
-4. 例子
+4. 使用示例
    
     * `msprof --application="bash build.sh"`：运行mla_preprocess的用例
          
@@ -109,7 +108,7 @@
 
 ### 精度
 
-当遇到整网精度问题时，想要定位精度问题是由哪个算子的精度出现了问题导致整网精度出问题时，可以使用msit dump工具将加速库组图中各个算子在执行时的输入输出tensor、param数据dump下来从而进行单算子验证。
+当遇到整网精度问题时，想要定位精度问题是由哪个算子的精度出现了问题导致整网精度出问题时，可以使用msit dump工具将ATB加速库组图中各个算子在执行时的输入输出tensor、param数据dump下来从而进行单算子验证。
 
 1. 确保环境中是否有该工具
    
@@ -118,13 +117,13 @@
    
    执行`msit llm dump --exec <app> [可选参数]`, 具体命令参数描述请查看：[DUMP加速库数据使用说明](https://gitee.com/ascend/msit/blob/master/msit/docs/llm/%E5%B7%A5%E5%85%B7-DUMP%E5%8A%A0%E9%80%9F%E5%BA%93%E6%95%B0%E6%8D%AE%E4%BD%BF%E7%94%A8%E8%AF%B4%E6%98%8E.md)
    
-   * 以加速库中的demo为例：`cd ${home_path}/example/op_demo/mla_preprocess && msit llm dump --exec "bash build.sh" --type model tensor`
+   * 以ATB加速库中的demo为例：`cd ${home_path}/example/op_demo/mla_preprocess && msit llm dump --exec "bash build.sh" --type model tensor`
 3. 查看数据内容
    
-   * 对于采集的到的dump数据，其目录结构对应的就是加速库组图结构，其中Operation名前面的序号表示模型对应的层数(如：`62_LmHead`: 表示第62层的LmHead)。再下层目录中储存的则是这一层中所用到的所有Operation，前面的序号代表先后顺序(如：`0_GatherOperation`: 表示这一层的第0个Op为GatehrOperation)。再下一层目录储存的则是Operation调用的算子Kernel，前面的序号代表先后顺序(如：`0_Gather16I64Kernel`: 表示这个Operation调用的第0个算子为Gather16I64Kernel)。
+   * 对于采集的到的dump数据，其目录结构对应的就是ATB加速库组图结构，其中Operation名前面的序号表示模型对应的层数(如：`62_LmHead`: 表示第62层的LmHead)。再下层目录中储存的则是这一层中所用到的所有Operation，前面的序号代表先后顺序(如：`0_GatherOperation`: 表示这一层的第0个Op为GatehrOperation)。再下一层目录储存的则是Operation调用的算子Kernel，前面的序号代表先后顺序(如：`0_Gather16I64Kernel`: 表示这个Operation调用的第0个算子为Gather16I64Kernel)。
    * 对于各个目录中的before、after目录中存储的则是对应当前目录在组图执行之前的tensor数据和执行之后的tensor数据。before中的数据主要用于查看inTensors，after中的数据主要用于查看outTensors。其中的tensor数据可以通过msit工具提供的`read_bin_data`等方法读取其内容, 具体参考：[API-读取和保存接口](https://gitee.com/ascend/msit/blob/master/msit/docs/llm/API-%E8%AF%BB%E5%8F%96%E5%92%8C%E4%BF%9D%E5%AD%98%E6%8E%A5%E5%8F%A3.md)。
    * op_param.json中则存储的是当前Operation在组图执行时对应使用的param数据。
-4. 例子
+4. 使用示例
    
    * 运行一个topktoppSamplingOp（其中有多个node）的csv用例：
      
@@ -139,9 +138,9 @@
      
       ![image](images/precision_4.png)
 
-## 单算子调测场景
+## 单算子调试场景
 
-本章节主要侧重于在加速库中开发新算子(kernel)代码的调测。
+本章节介绍ATB加速库单算子(Operation)的调试场景，适用于在ATB加速库中开发算子核函数(Kernel)代码是的调试。下文介绍两种调试功能MSDEBUG和AscendC_Dump。
 
 ### MSDEBUG
 
@@ -162,9 +161,9 @@
   ./Ascend-hdk-<chip_type>-npu-driver_<version>_linux-<arch>.run --debug
   ```
 
-2. 进行带有该功能的加速库编译
+2. 进行带有该功能的ATB加速库编译
    
-   在编译加速库的时候添加编译选项: `--msdebug`。例如: `bash scripts/build.sh testframework --msdebug --no-pybind`
+   在编译ATB加速库的时候添加编译选项: `--msdebug`。例如: `bash scripts/build.sh testframework --msdebug --no-pybind`
    如果出现以下类似报错，是因为开启--msdebug时需要使用-O0 -g编译算子，stack frame size超出限制。
    
    ![image](images/msdebug_1.png)
@@ -173,10 +172,10 @@
    ![image](images/msdebug_2.png)
 3. 设置环境变量
    
-   编译完成之后设置环境变量`LAUNCH_KERNEL_PATH`去配置需要调试的算子.o文件。例如: `export LAUNCH_KERNEL_PATH={kernel.o}`(其中加速库的算子kernel.o路径使用源码编译时会存在放在build/op_kernels/目录下)
+   编译完成之后设置环境变量`LAUNCH_KERNEL_PATH`去配置需要调试的算子.o文件。例如: `export LAUNCH_KERNEL_PATH={kernel.o}`(其中ATB加速库的算子kernel.o路径使用源码编译时会存在放在build/op_kernels/目录下)
 4. 调试算子
    
-   * 调其对应算子`msdebug {可执行文件或程序}`，以加速库中的测试脚本为例：`msdebug python3 test_faster_gelu.py`
+   * 调其对应算子`msdebug {可执行文件或程序}`，以ATB加速库中的测试脚本为例：`msdebug python3 test_faster_gelu.py`
    * 常用命令表
      
         | 命令                                       | 命令缩写                          | 作用                                                                                                                                              | 示例                                   |
@@ -186,7 +185,7 @@
         | continue                                   | c                                 | 继续运行                                                                                                                                          | c                                      |
         | print                                      | p                                 | 打印变量                                                                                                                                          | p zLocal                               |
         | frame variable                             | var                               | 打印当前帧所有变量                                                                                                                                | var                                    |
-        | memory read                                | x                                 | 读内存<br>-m 指定内存位置，支持GM/UB/L0A/L0B/L0C<br>-f 指定[字节转换格式](#附录1)<br>-s 指定每行打印字节数<br>-c 指定打印的行数                   | x -m GM -f float16[] 1000-c 2 -s 128   |
+        | memory read                                | x                                 | 读内存<br>-m 指定内存位置，支持GM/UB/L0A/L0B/L0C<br>-f 指定字节转换格式<br>-s 指定每行打印字节数<br>-c 指定打印的行数                   | x -m GM -f float16[] 1000-c 2 -s 128   |
         | register read                              | re r                              | 读取寄存器值<br>-a 读取所有寄存器值<br>\$REG\_NAME 读取指定名称的寄存器值                                                                         | register read -are r \$PC              |
         | thread step-over                           | next<br>n                         | 在同一个调用栈中，移动到下一个可执行的代码行                                                                                                      | n                                      |
         | ascend info devices                        | /                                 | 查询device信息                                                                                                                                    | ascend info devices                    |
@@ -200,7 +199,7 @@
         | target modules load –f kernel.o –s address | image load -f kernel.o -s address | 在程序运行后，使导入的调试信息生效                                                                                                                | image load -f AddCustom\_xxx.o -s 0    |
      
      
-5. 例子
+5. 使用示例
    
    * `export LAUNCH_KERNEL_PATH={kernel.o}` ：设置需要调试的算子
      
@@ -219,7 +218,7 @@
 
 ### AscendC_Dump
 
-加速库的`AscendC_Dump`功能支持用户在调试加速库中的算子时，在核函数中添加AscendC::printf、AscendC::DumpTensor接口打印相应的值，方便用户进行调试定位。需要注意的是该功能为调测功能，开启后会对算子实际下发和运行带来一定影响，不推荐在模型场景下开启该功能。
+ATB加速库的`AscendC_Dump`功能支持用户在调试ATB加速库中的算子时，在核函数中添加AscendC::printf、AscendC::DumpTensor接口打印相应的值，方便用户进行调试定位。需要注意的是该功能为调试功能，开启后会对算子实际下发和运行带来一定影响，不推荐在模型场景下开启该功能。
 
 1. 确保环境中是否有该工具
    
@@ -262,24 +261,24 @@
     | dumpSize  | 输入      | 需要dump的元素个数                                 |
     | shapeInfo | 输入      | 传入Tensor的shape信息时，可以按照shape信息进行打印 |
 
-3. 进行带有该功能的加速库编译
-   在编译加速库的时候添加编译选项: `--ascendc_dump`，如果想直接使用加速库中的算子测试用例(kerneltest目录下)需要搭配上testframework进行编译。例如: `bash scripts/build.sh testframework --ascendc_dump --no-pybind`
+3. 进行带有该功能的ATB加速库编译
+   在编译ATB加速库的时候添加编译选项: `--ascendc_dump`，如果想直接使用ATB加速库中的算子测试用例(kerneltest目录下)需要搭配上testframework进行编译。例如: `bash scripts/build.sh testframework --ascendc_dump --no-pybind`
 4. 运行对应算子
    
-   * 运行加速库中的算子测试用例调用算子:
-     * 移动到测试用例目录：`cd {CODE_PATH}/tests/apitest/kernelstest ` , 其中`{CODE_PATH}`为加速库源码所在路径
+   * 运行ATB加速库中的算子测试用例调用算子:
+     * 移动到测试用例目录：`cd {CODE_PATH}/tests/apitest/kernelstest ` , 其中`{CODE_PATH}`为ATB加速库源码所在路径
      * 执行对应算子用例: `python3 {test_file}`, 其中mix算子的测试用例在mix文件夹下 (如gating算子：`python3 mix/test_gating.py`)
-   * 运行加速库中的op_demo调用算子:
-     * 移动到demo目录：`cd {CODE_PATH}/example/op_demo`, 其中`{CODE_PATH}`为加速库源码所在路径
+   * 运行ATB加速库中的op_demo调用算子:
+     * 移动到demo目录：`cd {CODE_PATH}/example/op_demo`, 其中`{CODE_PATH}`为ATB加速库源码所在路径
      * 执行对应的Operation示例：`bash build.sh` (如mla_preprocess算子：`cd mla_preprocess && bash build.sh`)
-5. 例子
+5. 使用示例
    
    * 在faster_gelu_forward算子核函数中添加对应的打印内容：
 
       ![image](images/ascendcDump_1.png)
      
       ![image](images/ascendcDump_2.png)
-   * `bash scripts/build.sh testframework --ascendc_dump --no-pybind`：编译带有测试框架的加速库源码
+   * `bash scripts/build.sh testframework --ascendc_dump --no-pybind`：编译带有测试框架的ATB加速库源码
    * `python3 activation/test_faster_gelu.py`：运行faster_gelu_forward算子用例
       ![image](images/ascendcDump_3.png)
   
