@@ -28,9 +28,6 @@ USE_MSDEBUG=OFF
 USE_ASCENDC_DUMP=OFF
 SKIP_BUILD=OFF
 BUILD_TBE_ADAPTER=OFF
-DEPENDENCY_DIR=2025-06-18
-ASDOPS_SOURCE_DIR=/tmp/asdops_dependency/$DEPENDENCY_DIR
-CMC_URL=https://cmc-szver-artifactory.cmc.tools.huawei.com/artifactory/cmc-software-release/Baize%20C/AscendTransformerBoost/1.0.0/asdops_dependency/$DEPENDENCY_DIR
 CSVOPSTEST_OPTIONS=""
 BUILD_PYBIND=ON
 SRC_ONLY=OFF
@@ -272,8 +269,13 @@ function fn_get_cxx_abi_string()
 
 function fn_copy_tbe_adapter()
 {
+    if [ -z $ATB_BUILD_DEPENDENCY_PATH ]; then
+        ATB_BUILD_DEPENDENCY_PATH=/usr/local/Ascend/nnal/atb/latest/atb/$(fn_get_cxx_abi_string)
+        echo "warning: ATB_BUILD_DEPENDENCY_PATH is not set. Using default path: /usr/local/Ascend/nnal/atb/latest/atb/$(fn_get_cxx_abi_string)"
+    fi
+
     if [ ! -f $ATB_BUILD_DEPENDENCY_PATH/lib/libtbe_adapter.so ]; then
-        echo "error:$ATB_BUILD_DEPENDENCY_PATH/lib/libtbe_adapter.so dose not exist, please source set_env.sh."
+        echo "error:$ATB_BUILD_DEPENDENCY_PATH/lib/libtbe_adapter.so dose not exist, please set correct ATB_BUILD_DEPENDENCY_PATH"
         return 0
     fi
 
@@ -294,87 +296,17 @@ function fn_copy_tbe_adapter()
     fi
 }
 
-function fn_check_dependency_cache()
-{
-    [[ ! -d "$ASDOPS_SOURCE_DIR" ]] && mkdir -p $ASDOPS_SOURCE_DIR
-    cd $ASDOPS_SOURCE_DIR
-    if [ ! -d "$ASDOPS_SOURCE_DIR/opp_kernel" ]; then
-        [[ ! -f "$ASDOPS_SOURCE_DIR/asdops_opp_kernel.tar.gz" ]] && wget --no-check-certificate $CMC_URL/asdops_opp_kernel.tar.gz
-        tar xf asdops_opp_kernel.tar.gz
-        rm asdops_opp_kernel.tar.gz
-    fi
-    echo "$ASDOPS_SOURCE_DIR!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-    if [ ! -d "$ASDOPS_SOURCE_DIR/canndev" ]; then
-        [[ ! -f "$ASDOPS_SOURCE_DIR/canndev.tar.gz" ]] && wget --no-check-certificate $CMC_URL/canndev.tar.gz
-        tar xf canndev.tar.gz
-        rm canndev.tar.gz
-    fi
-    if [ ! -d "$ASDOPS_SOURCE_DIR/metadef" ]; then
-        [[ ! -f "$ASDOPS_SOURCE_DIR/metadef.tar.gz" ]] && wget --no-check-certificate $CMC_URL/metadef.tar.gz
-        tar xf metadef.tar.gz
-        rm metadef.tar.gz
-    fi
-    if [ ! -d "$ASDOPS_SOURCE_DIR/cann-ops-adv" ]; then
-        [[ ! -f "$ASDOPS_SOURCE_DIR/cann-ops-adv.tar.gz" ]] && wget --no-check-certificate $CMC_URL/cann-ops-adv.tar.gz
-        tar xf cann-ops-adv.tar.gz
-        rm cann-ops-adv.tar.gz
-    fi
-    if [ ! -d "$ASDOPS_SOURCE_DIR/api" ]; then
-        [[ ! -f "$ASDOPS_SOURCE_DIR/api.tar.gz" ]] && wget --no-check-certificate $CMC_URL/api.tar.gz
-        tar xf api.tar.gz
-        rm api.tar.gz
-    fi
-    echo "dependency_cache is ready"
-}
-
-function fn_build_tbe_adapter_dependency()
-{
-    CCEC_COMPILER_DIR=$THIRD_PARTY_DIR/compiler/ccec_compiler
-    TIKCPP_DIR=$THIRD_PARTY_DIR/compiler/tikcpp
-
-    CANNDEV_DIR=$THIRD_PARTY_DIR/canndev
-    METADEF_DIR=$THIRD_PARTY_DIR/metadef
-    API_DIR=$THIRD_PARTY_DIR/api
-    CANN_OPS_DIR=$THIRD_PARTY_DIR/cann-ops-adv
-    TBE_ADAPTER_DIR=$CODE_ROOT/src/kernels/tbe_adapter
-
-    # dev
-    fn_check_dependency_cache
-    export ASCEND_KERNEL_PATH=$ASDOPS_SOURCE_DIR/opp_kernel
-
-    #tbe_adapter dependency
-    [[ ! -d "$CANNDEV_DIR" ]] && cp -r $ASDOPS_SOURCE_DIR/canndev $CANNDEV_DIR
-    [[ ! -d "$API_DIR" ]] && cp -r $ASDOPS_SOURCE_DIR/api $API_DIR
-    [[ ! -d "$CANN_OPS_DIR" ]] && cp -r $ASDOPS_SOURCE_DIR/cann-ops-adv $CANN_OPS_DIR
-    #determine whether these two files are identical
-    SRC_FILE_LINE_NUM=$(wc -l < "$TBE_ADAPTER_DIR/stubs/include/canndev/ops/built-in/op_tiling/op_tiling.h")
-    DST_FILE_LINE_NUM=$(wc -l < "$THIRD_PARTY_DIR/canndev/ops/built-in/op_tiling/op_tiling.h")
-    [[ "$SRC_FILE_LINE_NUM" != "$DST_FILE_LINE_NUM" ]] && cp -r $TBE_ADAPTER_DIR/stubs/include/canndev $THIRD_PARTY_DIR
-    [[ "$SRC_FILE_LINE_NUM" != "$DST_FILE_LINE_NUM" ]] && cp -r $TBE_ADAPTER_DIR/stubs/include/api $THIRD_PARTY_DIR
-    if [ ! -d "$METADEF_DIR" ];then
-        cp -r $ASDOPS_SOURCE_DIR/metadef $METADEF_DIR
-    fi
-}
-
 function fn_build_tbe_dependency()
 {
     LOCAL_ABI=$(fn_get_cxx_abi_string)
     if [ -f $OUTPUT_DIR/atb/$LOCAL_ABI/lib/libtbe_adapter.so ];then
         echo "libtbe_adapter.so is already exist, skip build process."
-        BUILD_TBE_ADAPTER=OFF
         return 0
     fi
 
-    if [ -n "$ATB_BUILD_DEPENDENCY_PATH" ];then
     #copy from nnal
-        fn_copy_tbe_adapter
-    else
-    #build by source code
-        BUILD_TBE_ADAPTER=ON
-        fn_build_tbe_adapter_dependency
-    fi
+    fn_copy_tbe_adapter
 }
-
 function fn_build_3rdparty_for_compile()
 {
     fn_build_nlohmann_json
