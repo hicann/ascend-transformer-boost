@@ -26,7 +26,7 @@ target_link_libraries(lcal ascendcl runtime profapi c_sec mki)
 target_link_libraries(lcal_static ascendcl runtime profapi c_sec mki)
 
 message(STATUS "LCAL USE_MSSANITIZER = ${USE_MSSANITIZER}")
-set(LCAL_CCE_PATH "/tmp/lcal_cce.o")
+set(LCAL_CCE_PATH "${CMAKE_CURRENT_BINARY_DIR}/lcal_cce.o")
 if(USE_MSSANITIZER)
 math(EXPR LCAL_1OP_BIN_SIZE "128 * 1024 * 1024")
 add_definitions(-DUSE_MSSANITIZER)
