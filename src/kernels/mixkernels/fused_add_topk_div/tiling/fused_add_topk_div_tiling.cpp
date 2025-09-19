@@ -71,10 +71,10 @@ namespace AtbOps {
         void GetTiling(TilingData *tilingDataPtr);
 
     private:
-        void GetTilingKey(TilingData *tilingDataPtr);
+        void GetTilingKey(TilingData &tilingDataPtr);
         void GetUsedCore();
         void SplitUb();
-        void FillTilingData(TilingData *tilingDataPtr);
+        void FillTilingData(TilingData &tilingDataPtr);
         template <typename T1, typename T2>
         inline T1 CeilAlign(T1 a, T2 b) const
         {
@@ -174,7 +174,7 @@ namespace AtbOps {
     template <typename TilingData>
     void GetFusedAddTopkDivTiling(TilingData *tilingDataPtr, uint32_t coreNum, uint32_t ubSize)
     {
-        class FusedAddTopkDivTiling<TilingData> tilingObj(tilingDataPtr, coreNum, ubSize);
+        class FusedAddTopkDivTiling<TilingData> tilingObj(*tilingDataPtr, coreNum, ubSize);
         tilingObj.GetTiling(tilingDataPtr);
     }
 
@@ -291,7 +291,7 @@ namespace AtbOps {
         auto inputDatatype = launchParam.GetInTensor(X_INPUT_INDEX).desc.dtype;
         tilingDataPtr->dtype = g_dtypeMap[inputDatatype];
  
-        auto checkInputInfo = GetInputInfo(launchParam, tilingDataPtr);
+        auto checkInputInfo = GetInputInfo(launchParam, *tilingDataPtr);
         if (!checkInputInfo.Ok()) {
             return Status::FailStatus(ERROR_INVALID_VALUE);
         }
@@ -303,7 +303,7 @@ namespace AtbOps {
         kernelInfo.SetTilingId(tilingKey);
         uint32_t syncWorkspaceSize = sysWorkspaceSize + blockNum * tilingDataPtr->workspacePerCore;
         kernelInfo.GetScratchSizes() = {syncWorkspaceSize};
-        PrintTilingData(tilingDataPtr);
+        PrintTilingData(*tilingDataPtr);
         return Status::OkStatus();
     }
 } // namespace AtbOps

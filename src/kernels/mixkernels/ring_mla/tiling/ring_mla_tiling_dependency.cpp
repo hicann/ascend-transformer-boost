@@ -288,7 +288,7 @@ Status GetRINGMLATilingParam(const LaunchParam &launchParam, const RINGMLAInfo &
         GetNdMLATiling(mmInfo, blockDim, tilingParam, param);
         blockDim = mmInfo.batch == BATCH_MLA ? BLOCK_DIM_MLA : blockDim;
     }
-    GetTilingHead(mmInfo, param, tilingParam, torPtr);
+    GetTilingHead(mmInfo, param, tilingParam, *torPtr);
     return AtbOps::Status::OkStatus();
 }
 

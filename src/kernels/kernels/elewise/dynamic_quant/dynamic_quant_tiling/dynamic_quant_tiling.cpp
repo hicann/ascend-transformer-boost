@@ -194,7 +194,7 @@ Status DynamicQuantTiling(const LaunchParam &launchParam, KernelInfo &kernelInfo
     tilingDataPtr->asymmetric = *reinterpret_cast<uint32_t *>(&attrs.asymmetric);
 
     uint64_t rowNumTotal = 1;
-    Status res = ParseShape(launchParam, *tilingDataPtr, &rowNumTotal);
+    Status res = ParseShape(launchParam, *tilingDataPtr, rowNumTotal);
     OP_TILING_CHECK_STATUS_RETURN(res);
 
     Status ret = SetTilingData(*tilingDataPtr, rowNumTotal);

@@ -145,10 +145,10 @@ Status CohereLayerNormTiling(const LaunchParam &launchParam, KernelInfo &kernelI
     uint64_t tilingKey = LAYER_NORM_TILING_KEY_BASE;
 
     if (fixedUsedBufferSize < layerNormPtrCon.maxUbSize) {  // multiple rows moved simultaneously
-        MultipleRowMovedTiling(layerNormPtrCon, tilingDataPtr,
+        MultipleRowMovedTiling(layerNormPtrCon, *tilingDataPtr,
                                singleRowMovedBufferSize, multipleRowMovedBufferSize, MISC_BUFFERS_SIZE);
     } else {  // single row moved
-        SingleRowMovedTiling(layerNormPtrCon, tilingDataPtr,
+        SingleRowMovedTiling(layerNormPtrCon, *tilingDataPtr,
                              singleRowMovedElemSize, multipleRowMovedElemSize, MISC_BUFFERS_SIZE);
         tilingKey += LAYER_NORM_TILING_KEY_FAST;
     }

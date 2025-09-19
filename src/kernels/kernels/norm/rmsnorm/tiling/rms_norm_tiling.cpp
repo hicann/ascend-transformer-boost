@@ -118,12 +118,12 @@ Status RmsNormTiling(const LaunchParam &launchParam, KernelInfo &kernelInfo)
         tilingDataPtr->quantMin = -127; // set int8 min to -127
     }
     kernelInfo.SetBlockDim(tilingDataPtr->numCore);
-    SetNonContiguousTenor(tilingDataPtr, launchParam);
+    SetNonContiguousTenor(*tilingDataPtr, launchParam);
     uint64_t tilingKey = ComputeTilingKey(tilingDataPtr->gemmaMode, tilingDataPtr->precisionMode, isShortTail,
                                           launchParam);
     MKI_LOG(INFO) << "post rmsnorm tilingKey is : " << tilingKey;
     kernelInfo.SetTilingId(tilingKey);
-    PrintRmsNormTiling(tilingDataPtr);
+    PrintRmsNormTiling(*tilingDataPtr);
     return Status::OkStatus();
 }
 

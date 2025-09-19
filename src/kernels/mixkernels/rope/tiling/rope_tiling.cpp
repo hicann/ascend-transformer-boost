@@ -34,7 +34,7 @@ static constexpr uint32_t TILING_HIGH_PREC = 21;
 static constexpr uint32_t TILING_HIGH_PERF = 20;
 static constexpr uint32_t TILING_HIGH_PERF_LARGE_NTOKENS = 23;
 
-void RopeNdProcess(const LaunchParam &launchParam, KernelInfo &kernelInfo, RopeTilingData *tilingDataPtr)
+void RopeNdProcess(const LaunchParam &launchParam, KernelInfo &kernelInfo, RopeTilingData &tilingDataPtr)
 {
     uint32_t hiddenSizeQ = static_cast<uint32_t>(launchParam.GetInTensor(0).desc.dims[1]);
     uint32_t hiddenSizeK = static_cast<uint32_t>(launchParam.GetInTensor(1).desc.dims[1]);
@@ -44,12 +44,12 @@ void RopeNdProcess(const LaunchParam &launchParam, KernelInfo &kernelInfo, RopeT
     uint32_t batch = static_cast<uint32_t>(launchParam.GetInTensor(4).desc.dims[0]);
     uint32_t maxCore = static_cast<uint32_t>(PlatformInfo::Instance().GetCoreNum(CoreType::CORE_TYPE_VECTOR));
     auto maxUbSize = static_cast<uint32_t>(PlatformInfo::Instance().GetUbSize());
-    tilingDataPtr->maxUbSize = maxUbSize;
+    tilingDataPtr.maxUbSize = maxUbSize;
 
     uint32_t multiple = 1;
-    bool condition = tilingDataPtr->cosFormat == 0 && cosSize == NUM_COSIN &&
+    bool condition = tilingDataPtr.cosFormat == 0 && cosSize == NUM_COSIN &&
                      launchParam.GetInTensor(NUM_COSIN).desc.dtype == TENSOR_DTYPE_FLOAT16 &&
-                     ntokens >= LARGE_NTOKENS_THRESHOLD && headDim / tilingDataPtr->rotaryCoeff % ELE_NUM_FP16 == 0;
+                     ntokens >= LARGE_NTOKENS_THRESHOLD && headDim / tilingDataPtr.rotaryCoeff % ELE_NUM_FP16 == 0;
     if (condition) { // 不对齐场景, multiple为1
         uint32_t hiddenSize = hiddenSizeK > hiddenSizeQ ? hiddenSizeK : hiddenSizeQ;
         multiple = SLICE_SIZE_FP16_LARGE_NTOKENS / hiddenSize;
@@ -69,13 +69,13 @@ void RopeNdProcess(const LaunchParam &launchParam, KernelInfo &kernelInfo, RopeT
     }
     uint32_t tempCore = (ntokens + maxCore - 1) / maxCore;
     uint32_t realCore = (ntokens + tempCore - 1) / tempCore;
-    tilingDataPtr->realCore = realCore;
-    tilingDataPtr->hiddenSizeQ = hiddenSizeQ;
-    tilingDataPtr->hiddenSizeK = hiddenSizeK;
-    tilingDataPtr->headDim = headDim;
-    tilingDataPtr->ntokens = ntokens;
-    tilingDataPtr->batch = batch;
-    tilingDataPtr->multiple = multiple;
+    tilingDataPtr.realCore = realCore;
+    tilingDataPtr.hiddenSizeQ = hiddenSizeQ;
+    tilingDataPtr.hiddenSizeK = hiddenSizeK;
+    tilingDataPtr.headDim = headDim;
+    tilingDataPtr.ntokens = ntokens;
+    tilingDataPtr.batch = batch;
+    tilingDataPtr.multiple = multiple;
     kernelInfo.SetBlockDim(realCore);
     MKI_LOG(DEBUG) << "Ntokens is " << ntokens;
     MKI_LOG(DEBUG) << "Batch is " << batch;
@@ -157,7 +157,7 @@ Status RopeTiling(const LaunchParam &launchParam, KernelInfo &kernelInfo)
     }
     tilingDataPtr->headNumQ = headNumQ;
     tilingDataPtr->headNumK = headNumK;
-    auto ret = TilingKeyChose(launchParam, kernelInfo, tilingDataPtr);
+    auto ret = TilingKeyChose(launchParam, kernelInfo, *tilingDataPtr);
     if (!ret.Ok()) {
         return Status::FailStatus(ERROR_INVALID_VALUE);
     }

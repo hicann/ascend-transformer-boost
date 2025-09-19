@@ -104,7 +104,7 @@ Status RopeQConcatTiling(const LaunchParam &launchParam, KernelInfo &kernelInfo)
     if (!ret.Ok()) {
         return Status::FailStatus(ERROR_INVALID_VALUE);
     }
-    auto retProcess = RopeNdProcess(launchParam, tilingDataPtr);
+    auto retProcess = RopeNdProcess(launchParam, *tilingDataPtr);
     if (!retProcess.Ok()) {
         return Status::FailStatus(ERROR_INVALID_VALUE);
     }
