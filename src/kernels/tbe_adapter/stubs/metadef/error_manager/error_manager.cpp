@@ -38,7 +38,7 @@ ErrorManager &ErrorManager::GetInstance()
     return errorManager;
 }
 
-int32_t ErrorManager::ReportInterErrMessage(const std::string error_code, const std::string &error_msg)
+int32_t ErrorManager::ReportInterErrMessage(const std::string error_code, const std::string &error_msg) const
 {
     UNUSED_VALUE(error_code);
     UNUSED_VALUE(error_msg);
@@ -46,30 +46,30 @@ int32_t ErrorManager::ReportInterErrMessage(const std::string error_code, const 
 }
 
 int32_t ErrorManager::ReportErrMessage(const std::string error_code,
-                                       const std::map<std::string, std::string> &args_map)
+                                       const std::map<std::string, std::string> &args_map) const
 {
     UNUSED_VALUE(error_code);
     UNUSED_VALUE(args_map);
     return 0;
 }
 
-std::string ErrorManager::GetErrorMessage()
+std::string ErrorManager::GetErrorMessage() const
 {
     return "";
 }
 
-std::string ErrorManager::GetWarningMessage()
+std::string ErrorManager::GetWarningMessage() const
 {
     return "";
 }
 
-int32_t ErrorManager::OutputErrMessage(int32_t handle)
+int32_t ErrorManager::OutputErrMessage(int32_t handle) const
 {
     UNUSED_VALUE(handle);
     return 0;
 }
 
-int32_t ErrorManager::OutputMessage(int32_t handle)
+int32_t ErrorManager::OutputMessage(int32_t handle) const
 {
     UNUSED_VALUE(handle);
     return 0;

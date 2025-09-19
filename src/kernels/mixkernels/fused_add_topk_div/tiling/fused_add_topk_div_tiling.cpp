@@ -74,7 +74,7 @@ namespace AtbOps {
         void GetTilingKey(TilingData *tilingDataPtr);
         void GetUsedCore();
         void SplitUb();
-        void FillTilingData(TilingData *tilingDataPtr);
+        void FillTilingData(TilingData *tilingDataPtr) const;
         template <typename T1, typename T2>
         inline T1 CeilAlign(T1 a, T2 b) const
         {
@@ -139,7 +139,7 @@ namespace AtbOps {
     }
 
     template <typename TilingData>
-    void FusedAddTopkDivTiling<TilingData>::FillTilingData(TilingData *tilingDataPtr)
+    void FusedAddTopkDivTiling<TilingData>::FillTilingData(TilingData *tilingDataPtr) const
     {
         tilingDataPtr->firstDimSize = firstDimSize;
         tilingDataPtr->secondDimSize = secondDimSize;

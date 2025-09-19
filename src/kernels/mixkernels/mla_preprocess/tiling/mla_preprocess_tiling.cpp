@@ -202,13 +202,13 @@ uint32_t PpMatmulTilingApi::ComputeK0ForOnlyBpingpong(uint32_t l1AbSize)
     return k0B0 > CONST_512 ? RoundDown(k0B0, CONST_512) : k0B0;
 }
 
-bool PpMatmulTilingApi::IsLoadAllAmat(uint32_t l1AbSize)
+bool PpMatmulTilingApi::IsLoadAllAmat(uint32_t l1AbSize) const
 {
     return (coreLoop_ > blockDim_) && enDequant_ && (kLoop_ > 1) &&
            (l1AbSize > RoundUp(m_, CONST_16) * RoundUp(k_, CONST_32) * inDataSize_) && (mLoop_ == 1);
 }
 
-uint32_t PpMatmulTilingApi::ComputeK0ForABpingpong(uint32_t l1AbSize)
+uint32_t PpMatmulTilingApi::ComputeK0ForABpingpong(uint32_t l1AbSize) const
 {
     uint32_t k0Max = static_cast<uint32_t>(static_cast<float>(l1AbSize / DIM_2) / ((m0_ + n0_) * inDataSize_));
     uint32_t tmpK0;
@@ -223,7 +223,7 @@ uint32_t PpMatmulTilingApi::ComputeK0ForABpingpong(uint32_t l1AbSize)
     return tmpK0;
 }
 
-uint32_t PpMatmulTilingApi::ComputeL1AbSize()
+uint32_t PpMatmulTilingApi::ComputeL1AbSize() const
 {
     if (enDequant_ && deqOnTheFly_) {
         return L1_BUFFER_SIZE;
@@ -231,7 +231,7 @@ uint32_t PpMatmulTilingApi::ComputeL1AbSize()
     return enDequant_ ? (L1_BUFFER_SIZE - L1_BIAS_SIZE - L1_SCALE_SIZE) : L1_BUFFER_SIZE;
 }
 
-float PpMatmulTilingApi::GetCost(const uint32_t m0, const uint32_t n0)
+float PpMatmulTilingApi::GetCost(const uint32_t m0, const uint32_t n0) const
 {
     float aCoef = 1.0;
     float bCoef = 1.0;
@@ -477,7 +477,7 @@ void MlaPreprocessTiling::SetTiling(AtbOps::MlaTilingData *tilingParam)
     tilingParam->esqColTail = tilingData.esqColTail;
 }
 
-void MlaPreprocessTiling::SetTilingKey(const Mki::LaunchParam &launchParam, Mki::KernelInfo &kernelInfo)
+void MlaPreprocessTiling::SetTilingKey(const Mki::LaunchParam &launchParam, Mki::KernelInfo &kernelInfo) const
 {
     OpParam::MlaPreprocess param = AnyCast<OpParam::MlaPreprocess>(launchParam.GetParam());
     TensorFormat formatWeight1 = launchParam.GetInTensor(INDEX_WDQKV).desc.format;
