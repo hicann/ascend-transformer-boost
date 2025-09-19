@@ -13,6 +13,7 @@
 #include "all_reduce_hccl_runner.h"
 #include "all_reduce_lccl_runner.h"
 #include "atb/utils/tensor_check.h"
+#include "atb/utils/tensor_util.h"
 #include "atb/utils/operation_util.h"
 #include "atb/utils/log.h"
 #include "atb/utils/param_to_json.h"
@@ -138,7 +139,7 @@ Status AllReduceOperation::InferShapeCheckImpl(const SVector<TensorDesc> &inTens
     if (DtypeCheck(inTensorDescs.at(0)) != NO_ERROR) {
         return ERROR_INVALID_TENSOR_DTYPE;
     }
-    int n = inTensorDescs.at(0).shape.dims[inTensorDescs.at(0).shape.dimNum - 1];
+    int64_t n = inTensorDescs.at(0).shape.dims[inTensorDescs.at(0).shape.dimNum - 1];
     if (inTensorDescs.size() > 1) {
         const int32_t offsetPosition = 1;
         const int32_t scalePosition = 2;
@@ -153,6 +154,16 @@ Status AllReduceOperation::SetupCheckImpl(const SVector<Tensor> &inTensors, cons
         return ERROR_INVALID_TENSOR_DTYPE;
     }
     ATB_LOG(DEBUG) << "outTensors size:" << outTensors.size();
+    if (!TensorUtil::TensorShapeEqual(inTensors.at(0).desc.shape, outTensors.at(0).desc.shape)) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "intensor's shape and outtensor's shape should be same";
+        return ERROR_INVALID_TENSOR_DIM;
+    }
+    int64_t n = inTensors.at(0).desc.shape.dims[inTensors.at(0).desc.shape.dimNum - 1];
+    if (inTensors.size() > 1) {
+        const int32_t offsetPosition = 1; // 1: offsetPos
+        const int32_t scalePosition = 2;  // 2: scalePos
+        return QuantShapeCheck(inTensors.at(offsetPosition).desc, inTensors.at(scalePosition).desc, n);
+    }
     return NO_ERROR;
 }
 
@@ -190,7 +201,7 @@ Status AllReduceOperation::DtypeCheck(const TensorDesc &inTensorDesc) const
     return NO_ERROR;
 }
 
-Status AllReduceOperation::QuantShapeCheck(const TensorDesc &scale, const TensorDesc &offset, int n) const
+Status AllReduceOperation::QuantShapeCheck(const TensorDesc &scale, const TensorDesc &offset, int64_t n) const
 {
     const uint64_t lastDimNum = 16;
     // input张量的最后一维(n)大小必须为16的整数倍
