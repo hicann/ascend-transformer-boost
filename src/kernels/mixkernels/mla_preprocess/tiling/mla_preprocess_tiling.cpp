@@ -96,12 +96,12 @@ public:
 
 private:
     void GetTileSize();
-    float GetCost(const uint32_t m0, const uint32_t n0);
+    float GetCost(const uint32_t m0, const uint32_t n0) const;
     void UpdateTileSize(const uint32_t m0, const uint32_t n0);
     void Swizzle();
-    uint32_t ComputeL1AbSize();
-    uint32_t ComputeK0ForABpingpong(uint32_t l1AbSize);
-    bool IsLoadAllAmat(uint32_t l1AbSize);
+    uint32_t ComputeL1AbSize() const;
+    uint32_t ComputeK0ForABpingpong(uint32_t l1AbSize) const;
+    bool IsLoadAllAmat(uint32_t l1AbSize) const;
     uint32_t ComputeK0ForOnlyBpingpong(uint32_t l1AbSize);
 
 private:
@@ -321,7 +321,7 @@ public:
     void RopeConcatTiling(const OpParam::MlaPreprocess &param, const uint32_t &aicNum);
     void EinSumQuantTiling(const OpParam::MlaPreprocess &param, const uint32_t &aicNum, const TensorDType inDtype);
     void SetTiling(AtbOps::MlaTilingData *tilingParam);
-    void SetTilingKey(const Mki::LaunchParam &launchParam, Mki::KernelInfo &kernelInfo);
+    void SetTilingKey(const Mki::LaunchParam &launchParam, Mki::KernelInfo &kernelInfo) const;
     void SetMlapoWorkSpace(const TensorDType inDtype, const OpParam::MlaPreprocess &param, Mki::KernelInfo &kernelInfo);
 };
 
