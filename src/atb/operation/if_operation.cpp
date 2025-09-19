@@ -16,7 +16,7 @@
 
 namespace atb {
 
-Status IfOperation::GetOperationFromCondition(Operation **op) const
+Status IfOperation::GetOperationFromCondition(Operation *&op) const
 {
     bool cond = true;
     try {
@@ -28,10 +28,10 @@ Status IfOperation::GetOperationFromCondition(Operation **op) const
 
     if (cond && param_.opA) {
         ATB_LOG(INFO) << GetLogPrefix() << "Condition met (true), selecting opA...";
-        *op = param_.opA;
+        op = param_.opA;
     } else if (!cond && param_.opB) {
         ATB_LOG(INFO) << GetLogPrefix() << "Condition not met (false), selecting opB...";
-        *op = param_.opB;
+        op = param_.opB;
     } else {
         ATB_LOG(ERROR) << GetLogPrefix() << "Please check the intended operation is valid, opA: " << param_.opA
                        << " opB: " << param_.opB;
