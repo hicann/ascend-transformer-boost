@@ -1064,12 +1064,12 @@ Status OperationBase::GraphModeLaunch()
 }
 
 Status OperationBase::Execute(const VariantPack &variantPack, uint8_t *workspace, uint64_t workspaceSize,
-                              Context *context)
+                              Context &context)
 {
     const uint64_t beginTime = GetSingleton<Mki::ProfilingFuncs>().GetProfilingLevel0Status() ?
                                    GetSingleton<Mki::ProfilingFuncs>().ProfSysCycleTime() :
                                    0;
-    ExecuteType executeType = context->GetExecuteType();
+    ExecuteType executeType = context.GetExecuteType();
     ProfilingFuncName profType = executeType == EXECUTE_NORMAL ?
                                      OPERATION_EXECUTE :
                                      (executeType == EXECUTE_PRELAUNCH ? OPERATION_PRELAUNCH : OPERATION_LAUNCH);

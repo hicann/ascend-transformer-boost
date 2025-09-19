@@ -39,7 +39,7 @@ Status TilingKeyChose(const LaunchParam &launchParam, KernelInfo &kernelInfo)
     return Status::OkStatus();
 }
 
-Status RopeNdProcess(const LaunchParam &launchParam, RopeQConcatTilingData *tilingDataPtr)
+Status RopeNdProcess(const LaunchParam &launchParam, RopeQConcatTilingData &tilingDataPtr)
 {
     auto &inTensor0 = launchParam.GetInTensor(0).desc;
     auto &inTensor1 = launchParam.GetInTensor(DIM_1).desc;
@@ -54,7 +54,7 @@ Status RopeNdProcess(const LaunchParam &launchParam, RopeQConcatTilingData *tili
     uint32_t concatSize = inTensor3.dims[DIM_2];
 
     // 当前场景只支持rotaryCoeff = 2的情况
-    tilingDataPtr->rotaryCoeff = 2;
+    tilingDataPtr.rotaryCoeff = 2;
     uint32_t maxCore = static_cast<uint32_t>(PlatformInfo::Instance().GetCoreNum(CoreType::CORE_TYPE_VECTOR));
     auto maxUbSize = static_cast<uint32_t>(PlatformInfo::Instance().GetUbSize()) - REMAIN_TILING_SIZE;
 
@@ -76,19 +76,19 @@ Status RopeNdProcess(const LaunchParam &launchParam, RopeQConcatTilingData *tili
     uint32_t preCoreLoopNLast = nlCoreRun - (preCoreLoopTime - 1) * maxNPerLoopForUb;  // 前核最后一批处理数据行数
     uint32_t lastCoreLoopTime = (lCoreRun + maxNPerLoopForUb - 1) / maxNPerLoopForUb;  // 尾核循环次数
     uint32_t lastCoreLoopNLast = lCoreRun - (lastCoreLoopTime - 1) * maxNPerLoopForUb;  // 尾核最后一批处理数据行数
-    tilingDataPtr->hiddenSizeQ = hiddenSizeQ;
-    tilingDataPtr->headNumQ = headNumQ;
-    tilingDataPtr->headDim = headDim;
-    tilingDataPtr->concatSize = concatSize;
-    tilingDataPtr->ntokens = ntokens;
-    tilingDataPtr->realCore = realCore;
-    tilingDataPtr->nlCoreRun = nlCoreRun;
-    tilingDataPtr->lCoreRun = lCoreRun;
-    tilingDataPtr->maxNPerLoopForUb = maxNPerLoopForUb;
-    tilingDataPtr->preCoreLoopTime = preCoreLoopTime;
-    tilingDataPtr->preCoreLoopNLast = preCoreLoopNLast;
-    tilingDataPtr->lastCoreLoopTime = lastCoreLoopTime;
-    tilingDataPtr->lastCoreLoopNLast = lastCoreLoopNLast;
+    tilingDataPtr.hiddenSizeQ = hiddenSizeQ;
+    tilingDataPtr.headNumQ = headNumQ;
+    tilingDataPtr.headDim = headDim;
+    tilingDataPtr.concatSize = concatSize;
+    tilingDataPtr.ntokens = ntokens;
+    tilingDataPtr.realCore = realCore;
+    tilingDataPtr.nlCoreRun = nlCoreRun;
+    tilingDataPtr.lCoreRun = lCoreRun;
+    tilingDataPtr.maxNPerLoopForUb = maxNPerLoopForUb;
+    tilingDataPtr.preCoreLoopTime = preCoreLoopTime;
+    tilingDataPtr.preCoreLoopNLast = preCoreLoopNLast;
+    tilingDataPtr.lastCoreLoopTime = lastCoreLoopTime;
+    tilingDataPtr.lastCoreLoopNLast = lastCoreLoopNLast;
     return Status::OkStatus();
 }
 

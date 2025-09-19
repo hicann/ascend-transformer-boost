@@ -436,45 +436,45 @@ void MlaPreprocessTiling::EinSumQuantTiling(const OpParam::MlaPreprocess &param,
     tilingData.esqColTail = esqColTail;
 }
 
-void MlaPreprocessTiling::SetTiling(AtbOps::MlaTilingData *tilingParam)
+void MlaPreprocessTiling::SetTiling(AtbOps::MlaTilingData &tilingParam)
 {
-    tilingParam->n = tilingData.n;
-    tilingParam->perTaskNum = tilingData.perTaskNum;
-    tilingParam->resTaskNum = tilingData.resTaskNum;
-    tilingParam->numCore = tilingData.numCore;
+    tilingParam.n = tilingData.n;
+    tilingParam.perTaskNum = tilingData.perTaskNum;
+    tilingParam.resTaskNum = tilingData.resTaskNum;
+    tilingParam.numCore = tilingData.numCore;
 
-    tilingParam->rmsNumCore1 = tilingData.rmsNumCore1;
-    tilingParam->rmsNumCol1 = tilingData.rmsNumCol1;
+    tilingParam.rmsNumCore1 = tilingData.rmsNumCore1;
+    tilingParam.rmsNumCol1 = tilingData.rmsNumCol1;
 
-    tilingParam->rmsNumCore2 = tilingData.rmsNumCore2;
-    tilingParam->rmsNumCol2 = tilingData.rmsNumCol2;
+    tilingParam.rmsNumCore2 = tilingData.rmsNumCore2;
+    tilingParam.rmsNumCol2 = tilingData.rmsNumCol2;
 
-    tilingParam->hiddenSizeQ = tilingData.hiddenSizeQ;
-    tilingParam->headNumQ = tilingData.headNumQ;
-    tilingParam->headDim = tilingData.headDim;
-    tilingParam->concatSize = tilingData.concatSize;
-    tilingParam->rotaryCoeff = tilingData.rotaryCoeff;
-    tilingParam->ntokens = tilingData.ntokens;
-    tilingParam->realCore = tilingData.realCore;
-    tilingParam->nlCoreRun = tilingData.nlCoreRun;
-    tilingParam->lCoreRun = tilingData.lCoreRun;
-    tilingParam->maxNPerLoopForUb = tilingData.maxNPerLoopForUb;
-    tilingParam->preCoreLoopTime = tilingData.preCoreLoopTime;
-    tilingParam->preCoreLoopNLast = tilingData.preCoreLoopNLast;
-    tilingParam->lastCoreLoopTime = tilingData.lastCoreLoopTime;
-    tilingParam->lastCoreLoopNLast = tilingData.lastCoreLoopNLast;
+    tilingParam.hiddenSizeQ = tilingData.hiddenSizeQ;
+    tilingParam.headNumQ = tilingData.headNumQ;
+    tilingParam.headDim = tilingData.headDim;
+    tilingParam.concatSize = tilingData.concatSize;
+    tilingParam.rotaryCoeff = tilingData.rotaryCoeff;
+    tilingParam.ntokens = tilingData.ntokens;
+    tilingParam.realCore = tilingData.realCore;
+    tilingParam.nlCoreRun = tilingData.nlCoreRun;
+    tilingParam.lCoreRun = tilingData.lCoreRun;
+    tilingParam.maxNPerLoopForUb = tilingData.maxNPerLoopForUb;
+    tilingParam.preCoreLoopTime = tilingData.preCoreLoopTime;
+    tilingParam.preCoreLoopNLast = tilingData.preCoreLoopNLast;
+    tilingParam.lastCoreLoopTime = tilingData.lastCoreLoopTime;
+    tilingParam.lastCoreLoopNLast = tilingData.lastCoreLoopNLast;
 
-    tilingParam->esqFrontCore = tilingData.esqFrontCore;
-    tilingParam->esqTailCore = tilingData.esqTailCore;
-    tilingParam->esqFrontCoreBatch = tilingData.esqFrontCoreBatch;
-    tilingParam->esqTailCoreBatch = tilingData.esqTailCoreBatch;
-    tilingParam->esqHeadNum = tilingData.esqHeadNum;
-    tilingParam->esqColNum = tilingData.esqColNum;
-    tilingParam->esqUbHeadLoop = tilingData.esqUbHeadLoop;
-    tilingParam->esqHeadPerLoop = tilingData.esqHeadPerLoop;
-    tilingParam->esqHeadTail = tilingData.esqHeadTail;
-    tilingParam->esqColLoop = tilingData.esqColLoop;
-    tilingParam->esqColTail = tilingData.esqColTail;
+    tilingParam.esqFrontCore = tilingData.esqFrontCore;
+    tilingParam.esqTailCore = tilingData.esqTailCore;
+    tilingParam.esqFrontCoreBatch = tilingData.esqFrontCoreBatch;
+    tilingParam.esqTailCoreBatch = tilingData.esqTailCoreBatch;
+    tilingParam.esqHeadNum = tilingData.esqHeadNum;
+    tilingParam.esqColNum = tilingData.esqColNum;
+    tilingParam.esqUbHeadLoop = tilingData.esqUbHeadLoop;
+    tilingParam.esqHeadPerLoop = tilingData.esqHeadPerLoop;
+    tilingParam.esqHeadTail = tilingData.esqHeadTail;
+    tilingParam.esqColLoop = tilingData.esqColLoop;
+    tilingParam.esqColTail = tilingData.esqColTail;
 }
 
 void MlaPreprocessTiling::SetTilingKey(const Mki::LaunchParam &launchParam, Mki::KernelInfo &kernelInfo)

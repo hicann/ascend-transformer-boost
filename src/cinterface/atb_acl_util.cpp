@@ -17,9 +17,9 @@ extern "C" {
 // 256GB
 const int64_t MAX_TENSOR_SIZE = 256uLL * 1024uLL * 1024uLL * 1024uLL;
 
-int64_t GetTensorSize(const aclTensor *input)
+int64_t GetTensorSize(const aclTensor &input)
 {
-    const op::Shape shape = input->GetViewShape();
+    const op::Shape shape = input.GetViewShape();
     const size_t dims = shape.GetDimNum();
     int64_t size = 1;
     for (size_t i = 0; i < dims; ++i) {

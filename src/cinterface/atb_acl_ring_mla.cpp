@@ -23,7 +23,7 @@ atb::Status AtbRingMLAGetWorkspaceSize(const aclTensor *querySplit1, const aclTe
                                        const aclTensor *mask, const aclTensor *seqLen, const aclTensor *prevOut,
                                        const aclTensor *prevLse, int32_t headNum, int32_t kvHeadNum, float qkScale,
                                        int kernelType, int maskType, int inputLayout, int calcType, aclTensor *output,
-                                       aclTensor *softmaxLse, uint64_t *workspaceSize, atb::Operation **op,
+                                       aclTensor *softmaxLse, uint64_t &workspaceSize, atb::Operation **op,
                                        atb::Context *context)
 {
     atb::infer::RingMLAParam param;
@@ -80,7 +80,7 @@ atb::Status AtbRingMLAGetWorkspaceSize(const aclTensor *querySplit1, const aclTe
         ATB_LOG(ERROR) << "AtbRingMLAGetWorkspaceSize opeartion pointer is nullptr!";
         return atb::ERROR_INVALID_OPERATION_ADDR;
     }
-    status = (*op)->Setup(pack, *workspaceSize, context);
+    status = (*op)->Setup(pack, workspaceSize, context);
     ATB_CHECK(status == atb::NO_ERROR, "AtbRingMLA Setup failed!", return status);
     return atb::NO_ERROR;
 }

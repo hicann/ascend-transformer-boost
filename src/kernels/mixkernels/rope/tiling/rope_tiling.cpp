@@ -85,7 +85,7 @@ void RopeNdProcess(const LaunchParam &launchParam, KernelInfo &kernelInfo, RopeT
     MKI_LOG(DEBUG) << "Multiple is " << multiple;
     MKI_LOG(DEBUG) << "RealCore is " << realCore;
 }
-Status TilingKeyChose(const LaunchParam &launchParam, KernelInfo &kernelInfo, const RopeTilingData *tilingDataPtr)
+Status TilingKeyChose(const LaunchParam &launchParam, KernelInfo &kernelInfo, const RopeTilingData &tilingDataPtr)
 {
     auto platformType = PlatformInfo::Instance().GetPlatformType();
     auto cosSize = launchParam.GetInTensor(NUM_COSIN).desc.dims.size();
@@ -95,8 +95,8 @@ Status TilingKeyChose(const LaunchParam &launchParam, KernelInfo &kernelInfo, co
                 MKI_LOG(ERROR) << "BF16 only supports 800I A2";
                 return Status::FailStatus(ERROR_INVALID_VALUE);
             }
-            uint32_t alignRotary = (tilingDataPtr->headDim / tilingDataPtr->rotaryCoeff) % ELE_NUM_FP16;
-            bool condition = (alignRotary == 0) && (tilingDataPtr->ntokens >= LARGE_NTOKENS_THRESHOLD);
+            uint32_t alignRotary = (tilingDataPtr.headDim / tilingDataPtr.rotaryCoeff) % ELE_NUM_FP16;
+            bool condition = (alignRotary == 0) && (tilingDataPtr.ntokens >= LARGE_NTOKENS_THRESHOLD);
             if (condition) { // ntokens >= 64时，走TILING_BF16_ALIGN
                 kernelInfo.SetTilingId(TILING_BF16_ALIGN); // first 2 for shape dims of cos
             } else {
@@ -105,8 +105,8 @@ Status TilingKeyChose(const LaunchParam &launchParam, KernelInfo &kernelInfo, co
         } else if (launchParam.GetInTensor(NUM_COSIN).desc.dtype == TENSOR_DTYPE_FLOAT) {
             kernelInfo.SetTilingId(TILING_HIGH_PREC); // second 1 for FP32
         } else {
-            bool condition = tilingDataPtr->ntokens * tilingDataPtr->multiple >= LARGE_NTOKENS_THRESHOLD &&
-                             tilingDataPtr->cosFormat == 0;
+            bool condition = tilingDataPtr.ntokens * tilingDataPtr.multiple >= LARGE_NTOKENS_THRESHOLD &&
+                             tilingDataPtr.cosFormat == 0;
             if (condition) { // ntokens >= 64时，走TILING_HIGH_PERF_LARGE_NTOKENS
                 kernelInfo.SetTilingId(TILING_HIGH_PERF_LARGE_NTOKENS);
             } else {
@@ -119,8 +119,8 @@ Status TilingKeyChose(const LaunchParam &launchParam, KernelInfo &kernelInfo, co
                 MKI_LOG(ERROR) << "BF16 only supports 800I A2";
                 return Status::FailStatus(ERROR_INVALID_VALUE);
             }
-            uint32_t alignRotary = (tilingDataPtr->headDim / tilingDataPtr->rotaryCoeff) % ELE_NUM_FP16;
-            bool condition = (alignRotary == 0) && (tilingDataPtr->ntokens >= LARGE_NTOKENS_THRESHOLD);
+            uint32_t alignRotary = (tilingDataPtr.headDim / tilingDataPtr.rotaryCoeff) % ELE_NUM_FP16;
+            bool condition = (alignRotary == 0) && (tilingDataPtr.ntokens >= LARGE_NTOKENS_THRESHOLD);
             if (condition) { // ntokens >= 64时，走TILING_BF16_ALIGN_BROARD
                 kernelInfo.SetTilingId(TILING_BF16_ALIGN_BROARD); // first 2 for shape dims of cos
             } else {

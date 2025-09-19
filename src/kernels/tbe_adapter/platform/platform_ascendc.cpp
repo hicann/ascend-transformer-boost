@@ -41,11 +41,11 @@ const static std::map<std::string, SocVersion> CONVERT_MAP = {
     {"Ascend910_93", SocVersion::ASCEND910B},
 };
 
-static inline uint32_t GetCoreNumByType(fe::PlatFormInfos *platformInfo, bool isAiv)
+static inline uint32_t GetCoreNumByType(const fe::PlatFormInfos &platformInfo, bool isAiv)
 {
     std::string key;
     std::string val;
-    bool ret = platformInfo->GetPlatformResWithLock(STR_SOC_INFO, STR_SPLIT_KEY, val);
+    bool ret = platformInfo.GetPlatformResWithLock(STR_SOC_INFO, STR_SPLIT_KEY, val);
     MKI_LOG_IF(!ret, ERROR) << "get platform failed, val is " << val;
 
     if (STR_SPLIT_VAL.compare(val) != 0) {
@@ -55,7 +55,7 @@ static inline uint32_t GetCoreNumByType(fe::PlatFormInfos *platformInfo, bool is
     } else {
         key = STR_CORE_CNT_CUB;
     }
-    ret = platformInfo->GetPlatformResWithLock(STR_SOC_INFO, key, val);
+    ret = platformInfo.GetPlatformResWithLock(STR_SOC_INFO, key, val);
     MKI_LOG_IF(!ret, ERROR) << "get platform failed, key is " << key << ", val is" << val;
     return val.empty() ? 0 : static_cast<uint32_t>(std::atoi(val.c_str()));
 }

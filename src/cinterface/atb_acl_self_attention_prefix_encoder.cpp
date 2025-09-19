@@ -23,7 +23,7 @@ atb::Status AtbSelfAttentionPrefixEncoderGetWorkspaceSize(const aclTensor *query
                                                           const aclTensor *mask, const aclTensor *seqLen,
                                                           const aclTensor *kvSeqLen, const aclTensor *slopes,
                                                           int maskType, int32_t headNum, int32_t kvHeadNum,
-                                                          float qkScale, aclTensor *attnOut, uint64_t *workspaceSize,
+                                                          float qkScale, aclTensor *attnOut, uint64_t &workspaceSize,
                                                           atb::Operation **op, atb::Context *context)
 {
     atb::infer::SelfAttentionParam param;
@@ -94,7 +94,7 @@ atb::Status AtbSelfAttentionPrefixEncoderGetWorkspaceSize(const aclTensor *query
         ATB_LOG(ERROR) << "AtbSelfAttentionPrefixEncoderGetWorkspaceSize opeartion pointer is nullptr!";
         return atb::ERROR_INVALID_OPERATION_ADDR;
     }
-    status = (*op)->Setup(pack, *workspaceSize, context);
+    status = (*op)->Setup(pack, workspaceSize, context);
     ATB_CHECK(status == atb::NO_ERROR, "AtbSelfAttentionPrefixEncoder Setup failed!", return status);
     return atb::NO_ERROR;
 }

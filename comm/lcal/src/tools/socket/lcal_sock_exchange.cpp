@@ -335,7 +335,7 @@ void LcalSockExchange::Cleanup()
     }
 }
 
-int GetAddrFromString(LcalSocketAddress* ua, const char* ipPortPair)
+int GetAddrFromString(LcalSocketAddress& ua, const char* ipPortPair)
 {
     std::string ip;
     uint16_t port;
@@ -344,9 +344,9 @@ int GetAddrFromString(LcalSocketAddress* ua, const char* ipPortPair)
         MKI_LOG(ERROR) << "lcal ParseIpAndPort failed!";
         return LCAL_ERROR_INTERNAL;
     }
-    ua->sin.sin_family = AF_INET;
-    ua->sin.sin_addr.s_addr = inet_addr(ip.c_str());
-    ua->sin.sin_port = htons(port);
+    ua.sin.sin_family = AF_INET;
+    ua.sin.sin_addr.s_addr = inet_addr(ip.c_str());
+    ua.sin.sin_port = htons(port);
     return LCAL_SUCCESS;
 }
 

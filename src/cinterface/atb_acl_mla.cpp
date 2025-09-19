@@ -27,7 +27,7 @@ atb::Status AtbMLAGetWorkspaceSize(const aclTensor *qNope, const aclTensor *qRop
                                    const aclTensor *mask, const aclTensor *qSeqLen, const aclTensor *qkDescale,
                                    const aclTensor *pvDescale, int32_t headNum, float qkScale, int32_t kvHeadNum,
                                    int maskType, int calcType, uint8_t cacheMode, aclTensor *attenOut, aclTensor *lse,
-                                   uint64_t *workspaceSize, atb::Operation **op, atb::Context *context)
+                                   uint64_t &workspaceSize, atb::Operation **op, atb::Context *context)
 {
     atb::infer::MultiLatentAttentionParam param;
     param.headNum = headNum;
@@ -109,13 +109,15 @@ atb::Status AtbMLAGetWorkspaceSize(const aclTensor *qNope, const aclTensor *qRop
         ATB_LOG(ERROR) << "AtbMLAGetWorkspaceSize opeartion pointer is nullptr!";
         return atb::ERROR_INVALID_OPERATION_ADDR;
     }
-    atb::Status st = (*op)->Setup(pack, *workspaceSize, context);
+    atb::Status st = (*op)->Setup(pack, workspaceSize, context);
     ATB_CHECK(st == atb::NO_ERROR, "AtbMLA Setup failed!", return st);
     return atb::NO_ERROR;
 }
 
 atb::Status AtbMLA(void *workSpcace, uint64_t workspaceSize, atb::Operation *op, atb::Context *context)
 {
+    ATB_CHECK(op != nullptr, "AtbMLA expect op pointer not to be null!",
+              return atb::ERROR_INVALID_OPERATION_ADDR);
     atb::VariantPack pack;
     atb::Status st = op->Execute(pack, (uint8_t *)(workSpcace), workspaceSize, context);
     ATB_CHECK(st == atb::NO_ERROR, "AtbMLA Execute failed!", return st);
@@ -127,7 +129,7 @@ atb::Status AtbMLAPreFillGetWorkspaceSize(const aclTensor *q, const aclTensor *q
                                           const aclTensor *kRope, const aclTensor *v, const aclTensor *qSeqLen,
                                           const aclTensor *kvSeqLen, const aclTensor *mask, int32_t headNum,
                                           float qkScale, int32_t kvHeadNum, int maskType, uint8_t cacheMode,
-                                          aclTensor *attenOut, uint64_t *workspaceSize, atb::Operation **op,
+                                          aclTensor *attenOut, uint64_t &workspaceSize, atb::Operation **op,
                                           atb::Context *context)
 {
     atb::infer::MultiLatentAttentionParam param;
@@ -181,7 +183,7 @@ atb::Status AtbMLAPreFillGetWorkspaceSize(const aclTensor *q, const aclTensor *q
         ATB_LOG(ERROR) << "AtbMLAPreFillGetWorkspaceSize opeartion pointer is nullptr!";
         return atb::ERROR_INVALID_OPERATION_ADDR;
     }
-    atb::Status st = (*op)->Setup(pack, *workspaceSize, context);
+    atb::Status st = (*op)->Setup(pack, workspaceSize, context);
     ATB_CHECK(st == atb::NO_ERROR, "AtbMLAPreFill Setup failed!", return st);
     return atb::NO_ERROR;
 }

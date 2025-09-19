@@ -23,7 +23,7 @@ constexpr uint32_t TQUE_NUM = 2;
 constexpr uint32_t UB_RESERVED_BUFF = 0; // reserve ubSize
 constexpr uint32_t ALIGN_SIZE = 32;
 
-void CalcVectorTiling512Align(const LaunchParam &launchParam, FasterGeluForwardTilingData *tilingDataPtr,
+void CalcVectorTiling512Align(const LaunchParam &launchParam, FasterGeluForwardTilingData &tilingDataPtr,
                               uint32_t &usedCoreNum)
 {
     uint64_t dataLen = static_cast<uint64_t>(launchParam.GetInTensor(0).Numel());
@@ -71,20 +71,20 @@ void CalcVectorTiling512Align(const LaunchParam &launchParam, FasterGeluForwardT
     // 每个核计算的block_length 最均匀的分法
     uint64_t baseBlockLength = dataLenAlign / (usedCoreNum * packLen) * packLen; // 搬运向下512B对齐
     uint64_t resDataLenAlign = dataLenAlign - usedCoreNum * baseBlockLength;
-    tilingDataPtr->usedCoreNum = usedCoreNum;
-    std::fill(tilingDataPtr->singleCoreDataLen, tilingDataPtr->singleCoreDataLen + usedCoreNum, baseBlockLength);
+    tilingDataPtr.usedCoreNum = usedCoreNum;
+    std::fill(tilingDataPtr.singleCoreDataLen, tilingDataPtr.singleCoreDataLen + usedCoreNum, baseBlockLength);
     uint32_t index = 0;
     for (uint32_t i = packLen; i <= resDataLenAlign; i += packLen) {
-        tilingDataPtr->singleCoreDataLen[index % usedCoreNum] += packLen;
+        tilingDataPtr.singleCoreDataLen[index % usedCoreNum] += packLen;
         index++;
     }
-    tilingDataPtr->singleCoreDataLen[usedCoreNum - 1] += resDataLenAlign % packLen;
+    tilingDataPtr.singleCoreDataLen[usedCoreNum - 1] += resDataLenAlign % packLen;
 
-    tilingDataPtr->maxTileLen =
-        availableUB > tilingDataPtr->singleCoreDataLen[0] ? tilingDataPtr->singleCoreDataLen[0] : availableUB;
+    tilingDataPtr.maxTileLen =
+        availableUB > tilingDataPtr.singleCoreDataLen[0] ? tilingDataPtr.singleCoreDataLen[0] : availableUB;
 
     // 如果只用一个核心，对齐数量置为0，防止核内计算偏移时访问非法内存
-    tilingDataPtr->alignDataNum = usedCoreNum > 1 ? alignDataNum : 0;
+    tilingDataPtr.alignDataNum = usedCoreNum > 1 ? alignDataNum : 0;
 }
 
 Status FasterGeluForwardTiling(const LaunchParam &launchParam, KernelInfo &kernelInfo)

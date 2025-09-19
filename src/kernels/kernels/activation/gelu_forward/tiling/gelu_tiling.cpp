@@ -31,9 +31,9 @@ using namespace Mki;
 3. 数据在core上能放的下
 4. 数据在core上放不下，多次循环，不同的length
 */
-bool FillTilingParam(const LaunchParam &launchParam, GeluForwardTilingData *tilingDataPtr, uint32_t &coreNum)
+bool FillTilingParam(const LaunchParam &launchParam, GeluForwardTilingData &tilingDataPtr, uint32_t &coreNum)
 {
-    tilingDataPtr->bufferNum = AsdOps::GELU_FORWARD_BUFF_NUM;
+    tilingDataPtr.bufferNum = AsdOps::GELU_FORWARD_BUFF_NUM;
     // 获取可用核数
     coreNum = PlatformInfo::Instance().GetCoreNum(CoreType::CORE_TYPE_VECTOR);
     // UB空间大小,输入数据信息
@@ -61,19 +61,19 @@ bool FillTilingParam(const LaunchParam &launchParam, GeluForwardTilingData *tili
          alignSize * alignSize;
     // 判断是否为小shape来决定是否重置单次搬运数据
     if (alignDataLen <= maxPerElemBytes * GELU_FORWARD_BUFF_NUM * coreNum) {
-        tilingDataPtr->bufferNum = 1;
+        tilingDataPtr.bufferNum = 1;
         maxPerElemBytes = maxPerElemBytes * NUM_2;
     }
 
-    tilingDataPtr->blockLength = (static_cast<uint32_t>(launchParam.GetInTensor(0).Numel()) + coreNum - 1) / coreNum;
-    tilingDataPtr->blockLength = (tilingDataPtr->blockLength + alignSize - 1) / alignSize * alignSize;
+    tilingDataPtr.blockLength = (static_cast<uint32_t>(launchParam.GetInTensor(0).Numel()) + coreNum - 1) / coreNum;
+    tilingDataPtr.blockLength = (tilingDataPtr.blockLength + alignSize - 1) / alignSize * alignSize;
     // 每个核要算的数据能否在UB上放的下
-    tilingDataPtr->tileNum = tilingDataPtr->blockLength / maxPerElemBytes;
-    tilingDataPtr->tailLength = tilingDataPtr->blockLength % maxPerElemBytes;
-    if (tilingDataPtr->tileNum == 0) {
-        tilingDataPtr->tileLength = tilingDataPtr->tailLength;
+    tilingDataPtr.tileNum = tilingDataPtr.blockLength / maxPerElemBytes;
+    tilingDataPtr.tailLength = tilingDataPtr.blockLength % maxPerElemBytes;
+    if (tilingDataPtr.tileNum == 0) {
+        tilingDataPtr.tileLength = tilingDataPtr.tailLength;
     } else {
-        tilingDataPtr->tileLength = maxPerElemBytes;
+        tilingDataPtr.tileLength = maxPerElemBytes;
     }
     return true;
 }

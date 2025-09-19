@@ -54,7 +54,7 @@ template<typename T> T Min(T num, T div) { return num < div ? num : div; }
 
 template<typename T> T Max(T num, T div) { return num < div ? div : num; }
 
-inline bool SetTotalShape(const Mki::SVector<int64_t> &inShape, SwiGluQuantTilingData *tilingData)
+inline bool SetTotalShape(const Mki::SVector<int64_t> &inShape, SwiGluQuantTilingData& tilingData)
     {
     int64_t shapeBefore = 1;
     int64_t shapeAfter = 1;
@@ -69,27 +69,27 @@ inline bool SetTotalShape(const Mki::SVector<int64_t> &inShape, SwiGluQuantTilin
     }
     MKI_CHECK(shapeAfter % EVEN_FACTOR == 0, "shapeAfter % 2 != 0", return false);
     MKI_CHECK(shapeAfter != 0, "shapeAfter == 0", return false);
-    tilingData->rowLen = static_cast<uint32_t>(shapeBefore);
-    tilingData->colLen = static_cast<uint32_t>(shapeAfter / EVEN_FACTOR);
+    tilingData.rowLen = static_cast<uint32_t>(shapeBefore);
+    tilingData.colLen = static_cast<uint32_t>(shapeAfter / EVEN_FACTOR);
     return true;
 }
 
-inline bool CalculateMaxUbSizePerRow(SwiGluQuantTilingData *tilingData)
+inline bool CalculateMaxUbSizePerRow(SwiGluQuantTilingData& tilingData)
 {
-    uint32_t colLen = tilingData->colLen;
-    uint32_t alignedColLen = AlignUp<uint32_t>(colLen, tilingData->blockNum);
+    uint32_t colLen = tilingData.colLen;
+    uint32_t alignedColLen = AlignUp<uint32_t>(colLen, tilingData.blockNum);
     MKI_CHECK(alignedColLen != 0, "CalculateMaxUbSizePerRow Unsupported alignedColLen  == 0", return false);
     MKI_LOG(INFO) << "alignedColLen:" << alignedColLen << "\n";
-    uint32_t ubAvail = tilingData->dataNumSingleUb / alignedColLen;
-    MKI_LOG(INFO) << "tilingData->dataNumSingleUb:" << tilingData->dataNumSingleUb << "\n";
+    uint32_t ubAvail = tilingDat.dataNumSingleUb / alignedColLen;
+    MKI_LOG(INFO) << "tilingData.dataNumSingleUb:" << tilingData.dataNumSingleUb << "\n";
     MKI_LOG(INFO) << "ubAvail:" << ubAvail << "\n";
     MKI_CHECK(ubAvail != 0, "The input vector is too large. It is not supported currently.", return false);
 
-    tilingData->optBaseColLen = colLen;
+    tilingData.optBaseColLen = colLen;
     ubAvail = Max(ubAvail, ONE);
 
-    tilingData->optBaseRowLenHeadCore = Min(Min(ubAvail, tilingData->rowLenPerHeadCore), COMPARE_INT);
-    tilingData->optBaseRowLenTailCore = Min(Min(ubAvail, tilingData->rowLenPerTailCore), COMPARE_INT);
+    tilingData.optBaseRowLenHeadCore = Min(Min(ubAvail, tilingData.rowLenPerHeadCore), COMPARE_INT);
+    tilingData.optBaseRowLenTailCore = Min(Min(ubAvail, tilingData.rowLenPerTailCore), COMPARE_INT);
     return true;
 }
 

@@ -32,37 +32,37 @@ static constexpr int TILING_KEY_FP32_QUANT_MODE = 306; // Tiling key for FP32 qu
 
 namespace AtbOps  {
 using namespace Mki;
-void SetTilingData(SwiGluQuantTilingData *tilingData)
+void SetTilingData(SwiGluQuantTilingData &tilingData)
 {
-    tilingData->basicRowLenHeadCore = tilingData->optBaseRowLenHeadCore;
-    tilingData->basicRowLenTailCore = tilingData->optBaseRowLenTailCore;
-    tilingData->basicColLen = tilingData->optBaseColLen;
-    tilingData->realCoreNum = tilingData->coreNumUsed;
+    tilingData.basicRowLenHeadCore = tilingData.optBaseRowLenHeadCore;
+    tilingData.basicRowLenTailCore = tilingData.optBaseRowLenTailCore;
+    tilingData.basicColLen = tilingData.optBaseColLen;
+    tilingData.realCoreNum = tilingData.coreNumUsed;
 }
-bool CalTilingData(SwiGluQuantTilingData *tilingData)
+bool CalTilingData(SwiGluQuantTilingData& tilingData)
 {
-    uint32_t rowLen = tilingData->rowLen;
-    tilingData->coreNumUsed = Max(Min(tilingData->totalCore, rowLen), ONE);
-    tilingData->headCoreNum = rowLen % tilingData->coreNumUsed;
-    tilingData->rowLenPerHeadCore = (rowLen + tilingData->coreNumUsed - 1) / tilingData->coreNumUsed;
-    tilingData->rowLenPerTailCore = rowLen / tilingData->coreNumUsed;
+    uint32_t rowLen = tilingData.rowLen;
+    tilingData.coreNumUsed = Max(Min(tilingData.totalCore, rowLen), ONE);
+    tilingData.headCoreNum = rowLen % tilingData.coreNumUsed;
+    tilingData.rowLenPerHeadCore = (rowLen + tilingData.coreNumUsed - 1) / tilingData.coreNumUsed;
+    tilingData.rowLenPerTailCore = rowLen / tilingData.coreNumUsed;
     return CalculateMaxUbSizePerRow(tilingData);
 }
-void PrintSwiQuantTiling(SwiGluQuantTilingData *tilingData)
+void PrintSwiQuantTiling(const SwiGluQuantTilingData &tilingData)
 {
     MKI_LOG(INFO) << "SwiGlu Tiling Data:"
                   << "\n"
-                  << " groupLen " << tilingData->groupLen << "\n"
-                  << " rowLen " << tilingData->rowLen << "\n"
-                  << " colLen " << tilingData->colLen << "\n"
-                  << " rowLenPerHeadCore " << tilingData->rowLenPerHeadCore << "\n"
-                  << " rowLenPerTailCore " << tilingData->rowLenPerTailCore << "\n"
-                  << " basicRowLenHeadCore " << tilingData->basicRowLenHeadCore << "\n"
-                  << " basicRowLenTailCore " << tilingData->basicRowLenTailCore << "\n"
-                  << " basicColLen  " << tilingData->basicColLen << "\n"
-                  << " headCoreNum " << tilingData->headCoreNum << "\n"
-                  << " realCoreNum  " << tilingData->realCoreNum << "\n"
-                  << " totalCore  " << tilingData->totalCore;
+                  << " groupLen " << tilingData.groupLen << "\n"
+                  << " rowLen " << tilingData.rowLen << "\n"
+                  << " colLen " << tilingData.colLen << "\n"
+                  << " rowLenPerHeadCore " << tilingData.rowLenPerHeadCore << "\n"
+                  << " rowLenPerTailCore " << tilingData.rowLenPerTailCore << "\n"
+                  << " basicRowLenHeadCore " << tilingData.basicRowLenHeadCore << "\n"
+                  << " basicRowLenTailCore " << tilingData.basicRowLenTailCore << "\n"
+                  << " basicColLen  " << tilingData.basicColLen << "\n"
+                  << " headCoreNum " << tilingData.headCoreNum << "\n"
+                  << " realCoreNum  " << tilingData.realCoreNum << "\n"
+                  << " totalCore  " << tilingData.totalCore;
 }
 
 void SwigluQuantTilingKeyChose(const LaunchParam &launchParam, KernelInfo &kernelInfo)
