@@ -116,8 +116,9 @@ static void CreateMiniGraphOperation(atb::GraphParam &opGraph, atb::Operation **
 static void CreateGraphOperationForMultiStream(atb::GraphParam &opGraph, atb::Operation **operation)
 {
     // 构单图多流大图
+    const uint32_t GRAPH_OUT_NUM = 2;
     opGraph.inTensorNum = GRAPH_IN_TENSOR_NUM;
-    opGraph.outTensorNum = GRAPH_OUT_TENSOR_NUM;
+    opGraph.outTensorNum = GRAPH_OUT_NUM;
     opGraph.internalTensorNum = GRAPH_INTERNAL_TENSOR_NUM;
     const int NODE_SIZE = 4;
     opGraph.nodes.resize(NODE_SIZE);
