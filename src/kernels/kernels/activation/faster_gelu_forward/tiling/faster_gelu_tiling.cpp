@@ -95,7 +95,7 @@ Status FasterGeluForwardTiling(const LaunchParam &launchParam, KernelInfo &kerne
         reinterpret_cast<FasterGeluForwardTilingData *>(kernelInfo.GetTilingHostAddr());
     MKI_CHECK(tilingDataPtr != nullptr, "tilingDataPtr should not be empty",
                  return Status::FailStatus(ERROR_INVALID_VALUE, "tilingDataPtr should not be empty"));
-    CalcVectorTiling512Align(launchParam, tilingDataPtr, blockDim);
+    CalcVectorTiling512Align(launchParam, *tilingDataPtr, blockDim);
 
     for (uint32_t i = 0; i < tilingDataPtr->usedCoreNum; i++) {
         MKI_LOG(INFO) << "Core-" << i << "  singleCoreDataLen num is " << tilingDataPtr->singleCoreDataLen[i];

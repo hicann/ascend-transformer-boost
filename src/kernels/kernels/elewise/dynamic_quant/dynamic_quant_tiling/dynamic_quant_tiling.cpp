@@ -47,7 +47,7 @@ Status ParseShape(const LaunchParam &launchParam, DynamicQuantTilingData &tiling
     size_t dims = shape.size();
     for (size_t i = 0; i < dims; ++i) {
         if (i < dims - 1) {
-            MKI_CHECK(shape[i] > 0 && *rowNumTotal < static_cast<uint64_t>(UINT32_MAX / shape[i]),
+            MKI_CHECK(shape[i] > 0 && rowNumTotal < static_cast<uint64_t>(UINT32_MAX / shape[i]),
                 "rowNumTotal or shape is invalid!",
                 return Status::FailStatus(ERROR_INVALID_VALUE, "rowNumTotal or shape is invalid!"));
             rowNumTotal *= shape[i];
@@ -194,10 +194,10 @@ Status DynamicQuantTiling(const LaunchParam &launchParam, KernelInfo &kernelInfo
     tilingDataPtr->asymmetric = *reinterpret_cast<uint32_t *>(&attrs.asymmetric);
 
     uint64_t rowNumTotal = 1;
-    Status res = ParseShape(launchParam, tilingDataPtr, &rowNumTotal);
+    Status res = ParseShape(launchParam, *tilingDataPtr, &rowNumTotal);
     OP_TILING_CHECK_STATUS_RETURN(res);
 
-    Status ret = SetTilingData(tilingDataPtr, rowNumTotal);
+    Status ret = SetTilingData(*tilingDataPtr, rowNumTotal);
     OP_TILING_CHECK_STATUS_RETURN(ret);
 
     MKI_LOG(INFO) << "numCore = "           << tilingDataPtr->numCore
