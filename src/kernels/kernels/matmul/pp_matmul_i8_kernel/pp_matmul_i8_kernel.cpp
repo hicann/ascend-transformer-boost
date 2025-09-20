@@ -140,7 +140,7 @@ public:
     Status InitImpl(const LaunchParam &launchParam) override
     {
         Status status = PpMatmulTiling(launchParam, kernelInfo_);
-        MKI_CHECK(status.Ok(), "tiling return invalid value.", return status);
+        // MKI_CHECK(status.Ok(), "tiling return invalid value.", return status);
         kernelInfo_.SetHwsyncIdx(0);
         return status;
     }
