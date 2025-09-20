@@ -383,7 +383,7 @@ function fn_init_env()
         [[ "$USE_CXX11_ABI" == "" ]] && USE_CXX11_ABI=ON
     fi
     if [ "$USE_CXX11_ABI" == "" ]; then
-        if [ "$(python3 -c 'import torch; print(torch.compiled_with_cxx11_abi())')" == "True" ]; then
+        if [ $(python3 -c 'import torch; print(torch.compiled_with_cxx11_abi())') == "True" ]; then
             USE_CXX11_ABI=ON
         else
             USE_CXX11_ABI=OFF
