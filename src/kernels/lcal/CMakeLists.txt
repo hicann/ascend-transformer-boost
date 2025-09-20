@@ -12,6 +12,7 @@ project(Lcal LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 14)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
+add_compile_options(-Wno-float-equal)
 option(USE_CXX11_ABI "USE_CXX11_ABI" 0)
 
 IF (CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "aarch64")

@@ -30,6 +30,7 @@ include_directories(
 
 add_subdirectory(mixkernels)
 add_subdirectory(kernels)
+add_subdirectory(lcal)
 if (BUILD_TBE_ADAPTER)
     add_subdirectory(tbe_adapter)
 endif()
