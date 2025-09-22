@@ -185,6 +185,7 @@
 
 
     - linear_dequant_ds_demo.cpp  
+        该demo支持Atlas A2/A3系列和Atlas 推理系列产品上运行。  
         **参数设置**：
 
         | 成员名称     | 取值               |
@@ -204,4 +205,4 @@
         | `weight`   | int8     | nd       | [7168, 16384] | npu     |
         | `bias`     | int32    | nd       | [1, 7168]     | npu     |
         | `deqScale` | int64    | nd       | [1, 7168]     | npu     |
-        | `output`   | fp16     | nd       | [32, 7168]    | npu     |
+        | `output`   | float16  | nd       | [32, 7168]    | npu     |
