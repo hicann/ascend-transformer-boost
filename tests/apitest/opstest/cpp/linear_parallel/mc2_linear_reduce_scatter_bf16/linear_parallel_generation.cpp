@@ -109,8 +109,8 @@ int main(int argc, const char *argv[])
 
     std::vector<std::unique_ptr<std::thread>> threads(DEV_NUM);
     for (size_t i = 0; i < DEV_NUM; i++) {
-        threads[i].reset(new (std::nothrow)
-                             std::thread(LinearParallelOneThread, i, DEV_NUM, std::ref(context), std::ref(stream)));
+        threads[i].reset(new (std::nothrow) std::thread(LinearParallelOneThread, i, DEV_NUM, std::ref(context[i]),
+                                                        std::ref(stream[i])));
     }
     for (size_t i = 0; i < DEV_NUM; ++i) {
         threads[i]->join();
