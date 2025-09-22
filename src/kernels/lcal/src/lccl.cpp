@@ -36,7 +36,7 @@ int GetAclResInCurThread(int type, uint32_t &resource)
     static AclrtGetResInCurrentThreadFunc aclFn = nullptr;
 
     std::call_once(onceFlag, []() {
-        std::string p = Mki::GetEnv("ASCEND_HOME_PATH") + "/runtime/lib64/libascendcl.so";
+        std::string p = std::string(Mki::GetEnv("ASCEND_HOME_PATH")) + "/runtime/lib64/libascendcl.so";
         auto dl = std::make_unique<Mki::Dl>(p, false);
         if (!dl->IsValid()) {
             MKI_LOG(ERROR) << "Try load libascendcl.so failed: " << p;

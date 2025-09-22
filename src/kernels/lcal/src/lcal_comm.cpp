@@ -303,7 +303,7 @@ int LcalComm::Init()
     if (inited_) {
         return LCAL_SUCCESS;
     }
-        if (rank_ < 0 || rank_ >= rankSize_ || rankSize_ <= 0 || rankSize_ > LCAL_MAX_RANK_SIZE) {
+    if (rank_ < 0 || rank_ >= rankSize_ || rankSize_ <= 0 || rankSize_ > LCAL_MAX_RANK_SIZE) {
         MKI_LOG(ERROR) << "The rank is invalid! rank:" << rank_ << " rankSize:" << rankSize_;
         return LCAL_ERROR_PARA_CHECK_FAIL;
     }
@@ -351,7 +351,7 @@ int LcalComm::InitThread(const std::string &uid)
     if (inited_) {
         return LCAL_SUCCESS;
     }
-        if (rank_ < 0 || rank_ >= rankSize_ || rankSize_ <= 0 || rankSize_ > LCAL_MAX_RANK_SIZE) {
+    if (rank_ < 0 || rank_ >= rankSize_ || rankSize_ <= 0 || rankSize_ > LCAL_MAX_RANK_SIZE) {
         MKI_LOG(ERROR) << "The rank is invalid! rank:" << rank_ << "rankSize:" << rankSize_;
         return LCAL_ERROR_PARA_CHECK_FAIL;
     }
@@ -723,7 +723,7 @@ LcalComm::~LcalComm()
     FreePeerMem(commArgs_.dumpAddr);
     FreePeerMem(peerMem_[rank_]);
     FreePeerMem(commArgsPtr_);
-    }
+}
 
 LcalComm::LcalComm(int rank, int rankSize) : rank_(rank), rankSize_(rankSize)
 {
