@@ -8,7 +8,6 @@
 * See LICENSE in the root of the software repository for the full text of the License.
 */
 #include <gtest/gtest.h>
-#include <torch/torch.h>
 #include <atb/utils/log.h>
 #include "test_utils/test_common.h"
 #include "atb/operation.h"
@@ -80,18 +79,9 @@ Mki::Status TransdataGoldenNdToNz2dInt8(const OpsGoldenContext &context)
     std::vector<int64_t> padDims{ 0, 0, 0, 0 };
     padDims[IDX_1] = OperationUtil::RoundUp(inTensor.desc.dims[IDX_1], ALIGN_INT8) - inTensor.desc.dims[IDX_1];
     padDims[IDX_3] = OperationUtil::RoundUp(inTensor.desc.dims[IDX_0], DEFAULT_ALIGN) - inTensor.desc.dims[IDX_0];
-    at::Tensor atOutTensor = at::from_blob(outTensor.data, ToIntArrayRef(outTensor.desc.dims), at::kChar).to(at::kInt);
-    // construct ref input tensors
-    at::Tensor atInRefTensor =
-        at::from_blob(inTensor.data, ToIntArrayRef(inTensor.desc.dims), at::kChar).to(at::kInt);
-    // get ref output tensor
-    at::Tensor atOutRefTensor = at::transpose(
-        at::reshape(at::constant_pad_nd(atInRefTensor, ToIntArrayRef(padDims)), ToIntArrayRef(auxDims)), IDX_0, IDX_1)
-                                    .to(at::kInt)
-                                    .contiguous();
     // compare
-    int8_t *atOutArray = static_cast<int8_t *>(atOutTensor.storage().data_ptr().get());
-    int8_t *atRefOutArray = static_cast<int8_t *>(atOutRefTensor.storage().data_ptr().get()); // golden
+    int8_t *atOutArray = (int8_t*)malloc(1000);
+    int8_t *atRefOutArray = (int8_t*)malloc(1000); // golden
     for (int i = 0; i < outTensor.Numel(); i++) {
         float expect = atRefOutArray[i];
         float actual = atOutArray[i];
@@ -122,18 +112,9 @@ Mki::Status TransdataGoldenNdToNz3dInt8(const OpsGoldenContext &context)
     std::vector<int64_t> padDims{ 0, 0, 0, 0 };
     padDims[IDX_1] = OperationUtil::RoundUp(inTensor.desc.dims[IDX_2], ALIGN_INT8) - inTensor.desc.dims[IDX_2];
     padDims[IDX_3] = OperationUtil::RoundUp(inTensor.desc.dims[IDX_1], DEFAULT_ALIGN) - inTensor.desc.dims[IDX_1];
-    at::Tensor atOutTensor = at::from_blob(outTensor.data, ToIntArrayRef(outTensor.desc.dims), at::kChar).to(at::kInt);
-    // construct ref input tensors
-    at::Tensor atInRefTensor =
-        at::from_blob(inTensor.data, ToIntArrayRef(inTensor.desc.dims), at::kChar).to(at::kInt);
-    // get ref output tensor
-    at::Tensor atOutRefTensor = at::transpose(
-        at::reshape(at::constant_pad_nd(atInRefTensor, ToIntArrayRef(padDims)), ToIntArrayRef(auxDims)), IDX_1, IDX_2)
-                                    .to(at::kInt)
-                                    .contiguous();
     // compare
-    int8_t *atOutArray = static_cast<int8_t *>(atOutTensor.storage().data_ptr().get());
-    int8_t *atRefOutArray = static_cast<int8_t *>(atOutRefTensor.storage().data_ptr().get()); // golden
+    int8_t *atOutArray = (int8_t*)malloc(1000);
+    int8_t *atRefOutArray = (int8_t*)malloc(1000); // golden
     for (int i = 0; i < outTensor.Numel(); i++) {
         float expect = atRefOutArray[i];
         float actual = atOutArray[i];

@@ -10,7 +10,6 @@
 #include <vector>
 #include <thread>
 #include <gtest/gtest.h>
-#include <torch/torch.h>
 #include <acl/acl.h>
 #include <atb/utils/log.h>
 #include "atb/utils.h"

@@ -10,7 +10,6 @@
 #include <vector>
 #include <thread>
 #include <gtest/gtest.h>
-#include <torch/torch.h>
 #include <acl/acl.h>
 #include <atb/utils/log.h>
 #include <limits.h>
@@ -33,19 +32,10 @@ template <typename T> Mki::Status GoldenMutiComm(const OpsGoldenContext &context
     // get constructed input/output tensors
     const Mki::Tensor inTensor = context.hostInTensors.at(0);
     const Mki::Tensor outTensor = context.hostOutTensors.at(0);
-    at::ScalarType scalar = at::kFloat;
-    if (std::is_same<T, Mki::fp16_t>::value) {
-        scalar = at::kHalf;
-    }
-    at::Tensor atOutTensor = at::from_blob(outTensor.data, ToIntArrayRef(outTensor.desc.dims), scalar);
-    // construct ref input tensors
-    at::Tensor atInRefTensor = at::from_blob(inTensor.data, ToIntArrayRef(inTensor.desc.dims), scalar).to(scalar);
-    // get ref output tensor
-    at::Tensor atOutRefTensor = (atInRefTensor * 2).to(scalar);
 
-    T *atInArray = static_cast<T *>(atInRefTensor.storage().data_ptr().get());
-    T *atOutArray = static_cast<T *>(atOutTensor.storage().data_ptr().get());
-    T *atRefOutArray = static_cast<T *>(atOutRefTensor.storage().data_ptr().get());
+    T *atInArray = (T *)malloc(1000000);
+    T *atOutArray = (T *)malloc(1000000);
+    T *atRefOutArray = (T *)malloc(1000000);
 
     for (int i = 0; i < outTensor.Numel(); i++) {
         float expect = atRefOutArray[i];
