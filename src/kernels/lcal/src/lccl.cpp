@@ -282,7 +282,7 @@ uint32_t Lccl::GetBlockNum(LcalType cclType, uint32_t rankSize, int64_t dataSize
         limitType = aclrtDevResLimitType::ACL_RT_DEV_RES_CUBE_CORE;
     }
 
-    int res = comm_->CallAclRtGetRes(static_cast<int>(limitType), &limitVal);
+    int res = GetAclResInCurThread(static_cast<int>(limitType), &limitVal);
     if (res == LCAL_SUCCESS) {
         MKI_LOG(DEBUG) << "Required blockNum(" << blockNum <<
             ") limit:(limitVal=" << limitVal << ", limitType=" << static_cast<int>(limitType) << ")";
