@@ -93,13 +93,13 @@ Status SwiGluQuantTiling(const LaunchParam &launchParam, KernelInfo &kernelInfo)
     tilingData->blockNum = BLOCK_SIZE / SIZE_OF_FLOAT16;
     tilingData->cacheLineLen = L2_CACHE_LINE_SIZE / SIZE_OF_FLOAT16;
     const Mki::SVector<int64_t> &xShape = launchParam.GetInTensor(0).desc.dims;
-    MKI_CHECK_NO_LOG(SetTotalShape(xShape, tilingData), return Status::FailStatus(ERROR_INVALID_VALUE));
+    MKI_CHECK_NO_LOG(SetTotalShape(xShape, *tilingData), return Status::FailStatus(ERROR_INVALID_VALUE));
     MKI_CHECK_NO_LOG(CalTilingData(tilingData), return Status::FailStatus(ERROR_INVALID_VALUE));
     SetTilingData(tilingData);
     SwigluQuantTilingKeyChose(launchParam, kernelInfo);
     kernelInfo.SetBlockDim(tilingData->coreNumUsed);
     
-    PrintSwiQuantTiling(tilingData);
+    PrintSwiQuantTiling(*tilingData);
     return Status::OkStatus();
 }
 }

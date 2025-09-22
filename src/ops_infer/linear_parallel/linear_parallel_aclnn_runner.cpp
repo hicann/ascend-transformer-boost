@@ -193,13 +193,13 @@ Status LinearParallelAclnnRunner::LoadMethodMatmulReduceScatter()
     static DlManager dlManager = DlManager(std::string(std::getenv("ASCEND_HOME_PATH")) + "/lib64/libopapi.so");
     Status ret =
         dlManager.getSymbol("aclnnMatmulReduceScatterV2GetWorkspaceSize",
-                            (void **)&LinearParallelAclnnRunner::aclnnMatmulReduceScatterV2GetWorkspaceSizeFunc_);
+                            (void *&)&LinearParallelAclnnRunner::aclnnMatmulReduceScatterV2GetWorkspaceSizeFunc_);
     if (ret != NO_ERROR) {
         ATB_LOG(ERROR) << "load aclnnMatmulReduceScatterV2GetWorkspaceSize failed! Consider upgrade the CANN first!";
         return ret;
     }
     ret = dlManager.getSymbol("aclnnMatmulReduceScatterV2",
-                              (void **)&LinearParallelAclnnRunner::aclnnMatmulReduceScatterV2Func_);
+                              (void *&)&LinearParallelAclnnRunner::aclnnMatmulReduceScatterV2Func_);
     if (ret != NO_ERROR) {
         ATB_LOG(ERROR) << "load aclnnMatmulReduceScatterV2 failed! Consider upgrade the CANN first!";
         return ret;

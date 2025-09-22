@@ -80,7 +80,7 @@ inline bool CalculateMaxUbSizePerRow(SwiGluQuantTilingData& tilingData)
     uint32_t alignedColLen = AlignUp<uint32_t>(colLen, tilingData.blockNum);
     MKI_CHECK(alignedColLen != 0, "CalculateMaxUbSizePerRow Unsupported alignedColLen  == 0", return false);
     MKI_LOG(INFO) << "alignedColLen:" << alignedColLen << "\n";
-    uint32_t ubAvail = tilingDat.dataNumSingleUb / alignedColLen;
+    uint32_t ubAvail = tilingData.dataNumSingleUb / alignedColLen;
     MKI_LOG(INFO) << "tilingData.dataNumSingleUb:" << tilingData.dataNumSingleUb << "\n";
     MKI_LOG(INFO) << "ubAvail:" << ubAvail << "\n";
     MKI_CHECK(ubAvail != 0, "The input vector is too large. It is not supported currently.", return false);
@@ -93,9 +93,9 @@ inline bool CalculateMaxUbSizePerRow(SwiGluQuantTilingData& tilingData)
     return true;
 }
 
-bool CalTilingData(SwiGluQuantTilingData *tilingData);
+bool CalTilingData(SwiGluQuantTilingData &tilingData);
 
-void SetTilingData(SwiGluQuantTilingData *tilingData);
+void SetTilingData(SwiGluQuantTilingData &tilingData);
 
 } // namespace AsdOps
 #endif // OPS_SWI_GLU_QUANT_TILING_H

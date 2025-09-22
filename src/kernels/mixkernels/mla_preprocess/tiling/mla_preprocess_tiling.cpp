@@ -320,7 +320,7 @@ public:
     void RmsNormQuantTiling(const uint32_t numTokens);
     void RopeConcatTiling(const OpParam::MlaPreprocess &param, const uint32_t &aicNum);
     void EinSumQuantTiling(const OpParam::MlaPreprocess &param, const uint32_t &aicNum, const TensorDType inDtype);
-    void SetTiling(AtbOps::MlaTilingData *tilingParam);
+    void SetTiling(AtbOps::MlaTilingData &tilingParam);
     void SetTilingKey(const Mki::LaunchParam &launchParam, Mki::KernelInfo &kernelInfo);
     void SetMlapoWorkSpace(const TensorDType inDtype, const OpParam::MlaPreprocess &param, Mki::KernelInfo &kernelInfo);
 };
