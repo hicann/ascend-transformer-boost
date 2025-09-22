@@ -15,6 +15,7 @@
 #include <cstring>
 #include <cstdint>
 #include <fstream>
+#include <iostream>
 #include "acl/acl.h"
 #include "atb/types.h"
 #include "atb/atb_infer.h"
