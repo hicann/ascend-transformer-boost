@@ -12,11 +12,17 @@
 handle_error(){
     rm -f linear_parallel_generation
     rm -f *.bin
+
+    cd $current_dir
 }
 
 trap handle_error ERR
 
 set -e
+
+current_dir=$(pwd)
+
+cd "$(dirname "$0")"
 
 cxx_abi=$(python3 -c '
 try:
@@ -36,3 +42,5 @@ python linear_parallel_mc2_linear_reduce_scatter.py
 
 rm -f linear_parallel_generation
 rm -f *.bin
+
+cd $current_dir
