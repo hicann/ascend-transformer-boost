@@ -29,47 +29,59 @@ namespace Lcal {
 
 using AclrtGetResInCurrentThreadFunc = int(*)(int, uint32_t*);
 
-int GetAclResInCurThread(int type, uint32_t *resource)
+int GetAclResInCurThread(int type, uint32_t &resource)
 {
-    static std::mutex localMutex; // 线程安全锁
-    static AclrtGetResInCurrentThreadFunc aclrtGetResInCurrentThread = nullptr;
-    static int res = -1;
+    static std::once_flag onceFlag;
+    static std::atomic<int> initFlag(LCAL_ERROR_NOT_INITIALIZED); // -1
+    static std::shared_ptr<Mki::Dl> mkiDl;
+    static AclrtGetResInCurrentThreadFunc aclFn = nullptr;
 
-    // 首次调用时初始化
-    if (res == -1) {
-        std::lock_guard<std::mutex> lock(localMutex); // 加锁
-        std::unique_ptr<Mki::Dl> mkiDl;
-        std::string libPath = std::string(Mki::GetEnv("ASCEND_HOME_PATH")) + "/runtime/lib64/libascendcl.so";
-        mkiDl = std::make_unique<Mki::Dl>(libPath, false);
-        if (!mkiDl->IsValid()) {  // 检查库是否加载成功
-            MKI_LOG(ERROR) << "Failed to load libascendcl.so!";
-            return LCAL_ERROR_INTERNAL;
+    std::call_once(onceFlag, []() {
+        std::string home = Mki::GetEnv("ASCEND_HOME_PATH");
+        std::vector<std::string> candidates;
+        if (!home.empty()) {
+            candidates.push_back(home + "/runtime/lib64/libascendcl.so");
         }
-        aclrtGetResInCurrentThread =
-            (AclrtGetResInCurrentThreadFunc)mkiDl->GetSymbol("aclrtGetResInCurrentThread");
-        if (aclrtGetResInCurrentThread == nullptr) {
-            MKI_LOG(WARN) << "Failed to get aclrtGetResInCurrentThread function!";
-            res = LCAL_ERROR_NOT_FOUND;
-            return LCAL_ERROR_NOT_FOUND;
+        candidates.emplace_back("libascendcl.so");
+
+        for (const auto &p : candidates) {
+            auto dl = std::make_unique<Mki::Dl>(p, false);
+            if (!dl->IsValid()) {
+                MKI_LOG(WARN) << "Try load libascendcl.so failed: " << p;
+                continue;
+            }
+            auto sym = dl->GetSymbol("aclrtGetResInCurrentThread");
+            if (sym == nullptr) {
+                MKI_LOG(WARN) << "Symbol aclrtGetResInCurrentThread not found in: " << p;
+                continue;
+            }
+            mkiDl = std::move(dl);
+            aclFn = reinterpret_cast<AclrtGetResInCurrentThreadFunc>(sym);
+            initFlag.store(LCAL_SUCCESS, std::memory_order_release);
+            MKI_LOG(DEBUG) << "Loaded libascendcl.so and resolved aclrtGetResInCurrentThread from: " << p;
+            return;
         }
-        res = LCAL_SUCCESS;
-        MKI_LOG(DEBUG) << "Successfully loaded libascendcl.so and resolved aclrtGetResInCurrentThread";
+        initFlag.store(LCAL_ERROR_NOT_FOUND, std::memory_order_release);
+        MKI_LOG(ERROR) << "Failed to load libascendcl.so or resolve aclrtGetResInCurrentThread.";
+    });
+
+    int rc = initFlag.load(std::memory_order_acquire);
+    if (rc != LCAL_SUCCESS) {
+        return rc;
     }
 
-    // 调用函数
-    if (res == LCAL_SUCCESS) {
-        int getResRet = aclrtGetResInCurrentThread(type, resource);
-        if (getResRet != ACL_SUCCESS) {
-            MKI_LOG(ERROR) << "Failed to get resource in current thread for type:" << type << " err:" << getResRet;
-            return LCAL_ERROR_INTERNAL;
-        } else {
-            MKI_LOG(DEBUG) << "Get resource in current thread for type:" << type << " resource:" << *resource;
-            return LCAL_SUCCESS;
-        }
-    } else {
-        return res;
+    if (type != ACL_RT_DEV_RES_CUBE_CORE && type != ACL_RT_DEV_RES_VECTOR_CORE) {
+        MKI_LOG(ERROR) << "aclrtGetResInCurrentThread not support resource type:" << type;
+        return LCAL_ERROR_PARA_CHECK_FAIL;
     }
 
+    const int ret = aclFn(type, &resource);
+    if (ret != ACL_SUCCESS) {
+        MKI_LOG(ERROR) << "aclrtGetResInCurrentThread failed. type:" << type << " err:" << ret;
+        return LCAL_ERROR_INTERNAL;
+    }
+    MKI_LOG(DEBUG) << "Got resource in current thread. type:" << type << " resource:" << resource;
+    return LCAL_SUCCESS;
 }
 
 uint32_t GetLocalReduceBlockDum(int64_t dataSize)
@@ -288,7 +300,7 @@ uint32_t Lccl::GetBlockNum(LcalType cclType, uint32_t rankSize, int64_t dataSize
         limitType = aclrtDevResLimitType::ACL_RT_DEV_RES_CUBE_CORE;
     }
 
-    int res = GetAclResInCurThread(static_cast<int>(limitType), &limitVal);
+    int res = GetAclResInCurThread(static_cast<int>(limitType), limitVal);
     if (res == LCAL_SUCCESS) {
         MKI_LOG(DEBUG) << "Required blockNum(" << blockNum <<
             ") limit:(limitVal=" << limitVal << ", limitType=" << static_cast<int>(limitType) << ")";
