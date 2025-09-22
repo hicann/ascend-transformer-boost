@@ -17,6 +17,7 @@
 
 #include <mki/utils/log/log.h>
 #include <mki/utils/env/env.h>
+#include <mki/utils/dl/dl.h>
 
 #include "profiling/report_timing.h"
 
@@ -25,6 +26,45 @@ using namespace chrono;
 using namespace Mki;
 
 namespace Lcal {
+
+using AclrtGetResInCurrentThreadFunc = int(*)(int, uint32_t*);
+
+int GetAclResInCurThread(int type, uint32_t *resource)
+{
+    // 静态变量：保存函数指针和库句柄
+    static std::unique_ptr<Mki::Dl> mkiDl;
+    static AclrtGetResInCurrentThreadFunc aclrtGetResInCurrentThread = nullptr;
+    static std::mutex localMutex; // 线程安全锁
+
+    std::lock_guard<std::mutex> lock(localMutex); // 加锁
+
+    // 首次调用时初始化
+    if (!mkiDl) {
+        std::string libPath = std::string(Mki::GetEnv("ASCEND_HOME_PATH")) + "/runtime/lib64/libascendcl.so";
+        mkiDl = std::make_unique<Mki::Dl>(libPath, false);
+        if (!mkiDl->IsValid()) {  // 检查库是否加载成功
+            MKI_LOG(WARN) << "Failed to load libascendcl.so!";
+            return LCAL_ERROR_NOT_FOUND;
+        }
+        aclrtGetResInCurrentThread =
+            (AclrtGetResInCurrentThreadFunc)mkiDl->GetSymbol("aclrtGetResInCurrentThread");
+        if (aclrtGetResInCurrentThread == nullptr) {
+            MKI_LOG(WARN) << "Failed to get acl function!";
+            return LCAL_ERROR_NOT_FOUND;
+        }
+        MKI_LOG(DEBUG) << "Successfully loaded libascendcl.so and resolved aclrtGetResInCurrentThread";
+    }
+
+    // 调用函数
+    int getResRet = aclrtGetResInCurrentThread(type, resource);
+    if (getResRet != ACL_SUCCESS) {
+        MKI_LOG(ERROR) << "Failed to get resource in current thread for type:" << type << " err:" << getResRet;
+        return LCAL_ERROR_INTERNAL;
+    } else {
+        MKI_LOG(DEBUG) << "Get resource in current thread for type:" << type << " resource:" << *resource;
+        return LCAL_SUCCESS;
+    }
+}
 
 uint32_t GetLocalReduceBlockDum(int64_t dataSize)
 {

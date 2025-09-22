@@ -63,8 +63,7 @@ private:
     int GetName(std::string &name, char names[LCAL_MAX_RANK_SIZE][IPC_NAME_SIZE]) const;
     int SyncCommArgs();
     int InitDumpAddr();
-    int CallAclRtGetRes(int type, uint32_t *resource) const;
-
+    
 private:
     int rank_ = 0;  // global rank id
     int rankSize_ = 0;  // global rank size

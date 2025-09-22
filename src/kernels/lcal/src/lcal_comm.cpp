@@ -20,7 +20,6 @@
 #include <sstream>
 #include <iomanip>
 
-#include <dlfcn.h>
 #include <hccl/hccl.h>
 #include "mki/utils/log/log.h"
 #include "mki/utils/env/env.h"
@@ -57,69 +56,6 @@ constexpr int LCAL_INIT_TIMEOUT = 600;
 static map<string, GM_ADDR [LCAL_MAX_RANK_SIZE]> g_localPeerMemMap;
 static map<string, int[LCAL_MAX_RANK_SIZE]> g_devList;
 static std::mutex g_mtx;
-
-using LCAL_GET_RES_IN_CUR_THREAD = int(*)(aclrtDevResLimitType type, uint32_t *resource);
-static LCAL_GET_RES_IN_CUR_THREAD g_aclGetResFunc = nullptr;
-static void *g_libHandle = nullptr;
-static std::mutex g_initMutex;
-
-bool InitAclFunctions()
-{
-    std::lock_guard<std::mutex> lock(g_initMutex);
-
-    if (g_libHandle != nullptr) {
-        return true;
-    }
-
-    const char *libPath = "libascendcl.so";
-    g_libHandle = dlopen(libPath, RTLD_LAZY | RTLD_LOCAL);
-    if (g_libHandle == nullptr) {
-        MKI_LOG(ERROR) << "Failed to load " << libPath << ": " << dlerror();
-        return false;
-    }
-    
-    // 清理错误信息
-    dlerror();
-
-    const char *funcName = "aclrtGetResInCurrentThread";
-    g_aclGetResFunc = reinterpret_cast<LCAL_GET_RES_IN_CUR_THREAD>(dlsym(g_libHandle, funcName));
-    const char *dlsymError = dlerror();
-    if (dlsymError != nullptr) {
-        MKI_LOG(WARN) << "Failed to load " << funcName << ": " << dlsymError;
-        dlclose(g_libHandle);
-        g_libHandle = nullptr;
-        g_aclGetResFunc = nullptr;
-        return false;
-    }
-
-    MKI_LOG(DEBUG) << "Successfully loaded " << libPath << "::" << funcName;
-    return true;
-}
-
-void CleanupAclFunctions()
-{
-    std::lock_guard<std::mutex> lock(g_initMutex);
-
-    if (g_libHandle != nullptr) {
-        dlclose(g_libHandle);
-        g_libHandle = nullptr;
-    }
-    g_aclGetResFunc = nullptr;
-}
-
-int LcalComm::CallAclRtGetRes(int type, uint32_t *resource) const
-{
-    if (g_aclGetResFunc != nullptr) {
-        if (type == ACL_RT_DEV_RES_CUBE_CORE || type == ACL_RT_DEV_RES_VECTOR_CORE) {
-            g_aclGetResFunc(static_cast<aclrtDevResLimitType>(type), resource);
-            return LCAL_SUCCESS;
-        } else {
-            MKI_LOG(ERROR) << "aclrtGetResInCurrentThread not support type " << type;
-            return LCAL_ERROR_INTERNAL;
-        }
-    }
-    return LCAL_ERROR_NOT_FOUND;
-}
 
 static const std::unordered_map<std::string, ChipName> CHIP_MAP = {
     {"Ascend310P", ChipName::CHIP_310P3},
@@ -367,8 +303,7 @@ int LcalComm::Init()
     if (inited_) {
         return LCAL_SUCCESS;
     }
-    InitAclFunctions();
-    if (rank_ < 0 || rank_ >= rankSize_ || rankSize_ <= 0 || rankSize_ > LCAL_MAX_RANK_SIZE) {
+        if (rank_ < 0 || rank_ >= rankSize_ || rankSize_ <= 0 || rankSize_ > LCAL_MAX_RANK_SIZE) {
         MKI_LOG(ERROR) << "The rank is invalid! rank:" << rank_ << " rankSize:" << rankSize_;
         return LCAL_ERROR_PARA_CHECK_FAIL;
     }
@@ -416,8 +351,7 @@ int LcalComm::InitThread(const std::string &uid)
     if (inited_) {
         return LCAL_SUCCESS;
     }
-    InitAclFunctions();
-    if (rank_ < 0 || rank_ >= rankSize_ || rankSize_ <= 0 || rankSize_ > LCAL_MAX_RANK_SIZE) {
+        if (rank_ < 0 || rank_ >= rankSize_ || rankSize_ <= 0 || rankSize_ > LCAL_MAX_RANK_SIZE) {
         MKI_LOG(ERROR) << "The rank is invalid! rank:" << rank_ << "rankSize:" << rankSize_;
         return LCAL_ERROR_PARA_CHECK_FAIL;
     }
@@ -789,8 +723,7 @@ LcalComm::~LcalComm()
     FreePeerMem(commArgs_.dumpAddr);
     FreePeerMem(peerMem_[rank_]);
     FreePeerMem(commArgsPtr_);
-    CleanupAclFunctions();
-}
+    }
 
 LcalComm::LcalComm(int rank, int rankSize) : rank_(rank), rankSize_(rankSize)
 {
