@@ -104,10 +104,10 @@ Status IfOperation::Setup(const VariantPack &variantPack, uint64_t &workspaceSiz
 }
 
 Status IfOperation::Execute(const VariantPack &variantPack, uint8_t *workspace, uint64_t workspaceSize,
-                            Context &context)
+                            Context *context)
 {
     ATB_LOG(INFO) << GetLogPrefix() << "Calling Execute...";
-    return opSelected_->Execute(variantPack, workspace, workspaceSize, *context);
+    return opSelected_->Execute(variantPack, workspace, workspaceSize, context);
 }
 
 uint32_t IfOperation::GetInputNum() const
