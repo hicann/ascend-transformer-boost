@@ -32,14 +32,14 @@ int GetAclResInCurThread(int type, uint32_t &resource)
 {
     static std::once_flag onceFlag;
     static std::atomic<int> initFlag{LCAL_ERROR_NOT_INITIALIZED};  // -1
-    static std::unique_ptr<Mki::Dl> mkiDl;
+    static std::unique_ptr<Mki::Dl> mkiDl; // 持久保存，避免库被卸载
     static AclrtGetResInCurrentThreadFunc aclFn = nullptr;
 
     std::call_once(onceFlag, []() {
         std::string home = Mki::GetEnv("ASCEND_HOME_PATH");
         std::vector<std::string> candidates;
         if (!home.empty()) {
-            candidates.push_back(home + "/runtime/lib64/libascendcl.so");
+            candidates.emplace_back(home + "/runtime/lib64/libascendcl.so");
         }
         candidates.emplace_back("libascendcl.so");
 
@@ -54,17 +54,19 @@ int GetAclResInCurThread(int type, uint32_t &resource)
                 MKI_LOG(WARN) << "Symbol aclrtGetResInCurrentThread not found in: " << p;
                 continue;
             }
-            mkiDl = std::move(dl);
+            mkiDl = std::move(dl); // 保留句柄，防止卸载
             aclFn = reinterpret_cast<AclrtGetResInCurrentThreadFunc>(sym);
             initFlag.store(LCAL_SUCCESS, std::memory_order_release);
             MKI_LOG(DEBUG) << "Loaded libascendcl.so and resolved aclrtGetResInCurrentThread from: " << p;
-            return;
+            return; // 成功
         }
+        // 失败
         MKI_LOG(ERROR) << "Failed to load libascendcl.so or resolve aclrtGetResInCurrentThread. Tried paths: "
                        << boost::algorithm::join(candidates, ", ");
         initFlag.store(LCAL_ERROR_NOT_FOUND, std::memory_order_release);
     });
 
+    // 初始化结果判定
     int rc = initFlag.load(std::memory_order_acquire);
     if (rc != LCAL_SUCCESS) {
         return rc;
@@ -75,6 +77,7 @@ int GetAclResInCurThread(int type, uint32_t &resource)
         return LCAL_ERROR_PARA_CHECK_FAIL;
     }
 
+    // 调用底层函数
     const int ret = aclFn(type, &resource);
     if (ret != ACL_SUCCESS) {
         MKI_LOG(ERROR) << "aclrtGetResInCurrentThread failed. type: " << type << " err: " << ret;
