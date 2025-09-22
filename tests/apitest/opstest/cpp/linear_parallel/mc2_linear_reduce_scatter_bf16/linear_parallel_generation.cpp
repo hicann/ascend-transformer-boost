@@ -8,6 +8,7 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
+#include <string>
 #include <vector>
 #include <thread>
 #include <fstream>
@@ -26,7 +27,7 @@ atb::Status saveTensor(atb::Tensor tensor, std::string path)
     file.write(static_cast<char *>(hostData), tensor.dataSize);
     file.close();
     aclrtFreeHost(hostData);
-    return NO_ERROR;
+    return atb::ErrorType::NO_ERROR;
 }
 
 atb::Status ExcuteImpl(atb::Operation *op, atb::VariantPack variantPack, atb::Context *context, aclrtStream &stream)
@@ -83,9 +84,9 @@ atb::Status LinearParallelOneThread(int rank, int rankSize, atb::Context *&conte
     variantPack.outTensors = {output};
     ExcuteImpl(op, variantPack, context, stream);
     std::cout << "rank: " << rank << " executed END." << std::endl;
-    saveTensor(input, "rank" + std::toString(rank) + "_inTensor0.bin");
-    saveTensor(weight, "rank" + std::toString(rank) + "_inTensor1.bin");
-    saveTensor(output, "rank" + std::toString(rank) + "_outTensor0.bin");
+    saveTensor(input, "rank" + std::to_string(rank) + "_inTensor0.bin");
+    saveTensor(weight, "rank" + std::to_string(rank) + "_inTensor1.bin");
+    saveTensor(output, "rank" + std::to_string(rank) + "_outTensor0.bin");
     // 资源释放
     CHECK_STATUS(atb::DestroyOperation(op));    // 销毁op对象
     CHECK_STATUS(aclrtDestroyStream(stream));   // 销毁stream
