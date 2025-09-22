@@ -378,8 +378,26 @@ Status LinearParallelOperation::CheckResidual(const SVector<TensorDesc> &inTenso
     return NO_ERROR;
 }
 
+Status LinearParallelOperation::CheckWeightNzFormat(const SVector<TensorDesc> &inTensorDescs) const
+{
+    const TensorDesc &weight = inTensorDescs.at(1);
+    bool weightNz = (weight.format == ACL_FORMAT_FRACTAL_NZ);
+    if (weightNz) {
+        if (weight.shape.dimNum != DIM_4) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "fractal_nz shape dim should be 4. now is "<< weight.shape.dimNum;
+            return ERROR_INVALID_TENSOR_DIM;
+        }
+    }
+    return NO_ERROR;
+}
+
 Status LinearParallelOperation::InferShapeCheckLinearAllReduce(const SVector<TensorDesc> &inTensorDescs) const
 {
+    Status st = CheckWeightNzFormat(inTensorDescs);
+    if (st != NO_ERROR) {
+        return st;
+    }
+
     if (!OperationUtil::MatmulInTensorDescsCheck(inTensorDescs, GetLogPrefix(), commonCheckParam_)) {
         return ERROR_INVALID_TENSOR_DIM;
     }
@@ -397,6 +415,11 @@ Status LinearParallelOperation::InferShapeCheckLinearAllReduce(const SVector<Ten
 
 Status LinearParallelOperation::InferShapeCheckLinearReduceScatter(const SVector<TensorDesc> &inTensorDescs) const
 {
+    Status st = CheckWeightNzFormat(inTensorDescs);
+    if (st != NO_ERROR) {
+        return st;
+    }
+
     if (!OperationUtil::MatmulInTensorDescsCheck(inTensorDescs, GetLogPrefix(), commonCheckParam_)) {
         return ERROR_INVALID_TENSOR_DIM;
     }
@@ -422,6 +445,11 @@ Status LinearParallelOperation::InferShapeCheckLinearReduceScatter(const SVector
 
 Status LinearParallelOperation::InferShapeCheckAllGatherLinear(const SVector<TensorDesc> &inTensorDescs) const
 {
+    Status st = CheckWeightNzFormat(inTensorDescs);
+    if (st != NO_ERROR) {
+        return st;
+    }
+
     bool isQuant = param_.quantType > infer::LinearParallelParam::QuantType::QUANT_TYPE_UNQUANT &&
                    param_.quantType < infer::LinearParallelParam::QuantType::QUANT_TYPE_MAX;
     if (isQuant && inTensorDescs.at(3).dtype == ACL_FLOAT && param_.outDataType == ACL_FLOAT16) {
@@ -443,6 +471,11 @@ Status LinearParallelOperation::InferShapeCheckAllGatherLinear(const SVector<Ten
 Status
 LinearParallelOperation::InferShapeCheckAllGatherLinearReduceScatter(const SVector<TensorDesc> &inTensorDescs) const
 {
+    Status st = CheckWeightNzFormat(inTensorDescs);
+    if (st != NO_ERROR) {
+        return st;
+    }
+
     if (param_.twoDimTPInfo.rsDim * param_.twoDimTPInfo.agDim != param_.rankSize) {
         ATB_LOG(ERROR) << "agDim * rsDim should equal to rankSize";
         return ERROR_INVALID_PARAM;
@@ -470,6 +503,11 @@ LinearParallelOperation::InferShapeCheckAllGatherLinearReduceScatter(const SVect
 
 Status LinearParallelOperation::InferShapeCheckAllToAllvcAllGatherGmm(const SVector<TensorDesc> &inTensorDescs) const
 {
+    Status st = CheckWeightNzFormat(inTensorDescs);
+    if (st != NO_ERROR) {
+        return st;
+    }
+    
     bool isQuant = param_.quantType > infer::LinearParallelParam::QuantType::QUANT_TYPE_UNQUANT &&
                    param_.quantType < infer::LinearParallelParam::QuantType::QUANT_TYPE_MAX;
     if (isQuant && inTensorDescs.at(2).dtype == ACL_FLOAT && param_.outDataType == ACL_FLOAT16) {
