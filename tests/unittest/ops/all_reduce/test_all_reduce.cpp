@@ -33,9 +33,9 @@ template <typename T> Mki::Status GoldenTwoRank(const OpsGoldenContext &context)
     const Mki::Tensor inTensor = context.hostInTensors.at(0);
     const Mki::Tensor outTensor = context.hostOutTensors.at(0);
 
-    T *atInArray = (T *)malloc(1000000);
-    T *atOutArray = (T *)malloc(1000000);
-    T *atRefOutArray = (T *)malloc(1000000);
+    T *atInArray = (T *)malloc(100000);
+    T *atOutArray = (T *)malloc(100000);
+    T *atRefOutArray = (T *)malloc(100000);
 
     for (int i = 0; i < outTensor.Numel(); i++) {
         float expect = atRefOutArray[i];
