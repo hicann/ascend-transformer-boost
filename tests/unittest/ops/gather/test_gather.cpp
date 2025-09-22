@@ -33,7 +33,9 @@ Mki::Status GatherGolden(const OpsGoldenContext &context, atb::infer::GatherPara
     const Mki::Tensor &inTensor = context.hostInTensors.at(0);
     const Mki::Tensor &indices = context.hostInTensors.at(1);
     const Mki::Tensor &outTensor = context.hostOutTensors.at(0);
+    
     std::vector<float> inputFloat(10000, 1);
+    std::vector<Mki::fp16_t> input(inputFloat.size());
     std::transform(inputFloat.begin(), inputFloat.end(), input.begin(),
         [](float f) { return static_cast<Mki::fp16_t>(f); });
     std::vector<int64_t> indicesVector(10, 1);
