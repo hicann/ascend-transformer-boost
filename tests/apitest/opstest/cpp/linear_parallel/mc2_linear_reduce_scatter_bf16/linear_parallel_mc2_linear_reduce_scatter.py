@@ -101,7 +101,7 @@ class LinearParallelCoverOperationTest(operation_test.OperationTest):
 
         data_size = [[512, 512], [512, 512], [256, 512]]
         
-        mp.spawn(main_worker, nprocs=world_size, args=(world_size, data_type, data_size, data_gen_range))
+        mp.spawn(main_worker, nprocs=world_size, args=(world_size, data_type, data_size))
         
 
 if __name__ == '__main__':

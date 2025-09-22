@@ -17,6 +17,10 @@
 
 const int32_t DEV_NUM = 2;
 
+const int32_t M = 2;
+const int32_t K = 256;
+const int32_t N = 2;
+
 atb::Status saveTensor(atb::Tensor tensor, std::string path)
 {
     if (tensor.deviceData == nullptr) {}
