@@ -365,12 +365,6 @@ Status LinearParallelOperation::InferShapeCheckLinearReduceScatter(const SVector
         return ERROR_INVALID_TENSOR_INI_MATCH;
     }
 
-    int64_t xTensorM = OperationUtil::GetXTensorM(inTensorDescs.at(0));
-    if (xTensorM % param_.rankSize != 0) {
-        ATB_LOG(ERROR) << GetLogPrefix() << "inTensor0 m [" << xTensorM
-                       << "] should be an integer multiple of rankSize :" << param_.rankSize;
-        return ERROR_INVALID_TENSOR_DIM;
-    }
     return CheckResidual(inTensorDescs);
 }
 
