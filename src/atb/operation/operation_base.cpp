@@ -1064,12 +1064,12 @@ Status OperationBase::GraphModeLaunch()
 }
 
 Status OperationBase::Execute(const VariantPack &variantPack, uint8_t *workspace, uint64_t workspaceSize,
-                              Context &context)
+                              Context *context)
 {
     const uint64_t beginTime = GetSingleton<Mki::ProfilingFuncs>().GetProfilingLevel0Status() ?
                                    GetSingleton<Mki::ProfilingFuncs>().ProfSysCycleTime() :
                                    0;
-    ExecuteType executeType = context.GetExecuteType();
+    ExecuteType executeType = context->GetExecuteType();
     ProfilingFuncName profType = executeType == EXECUTE_NORMAL ?
                                      OPERATION_EXECUTE :
                                      (executeType == EXECUTE_PRELAUNCH ? OPERATION_PRELAUNCH : OPERATION_LAUNCH);
@@ -1083,7 +1083,7 @@ Status OperationBase::Execute(const VariantPack &variantPack, uint8_t *workspace
     }
     Status st = NO_ERROR;
     if (executeType == EXECUTE_NORMAL || executeType == EXECUTE_PRELAUNCH) {
-        st = PreLaunch(variantPack, workspace, workspaceSize, &context);
+        st = PreLaunch(variantPack, workspace, workspaceSize, context);
         if (st != NO_ERROR) {
             ATB_LOG(ERROR) << GetLogPrefix() << "PreLaunch fail, error code: " << st;
             return st;
