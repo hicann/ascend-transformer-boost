@@ -11,15 +11,150 @@
 #include <string>
 #include <vector>
 #include <thread>
+#include <cstdint>
 #include <fstream>
-#include <acl/acl.h>
-#include "../../demo_util.h"
+#include "acl/acl.h"
+#include "atb/types.h"
+#include "atb/atb_infer.h"
+#include "atb/operation.h"
+
+
+#define CHECK_STATUS(status)                                                                                           \
+    do {                                                                                                               \
+        if ((status) != 0) {                                                                                           \
+            std::cout << __FILE__ << ":" << __LINE__ << " [error]: " << (status) << std::endl;                         \
+            return status;                                                                                             \
+        }                                                                                                              \
+    } while (0)
 
 const int32_t DEV_NUM = 2;
 
 const int32_t M = 2;
 const int32_t K = 256;
 const int32_t N = 2;
+
+typedef uint16_t float16;
+typedef uint16_t bfloat16;
+
+float16 FloatToFloat16(float fp32)
+{
+    if (fp32 == 0.0f) {
+        return (std::signbit(fp32) ? 0x8000 : 0x0000);
+    }
+
+    uint32_t float_bits;
+    static_assert(sizeof(float) == sizeof(uint32_t), "Float size mismatch");
+    std::memcpy(&float_bits, &fp32, sizeof(float));
+
+    const uint32_t sign = (float_bits >> 31) & 0x1;
+    const uint32_t exp = (float_bits >> 23) & 0xFF;
+    const uint32_t mant = float_bits & 0x7FFFFF;
+    if (exp == 0xFF) {
+        if (mant == 0) {
+            return (sign << 15) | 0x7C00;
+        } else {
+            return (sign << 15) | 0x7C00 | (mant >> 13);
+        }
+    }
+
+    int32_t exp_fp16 = static_cast<int32_t>(exp) - 127 + 15;
+    if (exp_fp16 <= 0) {
+        return (sign << 15);
+    }
+
+    if (exp_fp16 >= 0x1F) {
+        return (sign < 15) | 0x7C00;
+    }
+
+    uint32_t mant24 = (1 << 23) | mant;
+    uint32_t round_bits = mant24 & 0x1FFF;
+    uint32_t base = (mant24 >> 13) & 0x3FF;
+
+    if (round_bits > 0x1000 || (round_bits == 0x1000 && (base & 1))) {
+        base++;
+        if (base > 0xFF) {
+            base = 0;
+            exp_fp16++;
+            if (exp_fp16 >= 0x1F) {
+                return (sign << 15) | 0x7C00;
+            }
+        }
+    }
+
+    return (sign << 15) | (exp_fp16 << 10) | base;
+}
+
+bfloat16 FloatToBfloat16(float fp32)
+{
+    if (fp32 == 0.0f) {
+        return (std::signbit(fp32) ? 0x8000 : 0x0000);
+    }
+
+    uint32_t float_bits;
+    static_assert(sizeof(float) == sizeof(uint32_t), "Float size mismatch");
+    std::memcpy(&float_bits, &fp32, sizeof(float));
+
+    bfloat16 bfloat16_bits = static_cast<bfloat16>(float_bits >> 16);
+
+    const uint32_t exp = (float_bits >> 23) & 0xFF;
+    const uint32_t mant = float_bits & 0x7FFFFF;
+    if (exp == 0xFF && mant != 0) {
+        bfloat16_bits |= 0x01;
+    }
+
+    return bfloat16_bits;
+}
+
+size_t GetDataItemSize(aclDataType dtype)
+{
+    switch (dtype) {
+        case ACL_DT_UNDEFINED:
+            return sizeof(bool);
+        case ACL_FLOAT16:
+            return sizeof(uint16_t);
+        case ACL_BF16:
+            return sizeof(uint16_t);
+        default:
+            return 0;
+    }
+}
+
+static std::mt19937 gen(0);
+
+template <typename T> T random_float(float min, float max)
+{
+    std::uniform_real_distribution<T> dist(min, max);
+    return dist(gen);
+}
+
+atb::Tensor FillTensorDataRandomly(const atb::TensorDesc &desc, float range_min, float range_max)
+{
+    atb::Tensor tensor{desc, nullptr, nullptr, 0};
+    tensor.dataSize = atb::Utils::GetTensorSize(desc);
+    aclrtMallocHost((void **)&tensor.hostData, tensor.dataSize);
+    {
+        size_t dataItemSize = GetDataItemSize(desc.dtype);
+        uint64_t tensorNumel = atb::Utils::GetTensorNumel(desc);
+        void *basePtr = static_cast<void *>(tensor.hostData);
+        for (uint64_t i = 0; i < tensorNumel; ++i) {
+            void *elementPtr = static_cast<char *>(basePtr) + i * dataItemSize;
+            switch (desc.dtype) {
+                case ACL_FLOAT16:
+                    *static_cast<uint16_t *>(elementPtr) = FloatToFloat16(random_float<float>(range_min, range_max));
+                    break;
+                case ACL_BF16:
+                    *static_cast<uint16_t *>(elementPtr) = FloatToBfloat16(random_float<float>(range_min, range_max));
+                    break;
+                default:
+                    break;
+            }
+        }
+    }
+    aclrtMalloc((void **)&tensor.deviceData, tensor.dataSize, ACL_MEM_MALLOC_HUGE_FIRST);
+    aclrtMemcpy(tensor.deviceData, tensor.dataSize, tensor.hostData, tensor.dataSize, ACL_MEMCPY_HOST_TO_DEVICE);
+
+    return tensor;
+}
 
 atb::Status saveTensor(atb::Tensor tensor, std::string path)
 {
@@ -56,19 +191,20 @@ atb::Status LinearParallelOneThread(int rank, int rankSize, atb::Context *&conte
     int deviceId = rank;
     CHECK_STATUS(aclrtSetDevice(deviceId));
 
-    atb::Tensor input;
-    CHECK_STATUS(CreateTensorFromVector(context, stream, std::vector<float>(512 * 512, 2.0), aclDataType::ACL_BF16,
-                                        aclFormat::ACL_FORMAT_ND, {512, 512}, input));
-    atb::Tensor weight;
-    CHECK_STATUS(CreateTensorFromVector(context, stream, std::vector<float>(512 * 512, 2.0), aclDataType::ACL_BF16,
-                                        aclFormat::ACL_FORMAT_ND, {512, 512}, weight));
+    atb::TensorDesc inputTensorDesc{
+        .dtype = aclDataType::ACL_BF16, .format = aclFormat::ACL_FORMAT_ND, .shape{.dims = {M, K}, .dimNum = 2}};
+    atb::Tensor input = FillTensorDataRandomly(inputTensorDesc, -10, 10);
+
+    atb::TensorDesc weightTensorDesc{
+        .dtype = aclDataType::ACL_BF16, .format = aclFormat::ACL_FORMAT_ND, .shape{.dims = {K, N}, .dimNum = 2}};
+    atb::Tensor weight = FillTensorDataRandomly(weightTensorDesc, -10, 10);
 
     atb::Tensor output;
     output.desc.dtype = ACL_BF16;
     output.desc.format = ACL_FORMAT_ND;
     output.desc.shape.dimNum = 2;
-    output.desc.shape.dims[0] = 256;
-    output.desc.shape.dims[1] = 512;
+    output.desc.shape.dims[0] = M / DEV_NUM;
+    output.desc.shape.dims[1] = N;
     output.dataSize = atb::Utils::GetTensorSize(output);
     CHECK_STATUS(aclrtMalloc(&output.deviceData, output.dataSize, ACL_MEM_MALLOC_HUGE_FIRST));
 

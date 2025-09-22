@@ -8,6 +8,7 @@
 # See LICENSE in the root of the software repository for the full text of the License.
 #
 
+import builtins
 import os
 import json
 import unittest
@@ -17,12 +18,13 @@ import torch
 import torch_npu
 import torch.multiprocessing as mp
 
-
 sys.path.append(os.path.join(os.path.dirname(__file__), "../../"))
-import operation_test  # NOQA: E402
 from precision_calcu import *
 
-sys.path.append(os.path.join(os.path.dirname(__file__), "../../../"))
+sys.path.append(os.path.join(os.path.dirname(__file__), "../../python/operations/"))
+import operation_test  # NOQA: E402
+
+sys.path.append(os.path.join(os.path.dirname(__file__), "../../python/"))
 
 ATB_HOME_PATH = os.environ.get("ATB_HOME_PATH")
 if ATB_HOME_PATH is None:
@@ -36,13 +38,14 @@ def load_tensor(data_size,data_type,data_path):
     with open(data_path, 'rb') as f:
         data=f.read()
     if data_type == torch.float16:
-        np_data = np.frombuffer(data, dtype=np.float16)
+        np_data = np.frombuffer(data, dtype=np.float16).copy()
+        tensor = torch.from_numpy(np_data)
     elif data_type == torch.bfloat16:
-        np_data = np.frombuffer(data,dtype=np.uint16).view(np.float16)
+        tensor = np.frombuffer(data,dtype=np.uint16).view(np.float16)
     else:
-        np_data = None
-    tensor = torch.from_numpy(np_data)
-    tensor = tensor.reshape(data_size)
+        tensor = None
+
+    tensor = tensor.view(data_size)
     
     return tensor
 
@@ -79,7 +82,7 @@ def main_worker(rank, world_size, data_type, data_size):
     golden_result_hight = chunks_high[rank]
     golden_result_low = chunks_low[rank]
 
-    assert check_precision_new(in_tensors_desc, acl_out_tensor.float(), golden_result_hight.npu().float(), golden_result_low.npu().float(), rank)
+    assert check_precision_new(in_tensors_desc, acl_out_tensor.float(), golden_result_hight.float(), golden_result_low.float(), rank)
 
 def check_precision_new(in_tensors_desc, out_tensor, golden_out_tensor_high, golden_out_tensor_low, rank):
     if rank == 0:
@@ -97,9 +100,9 @@ class LinearParallelCoverOperationTest(operation_test.OperationTest):
 
         world_size = 2
 
-        data_type = torch.bfloat16
+        data_type = torch.float16
 
-        data_size = [[512, 512], [512, 512], [256, 512]]
+        data_size = [[2, 512], [512, 2], [1, 2]]
         
         mp.spawn(main_worker, nprocs=world_size, args=(world_size, data_type, data_size))
         

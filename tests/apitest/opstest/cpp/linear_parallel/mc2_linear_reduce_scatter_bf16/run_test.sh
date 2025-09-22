@@ -35,7 +35,7 @@ except ImportError:
 echo "Using cxx_abi=$cxx_abi"
 
 g++ -D_GLIBCXX_USE_CXX11_ABI=$cxx_abi -I "${ATB_HOME_PATH}/include" -I "${ASCEND_HOME_PATH}/include" -L "${ATB_HOME_PATH}/lib" -L "${ASCEND_HOME_PATH}/lib64" \
-linear_parallel_generation.cpp ../../demo_util.h -l atb -l ascendcl -l hccl -l nnopbase -l opapi -o linear_parallel_generation
+linear_parallel_generation.cpp -l atb -l ascendcl -l hccl -l nnopbase -l opapi -o linear_parallel_generation
 ./linear_parallel_generation
 
 python linear_parallel_mc2_linear_reduce_scatter.py
