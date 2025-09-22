@@ -61,8 +61,7 @@ int GetAclResInCurThread(int type, uint32_t &resource)
             return; // 成功
         }
         // 失败
-        MKI_LOG(ERROR) << "Failed to load libascendcl.so or resolve aclrtGetResInCurrentThread. Tried paths: "
-                       << boost::algorithm::join(candidates, ", ");
+        MKI_LOG(ERROR) << "Failed to load libascendcl.so or resolve aclrtGetResInCurrentThread.";
         initFlag.store(LCAL_ERROR_NOT_FOUND, std::memory_order_release);
     });
 
