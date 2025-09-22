@@ -91,7 +91,6 @@ atb::Status LinearParallelOneThread(int rank, int rankSize, atb::Context *&conte
     CHECK_STATUS(atb::DestroyOperation(op));    // 销毁op对象
     CHECK_STATUS(aclrtDestroyStream(stream));   // 销毁stream
     CHECK_STATUS(atb::DestroyContext(context)); // 销毁context
-    CHECK_STATUS(aclFinalize());
     return atb::ErrorType::NO_ERROR;
 }
 
@@ -115,5 +114,6 @@ int main(int argc, const char *argv[])
     for (size_t i = 0; i < DEV_NUM; ++i) {
         threads[i]->join();
     }
+    CHECK_STATUS(aclFinalize());
     return 0;
 }
