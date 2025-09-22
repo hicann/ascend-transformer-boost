@@ -263,7 +263,7 @@ Status OpsRunner::FillHostTilingBufferImpl(uint8_t *hostTilingBuffer, uint64_t t
         }
 
         uint8_t *kernelHostTilingBuffer = hostTilingBuffer + offset;
-        Status ret = FillSingleKernelHostTilingBuffer(node, nodeId, kernelHostTilingBuffer, tilingSize, context);
+        Status ret = FillSingleKernelHostTilingBuffer(node, nodeId, kernelHostTilingBuffer, tilingSize, *context);
         if (ret != NO_ERROR) {
             ATB_LOG(ERROR) << GetLogPrefix() << " node[" << nodeId << "] fill tiling buffer fail, error code:" << ret;
             return ret;

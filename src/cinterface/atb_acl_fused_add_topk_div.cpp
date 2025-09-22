@@ -79,7 +79,7 @@ atb::Status AtbFusedAddTopkDiv(void *workspace, uint64_t workspaceSize, atb::Ope
     ATB_CHECK(op != nullptr, "AtbFusedAddTopkDiv expect op pointer not to be null!",
               return atb::ERROR_INVALID_OPERATION_ADDR);
     atb::VariantPack pack;
-    atb::Status st = op->Execute(pack, (uint8_t *)(workspace), workspaceSize, context);
+    atb::Status st = op->Execute(pack, (uint8_t *)(workspace), workspaceSize, *context);
     ATB_CHECK(st == atb::NO_ERROR, "AtbFusedAddTopkDiv Execute failed!", return st);
     return st;
 }

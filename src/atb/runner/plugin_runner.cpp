@@ -37,7 +37,7 @@ Status PluginRunner::ExecuteImpl(RunnerVariantPack &runnerVariantPack)
         variantPack_.inTensors = runnerVariantPack.inTensors;
         variantPack_.outTensors = runnerVariantPack.outTensors;
         return operation_->Execute(variantPack_, runnerVariantPack.workspaceBuffer,
-                                   runnerVariantPack.workspaceBufferSize, runnerVariantPack.context);
+                                   runnerVariantPack.workspaceBufferSize, *runnerVariantPack.context);
     }
 
     return ERROR_INVALID_PARAM;

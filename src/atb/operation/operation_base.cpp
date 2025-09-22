@@ -1083,7 +1083,7 @@ Status OperationBase::Execute(const VariantPack &variantPack, uint8_t *workspace
     }
     Status st = NO_ERROR;
     if (executeType == EXECUTE_NORMAL || executeType == EXECUTE_PRELAUNCH) {
-        st = PreLaunch(variantPack, workspace, workspaceSize, context);
+        st = PreLaunch(variantPack, workspace, workspaceSize, &context);
         if (st != NO_ERROR) {
             ATB_LOG(ERROR) << GetLogPrefix() << "PreLaunch fail, error code: " << st;
             return st;
