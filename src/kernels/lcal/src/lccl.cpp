@@ -36,34 +36,24 @@ int GetAclResInCurThread(int type, uint32_t &resource)
     static AclrtGetResInCurrentThreadFunc aclFn = nullptr;
 
     std::call_once(onceFlag, []() {
-        std::string home = Mki::GetEnv("ASCEND_HOME_PATH");
-        std::vector<std::string> candidates;
-        if (!home.empty()) {
-            candidates.emplace_back(home + "/runtime/lib64/libascendcl.so");
-        } else {
-            MKI_LOG(ERROR) << "ASCEND_HOME_PATH is empty.";
+        std::string p = Mki::GetEnv("ASCEND_HOME_PATH") + "/runtime/lib64/libascendcl.so";
+        auto dl = std::make_unique<Mki::Dl>(p, false);
+        if (!dl->IsValid()) {
+            MKI_LOG(ERROR) << "Try load libascendcl.so failed: " << p;
+            initFlag.store(LCAL_ERROR_NOT_FOUND, std::memory_order_release);
+            return;
         }
-
-        for (const auto &p : candidates) {
-            auto dl = std::make_unique<Mki::Dl>(p, false);
-            if (!dl->IsValid()) {
-                MKI_LOG(WARN) << "Try load libascendcl.so failed: " << p;
-                continue;
-            }
-            auto sym = dl->GetSymbol("aclrtGetResInCurrentThread");
-            if (sym == nullptr) {
-                MKI_LOG(WARN) << "Symbol aclrtGetResInCurrentThread not found in: " << p;
-                continue;
-            }
-            mkiDl = std::move(dl); // 保留句柄，防止卸载
-            aclFn = reinterpret_cast<AclrtGetResInCurrentThreadFunc>(sym);
-            initFlag.store(LCAL_SUCCESS, std::memory_order_release);
-            MKI_LOG(DEBUG) << "Loaded libascendcl.so and resolved aclrtGetResInCurrentThread from: " << p;
-            return; // 成功
+        auto sym = dl->GetSymbol("aclrtGetResInCurrentThread");
+        if (sym == nullptr) {
+            MKI_LOG(WARN) << "Symbol aclrtGetResInCurrentThread not found in: " << p;
+            initFlag.store(LCAL_ERROR_NOT_FOUND, std::memory_order_release);
+            return;
         }
-        // 失败
-        MKI_LOG(ERROR) << "Failed to load libascendcl.so or resolve aclrtGetResInCurrentThread.";
-        initFlag.store(LCAL_ERROR_NOT_FOUND, std::memory_order_release);
+        mkiDl = std::move(dl); // 保留句柄，防止卸载
+        aclFn = reinterpret_cast<AclrtGetResInCurrentThreadFunc>(sym);
+        initFlag.store(LCAL_SUCCESS, std::memory_order_release);
+        MKI_LOG(DEBUG) << "Loaded libascendcl.so and resolved aclrtGetResInCurrentThread from: " << p;
+        return; // 成功
     });
 
     // 初始化结果判定
