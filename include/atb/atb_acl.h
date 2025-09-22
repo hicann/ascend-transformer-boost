@@ -101,7 +101,7 @@ atb::Status AtbMLAGetWorkspaceSize(const aclTensor *qNope, const aclTensor *qRop
                                    const aclTensor *mask, const aclTensor *qSeqLen, const aclTensor *qkDescale,
                                    const aclTensor *pvDescale, int32_t headNum, float qkScale, int32_t kvHeadNum,
                                    int maskType, int calcType, uint8_t cacheMode, aclTensor *attenOut, aclTensor *lse,
-                                   uint64_t &workspaceSize, atb::Operation **op, atb::Context &context);
+                                   uint64_t &workspaceSize, atb::Operation **op, atb::Context *context);
 
 //!
 //! \brief 关于MLA算子使用aclnn风格调用的2段式接口的第2段，
