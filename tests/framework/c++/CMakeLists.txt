@@ -15,7 +15,7 @@ target_include_directories(atb_test_utils PUBLIC ${PROJECT_SOURCE_DIR}/tests/fra
 target_compile_options(atb_test_utils PUBLIC "-Wno-unused-parameter" "-Wno-unused-variable" "-Wno-unused-function")
 target_compile_options(atb_test_utils PUBLIC "-Wno-maybe-uninitialized" "-Wno-missing-field-initializers")
 target_compile_options(atb_test_utils PUBLIC "-Wno-sign-compare" "-Wno-enum-compare" "-Wno-attributes")
-target_link_libraries(atb_test_utils PUBLIC atb atb_train c10)
+target_link_libraries(atb_test_utils PUBLIC atb atb_train torch torch_cpu c10)
  
 file(GLOB_RECURSE ATB_TORCH_SOURCE_FILES "${CMAKE_CURRENT_LIST_DIR}/atb_torch/*.cpp")
 file(GLOB_RECURSE ATB_LAYER_OPERATION "${CMAKE_CURRENT_LIST_DIR}/layer_ops/*.cpp")
@@ -31,6 +31,6 @@ file(GLOB_RECURSE KERNELS_TEST_UTILS_SOURCE_FILES "${CMAKE_CURRENT_LIST_DIR}/ker
 add_library(atb_kernels_test_utils ${KERNELS_TEST_UTILS_SOURCE_FILES})
 target_include_directories(atb_kernels_test_utils PUBLIC ${CMAKE_CURRENT_LIST_DIR})
 target_include_directories(atb_kernels_test_utils PUBLIC ${PROJECT_SOURCE_DIR}/tests/framework/c++/kernels/autogen)
-target_link_libraries(atb_kernels_test_utils PUBLIC mki_test_autogen mki c10 c_sec)
+target_link_libraries(atb_kernels_test_utils PUBLIC mki_test_autogen mki torch torch_cpu c10 c_sec)
 target_link_options(atb_kernels_test_utils PUBLIC LINKER:--allow-shlib-undefined)
 target_compile_options(atb_kernels_test_utils PUBLIC "-Wno-unused-parameter" "-Wno-unused-variable" "-Wno-unused-function")
