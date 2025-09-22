@@ -39,7 +39,7 @@ public:
     Status InferShape(const SVector<TensorDesc> &inTensorDescs, SVector<TensorDesc> &outTensorDescs) const override;
     Status Setup(const VariantPack &variantPack, uint64_t &workspaceSize, Context *context) override;
     Status Execute(const VariantPack &variantPack, uint8_t *workspace, uint64_t workspaceSize,
-                   Context *context) override;
+                   Context &context) override;
     Status SetOperationBaseIds(const std::vector<int64_t> &operationBaseIds, const int64_t nodeId);
     virtual nlohmann::json GetParamJson() const;
     const std::vector<int64_t> &GetOperationBaseIds();

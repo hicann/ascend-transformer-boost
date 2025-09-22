@@ -57,7 +57,7 @@ atb::Status aclTensorToAtbTensor(const aclTensor *aclTensorSrc, atb::Tensor *atb
     atbTensorDst->desc = desc;
     atbTensorDst->deviceData = aclTensorSrc->GetData();
     atbTensorDst->hostData = nullptr;
-    int64_t tensorSize = GetTensorSize(aclTensorSrc);
+    int64_t tensorSize = GetTensorSize(*aclTensorSrc);
     int64_t dataTypeSize = static_cast<int64_t>(aclDataTypeSize(dataType));
     if (tensorSize > MAX_TENSOR_SIZE / dataTypeSize) {
         ATB_LOG(ERROR) << "The size of a tensor * dataTypeSize should be no more than 256GB, but got tensor size: "
@@ -97,7 +97,7 @@ atb::Status aclTensorToAtbTensorHost(const aclTensor *aclTensorSrc, atb::Tensor 
     atbTensorDst->desc = desc;
     atbTensorDst->deviceData = nullptr;
     atbTensorDst->hostData = aclTensorSrc->GetData();
-    int64_t tensorSize = GetTensorSize(aclTensorSrc);
+    int64_t tensorSize = GetTensorSize(*aclTensorSrc);
     int64_t dataTypeSize = static_cast<int64_t>(aclDataTypeSize(dataType));
     if (tensorSize > MAX_TENSOR_SIZE / dataTypeSize) {
         ATB_LOG(ERROR) << "The size of a tensor * dataTypeSize should be no more than 256GB, but got tensor size: "

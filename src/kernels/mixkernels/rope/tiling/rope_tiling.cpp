@@ -148,7 +148,7 @@ Status RopeTiling(const LaunchParam &launchParam, KernelInfo &kernelInfo)
     MKI_LOG(DEBUG) << "cosFormat is " << tilingDataPtr->cosFormat;
     uint32_t headNumQ = 1;
     uint32_t headNumK = 1;
-    RopeNdProcess(launchParam, kernelInfo, tilingDataPtr);
+    RopeNdProcess(launchParam, kernelInfo, *tilingDataPtr);
     if (tilingDataPtr->headDim != 0) {
         headNumQ = tilingDataPtr->hiddenSizeQ / tilingDataPtr->headDim;
         headNumK = tilingDataPtr->hiddenSizeK / tilingDataPtr->headDim;

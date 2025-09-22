@@ -165,10 +165,10 @@ namespace AtbOps {
     template <typename TilingData>
     void FusedAddTopkDivTiling<TilingData>::GetTiling(TilingData *tilingDataPtr)
     {
-        GetTilingKey(tilingDataPtr);
+        GetTilingKey(*tilingDataPtr);
         GetUsedCore();
         SplitUb();
-        FillTilingData(tilingDataPtr);
+        FillTilingData(*tilingDataPtr);
     }
  
     template <typename TilingData>
