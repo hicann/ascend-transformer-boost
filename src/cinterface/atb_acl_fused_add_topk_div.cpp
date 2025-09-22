@@ -21,7 +21,7 @@ atb::Status AtbFusedAddTopkDivGetWorkspaceSize(const aclTensor *x, const aclTens
                                                const aclTensor *mappingTable, uint32_t groupNum, uint32_t groupTopk,
                                                uint32_t n, uint32_t k, int activationType, bool isNorm, float scale,
                                                bool enableExpertMapping, aclTensor *y, aclTensor *indices,
-                                               uint64_t &workspaceSize, atb::Operation **op, atb::Context *context)
+                                               uint64_t *workspaceSize, atb::Operation **op, atb::Context *context)
 {
     atb::infer::FusedAddTopkDivParam param;
     param.groupNum = groupNum;
@@ -69,7 +69,7 @@ atb::Status AtbFusedAddTopkDivGetWorkspaceSize(const aclTensor *x, const aclTens
         ATB_LOG(ERROR) << "AtbFusedAddTopkDivGetWorkspaceSize opeartion pointer is nullptr!";
         return atb::ERROR_INVALID_OPERATION_ADDR;
     }
-    status = (*op)->Setup(pack, workspaceSize, context);
+    status = (*op)->Setup(pack, *workspaceSize, context);
     ATB_CHECK(status == atb::NO_ERROR, "AtbFusedAddTopkDiv Setup failed!", return status);
     return atb::NO_ERROR;
 }
@@ -79,7 +79,7 @@ atb::Status AtbFusedAddTopkDiv(void *workspace, uint64_t workspaceSize, atb::Ope
     ATB_CHECK(op != nullptr, "AtbFusedAddTopkDiv expect op pointer not to be null!",
               return atb::ERROR_INVALID_OPERATION_ADDR);
     atb::VariantPack pack;
-    atb::Status st = op->Execute(pack, (uint8_t *)(workspace), workspaceSize, *context);
+    atb::Status st = op->Execute(pack, (uint8_t *)(workspace), workspaceSize, context);
     ATB_CHECK(st == atb::NO_ERROR, "AtbFusedAddTopkDiv Execute failed!", return st);
     return st;
 }

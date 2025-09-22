@@ -55,7 +55,7 @@ atb::Status AtbFusedAddTopkDivGetWorkspaceSize(const aclTensor *x, const aclTens
                                                const aclTensor *mappingTable, uint32_t groupNum, uint32_t groupTopk,
                                                uint32_t n, uint32_t k, int activationType, bool isNorm, float scale,
                                                bool enableExpertMapping, aclTensor *y, aclTensor *indices,
-                                               uint64_t &workspaceSize, atb::Operation **op, atb::Context *context);
+                                               uint64_t *workspaceSize, atb::Operation **op, atb::Context *context);
 
 //!
 //! \brief 关于FusedAddTopkDiv算子使用aclnn风格调用的2段式接口的第2段，
@@ -101,7 +101,7 @@ atb::Status AtbMLAGetWorkspaceSize(const aclTensor *qNope, const aclTensor *qRop
                                    const aclTensor *mask, const aclTensor *qSeqLen, const aclTensor *qkDescale,
                                    const aclTensor *pvDescale, int32_t headNum, float qkScale, int32_t kvHeadNum,
                                    int maskType, int calcType, uint8_t cacheMode, aclTensor *attenOut, aclTensor *lse,
-                                   uint64_t &workspaceSize, atb::Operation **op, atb::Context *context);
+                                   uint64_t *workspaceSize, atb::Operation **op, atb::Context *context);
 
 //!
 //! \brief 关于MLA算子使用aclnn风格调用的2段式接口的第2段，
@@ -142,7 +142,7 @@ atb::Status AtbMLAPreFillGetWorkspaceSize(const aclTensor *q, const aclTensor *q
     const aclTensor *kRope, const aclTensor *v, const aclTensor *qSeqLen, const aclTensor *kvSeqLen,
     const aclTensor *mask, int32_t headNum, float qkScale, int32_t kvHeadNum,
     int maskType, uint8_t cacheMode, aclTensor *attenOut,
-    uint64_t &workspaceSize, atb::Operation **op, atb::Context *context);
+    uint64_t *workspaceSize, atb::Operation **op, atb::Context *context);
 
 //!
 //! \brief MLA prefill 处理接口
@@ -214,7 +214,7 @@ atb::Status AtbMLAPreprocessGetWorkspaceSize(
     const aclTensor *kvCacheRope, const aclTensor *slotmapping, const aclTensor *ctkvScale, const aclTensor *qNopeScale,
     uint32_t wdqDim, uint32_t qRopeDim, uint32_t kRopeDim, float epsilon, uint32_t qRotaryCoeff, uint32_t kRotaryCoeff,
     bool transposeWdq, bool transposeWuq, bool transposeWuk, uint8_t cacheMode, uint16_t quantMode, aclTensor *qOut0,
-    aclTensor *kvCacheOut0, aclTensor *qOut1, aclTensor *kvCacheOut1, uint64_t &workspaceSize, atb::Operation **op,
+    aclTensor *kvCacheOut0, aclTensor *qOut1, aclTensor *kvCacheOut1, uint64_t *workspaceSize, atb::Operation **op,
     atb::Context *context);
 
 //!
@@ -252,7 +252,7 @@ atb::Status AtbPagedCacheLoadGetWorkspaceSize(const aclTensor *keyCache, const a
                                               const aclTensor *blockTables, const aclTensor *contextLens,
                                               const aclTensor *key, const aclTensor *value, const aclTensor *seqStarts,
                                               int8_t kvCacheCfg, bool isSeqLensCumsumType, bool hasSeqStarts,
-                                              uint64_t &workspaceSize, atb::Operation **op, atb::Context *context);
+                                              uint64_t *workspaceSize, atb::Operation **op, atb::Context *context);
 
 //!
 //! \brief 关于PagedCacheLoad算子使用aclnn风格调用的2段式接口的第2段，
@@ -300,7 +300,7 @@ atb::Status AtbRingMLAGetWorkspaceSize(const aclTensor *querySplit1, const aclTe
                                        const aclTensor *mask, const aclTensor *seqLen, const aclTensor *prevOut,
                                        const aclTensor *prevLse, int32_t headNum, int32_t kvHeadNum, float qkScale,
                                        int kernelType, int maskType, int inputLayout, int calcType, aclTensor *output,
-                                       aclTensor *softmaxLse, uint64_t &workspaceSize, atb::Operation **op,
+                                       aclTensor *softmaxLse, uint64_t *workspaceSize, atb::Operation **op,
                                        atb::Context *context);
 
 //!
@@ -344,7 +344,7 @@ atb::Status AtbSelfAttentionPrefixEncoderGetWorkspaceSize(const aclTensor *query
                                                           const aclTensor *mask, const aclTensor *seqLen,
                                                           const aclTensor *kvSeqLen, const aclTensor *slopes,
                                                           int maskType, int32_t headNum, int32_t kvHeadNum,
-                                                          float qkScale, aclTensor *attnOut, uint64_t &workspaceSize,
+                                                          float qkScale, aclTensor *attnOut, uint64_t *workspaceSize,
                                                           atb::Operation **op, atb::Context *context);
 
 //!

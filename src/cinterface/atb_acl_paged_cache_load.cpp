@@ -22,7 +22,7 @@ atb::Status AtbPagedCacheLoadGetWorkspaceSize(const aclTensor *keyCache, const a
                                               const aclTensor *blockTables, const aclTensor *contextLens,
                                               const aclTensor *key, const aclTensor *value, const aclTensor *seqStarts,
                                               int8_t kvCacheCfg, bool isSeqLensCumsumType, bool hasSeqStarts,
-                                              uint64_t &workspaceSize, atb::Operation **op, atb::Context *context)
+                                              uint64_t *workspaceSize, atb::Operation **op, atb::Context *context)
 {
     atb::infer::PagedCacheLoadParam param;
     param.kvCacheCfg = atb::infer::PagedCacheLoadParam::KvCacheCfg(kvCacheCfg);
@@ -72,7 +72,7 @@ atb::Status AtbPagedCacheLoadGetWorkspaceSize(const aclTensor *keyCache, const a
         ATB_LOG(ERROR) << "AtbPagedCacheLoadGetWorkspaceSize opeartion pointer is nullptr!";
         return atb::ERROR_INVALID_OPERATION_ADDR;
     }
-    atb::Status st = (*op)->Setup(pack, workspaceSize, context);
+    atb::Status st = (*op)->Setup(pack, *workspaceSize, context);
     ATB_CHECK(st == atb::NO_ERROR, "AtbPagedCacheLoad Setup failed!", return st);
     return atb::NO_ERROR;
 }

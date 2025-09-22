@@ -17,9 +17,9 @@ extern "C" {
 // 256GB
 const int64_t MAX_TENSOR_SIZE = 256uLL * 1024uLL * 1024uLL * 1024uLL;
 
-int64_t GetTensorSize(const aclTensor &input)
+int64_t GetTensorSize(const aclTensor *input)
 {
-    const op::Shape shape = input.GetViewShape();
+    const op::Shape shape = input->GetViewShape();
     const size_t dims = shape.GetDimNum();
     int64_t size = 1;
     for (size_t i = 0; i < dims; ++i) {
@@ -57,7 +57,7 @@ atb::Status aclTensorToAtbTensor(const aclTensor *aclTensorSrc, atb::Tensor *atb
     atbTensorDst->desc = desc;
     atbTensorDst->deviceData = aclTensorSrc->GetData();
     atbTensorDst->hostData = nullptr;
-    int64_t tensorSize = GetTensorSize(*aclTensorSrc);
+    int64_t tensorSize = GetTensorSize(aclTensorSrc);
     int64_t dataTypeSize = static_cast<int64_t>(aclDataTypeSize(dataType));
     if (tensorSize > MAX_TENSOR_SIZE / dataTypeSize) {
         ATB_LOG(ERROR) << "The size of a tensor * dataTypeSize should be no more than 256GB, but got tensor size: "
@@ -97,7 +97,7 @@ atb::Status aclTensorToAtbTensorHost(const aclTensor *aclTensorSrc, atb::Tensor 
     atbTensorDst->desc = desc;
     atbTensorDst->deviceData = nullptr;
     atbTensorDst->hostData = aclTensorSrc->GetData();
-    int64_t tensorSize = GetTensorSize(*aclTensorSrc);
+    int64_t tensorSize = GetTensorSize(aclTensorSrc);
     int64_t dataTypeSize = static_cast<int64_t>(aclDataTypeSize(dataType));
     if (tensorSize > MAX_TENSOR_SIZE / dataTypeSize) {
         ATB_LOG(ERROR) << "The size of a tensor * dataTypeSize should be no more than 256GB, but got tensor size: "

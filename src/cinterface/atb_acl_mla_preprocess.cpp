@@ -28,7 +28,7 @@ atb::Status AtbMLAPreprocessGetWorkspaceSize(
     const aclTensor *kvCacheRope, const aclTensor *slotmapping, const aclTensor *ctkvScale, const aclTensor *qNopeScale,
     uint32_t wdqDim, uint32_t qRopeDim, uint32_t kRopeDim, float epsilon, uint32_t qRotaryCoeff, uint32_t kRotaryCoeff,
     bool transposeWdq, bool transposeWuq, bool transposeWuk, uint8_t cacheMode, uint16_t quantMode, aclTensor *qOut0,
-    aclTensor *kvCacheOut0, aclTensor *qOut1, aclTensor *kvCacheOut1, uint64_t &workspaceSize, atb::Operation **op,
+    aclTensor *kvCacheOut0, aclTensor *qOut1, aclTensor *kvCacheOut1, uint64_t *workspaceSize, atb::Operation **op,
     atb::Context *context)
 {
     atb::infer::MlaPreprocessParam param;
@@ -159,7 +159,7 @@ atb::Status AtbMLAPreprocessGetWorkspaceSize(
         ATB_LOG(ERROR) << "AtbMLAPreprocessGetWorkspaceSize opeartion pointer is nullptr!";
         return atb::ERROR_INVALID_OPERATION_ADDR;
     }
-    atb::Status st = (*op)->Setup(pack, workspaceSize, context);
+    atb::Status st = (*op)->Setup(pack, *workspaceSize, context);
     ATB_CHECK(st == atb::NO_ERROR, "AtbMLAPreprocess Setup failed!", return st);
     return atb::NO_ERROR;
 }
