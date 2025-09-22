@@ -11,6 +11,8 @@
 #include <string>
 #include <vector>
 #include <thread>
+#include <random>
+#include <cstring>
 #include <cstdint>
 #include <fstream>
 #include "acl/acl.h"
