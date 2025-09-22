@@ -26,14 +26,13 @@ using namespace chrono;
 using namespace Mki;
 
 namespace Lcal {
-
 using AclrtGetResInCurrentThreadFunc = int(*)(int, uint32_t*);
 
 int GetAclResInCurThread(int type, uint32_t &resource)
 {
     static std::once_flag onceFlag;
-    static std::atomic<int> initFlag(LCAL_ERROR_NOT_INITIALIZED); // -1
-    static std::shared_ptr<Mki::Dl> mkiDl;
+    static std::atomic<int> initFlag{LCAL_ERROR_NOT_INITIALIZED};  // -1
+    static std::unique_ptr<Mki::Dl> mkiDl;
     static AclrtGetResInCurrentThreadFunc aclFn = nullptr;
 
     std::call_once(onceFlag, []() {
@@ -61,8 +60,9 @@ int GetAclResInCurThread(int type, uint32_t &resource)
             MKI_LOG(DEBUG) << "Loaded libascendcl.so and resolved aclrtGetResInCurrentThread from: " << p;
             return;
         }
+        MKI_LOG(ERROR) << "Failed to load libascendcl.so or resolve aclrtGetResInCurrentThread. Tried paths: "
+                       << boost::algorithm::join(candidates, ", ");
         initFlag.store(LCAL_ERROR_NOT_FOUND, std::memory_order_release);
-        MKI_LOG(ERROR) << "Failed to load libascendcl.so or resolve aclrtGetResInCurrentThread.";
     });
 
     int rc = initFlag.load(std::memory_order_acquire);
@@ -71,16 +71,17 @@ int GetAclResInCurThread(int type, uint32_t &resource)
     }
 
     if (type != ACL_RT_DEV_RES_CUBE_CORE && type != ACL_RT_DEV_RES_VECTOR_CORE) {
-        MKI_LOG(ERROR) << "aclrtGetResInCurrentThread not support resource type:" << type;
+        MKI_LOG(ERROR) << "aclrtGetResInCurrentThread not support resource type: " << type;
         return LCAL_ERROR_PARA_CHECK_FAIL;
     }
 
     const int ret = aclFn(type, &resource);
     if (ret != ACL_SUCCESS) {
-        MKI_LOG(ERROR) << "aclrtGetResInCurrentThread failed. type:" << type << " err:" << ret;
+        MKI_LOG(ERROR) << "aclrtGetResInCurrentThread failed. type: " << type << " err: " << ret;
         return LCAL_ERROR_INTERNAL;
     }
-    MKI_LOG(DEBUG) << "Got resource in current thread. type:" << type << " resource:" << resource;
+
+    MKI_LOG(DEBUG) << "Got resource in current thread. type: " << type << " resource: " << resource;
     return LCAL_SUCCESS;
 }
 
