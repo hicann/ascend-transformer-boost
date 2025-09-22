@@ -40,8 +40,9 @@ int GetAclResInCurThread(int type, uint32_t &resource)
         std::vector<std::string> candidates;
         if (!home.empty()) {
             candidates.emplace_back(home + "/runtime/lib64/libascendcl.so");
+        } else {
+            MKI_LOG(ERROR) << "ASCEND_HOME_PATH is empty.";
         }
-        candidates.emplace_back("libascendcl.so");
 
         for (const auto &p : candidates) {
             auto dl = std::make_unique<Mki::Dl>(p, false);
