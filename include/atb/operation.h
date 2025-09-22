@@ -95,7 +95,7 @@ public:
     //! \return 状态值，如果成功，返回NO_ERROR
     //!
     virtual Status Execute(const VariantPack &variantPack, uint8_t *workspace, uint64_t workspaceSize,
-                           Context *context) = 0;
+                           Context &context) = 0;
 };
 
 //!
