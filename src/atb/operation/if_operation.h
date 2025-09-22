@@ -24,7 +24,7 @@ public:
     std::string GetName() const override;
     Status Setup(const VariantPack &variantPack, uint64_t &workspaceSize, Context *context) override;
     Status Execute(const VariantPack &variantPack, uint8_t *workspace, uint64_t workspaceSize,
-                   Context &context) override;
+                   Context *context) override;
     uint32_t GetInputNum() const override;
     uint32_t GetOutputNum() const override;
     void SetExecuteStreamId(uint32_t streamId) override;
