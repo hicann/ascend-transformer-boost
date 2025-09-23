@@ -26,7 +26,7 @@ using namespace chrono;
 using namespace Mki;
 
 namespace Lcal {
-using AclrtGetResInCurrentThreadFunc = int(*)(int, uint32_t*);
+using AclrtGetResInCurrentThreadFunc = int(*)(int, uint32_t *);
 
 int GetAclResInCurThread(int type, uint32_t &resource)
 {
@@ -36,7 +36,13 @@ int GetAclResInCurThread(int type, uint32_t &resource)
     static AclrtGetResInCurrentThreadFunc aclFn = nullptr;
 
     std::call_once(onceFlag, []() {
-        std::string p = std::string(Mki::GetEnv("ASCEND_HOME_PATH")) + "/runtime/lib64/libascendcl.so";
+        std::string p;
+        const char *c = Mki::GetEnv("ASCEND_HOME_PATH");
+        if (c) {
+            p = std::string(c) + "/runtime/lib64/libascendcl.so";
+        } else {
+            p = "libascendcl.so";
+        }
         auto dl = std::make_unique<Mki::Dl>(p, false);
         if (!dl->IsValid()) {
             MKI_LOG(ERROR) << "Try load libascendcl.so failed: " << p;
