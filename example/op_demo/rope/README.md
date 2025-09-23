@@ -1,6 +1,6 @@
 # 加速库RopeOperation C++ Demo
 ## 介绍
-该目录下为加速库RopeOperation C++调用示例, 以下示例仅适用于Atlas A2/A3训练系列产品、Atlas 800I A2推理产品、Atlas A3 推理系列产品。
+该目录下为加速库RopeOperation C++调用示例。
 
 ## 使用说明
 - 首先source 对应的CANN和nnal包
@@ -49,8 +49,8 @@ tests/apitest/opstest/python/operations/rope/
 
 - **rope_qwen_demo_0.cpp**
 
-    【注】：编译脚本内替换 rope_demo.cpp 为 rope_qwen_demo_0.cpp 可编译运行
-
+    【注】：编译脚本内替换 rope_demo.cpp 为 rope_qwen_demo_0.cpp 可编译运行；
+           该示例仅适用于Atlas A2/A3训练系列产品、Atlas 800I A2推理产品、Atlas A3 推理系列产品。
     **参数设置**
     |    Param    | value |
     | :---------: | :---: |
@@ -76,8 +76,8 @@ tests/apitest/opstest/python/operations/rope/
 
 - **rope_qwen_demo_1.cpp**
 
-    【注】：编译脚本内替换 rope_demo.cpp 为 rope_qwen_demo_1.cpp 可编译运行
-
+    【注】：编译脚本内替换 rope_demo.cpp 为 rope_qwen_demo_1.cpp 可编译运行；
+           该示例仅适用于Atlas A2/A3训练系列产品、Atlas 800I A2推理产品、Atlas A3 推理系列产品。
     **参数设置**
     |    Param    | value |
     | :---------: | :---: |
@@ -103,8 +103,8 @@ tests/apitest/opstest/python/operations/rope/
 
 - **rope_qwen_demo_2.cpp**
 
-    【注】：编译脚本内替换 rope_demo.cpp 为 rope_qwen_demo_2.cpp 可编译运行
-
+    【注】：编译脚本内替换 rope_demo.cpp 为 rope_qwen_demo_2.cpp 可编译运行；
+           该示例仅适用于Atlas A2/A3训练系列产品、Atlas 800I A2推理产品、Atlas A3 推理系列产品。
     **参数设置**
     |    Param    | value |
     | :---------: | :---: |

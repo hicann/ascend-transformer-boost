@@ -23,7 +23,7 @@ using namespace Mki;
 
 extern const int LCAL_CCE_BIN_STR[];
 asm(R"(.section .rodata, "a", @progbits
-LCAL_CCE_BIN_STR:.incbin "/tmp/lcal_cce.o"
+LCAL_CCE_BIN_STR:.incbin "lcal_cce.o"
 .byte 0
 .previous)");
 
