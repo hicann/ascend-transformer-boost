@@ -87,6 +87,7 @@ def main_worker(rank, world_size, data_type, data_size):
 
 def check_precision_new(in_tensors_desc, out_tensor, golden_out_tensor_high, golden_out_tensor_low, rank):
     if rank == 0:
+        print(in_tensors_desc)
         print(out_tensor)
     result_double = compare_cv(golden_out_tensor_high, golden_out_tensor_low, out_tensor)
     return result_double
