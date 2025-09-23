@@ -14,11 +14,11 @@
 namespace AtbOps {
 namespace OpParam {
 struct BlockCopy {
-    enum Type {
+    enum class Type {
         BLOCK_COPY_CACHE_ND = 0,
         BLOCK_COPY_CACHE_NZ = 1
     };
-    Type type = BLOCK_COPY_CACHE_ND;
+    Type type = Type::BLOCK_COPY_CACHE_ND;
     bool operator==(const BlockCopy &other) const
     {
         return this->type == other.type;

@@ -17,7 +17,7 @@
 namespace AsdOps {
 namespace OpParam {
 struct FaUpdate {
-    enum FaUpdateType {
+    enum class FaUpdateType {
         DECODE_UPDATE = 0,
     };
     FaUpdateType faUpdateType;

@@ -13,20 +13,20 @@
 namespace AtbOps {
 namespace OpParam {
 struct MmDeqSwigluQuantMmDeq {
-    enum OutputType {
+    enum class OutputType {
         OUTPUT_FLOAT16 = 0,
         OUTPUT_BFLOAT16,
         OUTPUT_INVALID
     };
 
-    enum WeightUpPermuteType {
+    enum class WeightUpPermuteType {
         PERMUTE_N256 = 0,
         PERMUTE_N128,
         PERMUTE_INVALID
     };
 
-    OutputType outputType = OUTPUT_FLOAT16;
-    WeightUpPermuteType weightUpPermuteType = PERMUTE_N256;
+    OutputType outputType = OutputType::OUTPUT_FLOAT16;
+    WeightUpPermuteType weightUpPermuteType = WeightUpPermuteType::PERMUTE_N256;
     bool transposeWeightUp = false;
     bool transposeWeightDown = true;
 

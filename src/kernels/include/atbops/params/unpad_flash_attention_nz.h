@@ -36,12 +36,12 @@ struct UnpadFlashAttentionNz {
         SCALE_LOGN = 1
     };
     ScaleType scaleType = SCALE_TOR;
-    enum PrecType {
+    enum class PrecType {
         BMM1_FP16_EXP_FP32 = 0,
         BMM1_FP32_EXP_FP32 = 1,
         BMM2_ONLINE_SOFTMAX_FP16 = 4
     };
-    PrecType precType = BMM1_FP16_EXP_FP32;
+    PrecType precType = PrecType::BMM1_FP16_EXP_FP32;
     // DATA
     enum DataDimOrder : int {
         TYPE_BSND = 0,

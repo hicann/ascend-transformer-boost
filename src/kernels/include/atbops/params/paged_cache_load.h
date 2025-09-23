@@ -15,11 +15,11 @@
 namespace AtbOps {
 namespace OpParam {
 struct PagedCacheLoad {
-    enum Type {
+    enum class Type {
         PAGED_CACHE_LOAD_ND = 0,
         PAGED_CACHE_LOAD_NZ = 1,
     };
-    Type type = PAGED_CACHE_LOAD_ND;
+    Type type = Type::PAGED_CACHE_LOAD_ND;
     bool cuSeqLens = false;
     bool hasSeqStarts = false;
 

@@ -21,7 +21,7 @@ namespace OpParam {
  * @brief ScatterElementsV2 算子的参数结构体
  */
 struct ScatterElementsV2 {
-    enum ReductionType {
+    enum class ReductionType {
         NONE = 0,
         ADD,
     };

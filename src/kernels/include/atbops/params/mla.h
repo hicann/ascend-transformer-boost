@@ -19,7 +19,7 @@
 namespace AtbOps {
 namespace OpParam {
 struct MLA {
-    enum Type {
+    enum class Type {
         SPLIT_CACHE = 0,
         PREFILL_SPLIT_CACHE = 1
     };
@@ -31,7 +31,7 @@ struct MLA {
     std::vector<Mki::Tensor> kTensorList;
     std::vector<Mki::Tensor> vTensorList;
 
-    enum MaskType {
+    enum class MaskType {
         MASK_TYPE_NONE = 0,
         MASK_TYPE_NORM = 1,
         MASK_TYPE_ALIBI = 2,
@@ -41,15 +41,15 @@ struct MLA {
         MASK_TYPE_SWA_NORM = 6
     };
 
-    MaskType maskType = MASK_TYPE_NONE;
+    MaskType maskType = MaskType::MASK_TYPE_NONE;
 
-    enum QuantType {
+    enum class QuantType {
         TYPE_QUANT_UNDEFINED = 0,
         TYPE_DEQUANT_FUSION,
         TYPE_QUANT_QKV_OFFLINE,
         TYPE_QUANT_QKV_ONLINE
     };
-    QuantType quantType = TYPE_QUANT_UNDEFINED;
+    QuantType quantType = QuantType::TYPE_QUANT_UNDEFINED;
 
     std::vector<int32_t> qSeqLen;
     std::vector<int32_t> kvSeqLen;

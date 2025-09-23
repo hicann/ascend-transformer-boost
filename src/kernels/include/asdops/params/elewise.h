@@ -16,7 +16,7 @@
 namespace AsdOps {
 namespace OpParam {
 struct Elewise {
-    enum ElewiseType {
+    enum class ElewiseType {
         ELEWISE_UNDEFINED = 0,
         ELEWISE_CAST,
         ELEWISE_MULS,

@@ -16,7 +16,7 @@
 namespace AsdOps {
 namespace OpParam {
 struct Activation {
-    enum ActivationType {
+    enum class ActivationType {
         ACTIVATION_UNDEFINED = 0,
         ACTIVATION_RELU,
         ACTIVATION_GELU,

@@ -18,7 +18,7 @@
 namespace AsdOps {
 namespace OpParam {
 struct Norm {
-    enum NormType {
+    enum class NormType {
         NORM_UNDEFINED = 0,
         LAYER_NORM,
         RMS_NORM,
