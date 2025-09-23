@@ -22,9 +22,9 @@ Status FusionTiling(const LaunchParam &launchParam, KernelInfo &kernelInfo)
     OpParam::Fusion fusionType = launchParam.GetParam<OpParam::Fusion>();
     std::string path(std::getenv("HOME"));
     path += std::string("/.atb_auto_fusion/bishengir_bin/") +
-            (fusionType.fusionType ? "libmatmul_add.so" : "libmatmul_gelu.so" == OpParam::Fusion::MATMUL_ADD);
+            ((fusionType.fusionType ? "libmatmul_add.so" : "libmatmul_gelu.so") == OpParam::Fusion::MATMUL_ADD);
     std::string inferWorkspaceFuncName =
-        (fusionType.fusionType ? "matmul_add_" : "matmul_gelu_" == OpParam::Fusion::MATMUL_ADD);
+        ((fusionType.fusionType ? "matmul_add_" : "matmul_gelu_") == OpParam::Fusion::MATMUL_ADD);
     FusionTilingData *tilingDataPtr = reinterpret_cast<FusionTilingData *>(kernelInfo.GetTilingHostAddr());
     void *handle = dlopen(path.c_str(), RTLD_LAZY);
     if (!handle) {
