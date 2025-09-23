@@ -37,7 +37,7 @@ class TestPagedAttentionMLA(operation_test.OperationTest):
         strict_limit_error = torch.maximum(torch.abs(golden * ratios[2]), torch.tensor(ratios[3]))
         error_count = torch.gt(diff, limit_error).sum().item()
         strict_error_count = torch.gt(diff, strict_limit_error).sum().item()
-        print(f"maxDiff {max_diff}")
+        print(f"maxDiff {max_diff},{self.head_size_qk},{self.max_context_len}")
         print("1/1000 Accuracy is %f",  1 - float(error_count) / len)
         print("5/1000 Accuracy is %f",  1 - float(strict_error_count) / len)
         if self.data_type == torch.bfloat16 or self.is_int8_flag:
@@ -241,13 +241,13 @@ class TestPagedAttentionMLA(operation_test.OperationTest):
         self.head_size_vo = head_size_vo
 
         logging.debug(f'input info: {num_tokens}, {num_heads}, {kv_heads}, {head_size_qk}, {head_size_vo}, {block_size}, {num_blocks}, {k_seqlen}, {dtype}')
-
-        query = torch.from_numpy(np.random.uniform(-1.0, 1.0, size=(num_tokens, num_heads, head_size_qk))).to(dtype)
+        q_range = 5.0
+        query = torch.from_numpy(np.random.uniform(-q_range, q_range, size=(num_tokens, num_heads, head_size_qk))).to(dtype)
         # (num_blocks, block_size, num_heads, head_size)
-        kv_range = 1.0
+        kv_range = 5.0
         kv_type = dtype
         if is_int8_flag:
-            kv_range = 4.0
+            kv_range = 5.0
             kv_type = torch.int8
         if not compressHead:
             key_cache = torch.from_numpy(np.random.uniform(-kv_range, kv_range, size=(num_blocks, block_size, kv_heads, head_size_qk))).to(kv_type)
@@ -306,6 +306,7 @@ class TestPagedAttentionMLA(operation_test.OperationTest):
             block_tables.append(block_table)
 
         self.is_int8_flag = is_int8_flag
+        head_size = head_size_qk
         if is_int8_flag:
             de_scale1_fp32 = np.random.randint(-1, 2, size=(kv_heads * head_size)).astype(np.float32)
             de_scale1_int64 = self.process_deq_scale(de_scale1_fp32)
