@@ -41,6 +41,19 @@ const static std::map<std::string, SocVersion> CONVERT_MAP = {
     {"Ascend910_93", SocVersion::ASCEND910B},
 };
 
+static uint32_t safeChangeStringtoUnit32(const std::string &str) {
+    if (std.empty()) {
+        return 0;
+    }
+    char *endptr = nullptr;
+    const char* cstr = std.c_str();
+    long result = std::strtol(cstr, &endptr, 10);
+    if (cstr == endptr || *endptr != '\0') {
+        return 0;
+    }
+    return static_cast<uint32_t>(result);
+}
+
 static inline uint32_t GetCoreNumByType(fe::PlatFormInfos *platformInfo, bool isAiv)
 {
     std::string key;
@@ -57,7 +70,7 @@ static inline uint32_t GetCoreNumByType(fe::PlatFormInfos *platformInfo, bool is
     }
     ret = platformInfo->GetPlatformResWithLock(STR_SOC_INFO, key, val);
     MKI_LOG_IF(!ret, ERROR) << "get platform failed, key is " << key << ", val is" << val;
-    return val.empty() ? 0 : static_cast<uint32_t>(std::atoi(val.c_str()));
+    return safeChangeStringtoUnit32(val);
 }
 
 uint32_t PlatformAscendC::GetCoreNumVector(void) const
@@ -66,7 +79,7 @@ uint32_t PlatformAscendC::GetCoreNumVector(void) const
         std::string val;
         bool ret = GetPlatFormInfo()->GetPlatformResWithLock(STR_SOC_INFO, STR_CORE_CNT_VEC, val);
         MKI_LOG_IF(!ret, ERROR) << "get platform vector num failed, val is " << val;
-        return val.empty() ? 0 : std::atoi(val.c_str());
+        return safeChangeStringtoUnit32(val);
     }
     return 0;
 }
