@@ -12,7 +12,9 @@
         例如： source ./ascend-transformer-boost/output/atb/set_env.sh
 
 - 运行demo
-    - bash build.sh
+    ```sh
+    bash build.sh
+    ```
     **注意**：
     - 使用cxx_abi=0（默认）时，设置`D_GLIBCXX_USE_CXX11_ABI`为0，即：
         ```sh
@@ -22,7 +24,6 @@
         ```sh
         g++ -D_GLIBCXX_USE_CXX11_ABI=1 -I ...
         ```
-
 ## 额外说明
 示例中生成的数据不代表实际场景，如需数据生成参考请查看python用例目录：
 tests/apitest/opstest/python/operations/transpose_demo/

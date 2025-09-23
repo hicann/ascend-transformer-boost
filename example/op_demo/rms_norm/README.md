@@ -11,8 +11,21 @@
         1. 如果使用加速库源码编译，source [加速库源码路径]/output/atb/set_env.sh
         例如： source ./ascend-transformer-boost/output/atb/set_env.sh
 
-- 编译、运行demo
-    - bash build.sh
+- 运行demo
+    ```sh
+    bash build.sh
+    ```
+    **注意**：
+    - 使用cxx_abi=0（默认）时，设置`D_GLIBCXX_USE_CXX11_ABI`为0，即：
+        ```sh
+        g++ -D_GLIBCXX_USE_CXX11_ABI=0 -I ...
+        ```
+    - 使用cxx_abi=1时，更改`D_GLIBCXX_USE_CXX11_ABI`为1，即：
+        ```sh
+        g++ -D_GLIBCXX_USE_CXX11_ABI=1 -I ...
+        ```
+    - 提供的build脚本仅用于编译和运行rms_norm_demo.cpp，如需编译其他demo，需要替换“rms_norm_demo”为对应的cpp文件名
+
 
 ## 额外说明
 示例中生成的数据不代表实际场景，如需数据生成参考请查看python用例目录：

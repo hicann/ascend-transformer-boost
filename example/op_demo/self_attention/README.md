@@ -12,9 +12,11 @@
         例如： source ./ascend-transformer-boost/output/atb/set_env.sh
 
 - 运行demo
-    - bash build.sh
+    ```sh
+    bash build.sh
+    ```
     **注意**：
-    - 使用cxx_abi=0时，设置`D_GLIBCXX_USE_CXX11_ABI`为0，即：
+    - 使用cxx_abi=0（默认）时，设置`D_GLIBCXX_USE_CXX11_ABI`为0，即：
         ```sh
         g++ -D_GLIBCXX_USE_CXX11_ABI=0 -I ...
         ```
