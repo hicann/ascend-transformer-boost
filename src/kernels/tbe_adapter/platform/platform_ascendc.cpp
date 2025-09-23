@@ -41,7 +41,8 @@ const static std::map<std::string, SocVersion> CONVERT_MAP = {
     {"Ascend910_93", SocVersion::ASCEND910B},
 };
 
-static uint32_t safeChangeStringtoUnit32(const std::string &str) {
+static uint32_t safeChangeStringtoUnit32(const std::string &str)
+{
     if (std.empty()) {
         return 0;
     }
