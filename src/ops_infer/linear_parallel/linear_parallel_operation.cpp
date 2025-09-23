@@ -37,6 +37,7 @@ static const uint32_t RESIDUAL_TENSOR_INDEX_3 = 3;
 static const uint32_t RESIDUAL_TENSOR_INDEX_4 = 4;
 static const uint32_t MAX_OUTPUT_SIZE = 204800;
 static const uint32_t MAX_K = 24000;
+static const uint32_t DIM_4 = 4;
 
 static bool AllToAllvcAllGatherGmmOutTensorCheck(const SVector<TensorDesc> &inTensorDescs,
                                                  const TensorDesc &outTensorDesc, const std::string &logPrefix)

@@ -38,6 +38,7 @@ private:
     Status InferShapeAllToAllvcAllGatherGmm(const SVector<TensorDesc> &inTensorDescs,
                                             SVector<TensorDesc> &outTensorDescs) const;
     Status CheckResidual(const SVector<TensorDesc> &inTensorDescs) const;
+    Status CheckWeightNzFormat(const SVector<TensorDesc> &inTensorDescs) const;
     Status InferShapeCheckLinearAllReduce(const SVector<TensorDesc> &inTensorDescs) const;
     Status InferShapeCheckLinearReduceScatter(const SVector<TensorDesc> &inTensorDescs) const;
     Status InferShapeCheckAllGatherLinear(const SVector<TensorDesc> &inTensorDescs) const;
