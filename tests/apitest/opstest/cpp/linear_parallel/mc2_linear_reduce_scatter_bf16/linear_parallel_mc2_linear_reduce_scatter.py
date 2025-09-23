@@ -53,34 +53,25 @@ def load_tensor(data_size,data_type,data_path):
 def main_worker(rank, world_size, data_type, data_size):
     torch_npu.npu.set_device(rank)
     print(f'Process {rank} started, using device npu:{rank}.')
+    golden_out_tensor_high = None
+    golden_out_tensor_low = None
+    for i in range(world_size):
+        input_tensor = load_tensor(data_size=data_size[0],data_type=data_type,data_path=f"rank{i}_inTensor{0}.bin")
+        weight_tensor = load_tensor(data_size=data_size[1],data_type=data_type,data_path=f"rank{i}_inTensor{1}.bin")
+        out_single_tensor = torch.matmul(input_tensor.to(torch.float), weight_tensor.to(torch.float))
+        if golden_out_tensor_high is None:
+            golden_out_tensor_high = out_single_tensor.clone()
+            golden_out_tensor_low = out_single_tensor.clone().to(data_type)
+        else:
+            golden_out_tensor_high = torch.add(golden_out_tensor_high,out_single_tensor)
+            golden_out_tensor_low = torch.add(golden_out_tensor_low,out_single_tensor.to(data_type))
+    
+    chunks_size = int(data_size[0][0] / world_size)
 
-    input_tensor = load_tensor(data_size=data_size[0],data_type=data_type,data_path=f"rank{rank}_inTensor{0}.bin")
-    weight_tensor = load_tensor(data_size=data_size[1],data_type=data_type,data_path=f"rank{rank}_inTensor{1}.bin")
+    golden_result_hight = [golden_out_tensor_high[chunks_size *i:chunks_size * (i + 1), :] for i in range(world_size)]
+    golden_result_low = [golden_out_tensor_high[chunks_size *i:chunks_size * (i + 1), :] for i in range(world_size)]
+    
     acl_out_tensor = load_tensor(data_size=data_size[2],data_type=data_type,data_path=f"rank{rank}_outTensor{0}.bin")
-
-    in_tensors_desc = [input_tensor.shape,weight_tensor.shape]
-    
-    matmul_result_high = torch.matmul(input_tensor.to(torch.float), weight_tensor.to(torch.float))
-    matmul_result_low = torch.matmul(input_tensor.to(torch.float), weight_tensor.to(torch.float)).to(data_type)
-    
-    golden_one_high = matmul_result_high.clone()
-    golden_one_low = matmul_result_low.clone()
-
-    golden_out_tensor_high = golden_one_high.clone()
-    golden_out_tensor_low = golden_one_low.clone()
-
-    # all reduce
-
-    for i in range(world_size-1):
-        golden_out_tensor_high += golden_one_high
-        golden_out_tensor_low += golden_one_low
-    
-    chunks_size = int(input_tensor.shape[0] / world_size)
-    chunks_high = torch.split(golden_out_tensor_high, chunks_size)
-    chunks_low = torch.split(golden_out_tensor_low, chunks_size)
-
-    golden_result_hight = chunks_high[rank]
-    golden_result_low = chunks_low[rank]
 
     assert check_precision_new(in_tensors_desc, acl_out_tensor.float(), golden_result_hight.float(), golden_result_low.float(), rank)
 
