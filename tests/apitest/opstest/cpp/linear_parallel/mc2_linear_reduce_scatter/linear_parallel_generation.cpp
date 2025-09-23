@@ -36,7 +36,7 @@ const int32_t M = 2;
 const int32_t K = 256;
 const int32_t N = 2;
 
-const aclDataType DATA_TYPE = aclDataType::ACL_BF16;
+const aclDataType DATA_TYPE = aclDataType::ACL_FLOAT16;
 
 typedef uint16_t float16;
 typedef uint16_t bfloat16;

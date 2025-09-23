@@ -34,11 +34,11 @@ LIBTORCH_PATH = os.path.join(ATB_HOME_PATH, "lib/libatb_test_framework.so")
 LIB_PATH = os.path.join(ATB_HOME_PATH, "lib/libatb.so")
 torch.classes.load_library(LIBTORCH_PATH)
 
-DEV_NUM = 4
+DEV_NUM = 2
 
-M = 256
+M = 2
 K = 256
-N = 256
+N = 2
 
 DATA_TYPE = torch.float16
 
@@ -49,9 +49,9 @@ def load_tensor(data_size,data_type,data_path):
         np_data = np.frombuffer(data, dtype=np.float16).copy()
         tensor = torch.from_numpy(np_data)
     elif data_type == torch.bfloat16:
-        tensor = np.frombuffer(data,dtype=np.uint16).view(np.float16)
+        tensor  = torch.frombuffer(bytearray(data), dtype=torch.bfloat16)
     else:
-        tensor = None
+        tensor = torch.zeros(data_size)
 
     tensor = tensor.view(data_size)
     

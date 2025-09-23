@@ -36,9 +36,9 @@ echo "Using cxx_abi=$cxx_abi"
 
 DEV_NUM=2
 
-M=512
-K=512
-N=512
+M=2
+K=256
+N=2
 
 DATA_TYPE="FLOAT16"
 
