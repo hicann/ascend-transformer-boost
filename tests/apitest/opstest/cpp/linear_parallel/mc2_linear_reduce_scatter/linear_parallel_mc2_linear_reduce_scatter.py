@@ -71,7 +71,7 @@ def main_worker(rank, world_size, data_type, data_size):
         if golden_out_tensor_high is None:
             golden_out_tensor_high = out_single_tensor.clone()
             golden_out_tensor_low = out_single_tensor.clone().to(data_type)
-            in_tensors_desc = [input_tensor.shape(), weight_tensor.shape()]
+            in_tensors_desc = [input_tensor.shape, weight_tensor.shape]
         else:
             golden_out_tensor_high = torch.add(golden_out_tensor_high,out_single_tensor)
             golden_out_tensor_low = torch.add(golden_out_tensor_low,out_single_tensor.to(data_type))
