@@ -18,7 +18,6 @@ static constexpr uint32_t MAX_CORE_NUM = 512;
 static constexpr uint32_t BLK_SIZE = 32;
 static constexpr uint32_t DEFAULT_STRIDE = 8;
 static constexpr uint32_t FP32_PER_REPEAT = 64;
-static constexpr uint32_t FP16_PER_REPEAT = 128;
 static constexpr uint32_t FP16_PER_BLOCK = 16;
 static constexpr uint32_t NUM_4 = 4;
 
@@ -183,7 +182,7 @@ private:
         AscendC::LocalTensor<float> fp32Buf = fp32Buf_.Get<float>();
         AscendC::LocalTensor<half> fp16Buf = fp32Buf_.Get<half>();
         AscendC::LocalTensor<float> fp32TempBuf = tempBuf_.Get<float>();
-        uint32_t copyEleNumAlignF16_ = (copyEleNum + FP16_PER_REPEAT - 1) / FP16_PER_REPEAT * FP16_PER_REPEAT;
+        uint32_t copyEleNumAlignF16_ = (copyEleNum + FP16_PER_BLOCK - 1) / FP16_PER_BLOCK * FP16_PER_BLOCK;
         uint32_t copyEleNumAlignF32_ = (copyEleNum + FP32_PER_REPEAT - 1) / FP32_PER_REPEAT * FP32_PER_REPEAT;
         for (uint32_t dupVal = copyEleNum; dupVal < copyEleNumAlignF16_; dupVal++) {
             buf.SetValue(dupVal, T(1));
