@@ -61,26 +61,26 @@ case ${DATA_TYPE} in
 esac
 
 # 修改 DEV_NUM 的值
-sed -i "s/const int32_t DEV_NUM = .*;/const int32_t DEV_NUM = ${DEV_NUM};/" linear_parallel_generation.cpp
+sed -i "s/^const int32_t DEV_NUM = .*;/const int32_t DEV_NUM = ${DEV_NUM};/" linear_parallel_generation.cpp
 # 修改 M 的值
-sed -i "s/const int32_t M = .*;/const int32_t M = ${M};/" linear_parallel_generation.cpp
+sed -i "s/^const int32_t M = .*;/const int32_t M = ${M};/" linear_parallel_generation.cpp
 # 修改 K 的值
-sed -i "s/const int32_t K = .*;/const int32_t K = ${K};/" linear_parallel_generation.cpp
+sed -i "s/^const int32_t K = .*;/const int32_t K = ${K};/" linear_parallel_generation.cpp
 # 修改 N 的值
-sed -i "s/const int32_t N = .*;/const int32_t N = ${N};/" linear_parallel_generation.cpp
+sed -i "s/^const int32_t N = .*;/const int32_t N = ${N};/" linear_parallel_generation.cpp
 # 修改 DATA_TYPE 的值
-sed -i "s/const aclDataType DATA_TYPE = .*;/const aclDataType DATA_TYPE = ${DATA_TYPE_CPP};/" linear_parallel_generation.cpp
+sed -i "s/^const aclDataType DATA_TYPE = .*;/const aclDataType DATA_TYPE = ${DATA_TYPE_CPP};/" linear_parallel_generation.cpp
 
 # 修改 DEV_NUM 的值
-sed -i "s/DEV_NUM = .*/DEV_NUM = ${DEV_NUM}/" linear_parallel_mc2_linear_reduce_scatter.py
+sed -i "s/^DEV_NUM = .*/DEV_NUM = ${DEV_NUM}/" linear_parallel_mc2_linear_reduce_scatter.py
 # 修改 M 的值
-sed -i "s/M = .*/M = ${M}/" linear_parallel_mc2_linear_reduce_scatter.py
+sed -i "s/^M = .*/M = ${M}/" linear_parallel_mc2_linear_reduce_scatter.py
 # 修改 K 的值
-sed -i "s/K = .*/K = ${K}/" linear_parallel_mc2_linear_reduce_scatter.py
+sed -i "s/^K = .*/K = ${K}/" linear_parallel_mc2_linear_reduce_scatter.py
 # 修改 N 的值
-sed -i "s/N = .*/N = ${N}/" linear_parallel_mc2_linear_reduce_scatter.py
+sed -i "s/^N = .*/N = ${N}/" linear_parallel_mc2_linear_reduce_scatter.py
 # 修改 DATA_TYPE 的值
-sed -i "s/DATA_TYPE = .*/DATA_TYPE = ${DATA_TYPE_PY}/" linear_parallel_mc2_linear_reduce_scatter.py
+sed -i "s/^DATA_TYPE = .*/DATA_TYPE = ${DATA_TYPE_PY}/" linear_parallel_mc2_linear_reduce_scatter.py
 
 g++ -D_GLIBCXX_USE_CXX11_ABI=$cxx_abi -I "${ATB_HOME_PATH}/include" -I "${ASCEND_HOME_PATH}/include" -L "${ATB_HOME_PATH}/lib" -L "${ASCEND_HOME_PATH}/lib64" \
 linear_parallel_generation.cpp -l atb -l ascendcl -l hccl -l nnopbase -l opapi -o linear_parallel_generation
