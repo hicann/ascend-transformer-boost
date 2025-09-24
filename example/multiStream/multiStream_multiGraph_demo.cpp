@@ -237,8 +237,7 @@ int main()
     packRW.outTensors.resize(outTensorNum);
     operationWR->InferShape(intensorDescs, outtensorDescs);
 
-    aclError ret;
-    ret = CreateInTensors(packWR.inTensors, intensorDescs);
+    aclError ret = CreateInTensors(packWR.inTensors, intensorDescs);
     if (ret != 0) {
         exit(ret);
     }
