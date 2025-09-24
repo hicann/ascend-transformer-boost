@@ -43,11 +43,11 @@ const static std::map<std::string, SocVersion> CONVERT_MAP = {
 
 static uint32_t safeChangeStringtoUnit32(const std::string &str)
 {
-    if (std.empty()) {
+    if (str.empty()) {
         return 0;
     }
     char *endptr = nullptr;
-    const char* cstr = std.c_str();
+    const char* cstr = str.c_str();
     long result = std::strtol(cstr, &endptr, 10);
     if (cstr == endptr || *endptr != '\0') {
         return 0;
