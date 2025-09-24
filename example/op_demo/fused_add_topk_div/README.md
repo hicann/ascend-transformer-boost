@@ -26,3 +26,29 @@
 ## 额外说明
 示例中生成的数据不代表实际场景，如需数据生成参考请查看python用例目录：
 tests/apitest/opstest/python/operations/fused_add_topk_div/
+
+## 场景说明
+
+  该算子所给demo仅支持在Atlas A2/A3系列产品上运行，demo的场景说明如下：
+
+- fused_add_topk_div_demo
+  
+    **参数设置**：
+    | 成员名称            | 取值                 |
+    | :------------------ | :------------------- |
+    | groupNum            | 8                    |
+    | groupTopk           | 4                    |
+    | n                   | 2                    |
+    | k                   | 8                    |
+    | activationType      | `ACTIVATION_SIGMOID` |
+    | isNorm              | `true`               |
+    | scale               | 2.5                  |
+    | enableExpertMapping | `false`              |
+
+    **数据规格**：
+    | tensor名字 | 数据类型 | 数据格式 | 维度信息   | cpu/npu |
+    | ---------- | -------- | -------- | ---------- | ------- |
+    | `x`        | float16  | nd       | [512, 256] | npu     |
+    | `add_num`  | float16  | nd       | [256]      | npu     |
+    | `y`        | float    | nd       | [512, 8]   | npu     |
+    | `indices`  | int32    | nd       | [512, 8]   | npu     |
