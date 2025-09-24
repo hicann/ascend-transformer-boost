@@ -111,12 +111,6 @@ static bool ParamCheck(const infer::MultiLatentAttentionParam &opParam)
         ATB_LOG(ERROR) << "only mtp(CALC_TYPE_SPEC) support mask";
         return false;
     }
-    if ((opParam.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_RING ||
-         opParam.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC_AND_RING) &&
-        opParam.cacheMode != infer::MultiLatentAttentionParam::CacheMode::KROPE_CTKV) {
-        ATB_LOG(ERROR) << "CalcType is ring only support krppe ctkv";
-        return false;
-    }
     return true;
 }
 
