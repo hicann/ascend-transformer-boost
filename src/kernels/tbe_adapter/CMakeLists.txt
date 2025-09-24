@@ -362,7 +362,6 @@ if("${PACKAGE_COMPILE}" STREQUAL "ON" AND NOT "${LOCAL_RELEASE_COMPILE}" STREQUA
         ${TILING_API_SRC_DIR}/math/tanh/tanh_tiling_impl.cpp
         ${TILING_API_SRC_DIR}/math/trunc/trunc_tiling_impl.cpp
         ${TILING_API_SRC_DIR}/math/axpy/axpy_tiling_impl.cpp
-        ${TILING_API_SRC_DIR}/math/hypot/hypot_tiling_impl.cpp
         ${TILING_API_SRC_DIR}/activation/swiglu/swiglu_tiling.cpp
         ${TILING_API_SRC_DIR}/math/ceil/ceil_tiling_impl.cpp
         ${TILING_API_SRC_DIR}/math/floor/floor_tiling_impl.cpp
