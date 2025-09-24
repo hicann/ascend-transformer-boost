@@ -18,7 +18,6 @@
 
 #include <cstdint>
 #include <mutex>
-#include "stubs/include/metadef/inc/external/platform/platform_info.h"
 
 #define ASCENDC_ASSERT(cond, behavior) \
     do {                               \
@@ -27,6 +26,9 @@
             raise(SIGABRT);            \
         }                              \
     } while (0)
+namespace fe {
+class PlatformInfo;     
+}
 
 namespace platform_ascendc {
 enum class CoreMemType {
