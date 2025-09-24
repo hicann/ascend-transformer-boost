@@ -59,7 +59,6 @@ int GetAclResInCurThread(int type, uint32_t &resource)
         aclFn = reinterpret_cast<AclrtGetResInCurrentThreadFunc>(sym);
         initFlag.store(LCAL_SUCCESS, std::memory_order_release);
         MKI_LOG(DEBUG) << "Loaded libascendcl.so and resolved aclrtGetResInCurrentThread from: " << p;
-        return; // 成功
     });
 
     // 初始化结果判定
@@ -71,6 +70,12 @@ int GetAclResInCurThread(int type, uint32_t &resource)
     if (type != ACL_RT_DEV_RES_CUBE_CORE && type != ACL_RT_DEV_RES_VECTOR_CORE) {
         MKI_LOG(ERROR) << "aclrtGetResInCurrentThread not support resource type: " << type;
         return LCAL_ERROR_PARA_CHECK_FAIL;
+    }
+
+    // 调用前检查函数指针有效性
+    if (aclFn == nullptr) {
+        MKI_LOG(ERROR) << "aclrtGetResInCurrentThread function pointer is null.";
+        return LCAL_ERROR_INTERNAL;
     }
 
     // 调用底层函数
