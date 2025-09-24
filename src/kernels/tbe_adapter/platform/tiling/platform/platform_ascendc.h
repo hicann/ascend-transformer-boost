@@ -27,7 +27,7 @@
         }                              \
     } while (0)
 namespace fe {
-class PlatformInfo;     
+class PlatFormInfos;
 }
 
 namespace platform_ascendc {
