@@ -18,7 +18,7 @@
 
 #include <cstdint>
 #include <mutex>
-#include "stubs\include\metadef\inc\external\platform\platform_info.h"
+#include "stubs/include/metadef/inc/external/platform/platform_info.h"
 
 #define ASCENDC_ASSERT(cond, behavior) \
     do {                               \
