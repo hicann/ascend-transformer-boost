@@ -249,7 +249,6 @@ class TestPagedAttentionMLA(operation_test.OperationTest):
         logging.info(f'input info: num_tokens {num_tokens}, num_heads {num_heads}, kv_heads {kv_heads}')
         logging.info(f'head_size_qk {head_size_qk}, head_size_vo {head_size_vo}, block_size {block_size}, num_blocks {num_blocks}')
         shape_out = (num_tokens, num_heads, head_size_vo)
-        # ref_output = torch.zeros(shape_out, dtype=dtype)
         ref_output = torch.zeros(shape_out, dtype = mask_data_type)
         true_out = torch.zeros(shape_out, dtype=torch.float32)
         lse = torch.zeros((num_tokens, num_heads, 1), dtype=dtype)

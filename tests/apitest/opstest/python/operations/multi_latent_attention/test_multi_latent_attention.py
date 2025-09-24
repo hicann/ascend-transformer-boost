@@ -247,7 +247,6 @@ class TestPagedAttentionMLA(operation_test.OperationTest):
         kv_range = 5.0
         kv_type = dtype
         if is_int8_flag:
-            kv_range = 5.0
             kv_type = torch.int8
         if not compressHead:
             key_cache = torch.from_numpy(np.random.uniform(-kv_range, kv_range, size=(num_blocks, block_size, kv_heads, head_size_qk))).to(kv_type)
