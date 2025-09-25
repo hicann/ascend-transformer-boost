@@ -84,8 +84,8 @@ atb::SVector<int64_t> GetTransposeTensorStride(atb::Dims &tensorDims)
     tmptransposeStrides[tensorDims.dimNum - 1] = tensorDims.dims[tensorDims.dimNum - 1];
     if (tensorDims.dimNum == 3) {                     // 3: 维度
         tmptransposeStrides[0] = CheckIntMulOverFlow( // 0: 第0维
-        tensorDims.dims[1],
-        tensorDims.dims[2]); // 1, 2: 跳过第1维和第2维的大小
+            tensorDims.dims[1],
+            tensorDims.dims[2]); // 1, 2: 跳过第1维和第2维的大小
     }
     return tmptransposeStrides;
 }
