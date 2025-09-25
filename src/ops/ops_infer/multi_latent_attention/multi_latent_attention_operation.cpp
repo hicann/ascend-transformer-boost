@@ -454,7 +454,7 @@ Status MultiLatentAttentionOperation::DimCheckInt8Nz(const SVector<TensorDesc> &
         return ERROR_INVALID_TENSOR_DIM;
     }
     if (inTensorDesc.at(idx + 1).shape.dims[0] != param_.headNum) {
-        ATB_LOG(ERROR) << GetLogPrefix() << "dim 0 of of pvDescale(intensor" << idx + 1
+        ATB_LOG(ERROR) << GetLogPrefix() << "dim 0 of of pvDescale(intensor" << (idx + 1)
                        << ") should be equal to dim0 of headNum";
         return ERROR_INVALID_TENSOR_DIM;
     }
