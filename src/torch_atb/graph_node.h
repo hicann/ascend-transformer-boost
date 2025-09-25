@@ -22,8 +22,8 @@ public:
     void SetOperation(atb::Operation *op);
     std::string GetOutput(size_t index) const;
     bool FindOutput(const std::string &id) const;
-    void SetStreamId(uint32_t streamId);
-    uint32_t GetStreamId();
+    void SetStreamId(uint32_t streamId) const;
+    uint32_t GetStreamId() const;
 
     std::vector<std::string> inTensorIds;
     std::vector<std::string> outTensorIds;

@@ -231,7 +231,7 @@ Status RmsNormGradTiling(const LaunchParam &launchParam, KernelInfo &kernelInfo)
     tilingDataPointer->avg = avgVal;
     kernelInfo.SetTilingId(tilingKey);
     uint64_t sysWorkspaceSize =
-        static_cast<uint64_t>(BLOCK_SIZE + tilingDataPointer->blockDim * BLOCK_SIZE * TWICE_WORKSPACE);
+        static_cast<uint64_t>((BLOCK_SIZE + tilingDataPointer->blockDim * BLOCK_SIZE * TWICE_WORKSPACE) * sizeof(int));
     kernelInfo.GetScratchSizes().push_back(sysWorkspaceSize);
     kernelInfo.SetMemsetInfo(WORK_SPACE_INDEX, sysWorkspaceSize);
     return Status::OkStatus();

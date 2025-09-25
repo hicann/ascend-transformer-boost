@@ -23,7 +23,7 @@ def get_build_target_list():
     if usr_config_file_path == '':
         script_file_path = os.path.realpath(__file__)
         build_config_json_file_path = os.path.join(os.path.dirname(
-            script_file_path), "../configs/build_config.json")
+            script_file_path), "../src/kernels/configs/build_config.json")
     else:
         build_config_json_file_path = usr_config_file_path
     device_list = []

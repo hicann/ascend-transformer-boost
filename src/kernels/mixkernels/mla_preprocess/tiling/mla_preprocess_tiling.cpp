@@ -96,12 +96,12 @@ public:
 
 private:
     void GetTileSize();
-    float GetCost(const uint32_t m0, const uint32_t n0);
+    float GetCost(const uint32_t m0, const uint32_t n0) const;
     void UpdateTileSize(const uint32_t m0, const uint32_t n0);
     void Swizzle();
-    uint32_t ComputeL1AbSize();
-    uint32_t ComputeK0ForABpingpong(uint32_t l1AbSize);
-    bool IsLoadAllAmat(uint32_t l1AbSize);
+    uint32_t ComputeL1AbSize() const;
+    uint32_t ComputeK0ForABpingpong(uint32_t l1AbSize) const;
+    bool IsLoadAllAmat(uint32_t l1AbSize) const;
     uint32_t ComputeK0ForOnlyBpingpong(uint32_t l1AbSize);
 
 private:
@@ -202,13 +202,13 @@ uint32_t PpMatmulTilingApi::ComputeK0ForOnlyBpingpong(uint32_t l1AbSize)
     return k0B0 > CONST_512 ? RoundDown(k0B0, CONST_512) : k0B0;
 }
 
-bool PpMatmulTilingApi::IsLoadAllAmat(uint32_t l1AbSize)
+bool PpMatmulTilingApi::IsLoadAllAmat(uint32_t l1AbSize) const
 {
     return (coreLoop_ > blockDim_) && enDequant_ && (kLoop_ > 1) &&
            (l1AbSize > RoundUp(m_, CONST_16) * RoundUp(k_, CONST_32) * inDataSize_) && (mLoop_ == 1);
 }
 
-uint32_t PpMatmulTilingApi::ComputeK0ForABpingpong(uint32_t l1AbSize)
+uint32_t PpMatmulTilingApi::ComputeK0ForABpingpong(uint32_t l1AbSize) const
 {
     uint32_t k0Max = static_cast<uint32_t>(static_cast<float>(l1AbSize / DIM_2) / ((m0_ + n0_) * inDataSize_));
     uint32_t tmpK0;
@@ -223,7 +223,7 @@ uint32_t PpMatmulTilingApi::ComputeK0ForABpingpong(uint32_t l1AbSize)
     return tmpK0;
 }
 
-uint32_t PpMatmulTilingApi::ComputeL1AbSize()
+uint32_t PpMatmulTilingApi::ComputeL1AbSize() const
 {
     if (enDequant_ && deqOnTheFly_) {
         return L1_BUFFER_SIZE;
@@ -231,7 +231,7 @@ uint32_t PpMatmulTilingApi::ComputeL1AbSize()
     return enDequant_ ? (L1_BUFFER_SIZE - L1_BIAS_SIZE - L1_SCALE_SIZE) : L1_BUFFER_SIZE;
 }
 
-float PpMatmulTilingApi::GetCost(const uint32_t m0, const uint32_t n0)
+float PpMatmulTilingApi::GetCost(const uint32_t m0, const uint32_t n0) const
 {
     float aCoef = 1.0;
     float bCoef = 1.0;
@@ -320,8 +320,8 @@ public:
     void RmsNormQuantTiling(const uint32_t numTokens);
     void RopeConcatTiling(const OpParam::MlaPreprocess &param, const uint32_t &aicNum);
     void EinSumQuantTiling(const OpParam::MlaPreprocess &param, const uint32_t &aicNum, const TensorDType inDtype);
-    void SetTiling(AtbOps::MlaTilingData &tilingParam);
-    void SetTilingKey(const Mki::LaunchParam &launchParam, Mki::KernelInfo &kernelInfo);
+    void SetTiling(AtbOps::MlaTilingData &tilingParam) const;
+    void SetTilingKey(const Mki::LaunchParam &launchParam, Mki::KernelInfo &kernelInfo) const;
     void SetMlapoWorkSpace(const TensorDType inDtype, const OpParam::MlaPreprocess &param, Mki::KernelInfo &kernelInfo);
 };
 
@@ -436,7 +436,7 @@ void MlaPreprocessTiling::EinSumQuantTiling(const OpParam::MlaPreprocess &param,
     tilingData.esqColTail = esqColTail;
 }
 
-void MlaPreprocessTiling::SetTiling(AtbOps::MlaTilingData &tilingParam)
+void MlaPreprocessTiling::SetTiling(AtbOps::MlaTilingData &tilingParam) const
 {
     tilingParam.n = tilingData.n;
     tilingParam.perTaskNum = tilingData.perTaskNum;
@@ -477,7 +477,7 @@ void MlaPreprocessTiling::SetTiling(AtbOps::MlaTilingData &tilingParam)
     tilingParam.esqColTail = tilingData.esqColTail;
 }
 
-void MlaPreprocessTiling::SetTilingKey(const Mki::LaunchParam &launchParam, Mki::KernelInfo &kernelInfo)
+void MlaPreprocessTiling::SetTilingKey(const Mki::LaunchParam &launchParam, Mki::KernelInfo &kernelInfo) const
 {
     OpParam::MlaPreprocess param = AnyCast<OpParam::MlaPreprocess>(launchParam.GetParam());
     TensorFormat formatWeight1 = launchParam.GetInTensor(INDEX_WDQKV).desc.format;

@@ -784,7 +784,7 @@ Status OperationBase::ExecuteVariantPackOutTensorCheck(const SVector<TensorType>
     return NO_ERROR;
 }
 
-Status OperationBase::ExecuteVariantPackCheck(const VariantPack &variantPack)
+Status OperationBase::ExecuteVariantPackCheck(const VariantPack &variantPack) const
 {
     Status st = NO_ERROR;
     st = ExecuteVariantPackInTensorCheck(variantPack.inTensors);
@@ -1347,7 +1347,7 @@ aclrtStream OperationBase::GetExecuteStream(Context *context) const
     return streams.at(streamId_);
 }
 
-Status OperationBase::CopyArgsToDevice(Context *context)
+Status OperationBase::CopyArgsToDevice(Context *context) const
 {
     Status st = NO_ERROR;
     if (hostArgsBuffer_ == nullptr) {

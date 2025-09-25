@@ -17,6 +17,7 @@
 
 #include <mki/utils/log/log.h>
 #include <mki/utils/env/env.h>
+#include <mki/utils/dl/dl.h>
 
 #include "profiling/report_timing.h"
 
@@ -25,6 +26,68 @@ using namespace chrono;
 using namespace Mki;
 
 namespace Lcal {
+using AclrtGetResInCurrentThreadFunc = int(*)(int, uint32_t *);
+
+int GetAclResInCurThread(int type, uint32_t &resource)
+{
+    static std::once_flag onceFlag;
+    static std::atomic<int> initFlag{LCAL_ERROR_NOT_INITIALIZED};  // -1
+    static std::unique_ptr<Mki::Dl> mkiDl; // 持久保存，避免库被卸载
+    static AclrtGetResInCurrentThreadFunc aclFn = nullptr;
+
+    std::call_once(onceFlag, []() {
+        std::string p;
+        const char *c = Mki::GetEnv("ASCEND_HOME_PATH");
+        if (c) {
+            p = std::string(c) + "/runtime/lib64/libascendcl.so";
+        } else {
+            p = "libascendcl.so";
+        }
+        auto dl = std::make_unique<Mki::Dl>(p, false);
+        if (!dl->IsValid()) {
+            MKI_LOG(ERROR) << "Try load libascendcl.so failed: " << p;
+            initFlag.store(LCAL_ERROR_NOT_FOUND, std::memory_order_release);
+            return;
+        }
+        auto sym = dl->GetSymbol("aclrtGetResInCurrentThread");
+        if (sym == nullptr) {
+            MKI_LOG(WARN) << "Symbol aclrtGetResInCurrentThread not found in: " << p;
+            initFlag.store(LCAL_ERROR_NOT_FOUND, std::memory_order_release);
+            return;
+        }
+        mkiDl = std::move(dl); // 保留句柄，防止卸载
+        aclFn = reinterpret_cast<AclrtGetResInCurrentThreadFunc>(sym);
+        initFlag.store(LCAL_SUCCESS, std::memory_order_release);
+        MKI_LOG(DEBUG) << "Loaded libascendcl.so and resolved aclrtGetResInCurrentThread from: " << p;
+    });
+
+    // 初始化结果判定
+    int rc = initFlag.load(std::memory_order_acquire);
+    if (rc != LCAL_SUCCESS) {
+        return rc;
+    }
+
+    if (type != ACL_RT_DEV_RES_CUBE_CORE && type != ACL_RT_DEV_RES_VECTOR_CORE) {
+        MKI_LOG(ERROR) << "aclrtGetResInCurrentThread not support resource type: " << type;
+        return LCAL_ERROR_PARA_CHECK_FAIL;
+    }
+
+    // 调用前检查函数指针有效性
+    if (aclFn == nullptr) {
+        MKI_LOG(ERROR) << "aclrtGetResInCurrentThread function pointer is null.";
+        return LCAL_ERROR_INTERNAL;
+    }
+
+    // 调用底层函数
+    const int ret = aclFn(type, &resource);
+    if (ret != ACL_SUCCESS) {
+        MKI_LOG(ERROR) << "aclrtGetResInCurrentThread failed. type: " << type << " err: " << ret;
+        return LCAL_ERROR_INTERNAL;
+    }
+
+    MKI_LOG(DEBUG) << "Got resource in current thread. type: " << type << " resource: " << resource;
+    return LCAL_SUCCESS;
+}
 
 uint32_t GetLocalReduceBlockDum(int64_t dataSize)
 {
@@ -226,9 +289,11 @@ uint32_t Lccl::GetBlockNum(LcalType cclType, uint32_t rankSize, int64_t dataSize
                            int localRankSize, uint32_t extraFlag) const
 {
     if (comm_ == nullptr) {
-        MKI_LOG(ERROR) << "comm is nullptr" << __LINE__;
+        MKI_LOG(ERROR) << "comm is nullptr " << __LINE__;
         return 0;
     }
+    uint32_t limitVal = 0;
+    aclrtDevResLimitType limitType = aclrtDevResLimitType::ACL_RT_DEV_RES_VECTOR_CORE;
     uint32_t blockNum = GetKernelBlockNum(cclType, rankSize, dataSize, localRankSize, extraFlag);
     if (comm_->isEnableMix_) {
         constexpr uint32_t aivNumPerAic = 2;
@@ -236,10 +301,21 @@ uint32_t Lccl::GetBlockNum(LcalType cclType, uint32_t rankSize, int64_t dataSize
             MKI_LOG(ERROR) << "Lccl not support odd block number at msprof op enabled!";
             return 0;
         }
-        return blockNum / aivNumPerAic;
-    } else {
-        return blockNum;
+        blockNum = blockNum / aivNumPerAic;
+        limitType = aclrtDevResLimitType::ACL_RT_DEV_RES_CUBE_CORE;
     }
+
+    int res = GetAclResInCurThread(static_cast<int>(limitType), limitVal);
+    if (res == LCAL_SUCCESS) {
+        MKI_LOG(DEBUG) << "Required blockNum(" << blockNum <<
+            ") limit:(limitVal=" << limitVal << ", limitType=" << static_cast<int>(limitType) << ")";
+        if (blockNum > limitVal) {
+            MKI_LOG(ERROR) << "Insufficient blockDim: Required blockNum(" << blockNum <<
+                ") exceeds limit (limitVal=" << limitVal << ", limitType=" << static_cast<int>(limitType) << ")";
+            return 0;
+        }
+    }
+    return blockNum;
 }
 
 int Lccl::LoopBack(const void *sendBuff, void *recvBuff, int64_t count, HcclDataType dataType, aclrtStream stream) const
