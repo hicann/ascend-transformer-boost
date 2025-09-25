@@ -187,8 +187,10 @@ inline __aicore__ void InitTilingData(const __gm__ uint8_t *p_tilingdata, AsdOps
 }
 
 #define GET_TILING_DATA(tiling_data, tiling_arg)                                                                       \
-    AsdOps::QuantF16TilingData tiling_data;                                                                            \
-    InitTilingData(tiling_arg, &(tiling_data))
+    do {                                                                                                               \
+        AsdOps::QuantF16TilingData tiling_data;                                                                        \
+        InitTilingData(tiling_arg, &(tiling_data))                                                                     \
+    } while (0)
 
 extern "C" __global__ __aicore__ void quant(GM_ADDR x, GM_ADDR z, GM_ADDR tiling)
 {

@@ -45,9 +45,11 @@ inline __aicore__ void InitTilingData(const __gm__ uint8_t *p_tilingdata, AtbOps
     AscendC::PipeBarrier<PIPE_ALL>();
 }
 
-#define GET_TILING_DATA(tilingData, tiling_arg, pipe)                                                      \
-    AtbOps::FusedAddTopkDivTilingData tilingData;                                                          \
-    InitTilingData(tiling_arg, &(tilingData), &(pipe))
+#define GET_TILING_DATA(tilingData, tiling_arg, pipe)                                                                  \
+    do {                                                                                                               \
+        AtbOps::FusedAddTopkDivTilingData tilingData;                                                                  \
+        InitTilingData(tiling_arg, &(tilingData), &(pipe))                                                             \
+    } while (0)
 
 extern "C" __global__ __aicore__ void fused_add_topk_div(GM_ADDR x, GM_ADDR addNum,
                                                          GM_ADDR mappingNum, GM_ADDR mappingTable, GM_ADDR y,

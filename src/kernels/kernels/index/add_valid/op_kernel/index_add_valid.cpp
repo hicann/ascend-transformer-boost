@@ -260,9 +260,11 @@ inline __aicore__ void InitTilingData(const __gm__ uint8_t *p_tilingdata, AsdOps
     tilingdata->valueSize = (*(const __gm__ uint32_t *)(p_tilingdata + 8));
 }
 
-#define GET_TILING_DATA(tiling_arg, tiling_data)                                                            \
-    AsdOps::IndexAddValidTilingData tiling_data;                                                            \
-    InitTilingData(tiling_arg, &(tiling_data))
+#define GET_TILING_DATA(tiling_arg, tiling_data)                                                                       \
+    do {                                                                                                               \
+        AsdOps::IndexAddValidTilingData tiling_data;                                                                   \
+        InitTilingData(tiling_arg, &(tiling_data))                                                                     \
+    } while (0)
 
 // 核函数
 extern "C" __global__ __aicore__ void index_add_valid(GM_ADDR var, GM_ADDR indices, GM_ADDR updates,

@@ -559,8 +559,10 @@ __aicore__ inline void InitTilingData(const __gm__ uint8_t *tiling, AsdOps::Grou
 }
 
 #define GET_TILING_DATA(tiling, tilingData)                                                                            \
-    AsdOps::GroupTopkTilingData tilingData;                                                                            \
-    InitTilingData(tiling, &(tilingData))
+    do {                                                                                                               \
+        AsdOps::GroupTopkTilingData tilingData;                                                                        \
+        InitTilingData(tiling, &(tilingData))                                                                          \
+    } while (0)
 
 template <typename T, GroupMultiFlag GROUP_FLAG>
 __aicore__ inline void group_topk_impl(GM_ADDR topKInput, GM_ADDR idxArr, AsdOps::GroupTopkTilingData &tilingData)

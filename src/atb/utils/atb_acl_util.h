@@ -15,6 +15,8 @@ See LICENSE in the root of the software repository for the full text of the Lice
 extern "C" {
 #endif
 
+#include <acl/acl_meta>
+
 int64_t GetTensorSize(const aclTensor *input);
 
 atb::Status aclTensorToAtbTensor(const aclTensor *aclTensorSrc, atb::Tensor *atbTensorDst);

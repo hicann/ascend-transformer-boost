@@ -393,9 +393,11 @@ inline __aicore__ void InitTilingData(const __gm__ uint8_t *p_tilingdata, AsdOps
 }
 
 #define GET_TILING_DATA(tilingArg, tilingData)                                                                         \
-    AsdOps::CohereLayerNormTilingData tilingData;                                                                      \
-    InitTilingData(tilingArg, &(tilingData))
- 
+    do {                                                                                                               \
+        AsdOps::CohereLayerNormTilingData tilingData;                                                                  \
+        InitTilingData(tilingArg, &(tilingData))                                                                       \
+    } while (0)
+
 extern "C" __global__ __aicore__ void cohere_layer_norm(GM_ADDR x, GM_ADDR gamma, GM_ADDR y, GM_ADDR tiling)
 {
     GET_TILING_DATA(tiling, tilingData);

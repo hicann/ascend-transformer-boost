@@ -367,11 +367,13 @@ inline __aicore__ void InitTilingData(const __gm__ uint8_t *pTilingdata,
     AscendC::PipeBarrier<PIPE_ALL>();
 #endif
 }
- 
-#define GET_TILING_DATA(tilingData, tilingArg)                                                                       \
-    AtbOps::RmsNormAndRopeAndReshapeAndCacheTilingData tilingData;                                                   \
-    InitTilingData(tilingArg, &(tilingData))
- 
+
+#define GET_TILING_DATA(tilingData, tilingArg)                                                                         \
+    do {                                                                                                               \
+        AtbOps::RmsNormAndRopeAndReshapeAndCacheTilingData tilingData;                                                 \
+        InitTilingData(tilingArg, &(tilingData))                                                                       \
+    } while (0)
+
 extern "C" __global__ __aicore__ void rms_norm_and_rope_and_reshape_and_cache(GM_ADDR x, GM_ADDR gamma,
     GM_ADDR keyRope, GM_ADDR cos, GM_ADDR sin, GM_ADDR slotMapping, GM_ADDR keycachein, GM_ADDR keycacheout,
     GM_ADDR tiling)

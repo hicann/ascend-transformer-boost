@@ -33,8 +33,10 @@ inline __aicore__ void InitTilingData(const __gm__ uint8_t *p_tilingdata, AtbOps
 }
 
 #define GET_TILING_DATA(tiling_data, tiling_arg, pipe)                                                                 \
-    AtbOps::SwiGluQuantTilingData tiling_data;                                                                         \
-    InitTilingData(tiling_arg, &(tiling_data), &(pipe))
+    do {                                                                                                               \
+        AtbOps::SwiGluQuantTilingData tiling_data;                                                                     \
+        InitTilingData(tiling_arg, &(tiling_data), &(pipe))                                                            \
+    } while (0)
 
 extern "C" __global__ __aicore__ void swi_glu_quant(GM_ADDR x, GM_ADDR y, GM_ADDR scale, GM_ADDR tiling)
 {

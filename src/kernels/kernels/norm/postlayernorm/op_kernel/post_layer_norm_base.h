@@ -229,8 +229,10 @@ inline __aicore__ void InitTilingData(const __gm__ uint8_t *p_tilingdata, AsdOps
 #endif
 }
 
-#define GET_TILING_DATA(tiling_data, tiling_arg) \
-    AsdOps::PostLayerNormTilingData tiling_data; \
-    InitTilingData(tiling_arg, &(tiling_data))
+#define GET_TILING_DATA(tiling_data, tiling_arg)                                                                       \
+    do {                                                                                                               \
+        AsdOps::PostLayerNormTilingData tiling_data;                                                                   \
+        InitTilingData(tiling_arg, &(tiling_data))                                                                     \
+    } while (0)
 
 #endif

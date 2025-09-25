@@ -88,9 +88,11 @@ inline __aicore__ void InitTilingData(const __gm__ uint8_t *p_tilingdata, AsdOps
 }
 
 
-#define GET_TILING_DATA(tiling_data, tiling_arg)    \
-    AsdOps::NonzeroTilingData tiling_data;      \
-    InitTilingData((tiling_arg), &(tiling_data))
+#define GET_TILING_DATA(tiling_data, tiling_arg)                                                                       \
+    do {                                                                                                               \
+        AsdOps::NonzeroTilingData tiling_data;                                                                         \
+        InitTilingData((tiling_arg), &(tiling_data))                                                                   \
+    } while (0)
 
 extern "C" __global__ __aicore__ void nonzero(GM_ADDR x, GM_ADDR y, GM_ADDR numTrues,
                                                     GM_ADDR workspace, GM_ADDR tiling) {
