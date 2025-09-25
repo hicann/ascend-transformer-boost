@@ -220,22 +220,22 @@ Status PagedCacheLoadOperation::KVCacheDimCheck910BNZ(const SVector<TensorDesc> 
         return ERROR_INVALID_TENSOR_DIM_NUM;
     }
     if (inTensorDescs.at(IN_TENSOR_0_KEYCACHE).dtype == ACL_INT8) {
-        if (THIRTYTWO != inTensorDescs.at(IN_TENSOR_0_KEYCACHE).shape.dims[OUT_DIM] ||
-                THIRTYTWO!= inTensorDescs.at(IN_TENSOR_1_VALUECACHE).shape.dims[OUT_DIM]) { // 1: valueCache
+        if (inTensorDescs.at(IN_TENSOR_0_KEYCACHE).shape.dims[OUT_DIM] != THIRTYTWO ||
+                inTensorDescs.at(IN_TENSOR_1_VALUECACHE).shape.dims[OUT_DIM] != THIRTYTWO) { // 1: valueCache
             ATB_LOG(ERROR) << GetLogPrefix() << "The last dimension of keycache and valuecache must be 32";
             return ERROR_INVALID_TENSOR_DIM;
         }
-        if (MAX_k < inTensorDescs.at(IN_TENSOR_0_KEYCACHE).shape.dims[1] * THIRTYTWO ||
-                MAX_v < inTensorDescs.at(IN_TENSOR_1_VALUECACHE).shape.dims[1] * THIRTYTWO) {
+        if (inTensorDescs.at(IN_TENSOR_0_KEYCACHE).shape.dims[1] * THIRTYTWO > MAX_k ||
+                inTensorDescs.at(IN_TENSOR_1_VALUECACHE).shape.dims[1] * THIRTYTWO > MAX_v) {
             ATB_LOG(ERROR) << GetLogPrefix() << "The scend dimension of blocktables must be less than 147456";
             return ERROR_INVALID_TENSOR_DIM;
         }
-    } else  if (SIXTEEN != inTensorDescs.at(IN_TENSOR_0_KEYCACHE).shape.dims[OUT_DIM] ||
-                SIXTEEN!= inTensorDescs.at(IN_TENSOR_1_VALUECACHE).shape.dims[OUT_DIM]) { // 1: valueCache
+    } else  if (inTensorDescs.at(IN_TENSOR_0_KEYCACHE).shape.dims[OUT_DIM] != SIXTEEN ||
+                inTensorDescs.at(IN_TENSOR_1_VALUECACHE).shape.dims[OUT_DIM] != SIXTEEN) { // 1: valueCache
             ATB_LOG(ERROR) << GetLogPrefix() << "The last dimension of keycache and valuecache must be 16";
             return ERROR_INVALID_TENSOR_DIM;
-    } else if (MAX_k < inTensorDescs.at(IN_TENSOR_0_KEYCACHE).shape.dims[1] * SIXTEEN ||
-                MAX_v < inTensorDescs.at(IN_TENSOR_1_VALUECACHE).shape.dims[1] * SIXTEEN) {
+    } else if (inTensorDescs.at(IN_TENSOR_0_KEYCACHE).shape.dims[1] * SIXTEEN > MAX_k ||
+                inTensorDescs.at(IN_TENSOR_1_VALUECACHE).shape.dims[1] * SIXTEEN > MAX_v) {
             ATB_LOG(ERROR) << GetLogPrefix() << "The scend dimension of blocktables must be less than 147456";
             return ERROR_INVALID_TENSOR_DIM;
     }
