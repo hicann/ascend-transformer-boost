@@ -41,7 +41,7 @@ const static std::map<std::string, SocVersion> CONVERT_MAP = {
     {"Ascend910_93", SocVersion::ASCEND910B},
 };
 
-static inline uint32_t GetCoreNumByType(const fe::PlatFormInfos &platformInfo, bool isAiv)
+static inline uint32_t GetCoreNumByType(fe::PlatFormInfos &platformInfo, bool isAiv)
 {
     std::string key;
     std::string val;
