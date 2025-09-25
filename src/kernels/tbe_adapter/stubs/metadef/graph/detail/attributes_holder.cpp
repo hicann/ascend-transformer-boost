@@ -12,28 +12,28 @@
 
 #define UNUSED_VALUE(x) (void)(x)
 namespace ge {
-void AttrHolder::CopyAttrsFrom(const AttrHolder &holder) const
+void AttrHolder::CopyAttrsFrom(const AttrHolder &holder)
 {
     UNUSED_VALUE(holder);
 }
-void AttrHolder::CopyFrom(const AttrHolder &holder) const
+void AttrHolder::CopyFrom(const AttrHolder &holder)
 {
     UNUSED_VALUE(holder);
 }
 
-graphStatus AttrHolder::SetAttr(const std::string &name, const AnyValue &value) const
+graphStatus AttrHolder::SetAttr(const std::string &name, const AnyValue &value)
 {
     UNUSED_VALUE(name);
     UNUSED_VALUE(value);
     return GRAPH_SUCCESS;
 }
-graphStatus AttrHolder::TrySetAttr(const std::string &name, const AnyValue &value) const
+graphStatus AttrHolder::TrySetAttr(const std::string &name, const AnyValue &value)
 {
     UNUSED_VALUE(name);
     UNUSED_VALUE(value);
     return GRAPH_SUCCESS;
 }
-graphStatus AttrHolder::AddRequiredAttr(const std::string &name) const
+graphStatus AttrHolder::AddRequiredAttr(const std::string &name)
 {
     UNUSED_VALUE(name);
     return GRAPH_SUCCESS;
@@ -52,7 +52,7 @@ bool AttrHolder::HasAttr(const std::string &name) const
     return true;
 }
 
-graphStatus AttrHolder::DelAttr(const std::string &name) const
+graphStatus AttrHolder::DelAttr(const std::string &name)
 {
     UNUSED_VALUE(name);
     return GRAPH_SUCCESS;
@@ -70,19 +70,19 @@ const std::set<std::string> AttrHolder::GetAllAttrNames() const
     return all;
 }
 
-template <> void GeIrProtoHelper<proto::AttrDef>::InitDefault() const {}
+template <> void GeIrProtoHelper<proto::AttrDef>::InitDefault() {}
 
-template <> void GeIrProtoHelper<proto::TensorDef>::InitDefault() const {}
+template <> void GeIrProtoHelper<proto::TensorDef>::InitDefault() {}
 
-template <> void GeIrProtoHelper<proto::TensorDescriptor>::InitDefault() const {}
+template <> void GeIrProtoHelper<proto::TensorDescriptor>::InitDefault() {}
 
-template <> void GeIrProtoHelper<proto::ShapeDef>::InitDefault() const {}
+template <> void GeIrProtoHelper<proto::ShapeDef>::InitDefault() {}
 
-template <> void GeIrProtoHelper<proto::NamedAttrs>::InitDefault() const {}
+template <> void GeIrProtoHelper<proto::NamedAttrs>::InitDefault() {}
 
-template <> void GeIrProtoHelper<proto::ModelDef>::InitDefault() const {}
+template <> void GeIrProtoHelper<proto::ModelDef>::InitDefault() {}
 
-template <> void GeIrProtoHelper<proto::OpDef>::InitDefault() const {}
+template <> void GeIrProtoHelper<proto::OpDef>::InitDefault() {}
 
-template <> void GeIrProtoHelper<proto::GraphDef>::InitDefault() const {}
+template <> void GeIrProtoHelper<proto::GraphDef>::InitDefault() {}
 } // namespace ge

@@ -183,7 +183,7 @@ bool GeShapeImpl::IsUnknownDimNum() const
     return (dims_.size() == 1UL) && (dims_[0UL] == UNKNOWN_DIM_NUM);
 }
 
-void GeShapeImpl::SetIsUnknownDimNum() const
+void GeShapeImpl::SetIsUnknownDimNum()
 {
     MKI_LOG(ERROR) << "fail in SetIsUnknownDimNum";
 }
@@ -201,7 +201,7 @@ int64_t GeShapeImpl::GetDim(const size_t idx) const
     return 0;
 }
 
-graphStatus GeShapeImpl::SetDim(const size_t idx, const int64_t value) const
+graphStatus GeShapeImpl::SetDim(const size_t idx, const int64_t value)
 {
     UNUSED_VALUE(idx);
     UNUSED_VALUE(value);
@@ -546,7 +546,7 @@ ConstProtoAttrMap &GeTensorDesc::GetAttrMap() const
     return impl_->GetAttrMap();
 }
 
-void GeTensorDesc::Update(const GeShape &shape, const Format format, const DataType dt) const
+void GeTensorDesc::Update(const GeShape &shape, const Format format, const DataType dt)
 {
     MKI_LOG(ERROR)<< "fail in Update";
     UNUSED_VALUE(shape);
@@ -559,32 +559,32 @@ const GeShape &GeTensorDesc::GetShape() const
     return ShapeReference();
 }
 
-GeShape &GeTensorDesc::MutableShape() const
+GeShape &GeTensorDesc::MutableShape()
 {
     MKI_LOG(ERROR)<< "fail in MutableShape";
     return ShapeReference();
 }
 
-void GeTensorDesc::SetShape(const GeShape &shape) const
+void GeTensorDesc::SetShape(const GeShape &shape)
 {
     MKI_LOG(ERROR)<< "fail in SetShape";
     UNUSED_VALUE(shape);
 }
 
-void GeTensorDesc::SetShape(GeShape &&shape) const
+void GeTensorDesc::SetShape(GeShape &&shape)
 {
     MKI_LOG(ERROR)<< "fail in SetShape";
     UNUSED_VALUE(shape);
 }
 
 // set shape with -2, it stand for unknown shape
-void GeTensorDesc::SetUnknownDimNumShape() const
+void GeTensorDesc::SetUnknownDimNumShape()
 {
     MKI_LOG(ERROR)<< "fail in SetUnknownDimNumShape";
 }
 
 // for unknown shape
-graphStatus GeTensorDesc::SetValueRange(const std::vector<std::pair<int64_t, int64_t>> &range) const
+graphStatus GeTensorDesc::SetValueRange(const std::vector<std::pair<int64_t, int64_t>> &range)
 {
     UNUSED_VALUE(range);
     MKI_LOG(ERROR) << "fail in SetValueRange";
@@ -599,14 +599,14 @@ graphStatus GeTensorDesc::GetValueRange(std::vector<std::pair<int64_t, int64_t>>
     return GRAPH_FAILED;
 }
 
-graphStatus GeTensorDesc::SetShapeRange(const std::vector<std::pair<int64_t, int64_t>> &range) const
+graphStatus GeTensorDesc::SetShapeRange(const std::vector<std::pair<int64_t, int64_t>> &range)
 {
     UNUSED_VALUE(range);
     MKI_LOG(ERROR) << "fail in SetShapeRange";
     return GRAPH_FAILED;
 }
 
-graphStatus GeTensorDesc::SetOriginShapeRange(const std::vector<std::pair<int64_t, int64_t>> &range) const
+graphStatus GeTensorDesc::SetOriginShapeRange(const std::vector<std::pair<int64_t, int64_t>> &range)
 {
     UNUSED_VALUE(range);
     std::vector<std::vector<int64_t>> origin_shape_range;
@@ -718,7 +718,7 @@ std::vector<uint32_t> GeTensorDesc::GetRefPortIndex() const
     return ref_port_index;
 }
 
-void GeTensorDesc::SetRefPortByIndex(const std::vector<uint32_t> &index) const
+void GeTensorDesc::SetRefPortByIndex(const std::vector<uint32_t> &index)
 {
     MKI_LOG(ERROR) << "fail in SetRefPortByIndex";
     UNUSED_VALUE(index);
@@ -731,7 +731,7 @@ Placement GeTensorDesc::GetPlacement() const
     return static_cast<Placement>(placement);
 }
 
-void GeTensorDesc::SetPlacement(const Placement placement) const
+void GeTensorDesc::SetPlacement(const Placement placement)
 {
     MKI_LOG(ERROR) << "fail in SetPlacement";
     UNUSED_VALUE(placement);
@@ -767,7 +767,7 @@ GeTensorDesc &GeTensorDesc::operator=(GeTensorDesc &&desc)
 }
 
 const std::string GeTensorDesc::GetExpandDimsRule() const { return std::string(); }
-void GeTensorDesc::SetExpandDimsRule(const std::string &expand_dims_rule) const
+void GeTensorDesc::SetExpandDimsRule(const std::string &expand_dims_rule)
 {
     UNUSED_VALUE(expand_dims_rule);
     MKI_LOG(ERROR) << "fail in SetExpandDimsRule";
@@ -793,32 +793,32 @@ TensorData &TensorData::operator=(const TensorData &other)
     return *this;
 }
 
-graphStatus TensorData::SetData(std::vector<uint8_t> &&data) const
+graphStatus TensorData::SetData(std::vector<uint8_t> &&data)
 {
     UNUSED_VALUE(data);
     MKI_LOG(ERROR) << "fail in SetData";
     return GRAPH_SUCCESS;
 }
-graphStatus TensorData::SetData(const std::vector<uint8_t> &data) const
+graphStatus TensorData::SetData(const std::vector<uint8_t> &data)
 {
     UNUSED_VALUE(data);
     MKI_LOG(ERROR) << "fail in SetData";
     return GRAPH_SUCCESS;
 }
-graphStatus TensorData::SetData(const Buffer &data) const
+graphStatus TensorData::SetData(const Buffer &data)
 {
     UNUSED_VALUE(data);
     MKI_LOG(ERROR) << "fail in SetData";
     return GRAPH_SUCCESS;
 }
-graphStatus TensorData::SetData(const TensorData &data) const
+graphStatus TensorData::SetData(const TensorData &data)
 {
     UNUSED_VALUE(data);
     MKI_LOG(ERROR) << "fail in SetData";
     return GRAPH_SUCCESS;
 }
 
-graphStatus TensorData::SetData(const uint8_t *const data, const size_t size) const
+graphStatus TensorData::SetData(const uint8_t *const data, const size_t size)
 {
     UNUSED_VALUE(data);
     UNUSED_VALUE(size);
@@ -826,7 +826,7 @@ graphStatus TensorData::SetData(const uint8_t *const data, const size_t size) co
     return GRAPH_SUCCESS;
 }
 
-graphStatus TensorData::SetData(uint8_t *const data, const size_t size, const AlignedPtr::Deleter &delete_fuc) const
+graphStatus TensorData::SetData(uint8_t *const data, const size_t size, const AlignedPtr::Deleter &delete_fuc)
 {
     UNUSED_VALUE(data);
     UNUSED_VALUE(size);
@@ -835,14 +835,14 @@ graphStatus TensorData::SetData(uint8_t *const data, const size_t size, const Al
     return GRAPH_SUCCESS;
 }
 
-void TensorData::SetData(std::shared_ptr<AlignedPtr> aligned_ptr, const size_t size) const
+void TensorData::SetData(std::shared_ptr<AlignedPtr> aligned_ptr, const size_t size)
 {
     UNUSED_VALUE(aligned_ptr);
     MKI_LOG(ERROR) << "fail in SetData";
     UNUSED_VALUE(size);
 }
 
-const uint8_t *TensorData::MallocAlignedPtr(const size_t size) const
+const uint8_t *TensorData::MallocAlignedPtr(const size_t size)
 {
     UNUSED_VALUE(size);
     MKI_LOG(ERROR) << "fail in MallocAlignedPtr";
@@ -861,7 +861,7 @@ const uint8_t *TensorData::GetData() const
     return nullptr;
 }
 
-uint8_t *TensorData::GetData() const
+uint8_t *TensorData::GetData()
 {
     MKI_LOG(ERROR) << "fail in GetData";
     return nullptr;
@@ -882,7 +882,7 @@ std::size_t TensorData::size() const
     MKI_LOG(ERROR) << "fail in size";
     return GetSize();
 }
-void TensorData::clear() const
+void TensorData::clear()
 {
     MKI_LOG(ERROR) << "fail in clear";
 }
@@ -894,7 +894,7 @@ uint8_t TensorData::operator[](const size_t index) const
     return 0;
 }
 
-const std::shared_ptr<AlignedPtr> &TensorData::GetAlignedPtr() const
+const std::shared_ptr<AlignedPtr> &TensorData::GetAlignedPtr()
 {
     static std::shared_ptr<AlignedPtr> ptr = nullptr;
     MKI_LOG(ERROR) << "fail in GetAlignedPtr";
@@ -974,7 +974,7 @@ GeTensor::GeTensor(const ProtoMsgOwner &proto_owner, proto::TensorDef *proto_msg
 
 GeTensor::~GeTensor() = default;
 
-void GeTensor::BuildAlignerPtrWithProtoData() const
+void GeTensor::BuildAlignerPtrWithProtoData()
 {
     MKI_LOG(ERROR) << "fail in BuildAlignerPtrWithProtoData";
 }
@@ -985,7 +985,7 @@ const GeTensorDesc &GeTensor::GetTensorDesc() const
     return DescReference();
 }
 
-GeTensorDesc &GeTensor::MutableTensorDesc() const
+GeTensorDesc &GeTensor::MutableTensorDesc()
 {
     MKI_LOG(ERROR) << "fail in MutableTensorDesc";
     return DescReference();
@@ -997,66 +997,66 @@ GeTensorDesc &GeTensor::DescReference() const
     return DescReference();
 }
 
-void GeTensor::SetTensorDesc(const GeTensorDesc &tensor_desc) const
+void GeTensor::SetTensorDesc(const GeTensorDesc &tensor_desc)
 {
     MKI_LOG(ERROR) << "fail in SetTensorDesc";
     UNUSED_VALUE(tensor_desc);
 }
 
-graphStatus GeTensor::SetData(std::vector<uint8_t> &&data) const
+graphStatus GeTensor::SetData(std::vector<uint8_t> &&data)
 {
     UNUSED_VALUE(data);
     MKI_LOG(ERROR) << "fail in SetData";
     return GRAPH_SUCCESS;
 }
 
-graphStatus GeTensor::SetData(const std::vector<uint8_t> &data) const
+graphStatus GeTensor::SetData(const std::vector<uint8_t> &data)
 {
     UNUSED_VALUE(data);
     MKI_LOG(ERROR) << "fail in SetData";
     return GRAPH_SUCCESS;
 }
 
-graphStatus GeTensor::SetData(const uint8_t *const data, const size_t size) const
-{
-    UNUSED_VALUE(data);
-    UNUSED_VALUE(size);
-    MKI_LOG(ERROR) << "fail in SetData";
-    return GRAPH_SUCCESS;
-}
-
-graphStatus GeTensor::SetData(const Buffer &data) const
-{
-    UNUSED_VALUE(data);
-    MKI_LOG(ERROR) << "fail in SetData";
-    return GRAPH_SUCCESS;
-}
-
-graphStatus GeTensor::SetData(const TensorData &data) const
-{
-    UNUSED_VALUE(data);
-    MKI_LOG(ERROR) << "fail in SetData";
-    return GRAPH_SUCCESS;
-}
-
-graphStatus GeTensor::SetData(uint8_t *const data, const size_t size, const AlignedPtr::Deleter &delete_fuc) const
+graphStatus GeTensor::SetData(const uint8_t *const data, const size_t size)
 {
     UNUSED_VALUE(data);
     UNUSED_VALUE(size);
-    UNUSED_VALUE(delete_fuc);
     MKI_LOG(ERROR) << "fail in SetData";
     return GRAPH_SUCCESS;
 }
 
-graphStatus GeTensor::ResetData(uint8_t *const data, const size_t size, const AlignedPtr::Deleter &delete_fuc) const
+graphStatus GeTensor::SetData(const Buffer &data)
+{
+    UNUSED_VALUE(data);
+    MKI_LOG(ERROR) << "fail in SetData";
+    return GRAPH_SUCCESS;
+}
+
+graphStatus GeTensor::SetData(const TensorData &data)
+{
+    UNUSED_VALUE(data);
+    MKI_LOG(ERROR) << "fail in SetData";
+    return GRAPH_SUCCESS;
+}
+
+graphStatus GeTensor::SetData(uint8_t *const data, const size_t size, const AlignedPtr::Deleter &delete_fuc)
 {
     UNUSED_VALUE(data);
     UNUSED_VALUE(size);
     UNUSED_VALUE(delete_fuc);
+    MKI_LOG(ERROR) << "fail in SetData";
     return GRAPH_SUCCESS;
 }
 
-void GeTensor::ClearData() const
+graphStatus GeTensor::ResetData(uint8_t *const data, const size_t size, const AlignedPtr::Deleter &delete_fuc)
+{
+    UNUSED_VALUE(data);
+    UNUSED_VALUE(size);
+    UNUSED_VALUE(delete_fuc);
+    return GRAPH_SUCCESS;
+}
+
+void GeTensor::ClearData()
 {
     MKI_LOG(ERROR) << "fail in ClearData";
 }
@@ -1087,7 +1087,7 @@ GeTensor &GeTensor::operator=(GeTensor &&other)
     return *this;
 }
 
-std::shared_ptr<AlignedPtr> GeTensor::GetAlignedPtr() const
+std::shared_ptr<AlignedPtr> GeTensor::GetAlignedPtr()
 {
     MKI_LOG(ERROR) << "fail in GetAlignedPtr";
     return nullptr;
@@ -1099,14 +1099,14 @@ const TensorData &GeTensor::GetData() const
     MKI_LOG(ERROR) << "fail in GetData";
     return tensorData;
 }
-TensorData &GeTensor::MutableData() const
+TensorData &GeTensor::MutableData()
 {
     static TensorData tensorData;
     MKI_LOG(ERROR) << "fail in MutableData";
     return tensorData;
 }
 // zero copy SetData
-void GeTensor::SetData(std::shared_ptr<AlignedPtr> aligned_ptr, const size_t size) const
+void GeTensor::SetData(std::shared_ptr<AlignedPtr> aligned_ptr, const size_t size)
 {
     UNUSED_VALUE(aligned_ptr);
     UNUSED_VALUE(size);
