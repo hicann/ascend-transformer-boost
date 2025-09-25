@@ -22,9 +22,9 @@ Status FusionTiling(const LaunchParam &launchParam, KernelInfo &kernelInfo)
     OpParam::Fusion fusionType = launchParam.GetParam<OpParam::Fusion>();
     std::string path(std::getenv("HOME"));
     path += std::string("/.atb_auto_fusion/bishengir_bin/") +
-            (OpParam::Fusion::MATMUL_ADD == fusionType.fusionType ? "libmatmul_add.so" : "libmatmul_gelu.so");
+            (fusionType.fusionType == OpParam::Fusion::MATMUL_ADD ? "libmatmul_add.so" : "libmatmul_gelu.so");
     std::string inferWorkspaceFuncName =
-        (OpParam::Fusion::MATMUL_ADD == fusionType.fusionType ? "matmul_add_" : "matmul_gelu_");
+        (fusionType.fusionType == OpParam::Fusion::MATMUL_ADD ? "matmul_add_" : "matmul_gelu_");
     FusionTilingData *tilingDataPtr = reinterpret_cast<FusionTilingData *>(kernelInfo.GetTilingHostAddr());
     void *handle = dlopen(path.c_str(), RTLD_LAZY);
     if (!handle) {
@@ -36,9 +36,12 @@ Status FusionTiling(const LaunchParam &launchParam, KernelInfo &kernelInfo)
     std::string tilingFuncName = inferWorkspaceFuncName + "tiling_func";
     *(void **)(&tilingFunc) = dlsym(handle, tilingFuncName.c_str());
     errorInfo = dlerror();
+    if (errorInfo != nullptr || tilingFunc == nullptr) {
+        return Status::FailStatus(-1, "Get tilingFunc failed!");
+    }
     KernelArgs *kernelArgs = new (std::nothrow) KernelArgs;
-    if (errorInfo != nullptr || tilingFunc == nullptr || kernelArgs == nullptr) {
-        return Status::FailStatus(-1, "Get tilingFunc or Malloc for binary params failed!");
+    if (kernelArgs == nullptr) {
+        return Status::FailStatus(-1, "Malloc for binary params failed!");
     }
     kernelArgs->tilingDevice = static_cast<void *>(tilingDataPtr);
     kernelArgs->tilingDeviceDup = kernelArgs->tilingDevice;
@@ -48,10 +51,15 @@ Status FusionTiling(const LaunchParam &launchParam, KernelInfo &kernelInfo)
     MKI_LOG(INFO) << "now inferWorkspaceFuncName is" << inferWorkspaceFuncName;
     *(void **)(&inferworkspaceFunc) = dlsym(handle, inferWorkspaceFuncName.c_str());
     errorInfo = dlerror();
+    if (errorInfo != nullptr || inferworkspaceFunc == nullptr) {
+        delete kernelArgs;
+        return Status::FailStatus(-1, "Get workspaceFunc failed!");
+    }
     KernelArgsForInferShapeWorkspaceWithTiling *wsWithTiling =
         new (std::nothrow) KernelArgsForInferShapeWorkspaceWithTiling;
-    if (errorInfo != nullptr || inferworkspaceFunc == nullptr || wsWithTiling == nullptr) {
-        return Status::FailStatus(-1, "Get workspaceFunc or Get workspace tiling failed!");
+    if (wsWithTiling == nullptr) {
+        delete kernelArgs;
+        return Status::FailStatus(-1, "Get workspace tiling space failed!");
     }
     wsWithTiling->tilingDevice = tilingDataPtr;
     wsWithTiling->tilingDeviceDup = tilingDataPtr;

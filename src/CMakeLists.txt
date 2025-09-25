@@ -8,9 +8,9 @@
 # See LICENSE in the root of the software repository for the full text of the License.
 #
 
-set(ops_train_directory ${CMAKE_CURRENT_LIST_DIR}/ops_train)
-set(ops_infer_directory ${CMAKE_CURRENT_LIST_DIR}/ops_infer)
-set(ops_common_directory ${CMAKE_CURRENT_LIST_DIR}/ops_common)
+set(ops_train_directory ${CMAKE_CURRENT_LIST_DIR}/ops/ops_train)
+set(ops_infer_directory ${CMAKE_CURRENT_LIST_DIR}/ops/ops_infer)
+set(ops_common_directory ${CMAKE_CURRENT_LIST_DIR}/ops/ops_common)
 set(atb_directory ${CMAKE_CURRENT_LIST_DIR}/atb)
 set(MSTX_PATH $ENV{ASCEND_HOME_PATH}/tools/mstx/include)
 set(ATB_INCLUDE_DIR $ENV{ASCEND_HOME_PATH}/include)

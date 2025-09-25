@@ -339,7 +339,7 @@ def write_tbe_tactic_json(input_args, json_paths_info):
 
 def main():
     code_root_dir = get_code_root()
-    tactic_info_path = os.path.join(code_root_dir, "configs/ops/tbe_tactic_info.ini")
+    tactic_info_path = os.path.join(code_root_dir, "src/kernels/configs/ops/tbe_tactic_info.ini")
     
     build_cache_dir, _ = get_build_cache_path()
     tactic_json_path = os.path.join(build_cache_dir, "tbe_tactic_json.ini")
