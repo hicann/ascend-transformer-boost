@@ -41,18 +41,23 @@ const static std::map<std::string, SocVersion> CONVERT_MAP = {
     {"Ascend910_93", SocVersion::ASCEND910B},
 };
 
-static uint32_t safeChangeStringtoUnit32(const std::string &str)
+namespace {
+constexpr uint32_t DECIMAL = 10;
+uint32_t safeChangeStringtoUnit32(const std::string &str)
 {
     if (str.empty()) {
+        MKI_LOG(WARN) << "var is empty";
         return 0;
     }
     char *endptr = nullptr;
     const char* cstr = str.c_str();
-    long result = std::strtol(cstr, &endptr, 10);
+    long result = std::strtol(cstr, &endptr, DECIMAL);
     if (cstr == endptr || *endptr != '\0') {
+        MKI_LOG(WARN) << "Failed to convert string to uint32: " << str;
         return 0;
     }
     return static_cast<uint32_t>(result);
+}
 }
 
 static inline uint32_t GetCoreNumByType(fe::PlatFormInfos *platformInfo, bool isAiv)
