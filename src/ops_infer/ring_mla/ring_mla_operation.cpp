@@ -53,8 +53,8 @@ namespace atb {
 bool ParamCheck(const infer::RingMLAParam &opParam, ExternalError &extError)
 {
     if (opParam.calcType != infer::RingMLAParam::CalcType::CALC_TYPE_DEFAULT &&
-        opParam.calcType != infer::RingMLAParam::CalcType::CALC_TYPE_FISRT_RING) {
-        extError.errorDesc = "Ring MLA expects calcType to be one of CALC_TYPE_DEFAULT, CALC_TYPE_FISRT_RING.";
+        opParam.calcType != infer::RingMLAParam::CalcType::CALC_TYPE_FIRST_RING) {
+        extError.errorDesc = "Ring MLA expects calcType to be one of CALC_TYPE_DEFAULT, CALC_TYPE_FIRST_RING.";
         extError.errorData = OperationUtil::ConcatInfo("But got param.calcType = ", opParam.calcType);
         ATB_LOG(ERROR) << extError;
         return false;
