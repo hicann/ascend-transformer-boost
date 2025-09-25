@@ -210,7 +210,7 @@ public:
         return;
     }
 
-    void ErasedFusion()
+    void ErasedFusion() const
     {
         static uint8_t erasedFusionKernelBinData[DYNAMICNULLSIZE];
         uint32_t counter = 0;
@@ -292,7 +292,7 @@ protected:
         return Status::OkStatus();
     }
     
-    bool IsSoftLink(const char *path)
+    bool IsSoftLink(const char *path) const
     {
         struct stat fileStat;
         if (lstat(path, &fileStat) != 0) {
