@@ -21,13 +21,13 @@ PlatformInfoManager& PlatformInfoManager::GeInstance()
     return Instance();
 }
 
-uint32_t PlatformInfoManager::InitializePlatformInfo() const
+uint32_t PlatformInfoManager::InitializePlatformInfo()
 {
     return 1;
 }
 
 uint32_t PlatformInfoManager::GetPlatformInfoWithOutSocVersion(
-    PlatformInfo &platformInfo, OptionalInfo &optiCompilationInfo) const
+    PlatformInfo &platformInfo, OptionalInfo &optiCompilationInfo)
 {
     (void)platformInfo;
     (void)optiCompilationInfo;
@@ -35,21 +35,21 @@ uint32_t PlatformInfoManager::GetPlatformInfoWithOutSocVersion(
 }
 
 uint32_t PlatformInfoManager::GetPlatformInfoWithOutSocVersion(
-    PlatFormInfos &platformInfo, OptionalInfos &optiCompilationInfo) const
+    PlatFormInfos &platformInfo, OptionalInfos &optiCompilationInfo)
 {
     (void)platformInfo;
     (void)optiCompilationInfo;
     return 1;
 }
 
-uint32_t PlatformInfoManager::InitRuntimePlatformInfos(const std::string &socVersion) const
+uint32_t PlatformInfoManager::InitRuntimePlatformInfos(const std::string &socVersion)
 {
     (void)socVersion;
     return 1;
 }
 
 uint32_t PlatformInfoManager::GetPlatformInfos(
-    const string SoCVersion, PlatFormInfos &platform_info, OptionalInfos &opti_compilation_info) const
+    const string SoCVersion, PlatFormInfos &platform_info, OptionalInfos &opti_compilation_info)
 {
     (void)SoCVersion;
     (void)platform_info;
