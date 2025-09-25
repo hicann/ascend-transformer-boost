@@ -162,7 +162,7 @@ private:
     {
         MKI_CHECK(q.desc.dtype == tensorMask.desc.dtype, "mask data type not consitent with q", return false);
         MKI_CHECK(tensorMask.desc.dtype == TENSOR_DTYPE_FLOAT16,
-                     "Input4 dtype should be float16 or bfloat16", return false);
+                     "Input4 dtype should be float16", return false);
         return true;
     }
 
@@ -193,7 +193,7 @@ private:
             {{batch, maxQ, maxKv}, norm},
             {{headSize, maxQ, maxKv}, alibi},
             {{static_cast<int32_t>(batch) / kvHead, maxQ, maxKv}, norm && param.compressHead},
-            {{headSize, maxQ, maxKv}, alibi && alibi && param.compressHead},
+            {{headSize, maxQ, maxKv}, alibi && param.compressHead},
             {{headSize, maxQ, LONG_SEQ_LEN}, isAlibiCompress},
             {{batch, headSize, maxQ, maxKv}, true},
             {{static_cast<int32_t>(batch) / kvHead, headSize, maxQ, maxKv}, alibi && param.compressHead},
@@ -214,6 +214,11 @@ private:
         auto maskLen = currentShape[DIM_2];
         auto alibi = param.maskType == OpParam::UnpadFlashAttentionNz::MASK_TYPE_ALIBI;
         auto isLongSeq = (param.isTriuMask == 1) && (maskLen == LONG_SEQ_LEN);
+        constexpr int32_t MAX_SAFE_VALUE = FP16_ALIGN_NUM - 1;
+        MKI_CHECK(shapePara.maxQ <= INT32_MAX - MAX_SAFE_VALUE,
+                "shapePara.maxQ is too large, please check", return false);
+        MKI_CHECK(shapePara.maxKv <= INT32_MAX - MAX_SAFE_VALUE,
+                "shapePara.maxKv is too large, please check", return false);
         auto maxNzQ = (shapePara.maxQ + FP16_ALIGN_NUM - 1) / FP16_ALIGN_NUM * FP16_ALIGN_NUM;
         auto maxKv = (shapePara.maxKv + FP16_ALIGN_NUM - 1) / FP16_ALIGN_NUM * FP16_ALIGN_NUM;
         auto batch = shapePara.batch;
