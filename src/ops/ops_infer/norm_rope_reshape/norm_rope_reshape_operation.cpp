@@ -55,8 +55,7 @@ template <> Status CreateOperation(const infer::NormRopeReshapeParam &opParam, O
     return NO_ERROR;
 }
  
-NormRopeReshapeOperation::NormRopeReshapeOperation
-(const infer::NormRopeReshapeParam &param)
+NormRopeReshapeOperation::NormRopeReshapeOperation(const infer::NormRopeReshapeParam &param)
     : OperationBase("NormRopeReshapeOperation"), param_(param)
 {
     operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("NormRopeReshapeOperation");
@@ -206,8 +205,8 @@ Status NormRopeReshapeOperation::CheckOutTensorSame
     return NO_ERROR;
 }
  
-bool NormRopeReshapeOperation::GammaBetaTensorCheck
-(const TensorDesc &xTensorDesc, const TensorDesc &tensorDesc2) const
+bool NormRopeReshapeOperation::GammaBetaTensorCheck(
+    const TensorDesc &xTensorDesc, const TensorDesc &tensorDesc2) const
 {
     int embedDim = xTensorDesc.shape.dims[xTensorDesc.shape.dimNum - 1];
     if (xTensorDesc.dtype != tensorDesc2.dtype || xTensorDesc.format != tensorDesc2.format) {
