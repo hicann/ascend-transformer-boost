@@ -35,13 +35,15 @@ public:
 
     static PlatformInfoManager &Instance();
     static PlatformInfoManager &GeInstance();
-    uint32_t InitializePlatformInfo();
+    uint32_t InitializePlatformInfo() const;
 
-    uint32_t GetPlatformInfoWithOutSocVersion(PlatformInfo &platformInfo, OptionalInfo &optiCompilationInfo);
+    uint32_t GetPlatformInfoWithOutSocVersion(PlatformInfo &platformInfo, OptionalInfo &optiCompilationInfo) const;
 
-    uint32_t GetPlatformInfoWithOutSocVersion(PlatFormInfos &platformInfo, OptionalInfos &optiCompilationInfo);
+    uint32_t GetPlatformInfoWithOutSocVersion(PlatFormInfos &platformInfo, OptionalInfos &optiCompilationInfo) const;
 
-    uint32_t InitRuntimePlatformInfos(const std::string &socVersion);
+    uint32_t InitRuntimePlatformInfos(const std::string &socVersion) const;
+
+    uint32_t GetPlatformInfos(const string SoCVersion, PlatFormInfos &platform_info, OptionalInfos &opti_compilation_info) const
 
 private:
     PlatformInfoManager();

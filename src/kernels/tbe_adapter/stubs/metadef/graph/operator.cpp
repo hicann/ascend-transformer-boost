@@ -117,35 +117,35 @@ graphStatus Operator::GetName(AscendString &name) const
     return GRAPH_SUCCESS;
 }
 
-GE_FUNC_HOST_VISIBILITY Operator &Operator::SetInput(const std::string &dst_name, const ge::Operator &src_oprt) const
+GE_FUNC_HOST_VISIBILITY Operator &Operator::SetInput(const std::string &dst_name, const ge::Operator &src_oprt)
 {
     UNUSED_VALUE(dst_name);
     UNUSED_VALUE(src_oprt);
     return *this;
 }
 
-GE_FUNC_HOST_VISIBILITY Operator &Operator::SetInput(const char_t *dst_name, const ge::Operator &src_oprt) const
+GE_FUNC_HOST_VISIBILITY Operator &Operator::SetInput(const char_t *dst_name, const ge::Operator &src_oprt)
 {
     UNUSED_VALUE(dst_name);
     UNUSED_VALUE(src_oprt);
     return *this;
 }
 
-Operator &Operator::SetInput(const std::string &dst_name, const ge::OutHandler &out_handler) const
+Operator &Operator::SetInput(const std::string &dst_name, const ge::OutHandler &out_handler)
 {
     UNUSED_VALUE(dst_name);
     UNUSED_VALUE(out_handler);
     return *this;
 }
 
-Operator &Operator::SetInput(const char_t *dst_name, const ge::OutHandler &out_handler) const
+Operator &Operator::SetInput(const char_t *dst_name, const ge::OutHandler &out_handler)
 {
     UNUSED_VALUE(dst_name);
     UNUSED_VALUE(out_handler);
     return *this;
 }
 
-Operator &Operator::SetInput(const std::string &dst_name, const ge::Operator &src_oprt, const std::string &name) const
+Operator &Operator::SetInput(const std::string &dst_name, const ge::Operator &src_oprt, const std::string &name)
 {
     UNUSED_VALUE(dst_name);
     UNUSED_VALUE(src_oprt);
@@ -153,7 +153,7 @@ Operator &Operator::SetInput(const std::string &dst_name, const ge::Operator &sr
     return *this;
 }
 
-Operator &Operator::SetInput(const char_t *dst_name, const ge::Operator &src_oprt, const char_t *name) const
+Operator &Operator::SetInput(const char_t *dst_name, const ge::Operator &src_oprt, const char_t *name)
 {
     UNUSED_VALUE(dst_name);
     UNUSED_VALUE(src_oprt);
@@ -161,7 +161,7 @@ Operator &Operator::SetInput(const char_t *dst_name, const ge::Operator &src_opr
     return *this;
 }
 
-Operator &Operator::SetInput(const std::string &dst_name, const ge::Operator &src_oprt, uint32_t index) const
+Operator &Operator::SetInput(const std::string &dst_name, const ge::Operator &src_oprt, uint32_t index)
 {
     UNUSED_VALUE(dst_name);
     UNUSED_VALUE(src_oprt);
@@ -169,7 +169,7 @@ Operator &Operator::SetInput(const std::string &dst_name, const ge::Operator &sr
     return *this;
 }
 
-Operator &Operator::SetInput(const char_t *dst_name, const ge::Operator &src_oprt, uint32_t index) const
+Operator &Operator::SetInput(const char_t *dst_name, const ge::Operator &src_oprt, uint32_t index)
 {
     UNUSED_VALUE(dst_name);
     UNUSED_VALUE(src_oprt);
@@ -177,7 +177,7 @@ Operator &Operator::SetInput(const char_t *dst_name, const ge::Operator &src_opr
     return *this;
 }
 
-Operator &Operator::SetInput(uint32_t dst_index, const Operator &src_oprt, uint32_t src_index) const
+Operator &Operator::SetInput(uint32_t dst_index, const Operator &src_oprt, uint32_t src_index)
 {
     UNUSED_VALUE(dst_index);
     UNUSED_VALUE(src_oprt);
@@ -185,7 +185,7 @@ Operator &Operator::SetInput(uint32_t dst_index, const Operator &src_oprt, uint3
     return *this;
 }
 
-Operator &Operator::AddControlInput(const Operator &src_oprt) const
+Operator &Operator::AddControlInput(const Operator &src_oprt)
 {
     UNUSED_VALUE(src_oprt);
     return *this;
@@ -233,7 +233,7 @@ TensorDesc Operator::GetInputDescByName(const char_t *name) const
     return TensorDesc();
 }
 
-void Operator::SetInferenceContext(const InferenceContextPtr &inference_context) const
+void Operator::SetInferenceContext(const InferenceContextPtr &inference_context)
 {
     UNUSED_VALUE(inference_context);
 }
@@ -260,14 +260,14 @@ graphStatus Operator::TryGetInputDesc(const char_t *name, TensorDesc &tensor_des
     return GRAPH_SUCCESS;
 }
 
-graphStatus Operator::UpdateInputDesc(const std::string &name, const ge::TensorDesc &tensor_desc) const
+graphStatus Operator::UpdateInputDesc(const std::string &name, const ge::TensorDesc &tensor_desc)
 {
     UNUSED_VALUE(name);
     UNUSED_VALUE(tensor_desc);
     return GRAPH_SUCCESS;
 }
 
-graphStatus Operator::UpdateInputDesc(const char_t *name, const ge::TensorDesc &tensor_desc) const
+graphStatus Operator::UpdateInputDesc(const char_t *name, const ge::TensorDesc &tensor_desc)
 {
     UNUSED_VALUE(name);
     UNUSED_VALUE(tensor_desc);
@@ -309,14 +309,14 @@ TensorDesc Operator::GetOutputDesc(uint32_t index) const
     return TensorDesc();
 }
 
-graphStatus Operator::UpdateOutputDesc(const std::string &name, const ge::TensorDesc &tensor_desc) const
+graphStatus Operator::UpdateOutputDesc(const std::string &name, const ge::TensorDesc &tensor_desc)
 {
     UNUSED_VALUE(name);
     UNUSED_VALUE(tensor_desc);
     return GRAPH_SUCCESS;
 }
 
-graphStatus Operator::UpdateOutputDesc(const char_t *name, const ge::TensorDesc &tensor_desc) const
+graphStatus Operator::UpdateOutputDesc(const char_t *name, const ge::TensorDesc &tensor_desc)
 {
     UNUSED_VALUE(name);
     UNUSED_VALUE(tensor_desc);
@@ -337,7 +337,7 @@ TensorDesc Operator::GetDynamicInputDesc(const char_t *name, uint32_t index) con
     return TensorDesc();
 }
 
-graphStatus Operator::UpdateDynamicInputDesc(const std::string &name, uint32_t index, const TensorDesc &tensor_desc) const
+graphStatus Operator::UpdateDynamicInputDesc(const std::string &name, uint32_t index, const TensorDesc &tensor_desc)
 {
     UNUSED_VALUE(name);
     UNUSED_VALUE(index);
@@ -345,7 +345,7 @@ graphStatus Operator::UpdateDynamicInputDesc(const std::string &name, uint32_t i
     return GRAPH_SUCCESS;
 }
 
-graphStatus Operator::UpdateDynamicInputDesc(const char_t *name, uint32_t index, const TensorDesc &tensor_desc) const
+graphStatus Operator::UpdateDynamicInputDesc(const char_t *name, uint32_t index, const TensorDesc &tensor_desc)
 {
     UNUSED_VALUE(name);
     UNUSED_VALUE(index);
@@ -367,7 +367,7 @@ TensorDesc Operator::GetDynamicOutputDesc(const char_t *name, uint32_t index) co
     return TensorDesc();
 }
 
-graphStatus Operator::UpdateDynamicOutputDesc(const std::string &name, uint32_t index, const TensorDesc &tensor_desc) const
+graphStatus Operator::UpdateDynamicOutputDesc(const std::string &name, uint32_t index, const TensorDesc &tensor_desc)
 {
     UNUSED_VALUE(name);
     UNUSED_VALUE(index);
@@ -375,7 +375,7 @@ graphStatus Operator::UpdateDynamicOutputDesc(const std::string &name, uint32_t 
     return GRAPH_SUCCESS;
 }
 
-graphStatus Operator::UpdateDynamicOutputDesc(const char_t *name, uint32_t index, const TensorDesc &tensor_desc) const
+graphStatus Operator::UpdateDynamicOutputDesc(const char_t *name, uint32_t index, const TensorDesc &tensor_desc)
 {
     UNUSED_VALUE(name);
     UNUSED_VALUE(index);
@@ -383,9 +383,9 @@ graphStatus Operator::UpdateDynamicOutputDesc(const char_t *name, uint32_t index
     return GRAPH_SUCCESS;
 }
 
-graphStatus Operator::InferShapeAndType() const { return GRAPH_SUCCESS; }
+graphStatus Operator::InferShapeAndType() { return GRAPH_SUCCESS; }
 
-graphStatus Operator::VerifyAllAttr(bool disable_common_verifier) const
+graphStatus Operator::VerifyAllAttr(bool disable_common_verifier)
 {
     UNUSED_VALUE(disable_common_verifier);
     return GRAPH_SUCCESS;
@@ -407,91 +407,91 @@ graphStatus Operator::GetAllAttrNamesAndTypes(std::map<AscendString, AscendStrin
     return GRAPH_SUCCESS;
 }
 
-void Operator::InputRegister(const std::string &name) const
+void Operator::InputRegister(const std::string &name)
 {
     UNUSED_VALUE(name);
 }
 
-void Operator::InputRegister(const char_t *name) const
+void Operator::InputRegister(const char_t *name)
 {
     UNUSED_VALUE(name);
 }
 
-void Operator::InputRegister(const char_t *name, const char_t *datatype_symbol) const
-{
-    UNUSED_VALUE(name);
-    UNUSED_VALUE(datatype_symbol);
-}
-
-void Operator::OptionalInputRegister(const std::string &name) const
-{
-    UNUSED_VALUE(name);
-}
-
-void Operator::OptionalInputRegister(const char_t *name) const
-{
-    UNUSED_VALUE(name);
-}
-
-void Operator::OptionalInputRegister(const char_t *name, const char_t *datatype_symbol) const
+void Operator::InputRegister(const char_t *name, const char_t *datatype_symbol)
 {
     UNUSED_VALUE(name);
     UNUSED_VALUE(datatype_symbol);
 }
 
-void Operator::InferFuncRegister(const std::function<graphStatus(Operator &)> &func) const
-{
-    UNUSED_VALUE(func);
-}
-
-void Operator::InferFormatFuncRegister(const std::function<graphStatus(Operator &)> &func) const
-{
-    UNUSED_VALUE(func);
-}
-
-void Operator::VerifierFuncRegister(const std::function<graphStatus(Operator &)> &func) const
-{
-    UNUSED_VALUE(func);
-}
-
-void Operator::OutputRegister(const std::string &name) const
+void Operator::OptionalInputRegister(const std::string &name)
 {
     UNUSED_VALUE(name);
 }
 
-void Operator::OutputRegister(const char_t *name) const
+void Operator::OptionalInputRegister(const char_t *name)
 {
     UNUSED_VALUE(name);
 }
 
-void Operator::OutputRegister(const char_t *name, const char_t *datatype_symbol) const
+void Operator::OptionalInputRegister(const char_t *name, const char_t *datatype_symbol)
 {
     UNUSED_VALUE(name);
     UNUSED_VALUE(datatype_symbol);
 }
 
-void Operator::DynamicInputRegister(const std::string &name, const uint32_t num, bool is_push_back) const
+void Operator::InferFuncRegister(const std::function<graphStatus(Operator &)> &func)
+{
+    UNUSED_VALUE(func);
+}
+
+void Operator::InferFormatFuncRegister(const std::function<graphStatus(Operator &)> &func)
+{
+    UNUSED_VALUE(func);
+}
+
+void Operator::VerifierFuncRegister(const std::function<graphStatus(Operator &)> &func)
+{
+    UNUSED_VALUE(func);
+}
+
+void Operator::OutputRegister(const std::string &name)
+{
+    UNUSED_VALUE(name);
+}
+
+void Operator::OutputRegister(const char_t *name)
+{
+    UNUSED_VALUE(name);
+}
+
+void Operator::OutputRegister(const char_t *name, const char_t *datatype_symbol)
+{
+    UNUSED_VALUE(name);
+    UNUSED_VALUE(datatype_symbol);
+}
+
+void Operator::DynamicInputRegister(const std::string &name, const uint32_t num, bool is_push_back)
 {
     UNUSED_VALUE(name);
     UNUSED_VALUE(num);
     UNUSED_VALUE(is_push_back);
 }
 
-void Operator::DynamicInputRegister(const char_t *name, const uint32_t num, bool is_push_back) const
+void Operator::DynamicInputRegister(const char_t *name, const uint32_t num, bool is_push_back)
 {
     UNUSED_VALUE(name);
     UNUSED_VALUE(num);
     UNUSED_VALUE(is_push_back);
 }
 
-void Operator::DynamicInputRegisterByIndex(const std::string &name, const uint32_t num, size_t index) const
+void Operator::DynamicInputRegisterByIndex(const std::string &name, const uint32_t num, size_t index)
 {
     UNUSED_VALUE(name);
     UNUSED_VALUE(num);
     UNUSED_VALUE(index);
 }
 
-void Operator::DynamicInputRegisterByIndex(const char_t *name, const uint32_t num, size_t index) const
+void Operator::DynamicInputRegisterByIndex(const char_t *name, const uint32_t num, size_t index)
 {
     UNUSED_VALUE(name);
     UNUSED_VALUE(num);
@@ -510,14 +510,14 @@ int32_t Operator::GetDynamicInputNum(const char_t *name) const
     return 0;
 }
 
-void Operator::DynamicOutputRegister(const std::string &name, const uint32_t num, bool is_push_back) const
+void Operator::DynamicOutputRegister(const std::string &name, const uint32_t num, bool is_push_back)
 {
     UNUSED_VALUE(name);
     UNUSED_VALUE(num);
     UNUSED_VALUE(is_push_back);
 }
 
-void Operator::DynamicOutputRegister(const char_t *name, const uint32_t num, bool is_push_back) const
+void Operator::DynamicOutputRegister(const char_t *name, const uint32_t num, bool is_push_back)
 {
     UNUSED_VALUE(name);
     UNUSED_VALUE(num);
@@ -536,29 +536,29 @@ int32_t Operator::GetDynamicOutputNum(const char_t *name) const
     return 0;
 }
 
-void Operator::RequiredAttrRegister(const std::string &name) const
+void Operator::RequiredAttrRegister(const std::string &name)
 {
     UNUSED_VALUE(name);
 }
 
-void Operator::RequiredAttrRegister(const char_t *name) const
+void Operator::RequiredAttrRegister(const char_t *name)
 {
     UNUSED_VALUE(name);
 }
 
-void Operator::DataTypeRegister(const char_t *datatype_symbol, const TensorType &type_range) const
+void Operator::DataTypeRegister(const char_t *datatype_symbol, const TensorType &type_range)
 {
     UNUSED_VALUE(datatype_symbol);
     UNUSED_VALUE(type_range);
 }
 
-void Operator::DataTypeRegister(const char_t *datatype_symbol, const ListTensorType &list_type_range) const
+void Operator::DataTypeRegister(const char_t *datatype_symbol, const ListTensorType &list_type_range)
 {
     UNUSED_VALUE(datatype_symbol);
     UNUSED_VALUE(list_type_range);
 }
 
-graphStatus Operator::VerifyAll() const { return GRAPH_SUCCESS; }
+graphStatus Operator::VerifyAll() { return GRAPH_SUCCESS; }
 
 std::string Operator::GetOpType() const { return ""; }
 
@@ -568,7 +568,7 @@ graphStatus Operator::GetOpType(AscendString &type) const
     return GRAPH_SUCCESS;
 }
 
-Operator &Operator::SetInput(const std::string &dst_name, uint32_t dst_index, const ge::Operator &src_oprt) const
+Operator &Operator::SetInput(const std::string &dst_name, uint32_t dst_index, const ge::Operator &src_oprt)
 {
     UNUSED_VALUE(dst_name);
     UNUSED_VALUE(dst_index);
@@ -576,7 +576,7 @@ Operator &Operator::SetInput(const std::string &dst_name, uint32_t dst_index, co
     return *this;
 }
 
-Operator &Operator::SetInput(const char_t *dst_name, uint32_t dst_index, const ge::Operator &src_oprt) const
+Operator &Operator::SetInput(const char_t *dst_name, uint32_t dst_index, const ge::Operator &src_oprt)
 {
     UNUSED_VALUE(dst_name);
     UNUSED_VALUE(dst_index);
@@ -585,7 +585,7 @@ Operator &Operator::SetInput(const char_t *dst_name, uint32_t dst_index, const g
 }
 
 Operator &Operator::SetInput(const std::string &dst_name, uint32_t dst_index, const ge::Operator &src_oprt,
-                             const std::string &name) const
+                             const std::string &name)
 {
     UNUSED_VALUE(dst_name);
     UNUSED_VALUE(dst_index);
@@ -595,7 +595,7 @@ Operator &Operator::SetInput(const std::string &dst_name, uint32_t dst_index, co
 }
 
 Operator &Operator::SetInput(const char_t *dst_name, uint32_t dst_index, const ge::Operator &src_oprt,
-                             const char_t *name) const
+                             const char_t *name)
 {
     UNUSED_VALUE(dst_name);
     UNUSED_VALUE(dst_index);
@@ -608,103 +608,103 @@ OperatorImplPtr Operator::GetOperatorImplPtr() const { return nullptr; }
 
 void Operator::BreakConnect() const {}
 
-void Operator::AttrRegister(const std::string &name, const std::string &attr_value) const
+void Operator::AttrRegister(const std::string &name, const std::string &attr_value)
 {
     UNUSED_VALUE(name);
     UNUSED_VALUE(attr_value);
 }
 
-void Operator::AttrRegister(const std::string &name, const std::vector<std::string> &attr_value) const
+void Operator::AttrRegister(const std::string &name, const std::vector<std::string> &attr_value)
 {
     UNUSED_VALUE(name);
     UNUSED_VALUE(attr_value);
 }
 
-void Operator::AttrRegister(const std::string &name, int64_t attr_value) const
+void Operator::AttrRegister(const std::string &name, int64_t attr_value)
 {
     UNUSED_VALUE(name);
     UNUSED_VALUE(attr_value);
 }
 
-void Operator::AttrRegister(const std::string &name, const vector<int64_t> &attr_value) const
+void Operator::AttrRegister(const std::string &name, const vector<int64_t> &attr_value)
 {
     UNUSED_VALUE(name);
     UNUSED_VALUE(attr_value);
 }
 
-void Operator::AttrRegister(const std::string &name, float32_t attr_value) const
+void Operator::AttrRegister(const std::string &name, float32_t attr_value)
 {
     UNUSED_VALUE(name);
     UNUSED_VALUE(attr_value);
 }
 
-void Operator::AttrRegister(const std::string &name, const vector<float32_t> &attr_value) const
+void Operator::AttrRegister(const std::string &name, const vector<float32_t> &attr_value)
 {
     UNUSED_VALUE(name);
     UNUSED_VALUE(attr_value);
 }
 
-void Operator::AttrRegister(const char_t *name, const char_t *attr_value) const
+void Operator::AttrRegister(const char_t *name, const char_t *attr_value)
 {
     UNUSED_VALUE(name);
     UNUSED_VALUE(attr_value);
 }
 
-void Operator::AttrRegister(const std::string &name, bool attr_value) const
+void Operator::AttrRegister(const std::string &name, bool attr_value)
 {
     UNUSED_VALUE(name);
     UNUSED_VALUE(attr_value);
 }
 
-void Operator::AttrRegister(const std::string &name, const vector<bool> &attr_value) const
+void Operator::AttrRegister(const std::string &name, const vector<bool> &attr_value)
 {
     UNUSED_VALUE(name);
     UNUSED_VALUE(attr_value);
 }
 
-void Operator::AttrRegister(const std::string &name, const vector<vector<int64_t>> &attr_value) const
+void Operator::AttrRegister(const std::string &name, const vector<vector<int64_t>> &attr_value)
 {
     UNUSED_VALUE(name);
     UNUSED_VALUE(attr_value);
 }
 
-void Operator::AttrRegister(const std::string &name, const NamedAttrs &attr_value) const
+void Operator::AttrRegister(const std::string &name, const NamedAttrs &attr_value)
 {
     UNUSED_VALUE(name);
     UNUSED_VALUE(attr_value);
 }
 
-void Operator::AttrRegister(const std::string &name, const vector<NamedAttrs> &attr_value) const
+void Operator::AttrRegister(const std::string &name, const vector<NamedAttrs> &attr_value)
 {
     UNUSED_VALUE(name);
     UNUSED_VALUE(attr_value);
 }
 
-void Operator::AttrRegister(const std::string &name, const AscendString &attr_value) const
+void Operator::AttrRegister(const std::string &name, const AscendString &attr_value)
 {
     UNUSED_VALUE(name);
     UNUSED_VALUE(attr_value);
 }
 
-void Operator::AttrRegister(const char_t *name, const AscendString &attr_value) const
+void Operator::AttrRegister(const char_t *name, const AscendString &attr_value)
 {
     UNUSED_VALUE(name);
     UNUSED_VALUE(attr_value);
 }
 
-void Operator::AttrRegister(const std::string &name, const std::vector<AscendString> &attr_value) const
+void Operator::AttrRegister(const std::string &name, const std::vector<AscendString> &attr_value)
 {
     UNUSED_VALUE(name);
     UNUSED_VALUE(attr_value);
 }
 
-void Operator::AttrRegister(const char_t *name, const std::vector<AscendString> &attr_value) const
+void Operator::AttrRegister(const char_t *name, const std::vector<AscendString> &attr_value)
 {
     UNUSED_VALUE(name);
     UNUSED_VALUE(attr_value);
 }
 
-Operator &Operator::SetAttr(const std::string &name, const std::string &attr_value) const
+Operator &Operator::SetAttr(const std::string &name, const std::string &attr_value)
 {
     UNUSED_VALUE(name);
     UNUSED_VALUE(attr_value);
@@ -767,7 +767,7 @@ graphStatus Operator::GetAttr(const char_t *name, std::vector<int> &attr_value) 
     return GRAPH_SUCCESS;
 }
 
-Operator &Operator::SetAttr(const std::string &name, const std::vector<std::string> &attr_value) const
+Operator &Operator::SetAttr(const std::string &name, const std::vector<std::string> &attr_value)
 {
     UNUSED_VALUE(name);
     UNUSED_VALUE(attr_value);
@@ -781,14 +781,14 @@ graphStatus Operator::GetAttr(const std::string &name, std::vector<std::string> 
     return GRAPH_SUCCESS;
 }
 
-Operator &Operator::SetAttr(const char_t *name, const char_t *attr_value) const
+Operator &Operator::SetAttr(const char_t *name, const char_t *attr_value)
 {
     UNUSED_VALUE(name);
     UNUSED_VALUE(attr_value);
     return *this;
 }
 
-Operator &Operator::SetInputAttr(const int32_t index, const char_t *name, const char_t *attr_value) const
+Operator &Operator::SetInputAttr(const int32_t index, const char_t *name, const char_t *attr_value)
 {
     UNUSED_VALUE(index);
     UNUSED_VALUE(name);
@@ -796,7 +796,7 @@ Operator &Operator::SetInputAttr(const int32_t index, const char_t *name, const 
     return *this;
 }
 
-Operator &Operator::SetInputAttr(const char_t *dst_name, const char_t *name, const char_t *attr_value) const
+Operator &Operator::SetInputAttr(const char_t *dst_name, const char_t *name, const char_t *attr_value)
 {
     UNUSED_VALUE(dst_name);
     UNUSED_VALUE(name);
@@ -804,7 +804,7 @@ Operator &Operator::SetInputAttr(const char_t *dst_name, const char_t *name, con
     return *this;
 }
 
-Operator &Operator::SetInputAttr(const int32_t index, const char_t *name, const std::vector<AscendString> &attr_value) const
+Operator &Operator::SetInputAttr(const int32_t index, const char_t *name, const std::vector<AscendString> &attr_value)
 {
     UNUSED_VALUE(index);
     UNUSED_VALUE(name);
@@ -812,7 +812,7 @@ Operator &Operator::SetInputAttr(const int32_t index, const char_t *name, const 
     return *this;
 }
 
-Operator &Operator::SetOutputAttr(const int32_t index, const char_t *name, const std::vector<AscendString> &attr_value) const
+Operator &Operator::SetOutputAttr(const int32_t index, const char_t *name, const std::vector<AscendString> &attr_value)
 {
     UNUSED_VALUE(index);
     UNUSED_VALUE(name);
@@ -821,7 +821,7 @@ Operator &Operator::SetOutputAttr(const int32_t index, const char_t *name, const
 }
 
 Operator &Operator::SetInputAttr(const char_t *dst_name, const char_t *name,
-                                 const std::vector<AscendString> &attr_value) const
+                                 const std::vector<AscendString> &attr_value)
 {
     UNUSED_VALUE(dst_name);
     UNUSED_VALUE(name);
@@ -830,7 +830,7 @@ Operator &Operator::SetInputAttr(const char_t *dst_name, const char_t *name,
 }
 
 Operator &Operator::SetOutputAttr(const char_t *dst_name, const char_t *name,
-                                  const std::vector<AscendString> &attr_value) const
+                                  const std::vector<AscendString> &attr_value)
 {
     UNUSED_VALUE(dst_name);
     UNUSED_VALUE(name);
@@ -873,7 +873,7 @@ graphStatus Operator::GetOutputAttr(const int32_t index, const char_t *name,
     return GRAPH_SUCCESS;
 }
 
-Operator &Operator::SetOutputAttr(const int32_t index, const char_t *name, const char_t *attr_value) const
+Operator &Operator::SetOutputAttr(const int32_t index, const char_t *name, const char_t *attr_value)
 {
     UNUSED_VALUE(index);
     UNUSED_VALUE(name);
@@ -881,7 +881,7 @@ Operator &Operator::SetOutputAttr(const int32_t index, const char_t *name, const
     return *this;
 }
 
-Operator &Operator::SetOutputAttr(const char_t *dst_name, const char_t *name, const char_t *attr_value) const
+Operator &Operator::SetOutputAttr(const char_t *dst_name, const char_t *name, const char_t *attr_value)
 {
     UNUSED_VALUE(dst_name);
     UNUSED_VALUE(name);
@@ -889,7 +889,7 @@ Operator &Operator::SetOutputAttr(const char_t *dst_name, const char_t *name, co
     return *this;
 }
 
-Operator &Operator::SetInputAttr(const int32_t index, const char_t *name, const AscendString &attr_value) const
+Operator &Operator::SetInputAttr(const int32_t index, const char_t *name, const AscendString &attr_value)
 {
     UNUSED_VALUE(index);
     UNUSED_VALUE(name);
@@ -897,7 +897,7 @@ Operator &Operator::SetInputAttr(const int32_t index, const char_t *name, const 
     return *this;
 }
 
-Operator &Operator::SetInputAttr(const char_t *dst_name, const char_t *name, const AscendString &attr_value) const
+Operator &Operator::SetInputAttr(const char_t *dst_name, const char_t *name, const AscendString &attr_value)
 {
     UNUSED_VALUE(dst_name);
     UNUSED_VALUE(name);
@@ -905,7 +905,7 @@ Operator &Operator::SetInputAttr(const char_t *dst_name, const char_t *name, con
     return *this;
 }
 
-Operator &Operator::SetOutputAttr(const int32_t index, const char_t *name, const AscendString &attr_value) const
+Operator &Operator::SetOutputAttr(const int32_t index, const char_t *name, const AscendString &attr_value)
 {
     UNUSED_VALUE(index);
     UNUSED_VALUE(name);
@@ -913,7 +913,7 @@ Operator &Operator::SetOutputAttr(const int32_t index, const char_t *name, const
     return *this;
 }
 
-Operator &Operator::SetOutputAttr(const char_t *dst_name, const char_t *name, const AscendString &attr_value) const
+Operator &Operator::SetOutputAttr(const char_t *dst_name, const char_t *name, const AscendString &attr_value)
 {
     UNUSED_VALUE(dst_name);
     UNUSED_VALUE(name);
@@ -953,7 +953,7 @@ graphStatus Operator::GetOutputAttr(const int32_t index, const char_t *name, Asc
     return GRAPH_SUCCESS;
 }
 
-Operator &Operator::SetAttr(const char_t *name, const AscendString &attr_value) const
+Operator &Operator::SetAttr(const char_t *name, const AscendString &attr_value)
 {
     UNUSED_VALUE(name);
     UNUSED_VALUE(attr_value);
@@ -967,7 +967,7 @@ graphStatus Operator::GetAttr(const char_t *name, AscendString &attr_value) cons
     return GRAPH_SUCCESS;
 }
 
-Operator &Operator::SetAttr(const char_t *name, const std::vector<AscendString> &attr_values) const
+Operator &Operator::SetAttr(const char_t *name, const std::vector<AscendString> &attr_values)
 {
     UNUSED_VALUE(name);
     UNUSED_VALUE(attr_values);
@@ -981,28 +981,28 @@ graphStatus Operator::GetAttr(const char_t *name, std::vector<AscendString> &att
     return GRAPH_SUCCESS;
 }
 
-Operator &Operator::SetAttr(const std::string &name, const Tensor &attr_value) const
+Operator &Operator::SetAttr(const std::string &name, const Tensor &attr_value)
 {
     UNUSED_VALUE(name);
     UNUSED_VALUE(attr_value);
     return *this;
 }
 
-Operator &Operator::SetAttr(const char_t *name, const Tensor &attr_value) const
+Operator &Operator::SetAttr(const char_t *name, const Tensor &attr_value)
 {
     UNUSED_VALUE(name);
     UNUSED_VALUE(attr_value);
     return *this;
 }
 
-Operator &Operator::SetAttr(const std::string &name, const std::vector<Tensor> &attr_value) const
+Operator &Operator::SetAttr(const std::string &name, const std::vector<Tensor> &attr_value)
 {
     UNUSED_VALUE(name);
     UNUSED_VALUE(attr_value);
     return *this;
 }
 
-Operator &Operator::SetAttr(const char_t *name, const std::vector<Tensor> &attr_value) const
+Operator &Operator::SetAttr(const char_t *name, const std::vector<Tensor> &attr_value)
 {
     UNUSED_VALUE(name);
     UNUSED_VALUE(attr_value);
@@ -1037,14 +1037,14 @@ graphStatus Operator::GetAttr(const char_t *name, std::vector<Tensor> &attr_valu
     return GRAPH_SUCCESS;
 }
 
-Operator &Operator::SetAttr(const std::string &name, const OpBytes &attr_value) const
+Operator &Operator::SetAttr(const std::string &name, const OpBytes &attr_value)
 {
     UNUSED_VALUE(name);
     UNUSED_VALUE(attr_value);
     return *this;
 }
 
-Operator &Operator::SetAttr(const char_t *name, const OpBytes &attr_value) const
+Operator &Operator::SetAttr(const char_t *name, const OpBytes &attr_value)
 {
     UNUSED_VALUE(name);
     UNUSED_VALUE(attr_value);
@@ -1072,7 +1072,7 @@ Operator &Operator::SetAttr(const std::string &name, ge::AttrValue &&attr_value)
     return *this;
 }
 
-Operator &Operator::SetAttr(const char_t *name, ge::AttrValue &&attr_value) const
+Operator &Operator::SetAttr(const char_t *name, ge::AttrValue &&attr_value)
 {
     UNUSED_VALUE(name);
     UNUSED_VALUE(attr_value);
@@ -1093,14 +1093,14 @@ graphStatus Operator::GetAttr(const char_t *name, ge::AttrValue &attr_value) con
     return GRAPH_SUCCESS;
 }
 
-Operator &Operator::SetAttr(const std::string &name, const std::vector<ge::DataType> &attr_value) const
+Operator &Operator::SetAttr(const std::string &name, const std::vector<ge::DataType> &attr_value)
 {
     UNUSED_VALUE(name);
     UNUSED_VALUE(attr_value);
     return *this;
 }
 
-Operator &Operator::SetAttr(const char_t *name, const std::vector<ge::DataType> &attr_value) const
+Operator &Operator::SetAttr(const char_t *name, const std::vector<ge::DataType> &attr_value)
 {
     UNUSED_VALUE(name);
     UNUSED_VALUE(attr_value);
@@ -1121,14 +1121,14 @@ graphStatus Operator::GetAttr(const char_t *name, std::vector<ge::DataType> &att
     return GRAPH_SUCCESS;
 }
 
-Operator &Operator::SetAttr(const std::string &name, const ge::DataType &attr_value) const
+Operator &Operator::SetAttr(const std::string &name, const ge::DataType &attr_value)
 {
     UNUSED_VALUE(name);
     UNUSED_VALUE(attr_value);
     return *this;
 }
 
-Operator &Operator::SetAttr(const char_t *name, const ge::DataType &attr_value) const
+Operator &Operator::SetAttr(const char_t *name, const ge::DataType &attr_value)
 {
     UNUSED_VALUE(name);
     UNUSED_VALUE(attr_value);
@@ -1149,98 +1149,98 @@ graphStatus Operator::GetAttr(const char_t *name, ge::DataType &attr_value) cons
     return GRAPH_SUCCESS;
 }
 
-void Operator::AttrRegister(const std::string &name, const std::vector<ge::DataType> &attr_value) const
+void Operator::AttrRegister(const std::string &name, const std::vector<ge::DataType> &attr_value)
 {
     UNUSED_VALUE(name);
     UNUSED_VALUE(attr_value);
 }
 
-void Operator::AttrRegister(const char_t *name, const std::vector<ge::DataType> &attr_value) const
+void Operator::AttrRegister(const char_t *name, const std::vector<ge::DataType> &attr_value)
 {
     UNUSED_VALUE(name);
     UNUSED_VALUE(attr_value);
 }
 
-void Operator::AttrRegister(const std::string &name, const ge::DataType &attr_value) const
+void Operator::AttrRegister(const std::string &name, const ge::DataType &attr_value)
 {
     UNUSED_VALUE(name);
     UNUSED_VALUE(attr_value);
 }
 
-void Operator::AttrRegister(const char_t *name, const ge::DataType &attr_value) const
+void Operator::AttrRegister(const char_t *name, const ge::DataType &attr_value)
 {
     UNUSED_VALUE(name);
     UNUSED_VALUE(attr_value);
 }
 
-void Operator::AttrRegister(const std::string &name, const Tensor &attr_value) const
+void Operator::AttrRegister(const std::string &name, const Tensor &attr_value)
 {
     UNUSED_VALUE(name);
     UNUSED_VALUE(attr_value);
 }
 
-void Operator::AttrRegister(const char_t *name, const Tensor &attr_value) const
+void Operator::AttrRegister(const char_t *name, const Tensor &attr_value)
 {
     UNUSED_VALUE(name);
     UNUSED_VALUE(attr_value);
 }
 
-void Operator::AttrRegister(const std::string &name, const std::vector<Tensor> &attr_value) const
+void Operator::AttrRegister(const std::string &name, const std::vector<Tensor> &attr_value)
 {
     UNUSED_VALUE(name);
     UNUSED_VALUE(attr_value);
 }
 
-void Operator::AttrRegister(const char_t *name, const vector<Tensor> &attr_value) const
+void Operator::AttrRegister(const char_t *name, const vector<Tensor> &attr_value)
 {
     UNUSED_VALUE(name);
     UNUSED_VALUE(attr_value);
 }
 
-void Operator::AttrRegister(const std::string &name, const OpBytes &attr_value) const
+void Operator::AttrRegister(const std::string &name, const OpBytes &attr_value)
 {
     UNUSED_VALUE(name);
     UNUSED_VALUE(attr_value);
 }
 
-void Operator::AttrRegister(const char_t *name, const OpBytes &attr_value) const
+void Operator::AttrRegister(const char_t *name, const OpBytes &attr_value)
 {
     UNUSED_VALUE(name);
     UNUSED_VALUE(attr_value);
 }
 
-void Operator::SubgraphRegister(const std::string &ir_name, bool dynamic) const
+void Operator::SubgraphRegister(const std::string &ir_name, bool dynamic)
 {
     UNUSED_VALUE(ir_name);
     UNUSED_VALUE(dynamic);
 }
 
-void Operator::SubgraphRegister(const char_t *ir_name, bool dynamic) const
+void Operator::SubgraphRegister(const char_t *ir_name, bool dynamic)
 {
     UNUSED_VALUE(ir_name);
     UNUSED_VALUE(dynamic);
 }
 
-void Operator::SubgraphCountRegister(const std::string &ir_name, uint32_t count) const
+void Operator::SubgraphCountRegister(const std::string &ir_name, uint32_t count)
 {
     UNUSED_VALUE(ir_name);
     UNUSED_VALUE(count);
 }
 
-void Operator::SubgraphCountRegister(const char_t *ir_name, uint32_t count) const
+void Operator::SubgraphCountRegister(const char_t *ir_name, uint32_t count)
 {
     UNUSED_VALUE(ir_name);
     UNUSED_VALUE(count);
 }
 
-void Operator::SetSubgraphBuilder(const std::string &ir_name, uint32_t index, const SubgraphBuilder &builder) const
+void Operator::SetSubgraphBuilder(const std::string &ir_name, uint32_t index, const SubgraphBuilder &builder)
 {
     UNUSED_VALUE(ir_name);
     UNUSED_VALUE(index);
     UNUSED_VALUE(builder);
 }
 
-void Operator::SetSubgraphBuilder(const char_t *ir_name, uint32_t index, const SubgraphBuilder &builder) const
+void Operator::SetSubgraphBuilder(const char_t *ir_name, uint32_t index, const SubgraphBuilder &builder)
 {
     UNUSED_VALUE(ir_name);
     UNUSED_VALUE(index);
@@ -1329,7 +1329,7 @@ size_t Operator::GetSubgraphNamesCount() const
 }
 
 void Operator::DynamicInputRegister(const char_t *name, const uint32_t num, const char_t *datatype_symbol,
-                                    bool is_push_back) const
+                                    bool is_push_back)
 {
     UNUSED_VALUE(name);
     UNUSED_VALUE(num);
@@ -1338,7 +1338,7 @@ void Operator::DynamicInputRegister(const char_t *name, const uint32_t num, cons
 }
 
 void Operator::DynamicOutputRegister(const char_t *name, const uint32_t num, const char_t *datatype_symbol,
-                                     bool is_push_back) const
+                                     bool is_push_back)
 {
     UNUSED_VALUE(name);
     UNUSED_VALUE(num);
