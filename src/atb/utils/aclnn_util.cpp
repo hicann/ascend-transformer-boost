@@ -93,6 +93,9 @@ atb::SVector<int64_t> GetTransposeTensorStride(atb::Dims &tensorDims)
 atb::Status CallAclCreateTensor(atb::Dims &viewDims, atb::Dims &storageDims, atb::Tensor &atbTensor,
                                 std::shared_ptr<AclNNTensor> aclnnTensor, aclDataType dataType)
 {
+    if (dataType == ACL_DT_UNDEFINED) {
+        dataType = atbTensor.desc.dtype;
+    }
     aclnnTensor->tensor =
         aclCreateTensor(viewDims.dims, viewDims.dimNum, dataType, aclnnTensor->strides.data(), 0, atbTensor.desc.format,
                         storageDims.dims, storageDims.dimNum, atbTensor.deviceData);
