@@ -18,18 +18,21 @@ struct GmmDeqSwigluQuantGmmDeq {
         OUTPUT_BFLOAT16,
         OUTPUT_INVALID
     };
+    using enum OutputType;
 
     enum class GroupListType {
         GROUP_LIST_CUMSUM = 0,
         GROUP_LIST_SINGLE,
         GROUP_LIST_INVALID
     };
+    using enum GroupListType;
 
     enum class WeightUpPermuteType {
         PERMUTE_N256 = 0,
         PERMUTE_N128,
         PERMUTE_INVALID
     };
+    using enum WeightUpPermuteType;
 
     OutputType outputType = OutputType::OUTPUT_FLOAT16;
     GroupListType groupListType = GroupListType::GROUP_LIST_CUMSUM;

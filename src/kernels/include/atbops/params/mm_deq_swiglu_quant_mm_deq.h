@@ -18,12 +18,14 @@ struct MmDeqSwigluQuantMmDeq {
         OUTPUT_BFLOAT16,
         OUTPUT_INVALID
     };
+    using enum OutputType;
 
     enum class WeightUpPermuteType {
         PERMUTE_N256 = 0,
         PERMUTE_N128,
         PERMUTE_INVALID
     };
+    using enum WeightUpPermuteType;
 
     OutputType outputType = OutputType::OUTPUT_FLOAT16;
     WeightUpPermuteType weightUpPermuteType = WeightUpPermuteType::PERMUTE_N256;

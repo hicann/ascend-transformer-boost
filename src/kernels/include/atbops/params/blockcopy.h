@@ -18,6 +18,7 @@ struct BlockCopy {
         BLOCK_COPY_CACHE_ND = 0,
         BLOCK_COPY_CACHE_NZ = 1
     };
+    using enum Type;
     Type type = Type::BLOCK_COPY_CACHE_ND;
     bool operator==(const BlockCopy &other) const
     {

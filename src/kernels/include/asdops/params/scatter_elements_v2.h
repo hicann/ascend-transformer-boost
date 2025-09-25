@@ -25,6 +25,7 @@ struct ScatterElementsV2 {
         NONE = 0,
         ADD,
     };
+    using enum ScatterElementsV2;
     ReductionType reduction; // 指定更新的方式（none,add）
     int32_t axis; // 指定更新的轴
 

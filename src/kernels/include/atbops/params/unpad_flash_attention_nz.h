@@ -41,6 +41,7 @@ struct UnpadFlashAttentionNz {
         BMM1_FP32_EXP_FP32 = 1,
         BMM2_ONLINE_SOFTMAX_FP16 = 4
     };
+    using enum PrecType;
     PrecType precType = PrecType::BMM1_FP16_EXP_FP32;
     // DATA
     enum DataDimOrder : int {

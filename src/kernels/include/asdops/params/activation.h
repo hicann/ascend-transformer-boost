@@ -28,6 +28,7 @@ struct Activation {
 	    ACTIVATION_SIGMOID,
         ACTIVATION_FASTER_GELU_FORWARD,
     };
+    using enum ActivationType;
     ActivationType activationType;
 
     float scale = 1.0f;       // for Swish

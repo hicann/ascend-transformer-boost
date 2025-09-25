@@ -23,6 +23,7 @@ struct Reduce {
         REDUCE_MIN,
         REDUCE_SUM,
     };
+    using enum ReduceType;
     ReduceType reduceType;
     Mki::SVector<int64_t> axis;
 

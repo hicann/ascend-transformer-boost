@@ -39,6 +39,7 @@ struct Elewise {
         ELEWISE_DEQUANT_PER_CHANNEL,
         ELEWISE_DYNAMIC_QUANT,
     };
+    using enum ElewiseType;
     ElewiseType elewiseType;
 
     float varAttr = 0.0f;    // MULS

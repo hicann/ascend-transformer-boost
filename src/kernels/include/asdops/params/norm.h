@@ -26,6 +26,7 @@ struct Norm {
         RMS_NORM_BACKWARD,
         GATHER_PRE_RMS_NORM,
     };
+    using enum NormType;
     NormType normType;
     // layernorm
     int32_t beginNormAxis = 0;

@@ -23,6 +23,7 @@ struct MLA {
         SPLIT_CACHE = 0,
         PREFILL_SPLIT_CACHE = 1
     };
+    using enum Type;
     Type type;
     int32_t headSize = 0;
     float tor = 0;
@@ -40,6 +41,7 @@ struct MLA {
         MASK_TYPE_CAUSAL_MASK = 5,
         MASK_TYPE_SWA_NORM = 6
     };
+    using enum MaskType;
 
     MaskType maskType = MaskType::MASK_TYPE_NONE;
 
@@ -49,6 +51,7 @@ struct MLA {
         TYPE_QUANT_QKV_OFFLINE,
         TYPE_QUANT_QKV_ONLINE
     };
+    using enum QuantType;
     QuantType quantType = QuantType::TYPE_QUANT_UNDEFINED;
 
     std::vector<int32_t> qSeqLen;

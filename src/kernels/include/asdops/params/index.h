@@ -21,6 +21,7 @@ struct Index {
         INDEX_ADD,
         INDEX_ADD_VALID,
     };
+    using enum IndexType;
     IndexType indexType;
     int64_t axis = 0;
 

@@ -20,6 +20,7 @@ struct FaUpdate {
     enum class FaUpdateType {
         DECODE_UPDATE = 0,
     };
+    using enum FaUpdateType;
     FaUpdateType faUpdateType;
     uint32_t sp;
 

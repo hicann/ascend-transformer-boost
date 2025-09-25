@@ -19,6 +19,7 @@ struct PagedCacheLoad {
         PAGED_CACHE_LOAD_ND = 0,
         PAGED_CACHE_LOAD_NZ = 1,
     };
+    using enum Type;
     Type type = Type::PAGED_CACHE_LOAD_ND;
     bool cuSeqLens = false;
     bool hasSeqStarts = false;

@@ -27,6 +27,7 @@ enum class PermuteType{
     PERMUTE_N128,
     PERMUTE_INVALID
 };
+using enum PermuteType;
 
 template <PermuteType PERMUTE_TYPE>
 struct Mm1TileArgs {
