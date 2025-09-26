@@ -8,6 +8,7 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
+#include <iostream>
 #include "mla_preprocess_tiling.h"
 #include "atbops/params/params.h"
 #include "mki/utils/assert/assert.h"
@@ -33,7 +34,7 @@ constexpr uint32_t L1_SCALE_SIZE = 4096;
 constexpr uint32_t L1_BIAS_SIZE = 2048;
 constexpr uint32_t L0C_SIZE = 128 * 1024;
 constexpr uint32_t CONCAT_SIZE = 512;
-constexpr uint32_t HIDDEN_STRATE = 7168;
+constexpr uint32_t HIDDEN_STRATE = 6144;
 constexpr uint32_t HIDDEN_STRATE_ROPE = 192;
 constexpr uint32_t HIDDEN_STRATE_MM = 2112;
 constexpr uint32_t HIDDEN_STRATE_RMS = 1536;
@@ -147,6 +148,7 @@ void PpMatmulTilingApi::GetTilingData(AtbOps::PpMatmulTilingData &tiling)
     tiling.swizzleDirect = swizzleDirect_;
     tiling.enShuffleK = static_cast<uint32_t>(enShuffleK_);
     tiling.blockDim = blockDim_;
+    std::cout << "12345678: " << blockDim_ << std::endl;
     tiling.enLoadAllAmat = static_cast<uint32_t>(enLoadAllAmat_);
     tiling.b0matPingPongBufferLen = b0matPingPongBufferLen_;
 }
@@ -403,13 +405,12 @@ void MlaPreprocessTiling::EinSumQuantTiling(const OpParam::MlaPreprocess &param,
     uint32_t repeatMask = 0;
 
     if (inDtype == TENSOR_DTYPE_BF16 || param.quantMode == QuantMode::PER_TOKEN_SYMM_QUANT) {
-        // 将scale一次性搬入、广播、缓存 H * 32bytes
-        uint32_t scaleUb = RoundUp(esqHeadNum) * CONST_32;
-        // bf16 input [H', colNum](f16 + fp32 + int8), ub reuse
-        splitFactor = esqColNum * (sizeof(uint16_t) + sizeof(float) + sizeof(uint8_t));
-        splitFactor *= NUM2;
-        esqHeadPerLoop = (ubSize - scaleUb) / splitFactor;  // 26
-        repeatMask = FP32_REPEAT_MASK;
+        // fp16 input [H', cloNum](fp16*2 + int8) + [H', 1](fp16) + [H', 16](fp16)
+        splitFactor =
+            esqColNum * (NUM2 * sizeof(uint16_t) + sizeof(uint8_t)) + sizeof(uint16_t) + (CONST_16 * sizeof(uint16_t));
+        esqHeadPerLoop = ubSize / splitFactor;
+        repeatMask = FP16_REPEAT_MASK;
+        esqHeadPerLoop = RoundDown(esqHeadPerLoop);           // 向下16对齐
     } else {
         // fp16 input [H', cloNum](fp16*2 + int8) + [H', 1](fp16) + [H', 16](fp16)
         splitFactor =
@@ -566,7 +567,7 @@ void MlaPreprocessTiling::SetMlapoWorkSpace(const TensorDType inDtype, const OpP
     uint64_t workSizeS3 = static_cast<uint64_t>(tilingData.n) * HIDDEN_STRATE_MM * sizeof(uint16_t);
     uint64_t workSizeS4 = static_cast<uint64_t>(tilingData.n) *
                           std::max(param.headNum * HIDDEN_STRATE_ROPE, HIDDEN_STRATE_MM) * sizeof(uint32_t);
-    uint64_t pertokenWorkspace = static_cast<uint64_t>(tilingData.n) * sizeof(float) * 2;
+    // uint64_t pertokenWorkspace = static_cast<uint64_t>(tilingData.n) * sizeof(float) * 2;
     uint64_t maxWorkspaceSize = 0;
     maxWorkspaceSize = std::max(maxWorkspaceSize, workSizeS1);
     maxWorkspaceSize = std::max(maxWorkspaceSize, workSizeS2);
@@ -574,7 +575,7 @@ void MlaPreprocessTiling::SetMlapoWorkSpace(const TensorDType inDtype, const OpP
     maxWorkspaceSize = std::max(maxWorkspaceSize, workSizeS4);
     if (inDtype == TENSOR_DTYPE_BF16 || param.quantMode == QuantMode::PER_TOKEN_SYMM_QUANT) {
         kernelInfo.GetScratchSizes() = {
-            maxWorkspaceSize, maxWorkspaceSize, maxWorkspaceSize, maxWorkspaceSize, pertokenWorkspace};
+            maxWorkspaceSize, maxWorkspaceSize, maxWorkspaceSize};
     } else {
         kernelInfo.GetScratchSizes() = {
             maxWorkspaceSize, maxWorkspaceSize, maxWorkspaceSize};
@@ -589,9 +590,9 @@ Mki::Status MlaPreprocessTiling::Init(const Mki::LaunchParam &launchParam, Mki::
     tilingData.n = param.N;
     tilingData.numCore = aicNum;
     bool deqOnTheFly = false;
-    if (inDtype == TENSOR_DTYPE_BF16 || param.quantMode == QuantMode::PER_TOKEN_SYMM_QUANT) {
-        deqOnTheFly = true;
-    }
+    // if (inDtype == TENSOR_DTYPE_BF16 || param.quantMode == QuantMode::PER_TOKEN_SYMM_QUANT) {
+    //     deqOnTheFly = true;
+    // }
     MKI_LOG(INFO) << "tilingSize: " << kernelInfo.GetTilingSize();
     auto tilingParam = reinterpret_cast<AtbOps::MlaTilingData *>(kernelInfo.GetTilingHostAddr());
     RmsNormQuantTiling(param.N);
@@ -603,7 +604,7 @@ Mki::Status MlaPreprocessTiling::Init(const Mki::LaunchParam &launchParam, Mki::
         HIDDEN_STRATE_MM,              // n
         false,                         // transA
         true,                          // transB
-        true,                          // enDequant
+        false,                          // enDequant
         deqOnTheFly);                     // in bf16.cce?
     mm1TilingApi.GetTilingData(tilingParam->mm1);
     PpMatmulTilingApi mm2TilingApi(1,        // numBatch
@@ -612,7 +613,7 @@ Mki::Status MlaPreprocessTiling::Init(const Mki::LaunchParam &launchParam, Mki::
         param.headNum * HIDDEN_STRATE_ROPE,  // n
         false,                               // transA
         true,                                // transB
-        true,                                // enDequant
+        false,                                // enDequant
         deqOnTheFly);                           // in bf16.cce?
     mm2TilingApi.GetTilingData(tilingParam->mm2);
     PpMatmulTilingApi mm3TilingApi(param.headNum,  // numBatch
