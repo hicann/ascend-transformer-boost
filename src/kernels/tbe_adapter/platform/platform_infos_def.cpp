@@ -78,20 +78,20 @@ bool PlatFormInfos::GetPlatformRes(const std::string &label, std::map<std::strin
     return platform_infos_impl_->GetPlatformRes(label, res);
 }
 
-void PlatFormInfos::SetAICoreIntrinsicDtype(std::map<std::string, std::vector<std::string>> &intrinsicDtypes)
+void PlatFormInfos::SetAICoreIntrinsicDtype(std::map<std::string, std::vector<std::string>> &intrinsic_dtypes)
 {
     if (platform_infos_impl_ == nullptr) {
         return;
     }
-    platform_infos_impl_->SetAICoreIntrinsicDtype(intrinsicDtypes);
+    platform_infos_impl_->SetAICoreIntrinsicDtype(intrinsic_dtypes);
 }
 
-void PlatFormInfos::SetVectorCoreIntrinsicDtype(std::map<std::string, std::vector<std::string>> &intrinsicDtypes)
+void PlatFormInfos::SetVectorCoreIntrinsicDtype(std::map<std::string, std::vector<std::string>> &intrinsic_dtypes)
 {
     if (platform_infos_impl_ == nullptr) {
         return;
     }
-    platform_infos_impl_->SetVectorCoreIntrinsicDtype(intrinsicDtypes);
+    platform_infos_impl_->SetVectorCoreIntrinsicDtype(intrinsic_dtypes);
 }
 
 void PlatFormInfos::SetFixPipeDtypeMap(const std::map<std::string, std::vector<std::string>> &fixpipeDtypeMap)
@@ -188,10 +188,10 @@ uint32_t PlatFormInfos::GetCoreNumByType(const std::string &core_type)
     return coreNum;
 }
 
-void PlatFormInfos::SetCoreNum(const uint32_t &coreNum)
+void PlatFormInfos::SetCoreNum(const uint32_t &core_num)
 {
-    MKI_LOG(DEBUG) << "Set PlatFormInfos::core_num_: " << coreNum;
-    core_num_ = coreNum;
+    MKI_LOG(DEBUG) << "Set PlatFormInfos::core_num_: " << core_num;
+    core_num_ = core_num;
 }
 
 uint32_t PlatFormInfos::GetCoreNum() const
@@ -200,10 +200,10 @@ uint32_t PlatFormInfos::GetCoreNum() const
     return core_num_;
 }
 
-void PlatFormInfos::GetLocalMemSize(const LocalMemType &memType, uint64_t &size)
+void PlatFormInfos::GetLocalMemSize(const LocalMemType &mem_type, uint64_t &size)
 {
     std::string sizeStr;
-    switch (memType) {
+    switch (mem_type) {
         case LocalMemType::L0_A: {
             (void)GetPlatformRes("AICoreSpec", "l0_a_size", sizeStr);
             break;
@@ -250,10 +250,10 @@ void PlatFormInfos::GetLocalMemSize(const LocalMemType &memType, uint64_t &size)
     }
 }
 
-void PlatFormInfos::GetLocalMemBw(const LocalMemType &memType, uint64_t &bwSize)
+void PlatFormInfos::GetLocalMemBw(const LocalMemType &mem_type, uint64_t &bw_size)
 {
     std::string bwSizeStr;
-    switch (memType) {
+    switch (mem_type) {
         case LocalMemType::L2: {
             (void)GetPlatformRes("AICoreMemoryRates", "l2_rate", bwSizeStr);
             break;
@@ -268,14 +268,14 @@ void PlatFormInfos::GetLocalMemBw(const LocalMemType &memType, uint64_t &bwSize)
     }
 
     if (bwSizeStr.empty()) {
-        bwSize = 0;
+        bw_size = 0;
     } else {
         try {
-            bwSize = static_cast<uint64_t>(std::stoll(bwSizeStr.c_str()));
+            bw_size = static_cast<uint64_t>(std::stoll(bwSizeStr.c_str()));
         } catch (const std::invalid_argument &e) {
-            bwSize = 0;
+            bw_size = 0;
         } catch (const std::out_of_range &e) {
-            bwSize = 0;
+            bw_size = 0;
         }
     }
 }

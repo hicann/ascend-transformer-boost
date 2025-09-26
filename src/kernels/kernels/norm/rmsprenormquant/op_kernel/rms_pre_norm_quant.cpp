@@ -241,8 +241,10 @@ inline __aicore__ void InitTilingData(const __gm__ uint8_t *p_tilingdata, AsdOps
 }
 
 #define GET_TILING_DATA(tiling_data, tiling_arg)                                                                       \
-    AsdOps::RmsNormCommonTilingData tiling_data;                                                                  \
-    InitTilingData(tiling_arg, &(tiling_data))
+    do {                                                                                                               \
+        AsdOps::RmsNormCommonTilingData tiling_data;                                                                   \
+        InitTilingData(tiling_arg, &(tiling_data));                                                                    \
+    } while (0)
 
 extern "C" __global__ __aicore__ void rms_pre_norm_quant(GM_ADDR x, GM_ADDR r, GM_ADDR g, GM_ADDR b, GM_ADDR scale,
                                                          GM_ADDR offset, GM_ADDR y, GM_ADDR res, GM_ADDR tiling)

@@ -98,7 +98,7 @@ bool CoCAllGatherMatmulTilingFunc::CheckTiling(const TaskParam &taskParam)
     auto commDataSplit = cocTilingData.commDataSplit;
     auto coreNum = cocTilingData.blockDim;
     auto is91093 = cocTilingData.is91093;
-    auto minCoreCount = is91093 ? rankSize / A3_DIE_NUM : rankSize;
+    auto minCoreCount = is91093 != 0 ? rankSize / A3_DIE_NUM : rankSize;
     int32_t useCoreCount = commNpuSplit * commDataSplit;
 
     std::vector<std::tuple<std::string, int, int, int>> paramCheckList = {

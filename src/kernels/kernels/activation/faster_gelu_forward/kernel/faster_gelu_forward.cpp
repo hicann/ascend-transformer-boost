@@ -42,8 +42,10 @@ inline __aicore__ void InitTilingData(const __gm__ uint8_t *p_tilingdata, Faster
 }
 
 #define GET_TILING_DATA(tilingData, tilingArg)                                                                         \
-    FasterGeluForwardTilingData tilingData;                                                                            \
-    InitTilingData(tilingArg, &(tilingData))
+    do {                                                                                                               \
+        FasterGeluForwardTilingData tilingData;                                                                        \
+        InitTilingData(tilingArg, &(tilingData));                                                                      \
+    } while (0)
 
 extern "C" __global__ __aicore__ void faster_gelu_forward(GM_ADDR inputAddr, GM_ADDR outputAddr, GM_ADDR tiling)
 {

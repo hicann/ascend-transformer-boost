@@ -363,9 +363,11 @@ inline __aicore__ void InitTilingData(const __gm__ uint8_t *p_tilingdata, AsdOps
 #endif
 }
 
-#define GET_TILING_DATA(tilingData, tilingArg)                                                                       \
-    AsdOps::RmsNormCommonTilingData tilingData;                                                                       \
-    InitTilingData(tilingArg, &(tilingData))
+#define GET_TILING_DATA(tilingData, tilingArg)                                                                         \
+    do {                                                                                                               \
+        AsdOps::RmsNormCommonTilingData tilingData;                                                                    \
+        InitTilingData(tilingArg, &(tilingData));                                                                      \
+    } while (0)
 
 extern "C" __global__ __aicore__ void rms_norm(GM_ADDR x, GM_ADDR g, GM_ADDR y, GM_ADDR tiling)
 {

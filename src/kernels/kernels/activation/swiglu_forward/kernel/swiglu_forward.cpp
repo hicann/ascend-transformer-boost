@@ -39,9 +39,11 @@ inline __aicore__ void InitTilingData(const __gm__ uint8_t *p_tilingdata, AsdOps
 #endif
 }
 
-#define GET_TILING_DATA(tiling_data, tiling_arg)                                                                 \
-    AsdOps::SwiGluForwardTilingData tiling_data;                                                                       \
-    InitTilingData(tiling_arg, &(tiling_data))
+#define GET_TILING_DATA(tiling_data, tiling_arg)                                                                       \
+    do {                                                                                                               \
+        AsdOps::SwiGluForwardTilingData tiling_data;                                                                   \
+        InitTilingData(tiling_arg, &(tiling_data));                                                                    \
+    } while (0)
 
 extern "C" __global__ __aicore__ void swiglu_forward(GM_ADDR input_gm, GM_ADDR output_gm, GM_ADDR tiling) {
     GET_TILING_DATA(tiling_data, tiling);

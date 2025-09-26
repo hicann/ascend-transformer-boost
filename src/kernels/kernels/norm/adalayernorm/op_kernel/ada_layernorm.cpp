@@ -380,9 +380,11 @@ inline __aicore__ void InitTilingData(const __gm__ uint8_t *p_tilingdata, AsdOps
 #endif
 }
 
-#define GET_TILING_DATA(tilingArg, tilingData) \
-    AsdOps::AdaLayerNormTilingData tilingData; \
-    InitTilingData(tilingArg, &(tilingData))
+#define GET_TILING_DATA(tilingArg, tilingData)                                                                         \
+    do {                                                                                                               \
+        AsdOps::AdaLayerNormTilingData tilingData;                                                                     \
+        InitTilingData(tilingArg, &(tilingData));                                                                      \
+    } while (0)
 
 extern "C" __global__ __aicore__ void ada_layer_norm(GM_ADDR x, GM_ADDR gamma, GM_ADDR beta, GM_ADDR z, GM_ADDR tiling)
 {

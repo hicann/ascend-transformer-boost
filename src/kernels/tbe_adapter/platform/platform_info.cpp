@@ -27,18 +27,18 @@ uint32_t PlatformInfoManager::InitializePlatformInfo()
 }
 
 uint32_t PlatformInfoManager::GetPlatformInfoWithOutSocVersion(
-    PlatformInfo &platformInfo, OptionalInfo &optiCompilationInfo)
+    PlatformInfo &platform_info, OptionalInfo &opti_compilation_info)
 {
-    (void)platformInfo;
-    (void)optiCompilationInfo;
+    (void)platform_info;
+    (void)opti_compilation_info;
     return 1;
 }
 
 uint32_t PlatformInfoManager::GetPlatformInfoWithOutSocVersion(
-    PlatFormInfos &platformInfo, OptionalInfos &optiCompilationInfo)
+    PlatFormInfos &platform_info, OptionalInfos &opti_compilation_info)
 {
-    (void)platformInfo;
-    (void)optiCompilationInfo;
+    (void)platform_info;
+    (void)opti_compilation_info;
     return 1;
 }
 

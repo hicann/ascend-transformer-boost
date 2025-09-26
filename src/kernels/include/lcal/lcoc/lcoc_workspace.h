@@ -10,6 +10,8 @@
 #ifndef LCAL_LCOC_WORKSPACE_H
 #define LCAL_LCOC_WORKSPACE_H
 
+#include <cstdint>
+
 #if !defined(__DAV_C220_VEC__) && !defined(__DAV_M200_VEC__) && !defined(__DAV_C220_CUBE__) && !defined(__DAV__C310__)
 #define __aicore__
 #define GM_ADDR int64_t
@@ -115,16 +117,16 @@ inline __aicore__ LcalWorkspaceInfo GetLcalWorkspaceInfo(GM_ADDR gmWorkSpace, in
             (expertPerRank <= 0 ? 1 : expertPerRank);
     }
 
-    if (isMoe) {
+    if (isMoe != 0) {
         GetLcalMoeWorkspaceInfo(lcalWorkspaceInfo, workspaceOffset, m, hasDequantParam, is_alltoallvc, EP,
                                 expertPerRank, outputSize);
     }
 
-    if (!isMoe && hasDequantParam) {
+    if (!(isMoe != 0) && hasDequantParam) {
         lcalWorkspaceInfo.gm_dequant_param = workspaceOffset;
         workspaceOffset += sizeof(int32_t) * AlignUp(n, ALIGN8);
     }
-    
+
     if (hasFormatDequantScale) {
         lcalWorkspaceInfo.gm_formate_dequant_scale = workspaceOffset;
         workspaceOffset += sizeof(float) * AlignUp(n, ALIGN8);

@@ -37,8 +37,10 @@ inline __aicore__ void InitTilingData(const __gm__ uint8_t *p_tilingdata, AtbOps
 }
 
 #define GET_TILING_DATA(tiling_data, tiling_arg, pipe)                                                                 \
-    AtbOps::RopeTilingData tiling_data;                                                                                \
-    InitTilingData(tiling_arg, &(tiling_data), &(pipe))
+    do {                                                                                                               \
+        AtbOps::RopeTilingData tiling_data;                                                                            \
+        InitTilingData(tiling_arg, &(tiling_data), &(pipe));                                                           \
+    } while (0)
 
 extern "C" __global__ __aicore__ void rotary_pos_emb(GM_ADDR q, GM_ADDR k, GM_ADDR cos, GM_ADDR sin,
                                                      GM_ADDR seqLen, GM_ADDR outQ, GM_ADDR outK,
