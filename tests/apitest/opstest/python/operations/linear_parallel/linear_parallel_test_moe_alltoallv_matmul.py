@@ -9,6 +9,7 @@
 #
 
 import os
+import re
 import json
 import unittest
 import sys
@@ -69,12 +70,20 @@ def get_eb(golden:torch.Tensor, actual:torch.Tensor):
     return EB
 
 def one_golden_compare(tensor_a, tensor_b):
+    print("npu!!!!", tensor_a.shape)
+    print("cpu!!!!!!!!!!", tensor_b.shape)
+    tensor_a = tensor_a.to(torch.float32).reshape(-1)
+    tensor_b = tensor_b.to(torch.float32).reshape(-1)
     err = get_err_threshold_for_one_golden(tensor_a.dtype)
     if torch.isnan(tensor_a).any():
         print("********Warning: npu result contains NaN!*************")
         return 1
     tensor_a = tensor_a.to(torch.float32)
     tensor_b = tensor_b.to(torch.float32)
+
+    if tensor_a.size(0) == 0 and tensor_b.size(0) == 0:
+        print("result is same with expect")
+        return 1
     # 确定性计算要求2次npu计算结果完全一致
     if os.getenv('LCCL_DETERMINISTIC', '0') == "1":
         if torch.equal(tensor_a, tensor_b):
@@ -89,39 +98,14 @@ def one_golden_compare(tensor_a, tensor_b):
     max_relative_error_value_a = tensor_a[temp_id]
     max_relative_error_value_b = tensor_b[temp_id]
     result = (abs_error <= err * golden_nmax).all()
-    print("re!!!!!!!!!!!!!!npu,cpu, id", result, max_relative_error_value_a, max_relative_error_value_b, temp_id)
+    print("re!!!!!!!!!!!!!!npu,cpu, id", temp_tensor[temp_id], max_relative_error_value_a, max_relative_error_value_b, temp_id)
     if result:
-        return 0
-    else:
+        print("result is same with expect")
         return 1
+    else:
+        print("result is error")
+        return 0
 
-def read_binary_file(file_path, dtype=torch.float32):
-    try:
-        with open(file_path, "rb") as f:
-            binary_data = f.read()
-        writable_data = bytearray(binary_data)
-        if len(writable_data) == 0:
-            return None
-        tensor = torch.frombuffer(writable_data, dtype=dtype)
-        return tensor
-    except FileNotFoundError:
-        print(f"The file {file_path} does not exist!")
-        return None
-
-def write_to_bin(tensor, prefix):
-    file_path = f"{prefix}"
-    if tensor is None:
-        return
-    untyped_dict = {
-        torch.float16: torch.int16,
-        torch.bfloat16: torch.int16,
-        torch.int8: torch.int8,
-        torch.float32: torch.int32,
-        torch.int32: torch.int32,
-        torch.int64: torch.int64
-    }
-    print(tensor.shape, tensor.dtype, file_path)
-    tensor.view(untyped_dict[tensor.dtype]).numpy().tofile(file_path)
 
 def main_worker(rank, comm_type, world_size, batch, M, K, N, trans_b, local_expert_nums,
                 data_type, quant_info, EP, TP, quant_type, out_data_ype, matrix_a_list, matrix_b_list, dequant_scale_list,
@@ -175,69 +159,9 @@ def main_worker(rank, comm_type, world_size, batch, M, K, N, trans_b, local_expe
 
     torch.npu.synchronize()
     golden_out_tensor = matrix_c_list[rank]
-    golden_out_tensor_low = matrix_c_low_list[rank]
     out_tensor_compare = out_tensor[0].to(torch.device('cpu'))[:golden_out_tensor.shape[1], :]
 
-    assert check_precision_new(out_tensor_compare, golden_out_tensor, golden_out_tensor_low)
-
-
-def check_precision_new(tensor_a, tensor_b, tensor_c):
-    if torch.isnan(tensor_a).any():
-        print("********Warning: npu result contains NaN!*************")
-        return 1
-    epsilon = 1e-7
-    d_type = tensor_a.dtype
-    err_threshold = get_err_threshold_for_two_golden(d_type)
-    eb_threshold = get_eb_threshold(d_type)
-
-    tensor_a = tensor_a.to(torch.float32).reshape(-1)
-    tensor_b = tensor_b.to(torch.float32).reshape(-1)
-    tensor_c = tensor_c.to(torch.float32).reshape(-1)
-
-    relative_error_npu = torch.abs(tensor_a - tensor_b) / (torch.abs(tensor_b) + epsilon)
-    relative_error_cpu = torch.abs(tensor_c - tensor_b) / (torch.abs(tensor_b) + epsilon)
-    if relative_error_npu.size(0) == 0 and relative_error_cpu.size(0) == 0:
-        print("result is same with expect")
-        return 1
-    max_relative_error_npu = torch.max(relative_error_npu)
-    max_relative_error_cpu = torch.max(relative_error_cpu)
-    mean_relative_error_npu = torch.mean(relative_error_npu)
-    mean_relative_error_cpu = torch.mean(relative_error_cpu)
-    # 计算均方根误差
-    mse_npu = torch.mean((tensor_a - tensor_b) ** 2)
-    rmse_npu = torch.sqrt(mse_npu)
-    mse_cpu = torch.mean((tensor_c - tensor_b) ** 2)
-    rmse_cpu = torch.sqrt(mse_cpu)
-
-    EB = torch.abs(get_eb(tensor_b, tensor_a))
-
-    print("最大相对误差npu:", max_relative_error_npu)
-    print("最大相对误差cpu:", max_relative_error_cpu)
-    print("平均相对误差npu:", mean_relative_error_npu)
-    print("平均相对误差cpu:", mean_relative_error_cpu)
-    print("均方根误差npu:", rmse_npu)
-    print("均方根误差cpu:", rmse_cpu)
-    print("误差均衡性EB:", EB)
-
-    max_relative_error_idx = torch.argmax(relative_error_npu)
-    max_relative_error_value_a = tensor_a[max_relative_error_idx]
-    max_relative_error_value_b = tensor_b[max_relative_error_idx]
-    max_relative_error_value_c = tensor_c[max_relative_error_idx]
-
-    # 打印最大相对误差对应的tensor值
-    # print(f"Max Relative Error Value: npu, golden, cpu: {max_relative_error_value_a.item()}, {max_relative_error_value_b.item()}, {max_relative_error_value_c.item()}")
-
-    if max_relative_error_npu / max(max_relative_error_cpu, err_threshold) >= 10:
-        print(f"Max Relative Error Value: npu, golden, cpu, id: {max_relative_error_value_a.item()}, {max_relative_error_value_b.item()}, {max_relative_error_value_c.item()}, {max_relative_error_idx}")
-        if one_golden_compare(tensor_a, tensor_b):
-            print("resule is error")
-            return 0
-
-    if mean_relative_error_npu / max(mean_relative_error_cpu, err_threshold) >= 2 or rmse_npu / max(rmse_cpu, err_threshold) >= 2 or EB >= eb_threshold:
-        print("result is error")
-        return 0
-    print("result is same with expect")
-    return 1
+    assert one_golden_compare(out_tensor_compare, golden_out_tensor)
 
 def find_nearest_multiple(n: int, k: int = 512) -> int:
     r = n % k
@@ -270,10 +194,11 @@ class LinearParallelCoverOperationTest(operation_test.OperationTest):
         dequant_granularity = 1
         has_dequant_offset = -1
         data_type = 2
+        mode = 0
         quant_info = QuantInfo(QuantGranularity(quant_granularity), quant_group_size, has_quant_offset,
                                QuantGranularity(dequant_granularity), dequant_group_size, has_dequant_offset)
         moedata = MoeTestDate(CommType(comm_type), world_size, batch, M, K, N, trans_b, local_expert_nums,
-                          CoCDataTypeDesc(data_type), quant_info, EP, TP, M*2)
+                          CoCDataTypeDesc(data_type), quant_info, EP, TP, M*2, mode)
         matrix_a_list = moedata.matrix_a_list
         matrix_b_list = moedata.matrix_b_list
         dequant_scale_list = moedata.dequant_scale_list
@@ -327,7 +252,7 @@ class LinearParallelCoverOperationTest(operation_test.OperationTest):
             has_quant_offset = -1
             dequant_group_size = -1
             # local_expert_nums = random.randint(1, 16)  # 1- 16
-            local_expert_nums = random.randint(1, 6)
+            local_expert_nums = random.randint(1, 16)
             # EP = 8 # EP * TP = WORLDSIZE
             EP = world_size
             TP = world_size // EP
@@ -344,6 +269,7 @@ class LinearParallelCoverOperationTest(operation_test.OperationTest):
                 data_type = 2
 
             has_dequant_offset = -1
+            mode = random.randint(0, 1)
             if data_type == 2:
                 kalign = find_nearest_multiple(K, 512)
             else:
@@ -354,11 +280,11 @@ class LinearParallelCoverOperationTest(operation_test.OperationTest):
                 continue
             i += 1
             print(
-                f"--M:{M}--N:{N}--K:{K}--world_size:{world_size}--local_expert_nums:{local_expert_nums}--EP:{EP}--TP:{TP}--dequant_granularity:{dequant_granularity}--out_data_type:{out_data_type}--data_type:{data_type}--i:{i}")
+                f"--M:{M}--N:{N}--K:{K}--world_size:{world_size}--local_expert_nums:{local_expert_nums}--EP:{EP}--TP:{TP}--dequant_granularity:{dequant_granularity}--out_data_type:{out_data_type}--data_type:{data_type}--mode:{mode}--i:{i}")
             quant_info = QuantInfo(QuantGranularity(quant_granularity), quant_group_size, has_quant_offset,
                                 QuantGranularity(dequant_granularity), dequant_group_size, has_dequant_offset)
             moedata = MoeTestDate(CommType(comm_type), world_size, batch, M, K, N, trans_b, local_expert_nums,
-                          CoCDataTypeDesc(data_type), quant_info, EP, TP, M*2)
+                          CoCDataTypeDesc(data_type), quant_info, EP, TP, M*2, mode)
             matrix_a_list = moedata.matrix_a_list
             matrix_b_list = moedata.matrix_b_list
             dequant_scale_list = moedata.dequant_scale_list
@@ -366,7 +292,6 @@ class LinearParallelCoverOperationTest(operation_test.OperationTest):
             global_tokens_per_expert_matrix = moedata.global_tokens_per_expert_matrix
             matrix_c_list = moedata.matrix_c_list
             matrix_c_low_list = moedata.matrix_c_low_list
-
 
             mp.spawn(main_worker, nprocs=world_size,
                     args=(comm_type, world_size, batch, M, K, N, trans_b, local_expert_nums,
