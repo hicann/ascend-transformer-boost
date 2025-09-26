@@ -122,7 +122,7 @@ void GetTilingKey(UnpadFlashAttentionNzInfo mmInfo, uint32_t *tilingParam)
 {
     if (mmInfo.type != OpParam::UnpadFlashAttentionNz::UNPAD_FLASH_ATTENTION_NZ_DECODER) {
         // tiling key
-        tilingParam[GetTilingKeyIndex()] = (mmInfo.precType << NZ_INDEX_3);
+        tilingParam[GetTilingKeyIndex()] = (static_cast<uint32_t>(mmInfo.precType) << NZ_INDEX_3);
     }
     MKI_LOG(INFO) << "tilingKey: " << tilingParam[GetTilingKeyIndex()];
 }

@@ -973,7 +973,8 @@ Status GraphRunner::ExecuteAllRunner(RunnerVariantPack &runnerVariantPack)
             << "] execute fail, runner name:" << node.runner->GetName();
             return st;
         }
-        if (runnerVariantPack.mstxMemRegister != nullptr && runnerVariantPack.mstxMemRegister->CheckTensorRange()) {
+        if (runnerVariantPack.mstxMemRegister != nullptr &&
+            static_cast<bool>(runnerVariantPack.mstxMemRegister->CheckTensorRange())) {
             runnerVariantPack.mstxMemRegister->MstxMemRegionsUnregister();
         }
     }

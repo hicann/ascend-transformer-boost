@@ -79,8 +79,10 @@ __aicore__ inline uint32_t AlignDown(uint32_t a, uint32_t base)
 }
 
 #define GET_TILING_DATA_MEMBER_ADDR(tilingType, member, var, tiling)                                                   \
-    size_t offset##var = (size_t)(&((tilingType *)0)->member);                                                         \
-    __gm__ uint8_t *(var) = (tiling) + (offset##var)
+    do {                                                                                                               \
+        size_t offset##var = (size_t)(&((tilingType *)0)->member);                                                     \
+        __gm__ uint8_t *(var) = (tiling) + (offset##var);                                                              \
+    } while (0)
 
 __aicore__ inline int32_t GetSplitValueFromGroupList(uint32_t groupIdx, int32_t &preOffset,
                                                      const GlobalTensor<int64_t> &groupListGm)

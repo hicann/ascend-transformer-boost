@@ -10,6 +10,7 @@
 
 #include "atb/utils/dl_manager.h"
 #include <dlfcn.h>
+#include "atb/utils/log.h"
 
 namespace atb {
 DlManager::DlManager(std::string path) : path_(path)

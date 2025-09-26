@@ -639,7 +639,7 @@ Status OpsRunner::RunAllKernel(RunnerVariantPack &runnerVariantPack)
                     runnerVariantPack.mstxMemRegister->AddTensorMemRegions(tensor.data, static_cast<uint64_t>(TensorUtil::AlignInt(tensor.dataSize, ALIGN_INT)));
                 }
             }
-            if (runnerVariantPack.mstxMemRegister->CheckTensorRange()) {
+            if (static_cast<bool>(runnerVariantPack.mstxMemRegister->CheckTensorRange())) {
                 runnerVariantPack.mstxMemRegister->MstxMemRegionsRegister();
             }
         }
@@ -652,7 +652,8 @@ Status OpsRunner::RunAllKernel(RunnerVariantPack &runnerVariantPack)
             ATB_LOG(INFO) << GetLogPrefix() << " node[" << nodeId << "] " << node.GetName() << " run end";
         }
         RunKernelPostProcess(node, nodeId, stream);
-        if (runnerVariantPack.mstxMemRegister != nullptr && runnerVariantPack.mstxMemRegister->CheckTensorRange()) {
+        if (runnerVariantPack.mstxMemRegister != nullptr &&
+            static_cast<bool>(runnerVariantPack.mstxMemRegister->CheckTensorRange())) {
             runnerVariantPack.mstxMemRegister->MstxMemRegionsUnregister();
         }
     }

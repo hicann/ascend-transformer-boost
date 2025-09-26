@@ -177,8 +177,9 @@ Status GetTilingKeyTypeBase(MLAInfo &mmInfo, const Tensor &qTensor, const Tensor
 Status GenTilingKey(MLAInfo &mmInfo, KernelInfo &kernelInfo, OpParam::MLA &param)
 {
     uint32_t dataType = static_cast<int32_t>(mmInfo.type);
-    uint32_t tilingKey = dataType + (mmInfo.kNz << NUM4) + (mmInfo.mtpTp1Flag << NUM2) +
-                         (param.isRing << NUM5) + (mmInfo.flashDecoding << NUM6);
+    uint32_t tilingKey =
+        dataType + (static_cast<uint32_t>(mmInfo.kNz) << NUM4) + (static_cast<uint32_t>(mmInfo.mtpTp1Flag) << NUM2) +
+        (static_cast<uint32_t>(param.isRing) << NUM5) + (static_cast<uint32_t>(mmInfo.flashDecoding) << NUM6);
     kernelInfo.SetTilingId(tilingKey);
     MKI_LOG(INFO) << "TILING KEY IS = " << tilingKey;
     return Status::OkStatus();
@@ -365,8 +366,8 @@ Status InitInfo(MLAInfo &mmInfo, OpParam::MLA &param)
 Status GenMlaPrefillTilingKey(MLAInfo &mmInfo, KernelInfo &kernelInfo, OpParam::MLA &param)
 {
     // currently only support fp16/bf16 maskfree prefill or bf16 prefill kernel
-    uint32_t dataType = static_cast<int32_t>(mmInfo.type);
-    uint32_t tilingKey = dataType + (mmInfo.maskType << NUM1);
+    uint32_t dataType = static_cast<uint32_t>(mmInfo.type);
+    uint32_t tilingKey = dataType + (static_cast<uint32_t>(mmInfo.maskType) << NUM1);
     kernelInfo.SetTilingId(tilingKey);
     MKI_LOG(INFO) << "MLA Prefill TILING KEY IS = " << tilingKey;
     return Status::OkStatus();
