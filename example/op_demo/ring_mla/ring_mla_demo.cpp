@@ -165,7 +165,7 @@ int main(int argc, char **argv)
 {
     CHECK_STATUS(aclInit(nullptr));
     // 设置卡号、创建context、设置stream
-    int32_t deviceId = 1;
+    int32_t deviceId = 0;
     CHECK_STATUS(aclrtSetDevice(deviceId));
 
     atb::Context *context = nullptr;
