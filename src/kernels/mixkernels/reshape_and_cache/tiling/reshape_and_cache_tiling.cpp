@@ -56,6 +56,7 @@ Status ReshapeAndCacheTilingNd(const LaunchParam &launchParam, KernelInfo &kerne
     uint32_t headSizeV = static_cast<uint32_t>(vShape.at(DIM_2));
     MKI_CHECK(headSizeV > 0 && headSizeV <= INT_MAX, "headSizeV is invalid",
         return Status::FailStatus(ERROR_INVALID_VALUE));
+    
     if (!key.desc.IsContiguous()) {
         ReshapeAndCacheNctTilingData *tilingDataPtr =
             reinterpret_cast<AtbOps::ReshapeAndCacheNctTilingData *>(kernelInfo.GetTilingHostAddr());
