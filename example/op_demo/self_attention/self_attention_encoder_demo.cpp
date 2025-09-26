@@ -115,11 +115,14 @@ atb::Status PrepareOperation(atb::Operation **encoderOp)
 
 int main(int argc, char **argv)
 {
+    int32_t deviceId = 0;
+    if (argc == 2) {
+        deviceId = std::stoi(argv[1]);
+    }
     // kv隐藏层大小，用于输出tensor shape
     uint32_t kvHiddenSize = KV_HEAD_NUM * HEAD_SIZE;
     // 设置卡号、创建context、设置stream
     CHECK_STATUS(aclInit(nullptr));
-    int32_t deviceId = 0;
     CHECK_STATUS(aclrtSetDevice(deviceId));
     atb::Context *context = nullptr;
     CHECK_STATUS(atb::CreateContext(&context));

@@ -163,9 +163,13 @@ atb::Status RunRingMLADemo(atb::Context *contextPtr, aclrtStream stream, atb::Op
 
 int main(int argc, char **argv)
 {
+    int32_t deviceId = 0;
+    if (argc == 2) {
+        deviceId = std::stoi(argv[1]);
+    }
     CHECK_STATUS(aclInit(nullptr));
     // 设置卡号、创建context、设置stream
-    int32_t deviceId = 0;
+    
     CHECK_STATUS(aclrtSetDevice(deviceId));
 
     atb::Context *context = nullptr;

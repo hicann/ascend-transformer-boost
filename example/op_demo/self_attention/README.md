@@ -24,6 +24,10 @@
         ```sh
         g++ -D_GLIBCXX_USE_CXX11_ABI=1 -I ...
         ```
+    - 生成的二进制文件***_demo可以额外传入一个int参数作为deviceId，默认为0，如：
+        ```sh
+        ./self_attention_encoder_demo 0
+        ```
     - 提供的build脚本仅用于编译和运行self_attention_encoder_demo.cpp，如需编译其他demo，需要替换“self_attention_encoder_demo”为对应的cpp文件名
 
 ## 额外说明
