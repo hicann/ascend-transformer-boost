@@ -159,6 +159,9 @@ Status SelfAttentionEncoderFusionOpsRunner::ModifyKernelGraph(const OpsTensorPac
 
 void SelfAttentionEncoderFusionOpsRunner::SetFAParam(AtbOps::OpParam::UnpadFlashAttention &flashAttentionParam)
 {
+    flashAttentionParam.isClamp = (param_.clampType == infer::SelfAttentionParam::CLAMP_TYPE_MIN_MAX);
+    flashAttentionParam.clampMin = param_.clampMin;
+    flashAttentionParam.clampMax = param_.clampMax;
     if (param_.mlaVHeadSize > 0) {
         flashAttentionParam.type =
             param_.kernelType == atb::infer::SelfAttentionParam::KERNELTYPE_HIGH_PRECISION ?
