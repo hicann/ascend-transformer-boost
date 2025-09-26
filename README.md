@@ -57,9 +57,10 @@ ascend-transformer-boost
 │   │   ├── mixkernels  //融合算子存放目录
 │   │   ├── tbe_adapter //TBE 适配器相关的源代码
 │   │   └── CMakeLists.txt
-│   ├── ops_common
-│   ├── ops_infer       //推理OP
-│   ├── ops_train       //训练OP
+│   ├── ops
+│   │   ├── ops_common
+│   │   ├── ops_infer   //推理OP
+│   │   └── ops_train   //训练OP
 │   ├── torch_atb       //与PyTorch相关的atb库文件
 │   └── CMakeLists.txt
 ├── tests               //测试代码
