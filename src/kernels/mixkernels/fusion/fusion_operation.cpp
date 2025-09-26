@@ -37,13 +37,13 @@ public:
     {
         std::string kernelName = "FusionMatmulAddKernel";
         OpParam::Fusion fusionType = launchParam.GetParam<OpParam::Fusion>();
-        if (OpParam::Fusion::MATMUL_GELU == fusionType.fusionType) {
+        if (fusionType.fusionType == OpParam::Fusion::MATMUL_GELU) {
             kernelName = "FusionMatmulGeluKernel";
-        } else if (OpParam::Fusion::MATMUL_SIGMOID == fusionType.fusionType) {
+        } else if (fusionType.fusionType == OpParam::Fusion::MATMUL_SIGMOID) {
             kernelName = "FusionMatmulSigmoidKernel";
-        } else if (OpParam::Fusion::MATMUL_SWIGLU == fusionType.fusionType) {
+        } else if (fusionType.fusionType == OpParam::Fusion::MATMUL_SWIGLU) {
             kernelName = "FusionMatmulSwiGluKernel";
-        } else if (OpParam::Fusion::NON_FUSION == fusionType.fusionType) {
+        } else if (fusionType.fusionType == OpParam::Fusion::NON_FUSION) {
             kernelName = "FusionErasedKernel";
         }
         MKI_LOG(INFO) << "getBestKernel " << kernelName;
@@ -242,13 +242,13 @@ public:
     {
         OpParam::Fusion fusionType = launchParam.GetParam<OpParam::Fusion>();
         std::string deviceVersion = PlatformInfo::Instance().GetPlatformName();
-        if (OpParam::Fusion::MATMUL_ADD == fusionType.fusionType) {
+        if (fusionType.fusionType == OpParam::Fusion::MATMUL_ADD) {
             MatMulAddFusion();
-        } else if (OpParam::Fusion::MATMUL_GELU == fusionType.fusionType) {
+        } else if (fusionType.fusionType == OpParam::Fusion::MATMUL_GELU) {
             MatMulGeluFusion();
-        } else if (OpParam::Fusion::MATMUL_SIGMOID == fusionType.fusionType) {
+        } else if (fusionType.fusionType == OpParam::Fusion::MATMUL_SIGMOID) {
             MatMulSigmoidFusion();
-        } else if (OpParam::Fusion::MATMUL_SWIGLU == fusionType.fusionType) {
+        } else if (fusionType.fusionType == OpParam::Fusion::MATMUL_SWIGLU) {
             MatMulSwigluFusion();
         } else {
             ErasedFusion();
@@ -270,7 +270,7 @@ protected:
     Status InferShapeImpl(const LaunchParam &launchParam, SVector<Tensor> &outTensors) const override
     {
         OpParam::Fusion fusionType = launchParam.GetParam<OpParam::Fusion>();
-        if (OpParam::Fusion::MATMUL_ADD == fusionType.fusionType) {
+        if (fusionType.fusionType == OpParam::Fusion::MATMUL_ADD) {
             auto inTensorDescA = launchParam.GetInTensor(2).desc;
             TensorDesc &tensorDescOut = outTensors[0].desc;
             tensorDescOut.dtype = TENSOR_DTYPE_FLOAT16;

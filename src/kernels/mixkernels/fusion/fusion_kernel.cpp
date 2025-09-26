@@ -31,7 +31,7 @@ public:
     bool CanSupport(const LaunchParam &launchParam) const override
     {
         OpParam::Fusion fusionType = launchParam.GetParam<OpParam::Fusion>();
-        if (OpParam::Fusion::MATMUL_ADD == fusionType.fusionType) {
+        if (fusionType.fusionType == OpParam::Fusion::MATMUL_ADD) {
             MKI_CHECK(launchParam.GetInTensorCount() == TENSOR_INPUT_NUM_MATMUL_ADD, "in tensor num invalid",
                       return false);
             MKI_CHECK(launchParam.GetOutTensorCount() == TENSOR_OUTPUT_NUM, "out tensor num invalid", return false);
@@ -41,7 +41,7 @@ public:
             MKI_CHECK(inTensor1.desc.dtype == TENSOR_DTYPE_FLOAT16, "in tensor 1 dtype invalid", return false);
             auto inTensor2 = launchParam.GetInTensor(DIM_2);
             MKI_CHECK(inTensor2.desc.dtype == TENSOR_DTYPE_FLOAT16, "in tensor 2 dtype invalid", return false);
-        } else if (OpParam::Fusion::MATMUL_GELU == fusionType.fusionType) {
+        } else if (fusionType.fusionType == OpParam::Fusion::MATMUL_GELU) {
             MKI_CHECK(launchParam.GetInTensorCount() == TENSOR_INPUT_NUM_MATMUL_ACTIVATE, "in tensor num invalid",
                       return false);
             MKI_CHECK(launchParam.GetOutTensorCount() == TENSOR_OUTPUT_NUM, "out tensor num invalid", return false);

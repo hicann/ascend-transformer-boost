@@ -11,7 +11,7 @@
 #include "atb/utils/dl_manager.h"
 #include "atb/utils/aclnn_util.h"
 #include "atb/utils/log.h"
-#include <atbops/params/params.h>
+#include "atbops/params/params.h"
 
 namespace {
 static const uint32_t IN_TENSOR_NUM = 24;
