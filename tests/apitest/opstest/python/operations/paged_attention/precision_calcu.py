@@ -134,7 +134,7 @@ def compare_cv(golden:torch.Tensor, gpu:torch.Tensor, actual:torch.Tensor):
     logging.info(f"mere_npu:{mere_npu} mere_gpu:{mere_gpu}")
     logging.info(f"rmse_npu:{rmse_npu} rmse_gpu:{rmse_gpu}")
     logging.info(f"MARE:{mare_rate} MERE:{mere_rate} RMSE:{rmse_rate} EB:{EB}")
-    logging.info(f"new golden cv result:{result}")
+    print(f"new golden cv result:{result}")
     return result
 
 if __name__ == '__main__':

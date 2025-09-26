@@ -104,8 +104,8 @@ bool CheckType(const infer::LinearParallelParam &opParam, Status &isOK)
 
 bool CheckTypeMc2(const infer::LinearParallelParam &opParam, Status &isOK)
 {
-    if (opParam.transWeight) {
-        ATB_LOG(ERROR) << "When LinearParallel backend is mc2, not support transWeight";
+    if (opParam.hasResidual) {
+        ATB_LOG(ERROR) << "When LinearParallel backend is mc2, not support residual";
         isOK = ERROR_INVALID_PARAM;
         return true;
     }
@@ -114,8 +114,10 @@ bool CheckTypeMc2(const infer::LinearParallelParam &opParam, Status &isOK)
         isOK = ERROR_INVALID_PARAM;
         return true;
     }
-    if (opParam.quantType != atb::infer::LinearParallelParam::QuantType::QUANT_TYPE_UNQUANT) {
-        ATB_LOG(ERROR) << "When LinearParallel backend is mc2, only support quantType[QUANT_TYPE_UNQUANT]";
+    if (opParam.quantType != atb::infer::LinearParallelParam::QuantType::QUANT_TYPE_UNDEFINED ||
+        opParam.quantType != atb::infer::LinearParallelParam::QuantType::QUANT_TYPE_UNQUANT) {
+        ATB_LOG(ERROR)
+            << "When LinearParallel backend is mc2, only support quantType[QUANT_TYPE_UNDEFINED][QUANT_TYPE_UNQUANT]";
         isOK = ERROR_INVALID_PARAM;
         return true;
     }
@@ -123,11 +125,6 @@ bool CheckTypeMc2(const infer::LinearParallelParam &opParam, Status &isOK)
         ATB_LOG(ERROR)
             << "When LinearParallel backend is mc2, only support type[LINEAR_REDUCE_SCATTER], LinearParallel type:"
             << opParam.type << " is invalid ParallelType";
-        isOK = ERROR_INVALID_PARAM;
-        return true;
-    }
-    if (opParam.quantType == atb::infer::LinearParallelParam::QuantType::QUANT_TYPE_PER_TOKEN) {
-        ATB_LOG(ERROR) << "When LinearParallel backend is mc2, not support quantType[QUANT_TYPE_PER_TOKEN]";
         isOK = ERROR_INVALID_PARAM;
         return true;
     }
@@ -145,7 +142,7 @@ template <> Status CreateOperation(const infer::LinearParallelParam &opParam, Op
         return ERROR_INVALID_PARAM;
     }
     int rankSize = opParam.rankSize;
-    if (opParam.rankSize <= 0 || (rankSize & (rankSize - 1)) != 0) {
+    if ((opParam.rankSize <= 0 || (rankSize & (rankSize - 1)) != 0) && opParam.backend == "lcoc") {
         ATB_LOG(ERROR) << "LinearParallel rankSize support power of 2 but got [" << opParam.rankSize << "]";
         return ERROR_INVALID_PARAM;
     }
@@ -378,6 +375,7 @@ Status LinearParallelOperation::CheckResidual(const SVector<TensorDesc> &inTenso
     return NO_ERROR;
 }
 
+
 Status LinearParallelOperation::InferShapeCheckLinearAllReduce(const SVector<TensorDesc> &inTensorDescs) const
 {
     if (!OperationUtil::MatmulInTensorDescsCheck(inTensorDescs, GetLogPrefix(), commonCheckParam_)) {
@@ -409,17 +407,19 @@ Status LinearParallelOperation::InferShapeCheckLinearReduceScatter(const SVector
         return ERROR_INVALID_TENSOR_INI_MATCH;
     }
 
-    int64_t xTensorM = OperationUtil::GetXTensorM(inTensorDescs.at(0));
-    if (xTensorM % param_.rankSize != 0) {
-        ATB_LOG(ERROR) << GetLogPrefix() << "inTensor0 m [" << xTensorM
-                       << "] should be an integer multiple of rankSize :" << param_.rankSize;
-        return ERROR_INVALID_TENSOR_DIM;
-    }
     if (param_.backend == "mc2") {
+        if (inTensorDescs.at(0).shape.dimNum != IN_TENSOR_DIM_NUM) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "inTensor0 dimNum should be equal to 2";
+            return ERROR_INVALID_TENSOR_DIM_NUM;
+        }
+        if (inTensorDescs.at(1).shape.dimNum != IN_TENSOR_DIM_NUM) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "inTensor1 dimNum should be equal to 2";
+            return ERROR_INVALID_TENSOR_DIM_NUM;
+        }
         int64_t xTensorK = OperationUtil::GetXTensorK(inTensorDescs.at(0));
-        if (xTensorK < 256 || xTensorK > 65535) {
+        if (xTensorK < 256 || xTensorK >= 65535) {
             ATB_LOG(ERROR) << GetLogPrefix() << "inTensor0 k [" << xTensorK
-                           << "] should be an integer between [256 ~ 65535]";
+                           << "] should be an integer between [256 ~ 65535)";
             return ERROR_INVALID_TENSOR_DIM;
         }
     }
@@ -446,8 +446,8 @@ Status LinearParallelOperation::InferShapeCheckAllGatherLinear(const SVector<Ten
     return CheckResidual(inTensorDescs);
 }
 
-Status
-LinearParallelOperation::InferShapeCheckAllGatherLinearReduceScatter(const SVector<TensorDesc> &inTensorDescs) const
+Status LinearParallelOperation::InferShapeCheckAllGatherLinearReduceScatter(
+    const SVector<TensorDesc> &inTensorDescs) const
 {
     if (param_.twoDimTPInfo.rsDim * param_.twoDimTPInfo.agDim != param_.rankSize) {
         ATB_LOG(ERROR) << "agDim * rsDim should equal to rankSize";
