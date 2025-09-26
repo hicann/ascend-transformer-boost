@@ -45,36 +45,36 @@ void CohereLayerNormPrintTilingInfo(const CohereLayerNormTilingData &tilingDataP
                   << "averageFactor = " << tilingDataPtr.averageFactor;
 }
 
-Status MultipleRowMovedTiling(NormTilingDataPtrCon &layerNormPtrCon, CohereLayerNormTilingData *tilingDataPtr,
+Status MultipleRowMovedTiling(NormTilingDataPtrCon &layerNormPtrCon, CohereLayerNormTilingData &tilingDataPtr,
                               uint32_t singleRowMovedBufferSize, uint32_t multipleRowMovedBufferSize,
                               uint32_t miscBuffersSize)
 {
     uint32_t numResidualCoreRows = layerNormPtrCon.numRow -
-                                   tilingDataPtr->numCoreRows * (tilingDataPtr->numCore - 1);
+                                   tilingDataPtr.numCoreRows * (tilingDataPtr.numCore - 1);
     uint32_t calcCoreRowStrides = (layerNormPtrCon.maxUbSize - singleRowMovedBufferSize - miscBuffersSize) /
                                    multipleRowMovedBufferSize;
-    tilingDataPtr->coreRowStrides = std::min(tilingDataPtr->numCoreRows, calcCoreRowStrides);
-    MKI_CHECK(tilingDataPtr->coreRowStrides != 0, "coreRowStrides is equal to 0",
+    tilingDataPtr.coreRowStrides = std::min(tilingDataPtr.numCoreRows, calcCoreRowStrides);
+    MKI_CHECK(tilingDataPtr.coreRowStrides != 0, "coreRowStrides is equal to 0",
                 return Status::FailStatus(ERROR_INVALID_VALUE));
-    tilingDataPtr->coreRowRepeats = tilingDataPtr->numCoreRows / tilingDataPtr->coreRowStrides;
-    tilingDataPtr->coreRowTailStrides = tilingDataPtr->numCoreRows % tilingDataPtr->coreRowStrides;
-    tilingDataPtr->coreRowTailRepeats = tilingDataPtr->coreRowTailStrides == 0 ? 0 : 1;
-    tilingDataPtr->residualCoreRowStrides = std::min(numResidualCoreRows, calcCoreRowStrides);
-    MKI_CHECK(tilingDataPtr->residualCoreRowStrides != 0, "residualCoreRowStrides is equal to 0",
+    tilingDataPtr.coreRowRepeats = tilingDataPtr.numCoreRows / tilingDataPtr.coreRowStrides;
+    tilingDataPtr.coreRowTailStrides = tilingDataPtr.numCoreRows % tilingDataPtr.coreRowStrides;
+    tilingDataPtr.coreRowTailRepeats = tilingDataPtr.coreRowTailStrides == 0 ? 0 : 1;
+    tilingDataPtr.residualCoreRowStrides = std::min(numResidualCoreRows, calcCoreRowStrides);
+    MKI_CHECK(tilingDataPtr.residualCoreRowStrides != 0, "residualCoreRowStrides is equal to 0",
                 return Status::FailStatus(ERROR_INVALID_VALUE));
-    tilingDataPtr->residualCoreRowRepeats = numResidualCoreRows /
-                                            tilingDataPtr->residualCoreRowStrides;
-    tilingDataPtr->residualCoreRowTailStrides = numResidualCoreRows %
-                                                tilingDataPtr->residualCoreRowStrides;
-    tilingDataPtr->residualCoreRowTailRepeats = tilingDataPtr->residualCoreRowTailStrides == 0 ? 0 : 1;
-    tilingDataPtr->columnStrides = layerNormPtrCon.numCol;
-    tilingDataPtr->columnRepeats = 1;
-    tilingDataPtr->residualColumnStrides = 0;
-    tilingDataPtr->residualColumnRepeats = 0;
+    tilingDataPtr.residualCoreRowRepeats = numResidualCoreRows /
+                                            tilingDataPtr.residualCoreRowStrides;
+    tilingDataPtr.residualCoreRowTailStrides = numResidualCoreRows %
+                                                tilingDataPtr.residualCoreRowStrides;
+    tilingDataPtr.residualCoreRowTailRepeats = tilingDataPtr.residualCoreRowTailStrides == 0 ? 0 : 1;
+    tilingDataPtr.columnStrides = layerNormPtrCon.numCol;
+    tilingDataPtr.columnRepeats = 1;
+    tilingDataPtr.residualColumnStrides = 0;
+    tilingDataPtr.residualColumnRepeats = 0;
     return Status::OkStatus();
 }
 
-Status SingleRowMovedTiling(NormTilingDataPtrCon &layerNormPtrCon, CohereLayerNormTilingData *tilingDataPtr,
+Status SingleRowMovedTiling(NormTilingDataPtrCon &layerNormPtrCon, CohereLayerNormTilingData &tilingDataPtr,
                             uint32_t singleRowMovedElemSize, uint32_t multipleRowMovedElemSize,
                             uint32_t miscBuffersSize)
 {
@@ -83,21 +83,21 @@ Status SingleRowMovedTiling(NormTilingDataPtrCon &layerNormPtrCon, CohereLayerNo
                                                   (singleRowMovedElemSize + multipleRowMovedElemSize),
                                                   oneRepeatElemCount);
     uint32_t numResidualCoreRows = layerNormPtrCon.numRow -
-                                   tilingDataPtr->numCoreRows * (tilingDataPtr->numCore - 1);
-    tilingDataPtr->columnStrides = std::min(tilingDataPtr->numColumns, calcColumnStrides);
-    MKI_CHECK(tilingDataPtr->columnStrides != 0, "columnStrides is equal to 0",
+                                   tilingDataPtr.numCoreRows * (tilingDataPtr.numCore - 1);
+    tilingDataPtr.columnStrides = std::min(tilingDataPtr.numColumns, calcColumnStrides);
+    MKI_CHECK(tilingDataPtr.columnStrides != 0, "columnStrides is equal to 0",
               return Status::FailStatus(ERROR_INVALID_VALUE));
-    tilingDataPtr->columnRepeats = layerNormPtrCon.numCol / tilingDataPtr->columnStrides;
-    tilingDataPtr->residualColumnStrides = layerNormPtrCon.numCol % tilingDataPtr->columnStrides;
-    tilingDataPtr->residualColumnRepeats = tilingDataPtr->residualColumnStrides == 0 ? 0 : 1;
-    tilingDataPtr->coreRowStrides = 1;
-    tilingDataPtr->coreRowRepeats = tilingDataPtr->numCoreRows;
-    tilingDataPtr->coreRowTailStrides = 0;
-    tilingDataPtr->coreRowTailRepeats = 0;
-    tilingDataPtr->residualCoreRowStrides = 1;
-    tilingDataPtr->residualCoreRowRepeats = numResidualCoreRows;
-    tilingDataPtr->residualCoreRowTailStrides = 0;
-    tilingDataPtr->residualCoreRowTailRepeats = 0;
+    tilingDataPtr.columnRepeats = layerNormPtrCon.numCol / tilingDataPtr.columnStrides;
+    tilingDataPtr.residualColumnStrides = layerNormPtrCon.numCol % tilingDataPtr.columnStrides;
+    tilingDataPtr.residualColumnRepeats = tilingDataPtr.residualColumnStrides == 0 ? 0 : 1;
+    tilingDataPtr.coreRowStrides = 1;
+    tilingDataPtr.coreRowRepeats = tilingDataPtr.numCoreRows;
+    tilingDataPtr.coreRowTailStrides = 0;
+    tilingDataPtr.coreRowTailRepeats = 0;
+    tilingDataPtr.residualCoreRowStrides = 1;
+    tilingDataPtr.residualCoreRowRepeats = numResidualCoreRows;
+    tilingDataPtr.residualCoreRowTailStrides = 0;
+    tilingDataPtr.residualCoreRowTailRepeats = 0;
     return Status::OkStatus();
 }
 
@@ -145,10 +145,10 @@ Status CohereLayerNormTiling(const LaunchParam &launchParam, KernelInfo &kernelI
     uint64_t tilingKey = LAYER_NORM_TILING_KEY_BASE;
 
     if (fixedUsedBufferSize < layerNormPtrCon.maxUbSize) {  // multiple rows moved simultaneously
-        MultipleRowMovedTiling(layerNormPtrCon, tilingDataPtr,
+        MultipleRowMovedTiling(layerNormPtrCon, *tilingDataPtr,
                                singleRowMovedBufferSize, multipleRowMovedBufferSize, MISC_BUFFERS_SIZE);
     } else {  // single row moved
-        SingleRowMovedTiling(layerNormPtrCon, tilingDataPtr,
+        SingleRowMovedTiling(layerNormPtrCon, *tilingDataPtr,
                              singleRowMovedElemSize, multipleRowMovedElemSize, MISC_BUFFERS_SIZE);
         tilingKey += LAYER_NORM_TILING_KEY_FAST;
     }
