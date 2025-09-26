@@ -102,9 +102,9 @@ private:
             "Param groupListType only support GROUP_LIST_CUM_SUM (0).", return false);
         MKI_CHECK(param.weightUpPermuteType != OpParam::GmmDeqSwigluQuantGmmDeq::PERMUTE_INVALID,
             "Param weightUpPermuteType has invalid value.", return false);
-        MKI_CHECK(param.transposeWeightUp == false,
+        MKI_CHECK(!param.transposeWeightUp,
             "Param transposeWeightUp only support false.", return false);
-        MKI_CHECK(param.transposeWeightDown == true,
+        MKI_CHECK(param.transposeWeightDown,
             "Param transposeWeightDown only support true.", return false);
         return true;
     }
