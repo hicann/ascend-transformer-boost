@@ -49,7 +49,7 @@ void gmm_deq_swiglu_quant_gmm_deq_n256(
     workspaceOffset += RoundUp<GM_ALIGN_BYTE>(static_cast<size_t>(m) * nOut * sizeof(int8_t));
     GM_ADDR gmPerTokenScale2 = workspace + workspaceOffset;
     workspaceOffset += RoundUp<GM_ALIGN_BYTE>(static_cast<size_t>(m) * sizeof(float));
-    GM_ADDR gmWorkspace = workspace + workspaceOffset;
+    GM_ADDR gmWorkspace = workspace + workspaceOffset - 512;
 
     using Gmm1L1TileShape = GemmShape<Gmm1TileArgs<PERMUTE_N256>::L1M, Gmm1TileArgs<PERMUTE_N256>::L1N, GMM1_L1K>;
     using Gmm1L0TileShape = GemmShape<Gmm1L1TileShape::M, Gmm1L1TileShape::N, GMM1_L0K>;
