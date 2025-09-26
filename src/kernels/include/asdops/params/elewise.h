@@ -16,7 +16,7 @@
 namespace AsdOps {
 namespace OpParam {
 struct Elewise {
-    enum ElewiseType {
+    enum class ElewiseType {
         ELEWISE_UNDEFINED = 0,
         ELEWISE_CAST,
         ELEWISE_MULS,
@@ -39,6 +39,7 @@ struct Elewise {
         ELEWISE_DEQUANT_PER_CHANNEL,
         ELEWISE_DYNAMIC_QUANT,
     };
+    using enum ElewiseType;
     ElewiseType elewiseType;
 
     float varAttr = 0.0f;    // MULS

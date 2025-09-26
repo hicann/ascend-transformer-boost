@@ -13,27 +13,30 @@
 namespace AtbOps {
 namespace OpParam {
 struct GmmDeqSwigluQuantGmmDeq {
-    enum OutputType {
+    enum class OutputType {
         OUTPUT_FLOAT16 = 0,
         OUTPUT_BFLOAT16,
         OUTPUT_INVALID
     };
+    using enum OutputType;
 
-    enum GroupListType {
+    enum class GroupListType {
         GROUP_LIST_CUMSUM = 0,
         GROUP_LIST_SINGLE,
         GROUP_LIST_INVALID
     };
+    using enum GroupListType;
 
-    enum WeightUpPermuteType {
+    enum class WeightUpPermuteType {
         PERMUTE_N256 = 0,
         PERMUTE_N128,
         PERMUTE_INVALID
     };
+    using enum WeightUpPermuteType;
 
-    OutputType outputType = OUTPUT_FLOAT16;
-    GroupListType groupListType = GROUP_LIST_CUMSUM;
-    WeightUpPermuteType weightUpPermuteType = PERMUTE_N256;
+    OutputType outputType = OutputType::OUTPUT_FLOAT16;
+    GroupListType groupListType = GroupListType::GROUP_LIST_CUMSUM;
+    WeightUpPermuteType weightUpPermuteType = WeightUpPermuteType::PERMUTE_N256;
     bool transposeWeightUp = false;
     bool transposeWeightDown = true;
 

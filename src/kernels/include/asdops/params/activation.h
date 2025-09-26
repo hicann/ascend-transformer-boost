@@ -16,7 +16,7 @@
 namespace AsdOps {
 namespace OpParam {
 struct Activation {
-    enum ActivationType {
+    enum class ActivationType {
         ACTIVATION_UNDEFINED = 0,
         ACTIVATION_RELU,
         ACTIVATION_GELU,
@@ -28,6 +28,7 @@ struct Activation {
 	    ACTIVATION_SIGMOID,
         ACTIVATION_FASTER_GELU_FORWARD,
     };
+    using enum ActivationType;
     ActivationType activationType;
 
     float scale = 1.0f;       // for Swish

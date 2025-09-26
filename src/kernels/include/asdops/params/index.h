@@ -16,11 +16,12 @@
 namespace AsdOps {
 namespace OpParam {
 struct Index {
-    enum IndexType {
+    enum class IndexType {
         INDEX_UNDEFINED = 0,
         INDEX_ADD,
         INDEX_ADD_VALID,
     };
+    using enum IndexType;
     IndexType indexType;
     int64_t axis = 0;
 
