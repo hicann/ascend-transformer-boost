@@ -13,6 +13,9 @@
 #include <acl/acl.h>
 #include <iostream>
 #include <vector>
+#include <random>
+#include <algorithm>
+#include <numeric>
 #include <atb/utils.h>
 #include <unistd.h>
 #include <acl/acl_mdl.h>
@@ -707,5 +710,455 @@ TEST(TestGraphLaunchMode, CapturedByUserAndChangeWorkspace)
     aclrtFree(workSpace2);
     aclrtFree(workSpace3);
     aclrtDestroyStream(exeStream);
+    aclrtResetDevice(deviceId);
+}
+
+TEST(TestGraphLaunchMode, RopeWorkspaceFullOfDirtyData)
+{
+    const uint32_t batchSize = 1;
+    const uint32_t nTokens = 4;
+    const uint32_t hiddenSizeQ = 4096;
+    const uint32_t hiddenSizeK = 4096;
+    const uint32_t headSize = 128;
+
+    if (atb::GetSingleton<atb::Config>().Is910A()) {
+        GTEST_SKIP() << "This test case does not support 910A";
+    }
+
+    uint32_t deviceId = 0; 
+    aclError status = aclrtSetDevice(deviceId);
+    ASSERT_EQ(status, 0);
+    atb::Context *context = nullptr;
+    atb::Status st = atb::CreateContext(&context);
+    ASSERT_EQ(st, 0);
+    aclrtStream stream = nullptr;
+    status = aclrtCreateStream(&stream);
+    ASSERT_EQ(status, 0);
+    context->SetExecuteStream(stream);
+    atb::infer::RopeParam param;
+    param.cosFormat = 1;
+    param.rotaryCoeff = 4;
+    atb::Operation * op = nullptr;
+    st = atb::CreateOperation(param, &op);
+    ASSERT_EQ(st, 0);
+    
+    atb::Tensor query;
+    query.desc.dtype = ACL_FLOAT16;
+    query.desc.format = ACL_FORMAT_ND;
+    query.desc.shape.dimNum = 2;
+    query.desc.shape.dims[0] = nTokens;
+    query.desc.shape.dims[1] = hiddenSizeQ;
+    query.dataSize = atb::Utils::GetTensorSize(query);
+    std::vector<uint16_t> queryData(atb::Utils::GetTensorNumel(query), 1);
+    status = aclrtMalloc(&query.deviceData, query.dataSize, ACL_MEM_MALLOC_HUGE_FIRST);
+    ASSERT_EQ(status, 0);
+    status = aclrtMemcpy(query.deviceData, query.dataSize, queryData.data(), queryData.size() * sizeof(uint16_t), ACL_MEMCPY_HOST_TO_DEVICE);
+    ASSERT_EQ(status, 0);
+
+    atb::Tensor key;
+    key.desc.dtype = ACL_FLOAT16;
+    key.desc.format = ACL_FORMAT_ND;
+    key.desc.shape.dimNum = 2;
+    key.desc.shape.dims[0] = nTokens;
+    key.desc.shape.dims[1] = hiddenSizeK;
+    key.dataSize = atb::Utils::GetTensorSize(key);
+    std::vector<uint16_t> keyData(atb::Utils::GetTensorNumel(key), 1);
+    status = aclrtMalloc(&key.deviceData, key.dataSize, ACL_MEM_MALLOC_HUGE_FIRST);
+    ASSERT_EQ(status, 0);
+    status = aclrtMemcpy(key.deviceData, key.dataSize, keyData.data(), keyData.size() * sizeof(uint16_t), ACL_MEMCPY_HOST_TO_DEVICE);
+    ASSERT_EQ(status, 0);
+
+    atb::Tensor cos;
+    cos.desc.dtype = ACL_FLOAT16;
+    cos.desc.format = ACL_FORMAT_ND;
+    cos.desc.shape.dimNum = 2;
+    cos.desc.shape.dims[0] = nTokens;
+    cos.desc.shape.dims[1] = headSize;
+    cos.dataSize = atb::Utils::GetTensorSize(cos);
+    std::vector<uint16_t> cosData(atb::Utils::GetTensorNumel(cos), 1);
+    status = aclrtMalloc(&cos.deviceData, cos.dataSize, ACL_MEM_MALLOC_HUGE_FIRST);
+    ASSERT_EQ(status, 0);
+    status = aclrtMemcpy(cos.deviceData, cos.dataSize, cosData.data(), cosData.size() * sizeof(uint16_t), ACL_MEMCPY_HOST_TO_DEVICE);
+    ASSERT_EQ(status, 0);
+
+    atb::Tensor sin;
+    sin.desc.dtype = ACL_FLOAT16;
+    sin.desc.format = ACL_FORMAT_ND;
+    sin.desc.shape.dimNum = 2;
+    sin.desc.shape.dims[0] = nTokens;
+    sin.desc.shape.dims[1] = headSize;
+    sin.dataSize = atb::Utils::GetTensorSize(sin);
+    std::vector<uint16_t> sinData(atb::Utils::GetTensorNumel(sin), 1);
+    status = aclrtMalloc(&sin.deviceData, sin.dataSize, ACL_MEM_MALLOC_HUGE_FIRST);
+    ASSERT_EQ(status, 0);
+    status = aclrtMemcpy(sin.deviceData, sin.dataSize, sinData.data(), sinData.size() * sizeof(uint16_t), ACL_MEMCPY_HOST_TO_DEVICE);
+    ASSERT_EQ(status, 0);
+
+    atb::Tensor seqLen;
+    seqLen.desc.dtype = ACL_INT32;
+    seqLen.desc.format = ACL_FORMAT_ND;
+    seqLen.desc.shape.dimNum = 1;
+    seqLen.desc.shape.dims[0] = batchSize;
+    seqLen.dataSize = atb::Utils::GetTensorSize(seqLen);
+    std::vector<int32_t> seqLenData(atb::Utils::GetTensorNumel(seqLen), 4);
+    status = aclrtMalloc(&seqLen.deviceData, seqLen.dataSize, ACL_MEM_MALLOC_HUGE_FIRST);
+    ASSERT_EQ(status, 0);
+    status = aclrtMemcpy(seqLen.deviceData, seqLen.dataSize, seqLenData.data(), seqLenData.size() * sizeof(int32_t), ACL_MEMCPY_HOST_TO_DEVICE);
+    ASSERT_EQ(status, 0);
+
+    atb::Tensor ropeQ;
+    ropeQ.desc.dtype = ACL_FLOAT16;
+    ropeQ.desc.format = ACL_FORMAT_ND;
+    ropeQ.desc.shape.dimNum = 2;
+    ropeQ.desc.shape.dims[0] = nTokens;
+    ropeQ.desc.shape.dims[1] = hiddenSizeQ;
+    ropeQ.dataSize = atb::Utils::GetTensorSize(ropeQ);
+    status = aclrtMalloc(&ropeQ.deviceData, ropeQ.dataSize, ACL_MEM_MALLOC_HUGE_FIRST);
+    ASSERT_EQ(status, 0);
+
+    atb::Tensor ropeK;
+    ropeK.desc.dtype = ACL_FLOAT16;
+    ropeK.desc.format = ACL_FORMAT_ND;
+    ropeK.desc.shape.dimNum = 2;
+    ropeK.desc.shape.dims[0] = nTokens;
+    ropeK.desc.shape.dims[1] = hiddenSizeK;
+    ropeK.dataSize = atb::Utils::GetTensorSize(ropeK);
+    status = aclrtMalloc(&ropeK.deviceData, ropeK.dataSize, ACL_MEM_MALLOC_HUGE_FIRST);
+    ASSERT_EQ(status, 0);
+
+    atb::VariantPack variantPack;
+    variantPack.inTensors = {query, key, cos, sin, seqLen};
+    variantPack.outTensors = {ropeQ, ropeK};
+
+    uint64_t workspaceSize = 0;
+    st = op->Setup(variantPack, workspaceSize, context);
+    ASSERT_EQ(st, 0);
+    void *workspace = nullptr;
+    status = aclrtMalloc(&workspace, workspaceSize, ACL_MEM_MALLOC_HUGE_FIRST);
+    ASSERT_EQ(status, 0);
+
+    //填充脏数据
+    status = aclrtMemset(workspace, workspaceSize, 0xFF, workspaceSize);
+    ASSERT_EQ(status, 0);
+
+    st = op->Execute(variantPack, (uint8_t*)workspace, workspaceSize, context);
+    ASSERT_EQ(st, 0);
+    status = aclrtSynchronizeStream(stream);
+    ASSERT_EQ(status, 0);
+
+    status = aclrtDestroyStream(stream);
+    ASSERT_EQ(status, 0);
+    status = aclrtFree(workspace);
+    ASSERT_EQ(status, 0);
+    st = atb::DestroyOperation(op);
+    ASSERT_EQ(st, 0);
+    st = atb::DestroyContext(context);
+    ASSERT_EQ(st, 0);
+
+    for (size_t i = 0; i < variantPack.inTensors.size(); ++i) {
+        atb::Tensor tensor = variantPack.inTensors.at(i);
+        status = aclrtFree(tensor.deviceData);
+        ASSERT_EQ(status, 0);
+        tensor.deviceData = nullptr;
+        tensor.dataSize = 0;
+    }
+    for (size_t i = 0; i < variantPack.outTensors.size(); ++i) {
+        atb::Tensor tensor = variantPack.outTensors.at(i);
+        status = aclrtFree(tensor.deviceData);
+        ASSERT_EQ(status, 0);
+        tensor.deviceData = nullptr;
+        tensor.dataSize = 0;
+    }
+    aclrtResetDevice(deviceId);
+}
+
+TEST(TestGraphLaunchMode, GatingWorkspaceFullOfDirtyData)
+{
+    const uint32_t tokenNum = 512;
+    const uint32_t expertNum = 1024;
+    const uint32_t topKNum = 4;
+
+    if (atb::GetSingleton<atb::Config>().Is910A() || atb::GetSingleton<atb::Config>().Is310B()) {
+        GTEST_SKIP() << "This test case does not support 910A and 310B";
+    }
+
+    uint32_t deviceId = 0; 
+    aclError status = aclrtSetDevice(deviceId);
+    ASSERT_EQ(status, 0);
+    atb::Context *context = nullptr;
+    atb::Status st = atb::CreateContext(&context);
+    ASSERT_EQ(st, 0);
+    aclrtStream stream = nullptr;
+    status = aclrtCreateStream(&stream);
+    ASSERT_EQ(status, 0);
+    context->SetExecuteStream(stream); 
+    atb::infer::GatingParam param;
+    param.topkExpertNum = topKNum;
+    param.cumSumNum = 1024;
+    param.cumSumInt64 = false;
+    param.deviceExpert = std::vector<int32_t>();
+    atb::Operation * op = nullptr;
+    st = atb::CreateOperation(param, &op);
+    ASSERT_EQ(st, 0);
+    
+    atb::Tensor topK;
+    topK.desc.dtype = ACL_INT32;
+    topK.desc.format = ACL_FORMAT_ND;
+    topK.desc.shape.dimNum = 1;
+    topK.desc.shape.dims[0] = tokenNum * topKNum;
+    topK.dataSize = atb::Utils::GetTensorSize(topK);
+    std::vector<int32_t> topKData(atb::Utils::GetTensorNumel(topK), 0);
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    for (int i = 0; i < tokenNum; ++i) {
+        std::vector<int32_t> pool(expertNum);
+        std::iota(pool.begin(), pool.end(), 0);
+        std::shuffle(pool.begin(), pool.end(), gen);
+        for (int j = 0; j < topKNum; ++j) {
+            topKData[i * topKNum + j] = pool[j];
+        }
+    }
+    status = aclrtMalloc(&topK.deviceData, topK.dataSize, ACL_MEM_MALLOC_HUGE_FIRST);
+    ASSERT_EQ(status, 0);
+    status = aclrtMemcpy(topK.deviceData, topK.dataSize, topKData.data(), topKData.size() * sizeof(int32_t), ACL_MEMCPY_HOST_TO_DEVICE);
+    ASSERT_EQ(status, 0);
+
+    atb::Tensor idxArr;
+    idxArr.desc.dtype = ACL_INT32;
+    idxArr.desc.format = ACL_FORMAT_ND;
+    idxArr.desc.shape.dimNum = 1;
+    idxArr.desc.shape.dims[0] = tokenNum * topKNum;
+    idxArr.dataSize = atb::Utils::GetTensorSize(idxArr);
+    std::vector<int32_t> idxArrData(atb::Utils::GetTensorNumel(idxArr), 0);
+    for (int32_t i = 0; i < idxArrData.size(); ++i) {
+        idxArrData[i] = i;
+    }
+    status = aclrtMalloc(&idxArr.deviceData, idxArr.dataSize, ACL_MEM_MALLOC_HUGE_FIRST);
+    ASSERT_EQ(status, 0);
+    status = aclrtMemcpy(idxArr.deviceData, idxArr.dataSize, idxArrData.data(), idxArrData.size() * sizeof(int32_t), ACL_MEMCPY_HOST_TO_DEVICE);
+    ASSERT_EQ(status, 0);
+
+    atb::Tensor tokenIndex;
+    tokenIndex.desc.dtype = ACL_INT32;
+    tokenIndex.desc.format = ACL_FORMAT_ND;
+    tokenIndex.desc.shape.dimNum = 1;
+    tokenIndex.desc.shape.dims[0] = tokenNum * topKNum;
+    tokenIndex.dataSize = atb::Utils::GetTensorSize(tokenIndex);
+    status = aclrtMalloc(&tokenIndex.deviceData, tokenIndex.dataSize, ACL_MEM_MALLOC_HUGE_FIRST);
+    ASSERT_EQ(status, 0);
+
+    atb::Tensor cumSum;
+    cumSum.desc.dtype = ACL_INT32;
+    cumSum.desc.format = ACL_FORMAT_ND;
+    cumSum.desc.shape.dimNum = 1;
+    cumSum.desc.shape.dims[0] = expertNum;
+    cumSum.dataSize = atb::Utils::GetTensorSize(cumSum);
+    status = aclrtMalloc(&cumSum.deviceData, cumSum.dataSize, ACL_MEM_MALLOC_HUGE_FIRST);
+    ASSERT_EQ(status, 0);
+
+    atb::Tensor originalIndex;
+    originalIndex.desc.dtype = ACL_INT32;
+    originalIndex.desc.format = ACL_FORMAT_ND;
+    originalIndex.desc.shape.dimNum = 1;
+    originalIndex.desc.shape.dims[0] = tokenNum * topKNum;
+    originalIndex.dataSize = atb::Utils::GetTensorSize(originalIndex);
+    status = aclrtMalloc(&originalIndex.deviceData, originalIndex.dataSize, ACL_MEM_MALLOC_HUGE_FIRST);
+    ASSERT_EQ(status, 0);
+
+    // 此场景下不输出validIndex;
+
+    atb::VariantPack variantPack;
+    variantPack.inTensors = {topK, idxArr};
+    variantPack.outTensors = {tokenIndex, cumSum, originalIndex};
+
+    uint64_t workspaceSize = 0;
+    st = op->Setup(variantPack, workspaceSize, context);
+    ASSERT_EQ(st, 0);
+    void *workspace = nullptr;
+    status = aclrtMalloc(&workspace, workspaceSize, ACL_MEM_MALLOC_HUGE_FIRST);
+    ASSERT_EQ(status, 0);
+
+    //填充脏数据
+    status = aclrtMemset(workspace, workspaceSize, 0xFF, workspaceSize);
+    ASSERT_EQ(status, 0);
+
+    st = op->Execute(variantPack, (uint8_t*)workspace, workspaceSize, context);
+    ASSERT_EQ(st, 0);
+    status = aclrtSynchronizeStream(stream);
+    ASSERT_EQ(status, 0);
+
+    status = aclrtDestroyStream(stream);
+    ASSERT_EQ(status, 0);
+    status = aclrtFree(workspace);
+    ASSERT_EQ(status, 0);
+    st = atb::DestroyOperation(op);
+    ASSERT_EQ(st, 0);
+    st = atb::DestroyContext(context);
+    ASSERT_EQ(st, 0);
+
+    for (size_t i = 0; i < variantPack.inTensors.size(); ++i) {
+        atb::Tensor tensor = variantPack.inTensors.at(i);
+        status = aclrtFree(tensor.deviceData);
+        ASSERT_EQ(status, 0);
+        tensor.deviceData = nullptr;
+        tensor.dataSize = 0;
+    }
+    for (size_t i = 0; i < variantPack.outTensors.size(); ++i) {
+        atb::Tensor tensor = variantPack.outTensors.at(i);
+        status = aclrtFree(tensor.deviceData);
+        ASSERT_EQ(status, 0);
+        tensor.deviceData = nullptr;
+        tensor.dataSize = 0;
+    }
+    aclrtResetDevice(deviceId);
+}
+
+TEST(TestGraphLaunchMode, GatingGraphMode)
+{
+    const uint32_t tokenNum = 512;
+    const uint32_t expertNum = 1024;
+    const uint32_t topKNum = 4;
+
+    if (atb::GetSingleton<atb::Config>().Is910A() || atb::GetSingleton<atb::Config>().Is310B()) {
+        GTEST_SKIP() << "This test case does not support 910A and 310B";
+    }
+
+    uint32_t deviceId = 0; 
+    aclError status = aclrtSetDevice(deviceId);
+    ASSERT_EQ(status, 0);
+    atb::Context *context = nullptr;
+    atb::Status st = atb::CreateContext(&context);
+    ASSERT_EQ(st, 0);
+    aclrtStream stream = nullptr;
+    status = aclrtCreateStream(&stream);
+    ASSERT_EQ(status, 0);
+    context->SetExecuteStream(stream); 
+    context->SetLaunchMode(atb::GRAPH_LAUNCH_MODE);
+    atb::infer::GatingParam param;
+    param.topkExpertNum = topKNum;
+    param.cumSumNum = 1024;
+    param.cumSumInt64 = false;
+    param.deviceExpert = std::vector<int32_t>();
+    atb::Operation * op = nullptr;
+    st = atb::CreateOperation(param, &op);
+    ASSERT_EQ(st, 0);
+    
+    atb::Tensor topK;
+    topK.desc.dtype = ACL_INT32;
+    topK.desc.format = ACL_FORMAT_ND;
+    topK.desc.shape.dimNum = 1;
+    topK.desc.shape.dims[0] = tokenNum * topKNum;
+    topK.dataSize = atb::Utils::GetTensorSize(topK);
+    std::vector<int32_t> topKData(atb::Utils::GetTensorNumel(topK), 0);
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    for (int i = 0; i < tokenNum; ++i) {
+        std::vector<int32_t> pool(expertNum);
+        std::iota(pool.begin(), pool.end(), 0);
+        std::shuffle(pool.begin(), pool.end(), gen);
+        for (int j = 0; j < topKNum; ++j) {
+            topKData[i * topKNum + j] = pool[j];
+        }
+    }
+    status = aclrtMalloc(&topK.deviceData, topK.dataSize, ACL_MEM_MALLOC_HUGE_FIRST);
+    ASSERT_EQ(status, 0);
+    status = aclrtMemcpy(topK.deviceData, topK.dataSize, topKData.data(), topKData.size() * sizeof(int32_t), ACL_MEMCPY_HOST_TO_DEVICE);
+    ASSERT_EQ(status, 0);
+
+    atb::Tensor idxArr;
+    idxArr.desc.dtype = ACL_INT32;
+    idxArr.desc.format = ACL_FORMAT_ND;
+    idxArr.desc.shape.dimNum = 1;
+    idxArr.desc.shape.dims[0] = tokenNum * topKNum;
+    idxArr.dataSize = atb::Utils::GetTensorSize(idxArr);
+    std::vector<int32_t> idxArrData(atb::Utils::GetTensorNumel(idxArr), 0);
+    for (int32_t i = 0; i < idxArrData.size(); ++i) {
+        idxArrData[i] = i;
+    }
+    status = aclrtMalloc(&idxArr.deviceData, idxArr.dataSize, ACL_MEM_MALLOC_HUGE_FIRST);
+    ASSERT_EQ(status, 0);
+    status = aclrtMemcpy(idxArr.deviceData, idxArr.dataSize, idxArrData.data(), idxArrData.size() * sizeof(int32_t), ACL_MEMCPY_HOST_TO_DEVICE);
+    ASSERT_EQ(status, 0);
+
+    atb::Tensor tokenIndex;
+    tokenIndex.desc.dtype = ACL_INT32;
+    tokenIndex.desc.format = ACL_FORMAT_ND;
+    tokenIndex.desc.shape.dimNum = 1;
+    tokenIndex.desc.shape.dims[0] = tokenNum * topKNum;
+    tokenIndex.dataSize = atb::Utils::GetTensorSize(tokenIndex);
+    status = aclrtMalloc(&tokenIndex.deviceData, tokenIndex.dataSize, ACL_MEM_MALLOC_HUGE_FIRST);
+    ASSERT_EQ(status, 0);
+
+    atb::Tensor cumSum;
+    cumSum.desc.dtype = ACL_INT32;
+    cumSum.desc.format = ACL_FORMAT_ND;
+    cumSum.desc.shape.dimNum = 1;
+    cumSum.desc.shape.dims[0] = expertNum;
+    cumSum.dataSize = atb::Utils::GetTensorSize(cumSum);
+    status = aclrtMalloc(&cumSum.deviceData, cumSum.dataSize, ACL_MEM_MALLOC_HUGE_FIRST);
+    ASSERT_EQ(status, 0);
+
+    atb::Tensor originalIndex;
+    originalIndex.desc.dtype = ACL_INT32;
+    originalIndex.desc.format = ACL_FORMAT_ND;
+    originalIndex.desc.shape.dimNum = 1;
+    originalIndex.desc.shape.dims[0] = tokenNum * topKNum;
+    originalIndex.dataSize = atb::Utils::GetTensorSize(originalIndex);
+    status = aclrtMalloc(&originalIndex.deviceData, originalIndex.dataSize, ACL_MEM_MALLOC_HUGE_FIRST);
+    ASSERT_EQ(status, 0);
+
+    // 此场景下不输出validIndex;
+
+    atb::VariantPack variantPack;
+    variantPack.inTensors = {topK, idxArr};
+    variantPack.outTensors = {tokenIndex, cumSum, originalIndex};
+    std::vector<void*> workspaces;
+
+    for (size_t i = 0; i < 10; ++i) {
+        std::cout << "time: " << i + 1 << std::endl;
+        uint64_t workspaceSize = 0;
+        st = op->Setup(variantPack, workspaceSize, context);
+        ASSERT_EQ(st, 0);
+        void *workspace = nullptr;
+        status = aclrtMalloc(&workspace, workspaceSize, ACL_MEM_MALLOC_HUGE_FIRST);
+        std::cout << "workspace: " << workspace << " workspaceSize: " << workspaceSize << std::endl;
+        ASSERT_EQ(status, 0);
+        workspaces.push_back(workspace);
+
+        //填充脏数据
+        status = aclrtMemset(workspace, workspaceSize, 0xFF, workspaceSize);
+        ASSERT_EQ(status, 0);
+
+        st = op->Execute(variantPack, (uint8_t*)workspace, workspaceSize, context);
+        ASSERT_EQ(st, 0);
+        status = aclrtSynchronizeStream(stream);
+        ASSERT_EQ(status, 0);
+    }
+
+    for (void *workspace : workspaces) {
+        status = aclrtFree(workspace);
+        ASSERT_EQ(status, 0);
+    }
+    status = aclrtDestroyStream(stream);
+    ASSERT_EQ(status, 0);
+    st = atb::DestroyOperation(op);
+    ASSERT_EQ(st, 0);
+    st = atb::DestroyContext(context);
+    ASSERT_EQ(st, 0);
+
+    for (size_t i = 0; i < variantPack.inTensors.size(); ++i) {
+        atb::Tensor tensor = variantPack.inTensors.at(i);
+        status = aclrtFree(tensor.deviceData);
+        ASSERT_EQ(status, 0);
+        tensor.deviceData = nullptr;
+        tensor.dataSize = 0;
+    }
+    for (size_t i = 0; i < variantPack.outTensors.size(); ++i) {
+        atb::Tensor tensor = variantPack.outTensors.at(i);
+        status = aclrtFree(tensor.deviceData);
+        ASSERT_EQ(status, 0);
+        tensor.deviceData = nullptr;
+        tensor.dataSize = 0;
+    }
     aclrtResetDevice(deviceId);
 }
