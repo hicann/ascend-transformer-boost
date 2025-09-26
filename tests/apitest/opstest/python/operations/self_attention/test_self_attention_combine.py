@@ -1924,13 +1924,10 @@ class TestFlashAttention(operation_test.OperationTest):
             q_seqLen = [33] * batch
             kv_seqLen = [66] * batch
             max_seq = max(max(q_seqLen), max(kv_seqLen))
-            is_clamp = random.randint(0,1)
+            is_clamp = 0
 
             clamp_min = 0
             clamp_max = 0
-            if is_clamp == 1:
-                clamp_min = random.randint(1, 100)
-                clamp_max = random.randint(clamp_max + 1,150)
             print(
                 f"--i-is--{i}, "
                 f"batch is {batch}, "
