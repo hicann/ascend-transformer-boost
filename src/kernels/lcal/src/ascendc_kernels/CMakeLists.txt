@@ -183,11 +183,21 @@ add_custom_target(mix_lccl_op2
 )
 add_dependencies(mix_lccl_op2 mix_lccl_op2_tmp_aic mix_lccl_op2_tmp_aiv)
 
+set(OP_NAMES dump_lccl_op mix_lccl_op normal_lccl_op)
+set(OUTPUT_FILES "")
+foreach(OP_NAME IN LISTS OP_NAMES)
+        list(APPEND OUTPUT_FILES "CMakeFiles/${OP_NAME}1.dir/lccl_op1.cpp.o")
+        list(APPEND OUTPUT_FILES "CMakeFiles/${OP_NAME}2.dir/lccl_op2.cpp.o")
+endforeach()
+
 add_custom_target(lccl_op
         COMMAND echo "generating lccl op ... ENABLE_LCCL_910A5_OP=${ENABLE_LCCL_910A5_OP}"
         COMMAND rm -f lccl_op.o
-        COMMAND find CMakeFiles -name "*.o" ! -path "*tmp*" | sort | xargs -I {} sed '1s/^/DDDD/' {} >> lccl_op.o
+        COMMAND cat ${OUTPUT_FILES} > lccl_op.o
         COMMAND truncate -c -s ${LCAL_1OP_BIN_SIZE} lccl_op.o
         COMMAND rm -f ${LCAL_CCE_PATH}
 )
-add_dependencies(lccl_op dump_lccl_op1 dump_lccl_op2 mix_lccl_op1 mix_lccl_op2 normal_lccl_op1 normal_lccl_op2)
+
+foreach(OP_NAME IN LISTS OP_NAMES)
+        add_dependencies(lccl_op "${OP_NAME}1" "${OP_NAME}2")
+endforeach()
