@@ -214,7 +214,7 @@ void GmmDeq(
 CATLASS_DEVICE
 void BarrierBetweenUpAndDown()
 {
-    AscendC::PipeBarrier<PIPE_ALL>();
+    // AscendC::PipeBarrier<PIPE_ALL>();
     Arch::CrossCoreFlag gmm1AivFinished{0};
     if constexpr (g_coreType == AscendC::AIV) {
         Arch::CrossCoreBarrier<0x0, PIPE_MTE3>();
