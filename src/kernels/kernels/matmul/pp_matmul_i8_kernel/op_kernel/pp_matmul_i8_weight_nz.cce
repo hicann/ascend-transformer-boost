@@ -23,6 +23,7 @@
 
 constexpr uint32_t L0AB_PINGPONG_BUFFER_LEN_FP16 = 16384; // 32 KB
 constexpr uint32_t L0AB_PINGPONG_BUFFER_LEN_INT8 = 32768; // 32 KB
+constexpr uint32_t BLOCK_SIZE_8 = 8;
 constexpr uint32_t BLOCK_SIZE_16 = 16;
 constexpr uint32_t BLOCK_SIZE_32 = 32;
 constexpr uint32_t CUBE_MATRIX_SIZE_256 = 256;           // 16 * 16
@@ -68,6 +69,11 @@ __aicore__ __force_inline__ uint32_t RoundUp32(const uint32_t val)
 __aicore__ __force_inline__ uint32_t RoundUp16(const uint32_t val)
 {
     return (val + BLOCK_SIZE_16 - 1) / BLOCK_SIZE_16 * BLOCK_SIZE_16;
+}
+
+__aicore__ __force_inline__ uint32_t RoundUp8(const uint32_t val)
+{
+    return (val + BLOCK_SIZE_8 - 1) / BLOCK_SIZE_8 * BLOCK_SIZE_8;
 }
 
 template <bool TA,
@@ -186,6 +192,7 @@ public:
             uint64_t offset_c = batch_idx * m * n + m_idx * m0 * n + n_idx * n0;
             uint32_t m_actual = (m_idx == (m_loop - 1)) ? (m - m_idx * m0) : m0;
             uint32_t n_actual = (n_idx == (n_loop - 1)) ? (n - n_idx * n0) : n0;
+            uint32_t bias_n_round = RoundUp8(n_actual);
             uint32_t m_round = 0;
             uint32_t n_round = 0;
             uint64_t shuffle_k = en_shuffle_k ? core_idx % k_loop : 0;
@@ -236,7 +243,7 @@ public:
                                                                                            1,
                                                                                            RoundUp16(1),
                                                                                            1,
-                                                                                           n_round,
+                                                                                           bias_n_round,
                                                                                            RoundUp16(n_round),
                                                                                            n_round);
                 SET_FLAG(MTE2, MTE1, EVENT_ID6);
@@ -271,7 +278,7 @@ public:
                     l1_buf_b, gm_b[offset_b], n_actual, n_round, RoundUp16(n), k_actual, k_round, RoundUp32(k));
             } else {
                 gm_to_l1<ArchType::ASCEND_V220, InDtype, DataFormat::NZ, DataFormat::NZ>(
-                    l1_buf_b, gm_b[offset_b], k_actual, k_round, RoundUp16(k), n_actual, n_round, RoundUp32(n));
+                    l1_buf_b, gm_b[offset_b], k_actual, RoundUp16(k_actual), RoundUp16(k), n_actual, n_round, RoundUp32(n));
             }
             SET_FLAG(MTE2, MTE1, event_id + CONST_2);
 
@@ -383,7 +390,7 @@ public:
                         gm_to_l1<ArchType::ASCEND_V220, InDtype, DataFormat::NZ, DataFormat::NZ>(l1_buf_b_next,
                                                                                                  gm_b[offset_b_next],
                                                                                                  k_actual_next,
-                                                                                                 k_round_next,
+                                                                                                 RoundUp16(k_actual_next),
                                                                                                  RoundUp16(k),
                                                                                                  n_actual,
                                                                                                  n_round,
