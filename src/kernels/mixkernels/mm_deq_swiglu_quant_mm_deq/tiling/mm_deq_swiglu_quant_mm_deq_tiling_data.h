@@ -22,25 +22,26 @@ constexpr uint32_t CUSTOM_L0C_STAGES = 1;
 constexpr bool CUSTOM_ENABLE_UNIT_FLAG = true;
 constexpr bool CUSTOM_ENABLE_SHUFFLE_K = true;
 
-enum PermuteType {
+enum class PermuteType{
     PERMUTE_N256,
     PERMUTE_N128,
     PERMUTE_INVALID
 };
+using enum PermuteType;
 
 template <PermuteType PERMUTE_TYPE>
 struct Mm1TileArgs {
 };
 
 template <>
-struct Mm1TileArgs<PERMUTE_N256> {
+struct Mm1TileArgs<PermuteType::PERMUTE_N256> {
     static constexpr uint32_t L1M = 128;
     static constexpr uint32_t L1N = 256;
     static constexpr uint32_t EPIM = 32;
 };
 
 template <>
-struct Mm1TileArgs<PERMUTE_N128> {
+struct Mm1TileArgs<PermuteType::PERMUTE_N128> {
     static constexpr uint32_t L1M = 256;
     static constexpr uint32_t L1N = 128;
     static constexpr uint32_t EPIM = 64;

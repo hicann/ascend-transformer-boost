@@ -21,10 +21,11 @@ namespace OpParam {
  * @brief ScatterElementsV2 算子的参数结构体
  */
 struct ScatterElementsV2 {
-    enum ReductionType {
+    enum class ReductionType {
         NONE = 0,
         ADD,
     };
+    using enum ScatterElementsV2;
     ReductionType reduction; // 指定更新的方式（none,add）
     int32_t axis; // 指定更新的轴
 

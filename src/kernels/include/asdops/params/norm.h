@@ -18,7 +18,7 @@
 namespace AsdOps {
 namespace OpParam {
 struct Norm {
-    enum NormType {
+    enum class NormType {
         NORM_UNDEFINED = 0,
         LAYER_NORM,
         RMS_NORM,
@@ -26,6 +26,7 @@ struct Norm {
         RMS_NORM_BACKWARD,
         GATHER_PRE_RMS_NORM,
     };
+    using enum NormType;
     NormType normType;
     // layernorm
     int32_t beginNormAxis = 0;

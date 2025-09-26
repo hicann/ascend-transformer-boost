@@ -17,8 +17,9 @@
 namespace AsdOps {
 namespace OpParam {
 struct Transdata {
-    enum TransdataType { UNDEFINED = 0, FRACTAL_NZ_TO_ND, ND_TO_FRACTAL_NZ };
-    TransdataType transdataType = UNDEFINED;
+    enum class TransdataType { UNDEFINED = 0, FRACTAL_NZ_TO_ND, ND_TO_FRACTAL_NZ };
+    using enum TransdataType;
+    TransdataType transdataType = TransdataType::UNDEFINED;
     Mki::SVector<int64_t> outCrops = {0, 0};
 
     bool operator==(const Transdata &other) const

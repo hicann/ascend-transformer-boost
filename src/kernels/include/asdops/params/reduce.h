@@ -17,12 +17,13 @@
 namespace AsdOps {
 namespace OpParam {
 struct Reduce {
-    enum ReduceType {
+    enum class ReduceType {
         REDUCE_UNDEFINED = 0,
         REDUCE_MAX,
         REDUCE_MIN,
         REDUCE_SUM,
     };
+    using enum ReduceType;
     ReduceType reduceType;
     Mki::SVector<int64_t> axis;
 
