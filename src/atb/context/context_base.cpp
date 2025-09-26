@@ -349,7 +349,7 @@ Status ContextBase::FreeArgsHostBuffer(void *addr)
 {
     return hostAllocator_->Deallocate(addr);
 }
-bool ContextBase::GetLaunchWithTilingStatus()
+bool ContextBase::GetLaunchWithTilingStatus() const
 {
     return mode_ != GRAPH_LAUNCH_MODE;
 }
