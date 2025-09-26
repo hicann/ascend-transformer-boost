@@ -260,9 +260,10 @@ class TestPagedAttentionMLA(operation_test.OperationTest):
         logging.debug(
             f'input info: {num_tokens}, {num_heads}, {kv_heads}, {head_size_qk}, {head_size_vo}, {block_size}, {num_blocks}, {k_seqlen}, {dtype}')
 
-        query = torch.from_numpy(np.random.uniform(-1.0, 1.0, size=(num_tokens, num_heads, head_size_qk))).to(dtype)
+        q_range = 5.0
+        query = torch.from_numpy(np.random.uniform(-q_range, q_range, size=(num_tokens, num_heads, head_size_qk))).to(dtype)
         # (num_blocks, block_size, num_heads, head_size)
-        kv_range = 1.0
+        kv_range = 5.0
         kv_type = dtype
         if is_int8_flag:
             kv_range = 4.0

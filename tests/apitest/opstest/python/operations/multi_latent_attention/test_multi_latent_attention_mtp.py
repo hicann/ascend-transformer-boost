@@ -37,9 +37,9 @@ class TestPagedAttentionMLA(operation_test.OperationTest):
         strict_limit_error = torch.maximum(torch.abs(golden * ratios[2]), torch.tensor(ratios[3]))
         error_count = torch.gt(diff, limit_error).sum().item()
         strict_error_count = torch.gt(diff, strict_limit_error).sum().item()
-        print(f"maxDiff {max_diff}")
-        print("1/1000 Accuracy is %f",  1 - float(error_count) / len)
-        print("5/1000 Accuracy is %f",  1 - float(strict_error_count) / len)
+        logging.info(f"maxDiff {max_diff},{self.head_size_qk},{self.max_context_len}")
+        logging.info("1/1000 Accuracy is %f",  1 - float(error_count) / len)
+        logging.info("5/1000 Accuracy is %f",  1 - float(strict_error_count) / len)
         if self.data_type == torch.bfloat16:
             print("accuracy is correct in old standard: %r", (float(strict_error_count) / len) <= ratios[2])
         else:
@@ -184,16 +184,20 @@ class TestPagedAttentionMLA(operation_test.OperationTest):
                   q_seqlen_list: int,
                   k_seqlen_list: int,
                   mask_type,
-                  dtype = torch.float16,
-                  calcType=0
+                  dtype = torch.bfloat16, mask_data_type = torch.bfloat16,
+                  calc_type = 0,
+                dynamic_batch = False, dynamic_seqlen = None, is_int8_flag = False, has_bias = False,
+                compressHead = False, is_kv_combined = True, is_nz_in = False, is_quant_flag = False
     ):
         self.data_type = dtype
+        logging.info(f'------data_type:{self.data_type}-----------')
         self.head_size_qk = head_size_qk
-        self.calcType = calcType
-        q_min_range = -1.0
-        q_max_range = 1.0
-        kv_min_range = -1.0
-        kv_max_range = 1.0
+        self.calc_type = calc_type
+        self.is_quant_flag = is_quant_flag
+        q_min_range = -5.0
+        q_max_range = 5.0
+        kv_min_range = -5.0
+        kv_max_range = 5.0
         num_tokens = np.array(q_seqlen_list).sum()
         batch_size = len(q_seqlen_list)
         self.max_context_len = max(k_seqlen_list)
@@ -216,7 +220,11 @@ class TestPagedAttentionMLA(operation_test.OperationTest):
 
         self.pre_mask_factor = -10000.0
         self.post_mask_factor = 1.0
-
+        if self.data_type == torch.bfloat16:
+            self.pre_mask_factor = 1.0
+            self.post_mask_factor = -10000.0
+        logging.info(f'------pre_mask_factor:{self.pre_mask_factor}-------')
+        logging.info(f'------post_mask_factor:{self.post_mask_factor}-------')
         if mask_type == 1:
             mask = np.ones(shape=(max_k_seqlen, max_k_seqlen)).astype(np.float16)
             mask = np.triu(mask, 1)
@@ -238,29 +246,27 @@ class TestPagedAttentionMLA(operation_test.OperationTest):
         elif mask_type == 0:
             mask = None
 
-        logging.info(f'input info: {num_tokens}, {num_heads}, {kv_heads}, {head_size_qk}, {head_size_vo}, {block_size}, {num_blocks}')
+        logging.info(f'input info: num_tokens {num_tokens}, num_heads {num_heads}, kv_heads {kv_heads}')
+        logging.info(f'head_size_qk {head_size_qk}, head_size_vo {head_size_vo}, block_size {block_size}, num_blocks {num_blocks}')
         shape_out = (num_tokens, num_heads, head_size_vo)
-        ref_output = torch.zeros(shape_out, dtype=dtype)
+        ref_output = torch.zeros(shape_out, dtype = mask_data_type)
         true_out = torch.zeros(shape_out, dtype=torch.float32)
         lse = torch.zeros((num_tokens, num_heads, 1), dtype=dtype)
         true_lse = torch.zeros((num_tokens, num_heads, 1), dtype=torch.float32)
         self.ref_single_query_cached_kv_attention(
-            ref_output,
+            ref_output, # 6, 128, 512
             true_out,
             lse,
             true_lse,
-            query,
-            key_cache,
-            value_cache,
+            query, # 6, 128, 576
+            key_cache, # 1024, 128, 1, 576
+            value_cache, # [1024, 128, 1, 512])
             block_tables,
             q_seqlen_list,
             k_seqlen_list,
-            mask,
+            mask, # 6, 127
             mask_type
         )
-
-        self.q_split1, self.q_split2 = torch.split(query, [512, 64], dim=2)
-        self.key_cache_split1, self.key_cache_split2 = torch.split(key_cache, [512, 64], dim=3)
 
         self.q = query
         self.num_tokens = num_tokens
@@ -272,6 +278,11 @@ class TestPagedAttentionMLA(operation_test.OperationTest):
         self.mask = mask
         self.golden_out = ref_output
         self.true_out = true_out
+        context_lens = [k_seqlen_list] * num_tokens
+        context_lens = [val for val in context_lens for _ in range(kv_heads)]
+        self.contex_lens = np.array(context_lens).astype(np.int32)
+        self.q_split1, self.q_split2 = torch.split(query, [512, 64], dim=2)
+        self.key_cache_split1, self.key_cache_split2 = torch.split(key_cache, [512, 64], dim=3)
         self.lse = lse
         self.true_lse = true_lse
 
@@ -296,7 +307,7 @@ class TestPagedAttentionMLA(operation_test.OperationTest):
     def golden_calc(self, in_tensors):
         golden_out = torch.tensor(self.golden_out)
         result = [golden_out]
-        if self.calcType == 3:
+        if self.calc_type == 3:
             result.append(self.lse)
         return result
 
@@ -434,7 +445,7 @@ class TestPagedAttentionMLA(operation_test.OperationTest):
         mask_type = 3
 
         self.calc_data(num_heads, kv_heads, num_blocks, block_size, head_size_qk, head_size_vo,
-                       q_seqlen, k_seqlen, mask_type, dtype, 3)
+                       q_seqlen, k_seqlen, mask_type, dtype, mask_data_type=dtype, calc_type=3)
 
         OP_NAME = "MultiLatentAttentionOperation"
         PARAM = json.dumps({"headNum": num_heads, "qkScale":tor, "kvHeadNum":kv_heads, "calcType": 3, "maskType": 1, "cacheMode": 1})
@@ -502,14 +513,14 @@ class TestPagedAttentionMLA(operation_test.OperationTest):
         num_blocks = 64
         k_seqlen = [127] * batch
         tor = 1.0 / (head_size_qk ** 0.5)
-        dtype = torch.float16
+        dtype = torch.bfloat16
         mask_type = 3
-
+        calc_type = 1
         self.calc_data(num_heads, kv_heads, num_blocks, block_size, head_size_qk, head_size_vo,
-                       q_seqlen, k_seqlen, mask_type, dtype)
+                       q_seqlen, k_seqlen, mask_type, dtype, calc_type=calc_type)
         mask_free = self.gen_mask(q_seqlen[0], dtype)
         OP_NAME = "MultiLatentAttentionOperation"
-        PARAM = json.dumps({"headNum": num_heads, "qkScale":tor, "kvHeadNum":kv_heads, "calcType": 1, "maskType": 2, "cacheMode": 1})
+        PARAM = json.dumps({"headNum": num_heads, "qkScale":tor, "kvHeadNum":kv_heads, "calcType": calc_type, "maskType": 2, "cacheMode": 1})
         RUN_PARAM = json.dumps({"contextLens": self.k_seqlen_list.tolist(), "qSeqlen": self.q_seqlen_list.tolist(), "maskType": 2})
         self.execute_with_param(OP_NAME, PARAM, RUN_PARAM,
                                 [self.q_split1.npu(),
