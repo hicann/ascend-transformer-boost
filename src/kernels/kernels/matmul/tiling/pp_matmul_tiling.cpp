@@ -25,6 +25,7 @@ constexpr uint32_t CONST_16 = 16;
 constexpr uint32_t CONST_32 = 32;
 constexpr uint32_t CONST_256 = 256;
 constexpr uint32_t CONST_512 = 512;
+constexpr float MIN_COMPUTE_INTENSITY = 2000.0f;
 
 const std::map<TensorDType, uint32_t> G_DTYPE_MAP = {
     {TENSOR_DTYPE_INT8, 0u}, {TENSOR_DTYPE_FLOAT16, 1u}, {TENSOR_DTYPE_BF16, 2u}, {TENSOR_DTYPE_FLOAT, 3u}};
@@ -128,6 +129,13 @@ uint32_t PpTilingData::End(const MatMulInfo &mmInfo)
     return blockDim;
 }
 
+void PpTilingData::SetUnitFlagSwitch()
+{
+    float computeIntensity = static_cast<float>(opShape.m * opShape.n) / static_cast<float>(opShape.m + opShape.n);
+    enUnitFlag = static_cast<uint32_t>(computeIntensity > MIN_COMPUTE_INTENSITY);
+    return;
+}
+
 void GetPpMatmulTiling(const MatMulInfo &mmInfo, const HardwareInfo &hwInfo, uint32_t &blockDim,
                        PpTilingData &tilingData)
 {
@@ -147,6 +155,7 @@ void GetPpMatmulTiling(const MatMulInfo &mmInfo, const HardwareInfo &hwInfo, uin
     uint32_t direct = Swizzl<PpTilingData>(tilingData);
     blockDim = tilingData.End(mmInfo);
     tilingData.SetTilingKey(mmInfo, direct, 0);
+    tilingData.SetUnitFlagSwitch();
 }
 
 void PrintPpMatmulTiling(const KernelInfo &kernelInfo)
@@ -166,6 +175,7 @@ void PrintPpMatmulTiling(const KernelInfo &kernelInfo)
     MKI_LOG(INFO) << "swizzlDirect = " << tilingData->swizzlDirect;
     MKI_LOG(INFO) << "enShuffleK = " << tilingData->enShuffleK;
     MKI_LOG(INFO) << "quantMode = " << tilingData->quantMode;
+    MKI_LOG(INFO) << "enUnitFlag = " << tilingData->enUnitFlag;
     return;
 }
 
