@@ -81,10 +81,11 @@ Status AclnnExecutorCache::AddCacheSlot(const std::string &opNameStr, const Runn
     if (slotVecSize < cacheCapacity_) {
         slotVec.emplace_back(aclnnCacheKey, inAclnnCacheSlot);
         ATB_LOG(INFO) << "ATB aclnn executor cache add op: " << opNameStr << " at index[" << slotVecSize << "]";
+        return NO_ERROR;
     }
 
     // 淘汰方式：使用等长vector+FIFO
-    ATB_LOG(INFO) << "ATB aclnn executor cache full for op: " << opNameStr << "update index [" << nextUpdateIndex_
+    ATB_LOG(INFO) << "ATB aclnn executor cache full for op: " << opNameStr << ", update index [" << nextUpdateIndex_
                   << "]";
     cachePool_[opNameStr][nextUpdateIndex_] = std::make_pair(aclnnCacheKey, inAclnnCacheSlot);
     nextUpdateIndex_ = (nextUpdateIndex_ + 1) % cacheCapacity_;
