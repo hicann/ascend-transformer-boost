@@ -9,9 +9,9 @@
  */
 
 #include "linear_parallel_aclnn_runner.h"
+#include <hccl/hccl.h>
 #include "atb/utils/dl_manager.h"
 #include "atb/utils/aclnn_util.h"
-#include <hccl/hccl.h>
 
 
 namespace atb {
