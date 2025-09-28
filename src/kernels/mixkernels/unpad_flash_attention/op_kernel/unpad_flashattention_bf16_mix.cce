@@ -4180,9 +4180,7 @@ public:
                                 );
                                 SetVectorMask<int8_t>((uint64_t)-1, (uint64_t)-1);
                             }
-                            if (sub_m <= 16) {
-                                PIPE_BARRIER(V);
-                            }
+                            PIPE_BARRIER(V);
                             for (uint32_t ms_idx = 0; ms_idx < loop_m; ms_idx++){
                                 uint32_t nowm = (ms_idx == (loop_m - 1))? sub_m - ms_idx * sub_km : sub_km;
                                 uint32_t now_roundm = (nowm + BLOCK_SIZE - 1) / BLOCK_SIZE * BLOCK_SIZE;
