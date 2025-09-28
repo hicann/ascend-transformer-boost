@@ -263,7 +263,7 @@ Status OpsRunner::FillHostTilingBufferImpl(uint8_t *hostTilingBuffer, uint64_t t
         }
 
         uint8_t *kernelHostTilingBuffer = hostTilingBuffer + offset;
-        Status ret = FillSingleKernelHostTilingBuffer(node, nodeId, kernelHostTilingBuffer, tilingSize, context);
+        Status ret = FillSingleKernelHostTilingBuffer(node, nodeId, kernelHostTilingBuffer, tilingSize, *context);
         if (ret != NO_ERROR) {
             ATB_LOG(ERROR) << GetLogPrefix() << " node[" << nodeId << "] fill tiling buffer fail, error code:" << ret;
             return ret;
@@ -279,9 +279,9 @@ Status OpsRunner::FillHostTilingBufferImpl(uint8_t *hostTilingBuffer, uint64_t t
 
 Status OpsRunner::FillSingleKernelHostTilingBuffer(KernelGraphNode &node, size_t nodeId,
                                                    uint8_t *kernelHostTilingBuffer, size_t tilingSize,
-                                                   ContextBase *context)
+                                                   ContextBase &context)
 {
-    bool ifGraphLaunchNeedCalcTiling = needKernelGraphModify_ && (context->GetLaunchMode() == GRAPH_LAUNCH_MODE);
+    bool ifGraphLaunchNeedCalcTiling = needKernelGraphModify_ && (context.GetLaunchMode() == GRAPH_LAUNCH_MODE);
     if (node.impl->GetTilingFilledFlag() && !ifGraphLaunchNeedCalcTiling) {
         return NO_ERROR;
     }
@@ -289,7 +289,7 @@ Status OpsRunner::FillSingleKernelHostTilingBuffer(KernelGraphNode &node, size_t
     ATB_LOG(DEBUG) << GetLogPrefix() << " node[" << nodeId << "] InitHostLaunchBuffer start";
     GetOpSetupStatistic().tilingCacheMissCount += 1;
     Mki::Timer fillTimer;
-    bool launchWithTiling = context->GetLaunchWithTilingStatus();
+    bool launchWithTiling = context.GetLaunchWithTilingStatus();
     Status status = node.impl->InitKernelInfo(kernelHostTilingBuffer, tilingSize, launchWithTiling);
     if (status != NO_ERROR) {
         ATB_LOG(ERROR) << GetLogPrefix() << " node[" << nodeId << "] InitRunInfo failed!";
@@ -300,7 +300,7 @@ Status OpsRunner::FillSingleKernelHostTilingBuffer(KernelGraphNode &node, size_t
     ATB_LOG(DEBUG) << GetLogPrefix() << " node[" << nodeId << "] InitHostLaunchBuffer end, time:" << fillTime;
 
     UpdateCacheTiling(node, nodeId, kernelHostTilingBuffer, tilingSize);
-    if (context->GetLaunchMode() == GRAPH_LAUNCH_MODE) {
+    if (context.GetLaunchMode() == GRAPH_LAUNCH_MODE) {
         // 整图下发模式下绝大部分算子tiling只需计算一次，少部分需要多次计算的用needKernelGraphModify_进行标记
         node.impl->SetTilingFilledFlag(true);
     }
