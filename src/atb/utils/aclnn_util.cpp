@@ -7,12 +7,12 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
-#include "aclnn_util.h"
 
 #include <sstream>
 #include <cstring>
 #include <securec.h>
 
+#include "aclnn_util.h"
 #include "log.h"
 
 namespace {
@@ -21,12 +21,11 @@ const int DIM0 = 0;
 const int DIM1 = 1;
 const int DIM2 = 2;
 const int DIM3 = 3;
-}  // namespace
+} // namespace
 
 
 namespace atb {
-template <typename T, typename U>
-typename std::common_type<T, U>::type CheckIntMulOverFlow(const T a, const U b)
+template <typename T, typename U> typename std::common_type<T, U>::type CheckIntMulOverFlow(const T a, const U b)
 {
     if (std::is_signed<T>::value != std::is_signed<U>::value) {
         throw std::runtime_error("Multiplication between signed and unsigned integer not supported, it's not safe");
@@ -69,7 +68,7 @@ typename std::common_type<T, U>::type CheckIntMulOverFlow(const T a, const U b)
 atb::SVector<int64_t> GetCopyTensorStride(atb::Dims &tensorDims)
 {
     atb::SVector<int64_t> tmpStrides(tensorDims.dimNum, 1);
-    if (tensorDims.dimNum > 8) {  // 8: tensor最大维度数量
+    if (tensorDims.dimNum > 8) { // 8: tensor最大维度数量
         ATB_LOG(ERROR) << "Tensor's dimNum is larger than 8, `GetCopyTensorStride` failed.";
         return tmpStrides;
     }
@@ -83,26 +82,21 @@ atb::SVector<int64_t> GetTransposeTensorStride(atb::Dims &tensorDims)
 {
     atb::SVector<int64_t> tmptransposeStrides(tensorDims.dimNum, 1);
     tmptransposeStrides[tensorDims.dimNum - 1] = tensorDims.dims[tensorDims.dimNum - 1];
-    if (tensorDims.dimNum == 3) {                      // 3: 维度
-        tmptransposeStrides[0] = CheckIntMulOverFlow(  // 0: 第0维
-            tensorDims.dims[1],
-            tensorDims.dims[2]);  // 1, 2: 跳过第1维和第2维的大小
+    if (tensorDims.dimNum == 3) {                     // 3: 维度
+        tmptransposeStrides[0] = CheckIntMulOverFlow(tensorDims.dims[1], tensorDims.dims[2]); // 1, 2: 跳过第1维和第2维的大小
     }
     return tmptransposeStrides;
 }
 
-atb::Status CallAclCreateTensor(
-    atb::Dims &viewDims, atb::Dims &storageDims, atb::Tensor &atbTensor, std::shared_ptr<AclNNTensor> aclnnTensor)
+atb::Status CallAclCreateTensor(atb::Dims &viewDims, atb::Dims &storageDims, atb::Tensor &atbTensor,
+                                std::shared_ptr<AclNNTensor> aclnnTensor, aclDataType dataType)
 {
-    aclnnTensor->tensor = aclCreateTensor(viewDims.dims,
-        viewDims.dimNum,
-        atbTensor.desc.dtype,
-        aclnnTensor->strides.data(),
-        0,
-        atbTensor.desc.format,
-        storageDims.dims,
-        storageDims.dimNum,
-        atbTensor.deviceData);
+    if (dataType == ACL_DT_UNDEFINED) {
+        dataType = atbTensor.desc.dtype;
+    }
+    aclnnTensor->tensor =
+        aclCreateTensor(viewDims.dims, viewDims.dimNum, dataType, aclnnTensor->strides.data(), 0, atbTensor.desc.format,
+                        storageDims.dims, storageDims.dimNum, atbTensor.deviceData);
     if (aclnnTensor->tensor == nullptr) {
         return atb::ERROR_INTERNAL_ERROR;
     }
@@ -129,7 +123,7 @@ std::string PrintAclNNVariankPack(const AclNNVariantPack &aclnnVariantPack)
         ss << "index " << i << " dtype " << tensorDesc.dtype << " format " << tensorDesc.format << " dimNum "
            << tensorDesc.shape.dimNum;
         for (uint64_t j = 0; j < std::min(tensorDesc.shape.dimNum, static_cast<uint64_t>(8));
-             j++) {  // 8: tensor最大维度数量
+             j++) { // 8: tensor最大维度数量
             ss << "dim[" << j << "]=" << tensorDesc.shape.dims[j] << " ";
         }
     }
@@ -145,7 +139,7 @@ std::string PrintATBVariankPack(const atb::VariantPack &atbVariantPack)
         ss << "index " << i << " dtype " << tensorDesc.dtype << " format " << tensorDesc.format << " dimNum "
            << tensorDesc.shape.dimNum;
         for (uint64_t j = 0; j < std::min(tensorDesc.shape.dimNum, static_cast<uint64_t>(8));
-             j++) {  // 8: tensor最大维度数量
+             j++) { // 8: tensor最大维度数量
             ss << "dim[" << j << "]=" << tensorDesc.shape.dims[j] << " ";
         }
     }
@@ -165,7 +159,7 @@ bool IsHostDataEqual(const std::shared_ptr<AclNNTensor> tensorA, const atb::Tens
         return false;
     }
     if (tensorA->intArrayHostData.intArray != nullptr && tensorB.hostData != nullptr) {
-        if (tensorA->intArrayHostData.dataOri.size() * 4 != tensorB.dataSize) {  // 8: int64_t in bytes
+        if (tensorA->intArrayHostData.dataOri.size() * 4 != tensorB.dataSize) { // 8: int64_t in bytes
             ATB_LOG(DEBUG) << "ATB aclnn Op Cache: tensor index " << tensorIdx << " dataSize not equal";
             return false;
         }
@@ -192,7 +186,7 @@ bool IsTensorDescEqual(const atb::TensorDesc &tensorDescA, const atb::TensorDesc
         return false;
     }
     if (tensorDescA.shape.dimNum != tensorDescB.shape.dimNum || tensorDescA.shape.dimNum > 8 ||
-        tensorDescA.shape.dimNum <= 0) {  // 8: tensor最大维度数量
+        tensorDescA.shape.dimNum <= 0) { // 8: tensor最大维度数量
         ATB_LOG(DEBUG) << "ATB aclnn Op Cache: tensor index " << tensorIdx
                        << " dimNum not equal, aclnnVariantPack dimNum " << tensorDescA.shape.dimNum
                        << " atbVariantPack dimNum " << tensorDescB.shape.dimNum;
@@ -209,8 +203,8 @@ bool IsTensorDescEqual(const atb::TensorDesc &tensorDescA, const atb::TensorDesc
     return true;
 }
 
-bool AreTensorVectorsEqual(
-    const atb::SVector<std::shared_ptr<AclNNTensor>> &aclnnTensors, const atb::SVector<atb::Tensor> &atbTensors)
+bool AreTensorVectorsEqual(const atb::SVector<std::shared_ptr<AclNNTensor>> &aclnnTensors,
+                           const atb::SVector<atb::Tensor> &atbTensors)
 {
     // Check the size of two vectors
     if (aclnnTensors.size() != atbTensors.size()) {
@@ -275,18 +269,18 @@ std::shared_ptr<AclNNTensor> CreateTensor(atb::Tensor atbTensor, int tensorIdx)
     aclnnTensor->atbTensor = atbTensor;
     aclnnTensor->tensorIdx = tensorIdx;
     aclnnTensor->strides = GetCopyTensorStride(atbTensor.desc.shape);
-    CallAclCreateTensor(atbTensor.desc.shape, atbTensor.desc.shape, atbTensor, aclnnTensor);
+    CallAclCreateTensor(atbTensor.desc.shape, atbTensor.desc.shape, atbTensor, aclnnTensor, atbTensor.desc.dtype);
     return aclnnTensor;
 }
 
 int ConvertTensorToSeqLengths(atb::Tensor &tensor, aclIntArray *&actualSeqLengths)
 {
     static std::vector<int64_t> seqLenCache;
-    size_t dataSize = tensor.dataSize / 8;  // 8: int64 size
+    size_t dataSize = tensor.dataSize / 8; // 8: int64 size
     if (seqLenCache.size() < dataSize) {
         seqLenCache.resize(dataSize);
     }
-    if (memcpy_s(seqLenCache.data(), dataSize * 8, tensor.hostData, dataSize * 8) != 0) {  // 8: int64 size
+    if (memcpy_s(seqLenCache.data(), dataSize * 8, tensor.hostData, dataSize * 8) != 0) { // 8: int64 size
         ATB_LOG(ERROR) << "memcpy_s failed!";
         return atb::ERROR_INTERNAL_ERROR;
     }
@@ -297,4 +291,4 @@ int ConvertTensorToSeqLengths(atb::Tensor &tensor, aclIntArray *&actualSeqLength
     actualSeqLengths = aclCreateIntArray(static_cast<int64_t *>(seqLenCache.data()), dataSize);
     return atb::NO_ERROR;
 }
-}  // namespace atb
+} // namespace atb
