@@ -118,6 +118,10 @@ Status LinearParallelLcocRunner::SetupImpl(RunnerVariantPack &runnerVariantPack)
         ATB_LOG(ERROR) << GetLogPrefix() << "GetCoCDataTypeDesc failed.";
         return ERROR_INVALID_PARAM;
     }
+    if (mmInfo.transB && mmInfo.weightNz) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "transWeight and weightNz can not be true at the same time.";
+        return ERROR_INVALID_PARAM;
+    }
     Lcal::CoCParamDesc coCParamDesc{
         .dataTypeDesc = dataTypeDesc,
         .mmInfo = mmInfo,

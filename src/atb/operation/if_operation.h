@@ -34,7 +34,7 @@ protected:
     std::shared_ptr<Runner> CreateRunner(Context &context) const override;
 
 private:
-    Status GetOperationFromCondition(Operation **op) const;
+    Status GetOperationFromCondition(Operation *&op) const;
 
 private:
     common::IfCondParam param_;
