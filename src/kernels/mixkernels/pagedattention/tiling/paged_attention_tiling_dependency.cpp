@@ -245,9 +245,11 @@ void SetTilingKey(const PagedAttentionInfo &mmInfo, uint32_t *tilingParam, bool 
     // workmode : 1bit, vector part precision : 1bit, date type : 2bit, embed spec : 1bit
         tilingKey = SetTilingKeyMlaMtp(mmInfo, maxQseqlen);
     } else {
-        tilingKey = (mmInfo.compressHead << NUM9) + (isSplitBlock << NUM7) +
+        tilingKey = (static_cast<uint32_t>(mmInfo.compressHead) << NUM9) +
+                    (static_cast<uint32_t>(isSplitBlock) << NUM7) +
                     ((static_cast<uint32_t>(mmInfo.dataShapeType) & dataShapeTypeMask) << NUM6) +
-                    (isParallePa << NUM5) + (isSplitKey << NUM4) + static_cast<uint32_t>(mmInfo.type);
+                    (static_cast<uint32_t>(isParallePa) << NUM5) + (static_cast<uint32_t>(isSplitKey) << NUM4) +
+                    static_cast<uint32_t>(mmInfo.type);
     }
     tilingParam[TILING_KEY] = tilingKey;
     MKI_LOG(INFO) << "tilingKey: " << tilingKey;
