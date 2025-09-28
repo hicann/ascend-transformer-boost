@@ -115,6 +115,9 @@ Status SelfAttentionPrefixEncoderOpsRunner::ModifyKernelGraph(const OpsTensorPac
 void SelfAttentionPrefixEncoderOpsRunner::SetFAParam(AtbOps::OpParam::UnpadFlashAttention &flashAttentionParam)
 {
     flashAttentionParam.type = AtbOps::OpParam::UnpadFlashAttention::UNPAD_FLASH_ATTENTION_ENCODER_PREFIX_CACHE_ND;
+    flashAttentionParam.isClamp = (param_.clampType == infer::SelfAttentionParam::CLAMP_TYPE_MIN_MAX);
+    flashAttentionParam.clampMin = param_.clampMin;
+    flashAttentionParam.clampMax = param_.clampMax;
     flashAttentionParam.headSize = param_.headNum;
     flashAttentionParam.tor = param_.qkScale;
     flashAttentionParam.kvHead = param_.kvHeadNum;
