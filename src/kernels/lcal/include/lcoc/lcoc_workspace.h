@@ -138,7 +138,7 @@ inline __aicore__ LcalWorkspaceInfo GetLcalWorkspaceInfo(GM_ADDR gmWorkSpace, in
 
     if (hasAccum) {
         lcalWorkspaceInfo.gm_accum = workspaceOffset;
-        workspaceOffset += static_cast<GM_ADDR>(dequantWorkSpaceSize);
+        workspaceOffset += dequantWorkSpaceSize;
     }
     lcalWorkspaceInfo.workspaceSize = workspaceOffset;
     return lcalWorkspaceInfo;

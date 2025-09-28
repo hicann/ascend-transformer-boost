@@ -263,7 +263,7 @@ bool MkiNodeImplement::GetCachedTiling(KernelCache &kernelCache, size_t kernelIn
         ATB_LOG(ERROR) << GetLogPrefix() << " MkiNodeImplement do not have enough tiling buffer for cached tilnig";
         return false;
     }
-    if (!isLaunchWithTiling || Probe::IsSaveTiling()) {
+    if (!launchWithTiling || Probe::IsSaveTiling()) {
         int ret = memcpy_s(kernelHostTilingBuffer, maxTilingSize, cachedTilingBuffer->data(), tilingSizeFetched);
         if (ret != EOK) {
             ATB_LOG(ERROR) << GetLogPrefix() << " MkiNodeImplement memcpy_s cached tiling fail, error:" << ret;
