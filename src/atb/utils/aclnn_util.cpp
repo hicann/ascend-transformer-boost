@@ -8,11 +8,12 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
+#include "aclnn_util.h"
+
 #include <sstream>
 #include <cstring>
 #include <securec.h>
 
-#include "aclnn_util.h"
 #include "log.h"
 
 namespace {
@@ -82,7 +83,7 @@ atb::SVector<int64_t> GetTransposeTensorStride(atb::Dims &tensorDims)
 {
     atb::SVector<int64_t> tmptransposeStrides(tensorDims.dimNum, 1);
     tmptransposeStrides[tensorDims.dimNum - 1] = tensorDims.dims[tensorDims.dimNum - 1];
-    if (tensorDims.dimNum == 3) {                     // 3: 维度
+    if (tensorDims.dimNum == 3) { // 3: 维度
         tmptransposeStrides[0] = CheckIntMulOverFlow(tensorDims.dims[1], tensorDims.dims[2]); // 1, 2: 跳过第1维和第2维的大小
     }
     return tmptransposeStrides;

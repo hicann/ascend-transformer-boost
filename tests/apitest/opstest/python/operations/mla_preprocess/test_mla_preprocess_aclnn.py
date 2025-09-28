@@ -156,8 +156,8 @@ class TestMLAPrepross(operation_test.OperationTest):
         RopeGolden = keyRope * cos + self.rotateHalf(keyRope) * sin
         return RopeGolden
 
-    def RACGolden(self, keyRAC, slotMapping, keycacheout_golden):
-        for i, slot in enumerate(slotMapping):
+    def RACGolden(self, keyRAC, slot_mapping, keycacheout_golden):
+        for i, slot in enumerate(slot_mapping):
             if slot < 0:
                 continue
             block_index = slot // block_size
@@ -167,13 +167,13 @@ class TestMLAPrepross(operation_test.OperationTest):
             keycacheout_golden[block_index][block_offset] = token_key
         return keycacheout_golden
 
-    def RmsNormAndRopeAndReshapeAndCacheGolden(self, x, gamma, keyRope, cos, sin, slotMapping, keycachein):
+    def RmsNormAndRopeAndReshapeAndCacheGolden(self, x, gamma, keyRope, cos, sin, slot_mapping, keycachein):
         rmsNormOutput = self.rmsNormGolden(x, gamma)
         ropeOutput = self.RopeGolden(keyRope, sin, cos)
         ropeReshape = ropeOutput.reshape(self.input_token_num, 1, self.rope_hidden_size)
 
         keyRAC = torch.cat((rmsNormOutput, ropeReshape), axis=-1)
-        return self.RACGolden(keyRAC, slotMapping, keycachein)
+        return self.RACGolden(keyRAC, slot_mapping, keycachein)
 
     def rms_norm_quant_calc(self, input, gamma, beta, quantScale, quantOffset):
         out_shape = input.shape
@@ -229,7 +229,7 @@ class TestMLAPrepross(operation_test.OperationTest):
         self.cos1 = torch.from_numpy(np.random.uniform(-1.0, 1.0, size=(N, 64))).to(data_type)
         self.keyCache = torch.from_numpy(np.random.uniform(-1.0, 1.0, size=(blockNum, blockSize, 1, headdim))).to(data_type)
 
-        self.slotMapping = torch.from_numpy(np.random.choice(192 * 128, N, replace=False).astype(np.int32)).to(torch.int32)
+        self.slot_mapping = torch.from_numpy(np.random.choice(192 * 128, N, replace=False).astype(np.int32)).to(torch.int32)
 
         self.wuk = torch.from_numpy(np.random.uniform(-2.0, 2.0, size=(headNum, 128, 512))).to(data_type)#
         self.sin2 = self.sin1
@@ -437,7 +437,7 @@ class TestMLAPrepross(operation_test.OperationTest):
 
         #Reshape&Cache
         print("====================Reshape&Cache====================") 
-        in_tensors = [ConCat2out_tensors_npu[0], self.keyOutTensor, self.slotMapping]
+        in_tensors = [ConCat2out_tensors_npu[0], self.keyOutTensor, self.slot_mapping]
         out_tensors = [1]
         in_tensors_npu = [tensor.npu() for tensor in in_tensors]
         out_tensors_npu = [in_tensors_npu[i] if isinstance(i, int) else i.npu()
@@ -475,7 +475,7 @@ class TestMLAPrepross(operation_test.OperationTest):
         mm11OutSplit1, mm12OutSplit1 = torch.split(mm1OutSplit1, [512, 64], dim=1)
         mm11OutSplit1 = mm11OutSplit1.reshape(N, 1, 512)
         self.keyOutTensor = self.keyCache.clone()
-        self.keyOut1 = self.RmsNormAndRopeAndReshapeAndCacheGolden(mm11OutSplit1, self.gamma3, mm12OutSplit1, self.cos1, self.sin1, self.slotMapping, self.keyCache)
+        self.keyOut1 = self.RmsNormAndRopeAndReshapeAndCacheGolden(mm11OutSplit1, self.gamma3, mm12OutSplit1, self.cos1, self.sin1, self.slot_mapping, self.keyCache)
         mm2Out = mm2Out.reshape(N, headNum, 192)
         mm2OutSplit1, mm2OutSplit2 = torch.split(mm2Out, [128, 64], dim=2)
         self.bmmOut= torch.permute(
@@ -550,7 +550,6 @@ class TestMLAPrepross(operation_test.OperationTest):
         N = 32
         headNum = 128
         data_type = torch.float16
-        OP_NAME = "MlaPreprocessOperation"
         PARAM = json.dumps({"cacheMode":self.cacheMode})
         self.calc_vec_mm_atb_data(N, headNum, data_type, hidden_size)
         self.keyCache = self.keyCache.npu()
@@ -580,7 +579,7 @@ class TestMLAPrepross(operation_test.OperationTest):
                     self.wuk.npu(), # float16
                     self.keyCache[..., 0:512].npu(), # float16
                     self.keyCache[..., 512:576].npu(), # float16
-                    self.slotMapping.npu(), # int32
+                    self.slot_mapping.npu(), # int32
                     torch.tensor([]).to(data_type).npu(),
                     torch.tensor([]).to(data_type).npu()],
                     [qOut, kvCacheOut, qRopeOut, krCacheOut]) # float16
@@ -594,7 +593,6 @@ class TestMLAPrepross(operation_test.OperationTest):
         N = 56
         headNum = 77
         data_type = torch.float16
-        OP_NAME = "MlaPreprocessOperation"
         PARAM = json.dumps({"cacheMode":self.cacheMode})
         hidden_size = 6144
         self.calc_vec_mm_atb_data(N, headNum, data_type, hidden_size)
@@ -621,7 +619,7 @@ class TestMLAPrepross(operation_test.OperationTest):
                     self.wuk.npu(),
                     self.keyCache[..., 0:512].npu(),
                     self.keyCache[..., 512:576].npu(),
-                    self.slotMapping.npu(),                    
+                    self.slot_mapping.npu(),                    
                     torch.tensor([]).npu(),
                     torch.tensor([]).npu()],
                     [torch.zeros((N, headNum, 512), dtype=data_type).npu(),
@@ -638,7 +636,6 @@ class TestMLAPrepross(operation_test.OperationTest):
         N = 32
         headNum = 32
         data_type = torch.bfloat16
-        OP_NAME = "MlaPreprocessOperation"
         PARAM = json.dumps({"cacheMode":self.cacheMode})
         hidden_size = 4096
         self.calc_vec_mm_atb_data(N, headNum, data_type, hidden_size)
@@ -665,7 +662,7 @@ class TestMLAPrepross(operation_test.OperationTest):
                     self.wuk.npu(),
                     self.keyCache[..., 0:512].npu(),
                     self.keyCache[..., 512:576].npu(),
-                    self.slotMapping.npu(),                    
+                    self.slot_mapping.npu(),                    
                     torch.tensor([]).npu(),
                     torch.tensor([]).npu()],
                     [torch.zeros((N, headNum, 512), dtype=data_type).npu(),
@@ -682,7 +679,6 @@ class TestMLAPrepross(operation_test.OperationTest):
         N = 31
         headNum = 33
         data_type = torch.bfloat16
-        OP_NAME = "MlaPreprocessOperation"
         PARAM = json.dumps({})
         self.calc_vec_mm_atb_data(N, headNum, data_type, 5120)
         self.keyCache = self.keyCache.npu()
@@ -708,7 +704,7 @@ class TestMLAPrepross(operation_test.OperationTest):
                     self.wuk.npu(),
                     self.keyCache.npu(),
                     torch.tensor([]).npu(),
-                    self.slotMapping.npu(),                    
+                    self.slot_mapping.npu(),                    
                     torch.tensor([]).npu(),
                     torch.tensor([]).npu()],
                     [torch.zeros((N, headNum, 576), dtype=data_type).npu(),
