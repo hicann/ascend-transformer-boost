@@ -22,6 +22,10 @@
         ```sh
         g++ -D_GLIBCXX_USE_CXX11_ABI=1 -I ...
         ```
+    - 生成的二进制文件***_demo可以额外传入一个int参数作为deviceId，默认为0，如：
+        ```sh
+        ./self_attention_encoder_demo 0
+        ```
     - 提供的build脚本仅用于编译和运行self_attention_encoder_demo.cpp，如需编译其他demo，需要替换“self_attention_encoder_demo”为对应的cpp文件名
 
 ## 额外说明
@@ -63,16 +67,12 @@ SelfAttention在Atlas A2/A3系列仅支持部分场景，且Encoder场景在Atla
 | `seqLen`        | int32    | nd       | [10]                | cpu     |
 | `layerId`       | int32    | nd       | [1]                 | npu     |
 | **Output**      |
-| `output`        | float16  | nd       | [1]                 | npu     |
+| `output`        | float16  | nd       | [160, 2048]         | npu     |
 + q，k，v第一维度为总词元长度，即`sum(seqlen)`
 + q，k，v第二维度headNum，headSize合轴，实际为headHum(32) $\times$ headSize(128)
 
 #### self_attention_encoder_inference_demo.cpp
 + 场景：fa encoder基础场景在Atlas推理系列上的实现，分开传入key，CacheK，value和CacheV
-+ 更改编译脚本为：
- `g++ -D_GLIBCXX_USE_CXX11_ABI=$cxx_abi -I "${ATB_HOME_PATH}/include" -I "${ASCEND_HOME_PATH}/include" -L "${ATB_HOME_PATH}/lib" -L "${ASCEND_HOME_PATH}/lib64" self_attention_encoder_inference_demo.cpp demo_util.h -l atb -l ascendcl -o self_attention_encoder_inference_demo`
-- 运行时调用：
-`./self_attention_encoder_inference_demo`
 + 该demo仅支持在Atlas推理系列上运行
 
 **参数设置**：
