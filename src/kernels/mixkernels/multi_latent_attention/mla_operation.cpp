@@ -251,7 +251,7 @@ private:
         auto &tensorVcache = launchParam.GetInTensor(DIM_4); // V.shape = [batch, max_seqlen, hiddensize]
         auto kvSeqLen = param.kvSeqLen;
         uint32_t batch = kvSeqLen.size();
-        uint32_t head = param.kvHead;
+        uint32_t head = static_cast<uint32_t>(param.kvHead);
         if (CheckEmptyTensor(tensorKcache) || CheckEmptyTensor(tensorVcache)) {
             MKI_CHECK(CheckEmptyTensor(tensorKcache) && CheckEmptyTensor(tensorVcache),
                       "normal k and v should both be empty tensor if batches are split",

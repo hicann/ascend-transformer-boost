@@ -64,7 +64,7 @@ Status BatchSeqSort(MLAInfo &mmInfo, uint32_t endIndex, uint32_t sortDim)
     }
     std::sort(mmInfo.batchList.begin(), mmInfo.batchList.end());
     std::reverse(mmInfo.batchList.begin(), mmInfo.batchList.begin() + endIndex);
-    uint32_t batchSortInfo = (mmInfo.batch + sortDim - 1) / sortDim;
+    uint32_t batchSortInfo = (static_cast<uint32_t>(mmInfo.batch) + sortDim - 1) / sortDim;
     for (uint32_t sortIdx = 0; sortIdx < batchSortInfo; sortIdx++) {
         uint32_t startIndex = sortIdx * sortDim;
         uint32_t sortEnd = std::min(startIndex + sortDim, endIndex);
@@ -83,8 +83,8 @@ Status GetFlashDecodingInfo(MLAInfo &mmInfo, OpParam::MLA &param, uint32_t block
     if (blockDim == 0) {
         return Status::FailStatus(ERROR_INVALID_VALUE);
     }
-    mmInfo.tailBatch = mmInfo.batch % blockDim;
-    mmInfo.tailTaskNum = mmInfo.totalTaskNum % blockDim;
+    mmInfo.tailBatch = static_cast<int32_t>(static_cast<uint32_t>(mmInfo.batch) % blockDim);
+    mmInfo.tailTaskNum = static_cast<int32_t>(static_cast<uint32_t>(mmInfo.totalTaskNum) % blockDim);
     mmInfo.flashDecodingTaskNum = mmInfo.quantFlag ? mmInfo.tailTaskNum : mmInfo.tailBatch;
     auto minKVSeqlen = std::min_element(param.kvSeqLen.begin(), param.kvSeqLen.end());
     auto minQSeqlen = mmInfo.qSeqLen != nullptr ? *std::min_element(param.qSeqLen.begin(), param.qSeqLen.end()) : 1;
@@ -98,11 +98,12 @@ Status GetFlashDecodingInfo(MLAInfo &mmInfo, OpParam::MLA &param, uint32_t block
         return Status::OkStatus();
     }
     OP_TILING_CHECK_STATUS_RETURN(BatchSeqSort(mmInfo, mmInfo.batch - mmInfo.flashDecodingTaskNum, blockDim));
-    mmInfo.splitKVNum = blockDim / mmInfo.flashDecodingTaskNum > 1 ?  blockDim / mmInfo.flashDecodingTaskNum :
-                        CalcSplitNum(mmInfo, blockDim, *minKVSeqlen, mmInfo.blockSize);
+    mmInfo.splitKVNum = static_cast<int32_t>(blockDim / static_cast<uint32_t>(mmInfo.flashDecodingTaskNum) > 1 ?
+                                                 blockDim / static_cast<uint32_t>(mmInfo.flashDecodingTaskNum) :
+                                                 CalcSplitNum(mmInfo, blockDim, *minKVSeqlen, mmInfo.blockSize));
     mmInfo.flashDecoding = mmInfo.splitKVNum == 1 ? false : true;
     int32_t taskNum = mmInfo.quantFlag ? mmInfo.totalTaskNum : mmInfo.batch;
-    mmInfo.normalTaskNum = taskNum / blockDim * blockDim;
+    mmInfo.normalTaskNum = static_cast<int32_t>(static_cast<uint32_t>(taskNum) / blockDim * blockDim);
     MKI_LOG(INFO) << "flashDecoding is = " << mmInfo.flashDecoding;
     return Status::OkStatus();
 }
@@ -176,7 +177,7 @@ Status GetTilingKeyTypeBase(MLAInfo &mmInfo, const Tensor &qTensor, const Tensor
 
 Status GenTilingKey(MLAInfo &mmInfo, KernelInfo &kernelInfo, OpParam::MLA &param)
 {
-    uint32_t dataType = static_cast<int32_t>(mmInfo.type);
+    uint32_t dataType = static_cast<uint32_t>(mmInfo.type);
     uint32_t tilingKey =
         dataType + (static_cast<uint32_t>(mmInfo.kNz) << NUM4) + (static_cast<uint32_t>(mmInfo.mtpTp1Flag) << NUM2) +
         (static_cast<uint32_t>(param.isRing) << NUM5) + (static_cast<uint32_t>(mmInfo.flashDecoding) << NUM6);
@@ -206,10 +207,16 @@ Status MLATiling(const LaunchParam &launchParam, KernelInfo &kernelInfo)
     uint64_t basicWorkSpaceHalf = blockDim * WORKSPACE_BLOCK_SIZE_DB * dataLenHalf;
     uint64_t basicWorkSpaceFloat = blockDim * WORKSPACE_BLOCK_SIZE_DB * dataLenFloat;
     uint64_t basicWorkSpaceInt8 = blockDim * WORKSPACE_BLOCK_SIZE_DB * dataLenInt;
-    uint64_t oCoreWorkSpaceSize = mmInfo.flashDecoding && mmInfo.mtpTp1Flag ?
-        WORKSPACE_BLOCK_SIZE_DB * mmInfo.flashDecodingTaskNum * mmInfo.splitKVNum * dataLenFloat * 2 : 0;
-    uint64_t lWorkSpaceSize = mmInfo.flashDecoding && mmInfo.mtpTp1Flag ?
-        mmInfo.numHeads * mmInfo.flashDecodingTaskNum * mmInfo.splitKVNum * dataLenFloat * 2 * 8 : 0;
+    uint64_t oCoreWorkSpaceSize =
+        mmInfo.flashDecoding && mmInfo.mtpTp1Flag ?
+            static_cast<uint64_t>(WORKSPACE_BLOCK_SIZE_DB * mmInfo.flashDecodingTaskNum * mmInfo.splitKVNum) *
+                dataLenFloat * 2 :
+            0;
+    uint64_t lWorkSpaceSize =
+        mmInfo.flashDecoding && mmInfo.mtpTp1Flag ?
+            static_cast<uint64_t>(mmInfo.numHeads * mmInfo.flashDecodingTaskNum * mmInfo.splitKVNum) * dataLenFloat *
+                2 * 8 :
+            0;
     if (mmInfo.quantFlag) {
         uint64_t sWorkSpaceSize = mmInfo.mtpTp1Flag ? basicWorkSpaceFloat * 2 : basicWorkSpaceFloat;
         uint64_t pWorkSpaceSize = basicWorkSpaceInt8;
@@ -327,8 +334,8 @@ void MLAPrefillFillInfo(MLAInfo &mmInfo, OpParam::MLA &param, int32_t batch, int
     mmInfo.kvSeqLen = param.kvSeqLen.data();
     mmInfo.tor = param.tor;
     mmInfo.kvHeads = param.kvHead == 0 ? param.headSize : param.kvHead;
-    mmInfo.maskType = static_cast<uint32_t>(param.maskType);
-    mmInfo.windowSize = static_cast<uint32_t>(param.windowSize);
+    mmInfo.maskType = static_cast<int32_t>(param.maskType);
+    mmInfo.windowSize = static_cast<int32_t>(param.windowSize);
 }
 
 Status InitInfo(MLAInfo &mmInfo, OpParam::MLA &param)
@@ -348,7 +355,7 @@ Status InitInfo(MLAInfo &mmInfo, OpParam::MLA &param)
                     (mmInfo.tensors.queryRope.desc.dims).at(1)) / param.headSize;
     }
     auto kvSeqLen = param.kvSeqLen;
-    batch = kvSeqLen.size();
+    batch = static_cast<int32_t>(kvSeqLen.size());
     auto maxKvSeq = *std::max_element(param.kvSeqLen.begin(), param.kvSeqLen.end());
     mmInfo.maxKvSeqLen = maxKvSeq;
     OP_TILING_CHECK_STATUS_RETURN(GetPrefiillMaskInfo(mmInfo, param, mmInfo.tensors.mask));
@@ -366,7 +373,7 @@ Status InitInfo(MLAInfo &mmInfo, OpParam::MLA &param)
 Status GenMlaPrefillTilingKey(MLAInfo &mmInfo, KernelInfo &kernelInfo, OpParam::MLA &param)
 {
     // currently only support fp16/bf16 maskfree prefill or bf16 prefill kernel
-    uint32_t dataType = static_cast<int32_t>(mmInfo.type);
+    uint32_t dataType = static_cast<uint32_t>(mmInfo.type);
     uint32_t tilingKey = dataType + (static_cast<bool>(mmInfo.maskType) << NUM1);
     kernelInfo.SetTilingId(tilingKey);
     MKI_LOG(INFO) << "MLA Prefill TILING KEY IS = " << tilingKey;
@@ -391,7 +398,7 @@ Status MLAPrefillTiling(const LaunchParam &launchParam, KernelInfo &kernelInfo)
     OP_TILING_CHECK_STATUS_RETURN(ret);
     uint32_t blockDim = PlatformInfo::Instance().GetCoreNum(CoreType::CORE_TYPE_CUBE);
     MKI_CHECK(blockDim > 0, "blockDim cannot <= 0", return Status::FailStatus(ERROR_INVALID_VALUE));
-    mmInfo.blockDim = blockDim;
+    mmInfo.blockDim = static_cast<int32_t>(blockDim);
     uint8_t *tilingHost = kernelInfo.GetTilingHostAddr();
     uint64_t tilingSize = kernelInfo.GetTilingSize();
     uint32_t *tilingParam = reinterpret_cast<uint32_t *>(tilingHost);

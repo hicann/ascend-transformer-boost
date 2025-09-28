@@ -295,16 +295,16 @@ void PpMatmulTilingApi::Swizzle()
         int c = static_cast<int32_t>((blockDim_ + i - 1) / i);
         float cost;
         // B0 + A < A0 + B
-        if (i * n0_ + m_ < m0_ * c + n_) {
+        if (i * n0_ + m_ < m0_ * static_cast<uint32_t>(c) + n_) {
             swizzleDirect_ = 1; // Nz
-            cost = n0_ * i + m0_ * c;
+            cost = n0_ * i + m0_ * static_cast<uint32_t>(c);
             if (cost <= minCost) {
                 minCost = cost;
                 swizzleCount_ = i;
             }
         } else {
             swizzleDirect_ = 0; // Zn
-            cost = m0_ * i + n0_ * c;
+            cost = m0_ * i + n0_ * static_cast<uint32_t>(c);
             if (cost < minCost) {
                 minCost = cost;
                 swizzleCount_ = i;
