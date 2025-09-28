@@ -29,7 +29,6 @@ protected:
     aclnnStatus SetAclNNWorkspaceExecutor() override;
     Status LaunchAclnnKernel() override;
 
-
 private:
     HcclRunner hcclRunner_;
     infer::LinearParallelParam param_;

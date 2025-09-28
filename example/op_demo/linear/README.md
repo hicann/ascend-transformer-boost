@@ -11,22 +11,19 @@
     2. source [nnal安装路径]/set_env.sh
         默认：source /usr/local/Ascend/nnal/atb/set_env.sh
         1. 如果使用加速库源码编译，source [加速库源码路径]/output/atb/set_env.sh
-        e.g. source ./ascend-transformer-boost/output/atb/set_env.sh
+        例如： source ./ascend-transformer-boost/output/atb/set_env.sh
 
 - 运行demo
 
     ```sh
     bash build.sh
     ```
-
     **注意**：
-  - 使用cxx_abi=0（默认）时，设置`D_GLIBCXX_USE_CXX11_ABI`为0，i.e.
-
+    - 使用cxx_abi=0（默认）时，设置`D_GLIBCXX_USE_CXX11_ABI`为0，即：
         ```sh
         g++ -D_GLIBCXX_USE_CXX11_ABI=0 -I ...
         ```
-  - 使用cxx_abi=1时，更改`D_GLIBCXX_USE_CXX11_ABI`为1，i.e.
-
+    - 使用cxx_abi=1时，更改`D_GLIBCXX_USE_CXX11_ABI`为1，即：
         ```sh
         g++ -D_GLIBCXX_USE_CXX11_ABI=1 -I ...
         ```
@@ -185,6 +182,7 @@
 
 
     - linear_dequant_ds_demo.cpp  
+        该demo支持Atlas A2/A3系列和Atlas 推理系列产品上运行。  
         **参数设置**：
 
         | 成员名称     | 取值               |
@@ -204,4 +202,4 @@
         | `weight`   | int8     | nd       | [7168, 16384] | npu     |
         | `bias`     | int32    | nd       | [1, 7168]     | npu     |
         | `deqScale` | int64    | nd       | [1, 7168]     | npu     |
-        | `output`   | fp16     | nd       | [32, 7168]    | npu     |
+        | `output`   | float16  | nd       | [32, 7168]    | npu     |

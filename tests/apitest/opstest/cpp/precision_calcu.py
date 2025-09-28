@@ -1,5 +1,5 @@
 # 
-# Copyright (c) 2024 Huawei Technologies Co., Ltd.
+# Copyright (c) 2025 Huawei Technologies Co., Ltd.
 # This file is a part of the CANN Open Software.
 # Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
 # Please refer to the License for details. You may not use this file except in compliance with the License.
@@ -130,10 +130,10 @@ def compare_cv(golden:torch.Tensor, gpu:torch.Tensor, actual:torch.Tensor):
     EB = get_eb(gpu, actual)
     result = (mare_rate < 10) and (mere_rate < 2) and (rmse_rate < 2) and (EB < eb_threshold)
 
-    logging.info(f"mare_npu:{mare_npu} mare_gpu:{mare_gpu}")
-    logging.info(f"mere_npu:{mere_npu} mere_gpu:{mere_gpu}")
-    logging.info(f"rmse_npu:{rmse_npu} rmse_gpu:{rmse_gpu}")
-    logging.info(f"MARE:{mare_rate} MERE:{mere_rate} RMSE:{rmse_rate} EB:{EB}")
+    print(f"eb_threshold:{eb_threshold} err_threshold:{err_threshold}")
+    print(f"mere_npu:{mere_npu} mere_gpu:{mere_gpu}")
+    print(f"rmse_npu:{rmse_npu} rmse_gpu:{rmse_gpu}")
+    print(f"MARE:{mare_rate} MERE:{mere_rate} RMSE:{rmse_rate} EB:{EB}")
     print(f"new golden cv result:{result}")
     return result
 

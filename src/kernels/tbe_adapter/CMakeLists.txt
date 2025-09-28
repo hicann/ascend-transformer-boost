@@ -564,7 +564,7 @@ set_source_files_properties(
 # MIX OPS
 file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/mixops/)
 execute_process(COMMAND python3 ${PROJECT_SOURCE_DIR}/scripts/update_tbe_tactic_json.py
-                                --src_ini_path ${PROJECT_SOURCE_DIR}/configs/mixops/tbe_tactic_info.ini
+                                --src_ini_path ${PROJECT_SOURCE_DIR}/src/kernels/configs/mixops/tbe_tactic_info.ini
                                 --dst_ini_path ${CMAKE_BINARY_DIR}/mixops/tbe_tactic_json.ini
                 OUTPUT_VARIABLE MIX_PYTHON_OUTPUT
                 ERROR_VARIABLE RESULT_INFO
@@ -579,7 +579,7 @@ set_source_files_properties(${MIX_REUSE_BINARY_LIST} PROPERTIES GENERATED TRUE)
  
 add_custom_command(
     OUTPUT ${MIX_REUSE_BINARY_LIST} ${CMAKE_BINARY_DIR}/mix_wait_flag.cpp
-    DEPENDS ${PROJECT_SOURCE_DIR}/configs/mixops/tbe_tactic_info.ini
+    DEPENDS ${PROJECT_SOURCE_DIR}/src/kernels/configs/mixops/tbe_tactic_info.ini
     COMMAND python3 ${MKI_PACKAGE_DIR}/scripts/build_util.py --binary_dir ${CMAKE_BINARY_DIR} --op_type tbe
                     --tbe_ini_path ${CMAKE_BINARY_DIR}/mixops/tbe_tactic_json.ini
     COMMAND cmake -E sleep 10
@@ -609,7 +609,7 @@ set_source_files_properties(${OPS_REUSE_BINARY_LIST} PROPERTIES GENERATED TRUE)
  
 add_custom_command(
     OUTPUT ${OPS_REUSE_BINARY_LIST} ${CMAKE_BINARY_DIR}/ops_wait_flag.cpp
-    DEPENDS ${PROJECT_SOURCE_DIR}/configs/ops/tbe_tactic_info.ini
+    DEPENDS ${PROJECT_SOURCE_DIR}/src/kernels/configs/ops/tbe_tactic_info.ini
     COMMAND python3 ${MKI_PACKAGE_DIR}/scripts/build_util.py --binary_dir ${CMAKE_BINARY_DIR} --op_type tbe
                     --tbe_ini_path ${CMAKE_BINARY_DIR}/tbe_tactic_json.ini
     COMMAND cmake -E sleep 10

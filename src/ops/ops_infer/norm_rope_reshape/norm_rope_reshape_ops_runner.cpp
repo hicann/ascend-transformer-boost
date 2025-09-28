@@ -22,8 +22,8 @@ void NormRopeReshapeOpsRunner::SetNormRopeReshapeParam(
     asdopsParam.rotaryCoeff = inferParam.rotaryCoeff;
 }
  
-void NormRopeReshapeOpsRunner::BuildNormRopeReshapeGraph
-(const AtbOps::OpParam::RmsNormAndRopeAndReshapeAndCache &normRopeReshapeParam)
+void NormRopeReshapeOpsRunner::BuildNormRopeReshapeGraph(
+    const AtbOps::OpParam::RmsNormAndRopeAndReshapeAndCache &normRopeReshapeParam)
 {
     kernelGraph_.inTensors.resize(IN_TENSOR_COUNT_SEVEN);
     size_t inId = 0;
@@ -47,8 +47,7 @@ void NormRopeReshapeOpsRunner::BuildNormRopeReshapeGraph
     normRopeReshapeNode.outTensors = {&keycacheOutTensor};
 }
  
-NormRopeReshapeOpsRunner::NormRopeReshapeOpsRunner
-(const infer::NormRopeReshapeParam &param)
+NormRopeReshapeOpsRunner::NormRopeReshapeOpsRunner(const infer::NormRopeReshapeParam &param)
     : OpsRunner("NormRopeReshapeOpsRunner", RUNNER_TYPE_NORM_ROPE_RESHAPE), param_(param)
 {
     AtbOps::OpParam::RmsNormAndRopeAndReshapeAndCache rmsNormAndRopeAndReshapeAndCacheParam;
