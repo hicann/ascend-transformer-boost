@@ -42,7 +42,7 @@ struct LcalWorkspaceInfo {   // host侧起点为0，device起点为gm_workspace 
 
 inline __aicore__ int32_t AlignUp(int32_t len, int32_t size)
 {
-    return (len + size - 1) & ~(size - 1);
+    return static_cast<int32_t>(static_cast<uint32_t>(len + size - 1) & ~static_cast<uint32_t>(size - 1));
 }
 
 #if !defined(__DAV_C220_VEC__) && !defined(__DAV_M200_VEC__) && !defined(__DAV_C220_CUBE__) && !defined(__DAV__C310__)
@@ -55,7 +55,7 @@ inline uint64_t GetDequantWorkSpaceSize(Lcal::LcalType lcalType, int32_t withSer
     if (withSerialMode > 0) {
         dequantWorkSpaceSize = (maxOutputSize == -1 ? m : maxOutputSize) * n * sizeof(int32_t);
         if (lcalType == Lcal::LcalType::ALL_GATHER_MATMUL) {
-            dequantWorkSpaceSize *= rankSize;
+            dequantWorkSpaceSize *= static_cast<uint32_t>(rankSize);
         }
     } else {
         if (lcalType == Lcal::LcalType::MATMUL_ALL_REDUCE || lcalType == Lcal::LcalType::MATMUL_REDUCE_SCATTER) {
@@ -63,7 +63,7 @@ inline uint64_t GetDequantWorkSpaceSize(Lcal::LcalType lcalType, int32_t withSer
         } else {
             dequantWorkSpaceSize = (maxOutputSize == -1 ? m : maxOutputSize) * n * sizeof(int32_t);
             if (lcalType == Lcal::LcalType::ALL_GATHER_MATMUL) {
-                dequantWorkSpaceSize *= rankSize;
+                dequantWorkSpaceSize *= static_cast<uint32_t>(rankSize);
             }
         }
     }
@@ -106,25 +106,27 @@ inline __aicore__ LcalWorkspaceInfo GetLcalWorkspaceInfo(GM_ADDR gmWorkSpace, in
 
     if (hasAAlign) {
         lcalWorkspaceInfo.gm_a_align = workspaceOffset;
-        workspaceOffset += static_cast<uint64_t>(batchSize) * (transa ? k * mAlign : m * kAlign) * mmadSize;
+        workspaceOffset +=
+            static_cast<uint64_t>(batchSize) * (transa ? k * mAlign : m * kAlign) * static_cast<uint32_t>(mmadSize);
     }
 
     if (hasBAlign) {
         lcalWorkspaceInfo.gm_b_align = workspaceOffset;
-        workspaceOffset += static_cast<uint64_t>(batchSize) * (transb ? n * kAlign : k * nAlign) * mmadSize *
-            (expertPerRank <= 0 ? 1 : expertPerRank);
+        workspaceOffset += static_cast<uint64_t>(batchSize) * (transb ? n * kAlign : k * nAlign) *
+                           static_cast<uint32_t>(mmadSize) *
+                           static_cast<uint32_t>(expertPerRank <= 0 ? 1 : expertPerRank);
     }
 
-    if (isMoe) {
+    if (static_cast<bool>(isMoe)) {
         GetLcalMoeWorkspaceInfo(lcalWorkspaceInfo, workspaceOffset, m, hasDequantParam, is_alltoallvc, EP,
                                 expertPerRank, outputSize);
     }
 
-    if (!isMoe && hasDequantParam) {
+    if (!static_cast<bool>(isMoe) && hasDequantParam) {
         lcalWorkspaceInfo.gm_dequant_param = workspaceOffset;
         workspaceOffset += sizeof(int32_t) * AlignUp(n, ALIGN8);
     }
-    
+
     if (hasFormatDequantScale) {
         lcalWorkspaceInfo.gm_formate_dequant_scale = workspaceOffset;
         workspaceOffset += sizeof(float) * AlignUp(n, ALIGN8);
@@ -132,7 +134,7 @@ inline __aicore__ LcalWorkspaceInfo GetLcalWorkspaceInfo(GM_ADDR gmWorkSpace, in
 
     if (hasAccum) {
         lcalWorkspaceInfo.gm_accum = workspaceOffset;
-        workspaceOffset += dequantWorkSpaceSize;
+        workspaceOffset += static_cast<GM_ADDR>(dequantWorkSpaceSize);
     }
     lcalWorkspaceInfo.workspaceSize = workspaceOffset;
     return lcalWorkspaceInfo;

@@ -161,14 +161,14 @@ int64_t MkiNodeImplement::GetWorkspaceSize() const
     }
     return kernel_->GetKernelInfo().GetTotalScratchSize();
 }
-Status MkiNodeImplement::InitKernelInfo(uint8_t *hostTilingBuffer, uint64_t tilingSize, bool isLaunchWithTiling)
+Status MkiNodeImplement::InitKernelInfo(uint8_t *hostTilingBuffer, uint64_t tilingSize, bool launchWithTiling)
 {
     ATB_LOG(DEBUG) << GetLogPrefix() << " init kernel info";
     if (kernel_ == nullptr) {
         ATB_LOG(ERROR) << GetLogPrefix() << " kernel is null";
         return ERROR_INVALID_PARAM;
     }
-    if (isLaunchWithTiling) {
+    if (launchWithTiling) {
         ATB_LOG(INFO) << GetLogPrefix() << " use tiling optimize";
         kernel_->SetLaunchWithTiling(true);
     } else {
@@ -237,7 +237,7 @@ Status MkiNodeImplement::Run(aclrtStream stream)
 }
 
 bool MkiNodeImplement::GetCachedTiling(KernelCache &kernelCache, size_t kernelIndex, uint8_t *kernelHostTilingBuffer,
-                                       uint64_t maxTilingSize, uint64_t &tilingSizeFetched, bool isLaunchWithTiling)
+                                       uint64_t maxTilingSize, uint64_t &tilingSizeFetched, bool launchWithTiling)
 {
     tilingBufferFilled_ = false;
     Mki::Timer kernelCacheGetTilingTimer;
@@ -246,7 +246,7 @@ bool MkiNodeImplement::GetCachedTiling(KernelCache &kernelCache, size_t kernelIn
     if (kernelCached != nullptr) {
         // 由于当前的kernel在设计上是带状态的，必须保证kernel状态与当前所需相同才能使用cache中的kernel
         bool cachedTilingLaunchStatus = kernelCached->GetKernelInfo().GetLaunchWithTiling();
-        if (cachedTilingLaunchStatus != isLaunchWithTiling) {
+        if (cachedTilingLaunchStatus != launchWithTiling) {
             ATB_LOG(INFO) << "Cache miss because of status of tilingLaunch mismatch.";
             return false;
         }

@@ -94,7 +94,9 @@ Status GetTilingKeyTypeBase(RINGMLAInfo &mmInfo, const Tensor &qTensor, const Te
 Status GenTilingKey(RINGMLAInfo &mmInfo, KernelInfo &kernelInfo, OpParam::RINGMLA &param)
 {
     uint32_t dataType = static_cast<int32_t>(mmInfo.type);
-    uint32_t tilingKey = dataType + (mmInfo.kNz << NUM4) + (mmInfo.mtpTp1Flag << NUM2) + (param.isRing << NUM5);
+    uint32_t tilingKey = dataType + (static_cast<uint32_t>(mmInfo.kNz) << NUM4) +
+                         (static_cast<uint32_t>(mmInfo.mtpTp1Flag) << NUM2) +
+                         (static_cast<uint32_t>(param.isRing) << NUM5);
     kernelInfo.SetTilingId(tilingKey);
     MKI_LOG(INFO) << "TILING KEY IS = " << tilingKey;
     return Status::OkStatus();

@@ -111,7 +111,7 @@ private:
         auto &tensorQRope = launchParam.GetInTensor(DIM_1);
         outTensors[DIM_0].desc = tensorQ.desc;
         outTensors[DIM_0].desc.dtype = tensorQRope.desc.dtype;
-        if (param.isRing) {
+        if (static_cast<bool>(param.isRing)) {
             // outTensor1  lse
             outTensors[DIM_1].desc = tensorQ.desc;
             if (tensorQ.desc.dims.size() == DIM_2) {
