@@ -436,6 +436,7 @@ function fn_make_run_package()
     mkdir -p $CODE_ROOT/ci/$ARCH
     cp $CODE_ROOT/scripts/install.sh $OUTPUT_DIR
     cp $CODE_ROOT/scripts/set_env.sh $OUTPUT_DIR
+    cp $CODE_ROOT/scripts/create_version_softlink.sh $OUTPUT_DIR/scripts
     cp $CODE_ROOT/scripts/uninstall.sh $OUTPUT_DIR/scripts
     cp $CODE_ROOT/scripts/filelist.csv $OUTPUT_DIR/scripts
     sed -i "s/ATBPKGARCH/${ARCH}/" $OUTPUT_DIR/install.sh
