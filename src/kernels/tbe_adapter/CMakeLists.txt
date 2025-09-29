@@ -128,8 +128,6 @@ if("${PACKAGE_COMPILE}" STREQUAL "ON" AND NOT "${LOCAL_RELEASE_COMPILE}" STREQUA
         ${TBE_TILING_DIR}/runtime/layer_norm_v3.cc
         ${TBE_TILING_DIR}/runtime/layer_norm_v3/layer_norm_v3_tiling.cc
         ${TBE_TILING_DIR}/runtime/layer_norm_v3/layer_norm_v3_tiling_base.cc
-        ${OPS_THIRD_PARTY_DIR}/canndev/ops/norm/layer_norm_v4/op_host/layer_norm_v4_tiling.cpp
-        ${OPS_THIRD_PARTY_DIR}/canndev/ops/norm/layer_norm_v4/op_host/layer_norm_v4_tiling_base.cpp
         ${TBE_TILING_DIR}/runtime/one_hot/one_hot.cc
         ${TBE_TILING_DIR}/runtime/one_hot/one_hot_tiling.cc
         ${TBE_TILING_DIR}/runtime/pack_tiling.cc
@@ -155,7 +153,6 @@ if("${PACKAGE_COMPILE}" STREQUAL "ON" AND NOT "${LOCAL_RELEASE_COMPILE}" STREQUA
         ${TBE_TILING_DIR}/runtime/space_to_depth_tiling.cc
         ${TBE_TILING_DIR}/runtime/view_copy.cc
         ${TBE_TILING_DIR}/runtime/view_copy_tiling.cc
-        ${OPS_THIRD_PARTY_DIR}/canndev/ops/index/scatter_elements_v2/op_host/scatter_elements_v2_tiling.cpp
         ${TBE_TILING_DIR}/runtime/runtime2_util.cc
         ${TBE_TILING_DIR}/../fusion_pass/common/fp16_t.cc
         ${PROJECT_SOURCE_DIR}/3rdparty/canndev/ops/common/src/op_util.cc
