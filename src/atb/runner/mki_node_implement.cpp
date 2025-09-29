@@ -15,6 +15,7 @@
 #include "atb/utils/tensor_util.h"
 #include "atb/utils/statistic.h"
 #include "atb/utils/store_util.h"
+#include "atb/utils/singleton.h"
 #include "atb/utils/probe.h"
 
 namespace atb {
@@ -386,7 +387,7 @@ Status MkiNodeImplement::BuildLaunchParam(const SVector<Mki::Tensor *> &inTensor
     return NO_ERROR;
 }
 
-const std::unordered_map<const Mki::ErrorType, atb::ErrorType> InitAtbMkiErrorHash() noexcept
+static const std::unordered_map<const Mki::ErrorType, atb::ErrorType> InitAtbMkiErrorHash() noexcept
 {
     return {{Mki::ErrorType::NO_ERROR, atb::ErrorType::NO_ERROR},
             {Mki::ErrorType::ERROR_INVALID_VALUE, atb::ErrorType::ERROR_INVALID_PARAM},
@@ -403,5 +404,7 @@ const std::unordered_map<const Mki::ErrorType, atb::ErrorType> InitAtbMkiErrorHa
             {Mki::ErrorType::ERROR_MEMERY_COPY_ERROR, atb::ErrorType::ERROR_COPY_HOST_MEMORY_FAIL},
             {Mki::ErrorType::ERROR_RUN_TIME_ERROR, atb::ErrorType::ERROR_RT_FAIL}};
 }
+
+const std::unordered_map<const Mki::ErrorType, atb::ErrorType> ATB_MKI_ERROR_HASH = InitAtbMkiErrorHash();
 
 } // namespace atb
