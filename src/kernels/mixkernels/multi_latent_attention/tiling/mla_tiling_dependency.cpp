@@ -10,7 +10,6 @@
 #include <array>
 #include <chrono>
 #include <vector>
-#include <numeric>
 #include <algorithm>
 #include <cmath>
 #include <map>

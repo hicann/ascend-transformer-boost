@@ -15,7 +15,6 @@
 #include <mki/utils/log/log.h>
 #include <mki/utils/math/math.h>
 #include <mki/utils/platform/platform_info.h>
-#include <numeric>
 #include <securec.h>
 #include <unordered_map>
 #include <vector>

@@ -16,7 +16,6 @@
 #include <unistd.h>
 #include <securec.h>
 #include <sys/types.h>
-#include <sys/stat.h>
 #include <fcntl.h>
 #include <toolchain/slog.h>
 #include <toolchain/prof_api.h>
