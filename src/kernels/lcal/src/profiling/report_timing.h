@@ -9,6 +9,7 @@
  */
 #ifndef REPORT_TIMING_H
 #define REPORT_TIMING_H
+#include <cstdint>
 #include <cstring>
 #include <string>
 #include <sys/syscall.h>

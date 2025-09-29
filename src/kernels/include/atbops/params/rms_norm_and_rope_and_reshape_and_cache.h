@@ -11,6 +11,7 @@
 #define ATBOPS_PARAMS_RMS_NORM_AND_ROPE_AND_RESHAPE_AND_CACHE_H
  
 #include <cstdint>
+#include "mki/utils/compare/compare.h"
 namespace AtbOps {
 namespace OpParam {
 struct RmsNormAndRopeAndReshapeAndCache {
