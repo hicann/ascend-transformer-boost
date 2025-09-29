@@ -55,7 +55,7 @@ public:
     {
         static uint8_t matMulAddFusionKernelBinData[DYNAMICSIZE];
         std::string path = std::string(std::getenv("HOME")) + "/.atb_auto_fusion/bishengir_bin/matmul_add.cpp";
-        if (CheckNameValid(path, 256)) { // 256: 最大路径路径长度
+        if (Mki::CheckNameValid(path, 256)) { // 256: 最大路径路径长度
             ATB_LOG(ERROR) << "path is invalid, please check the path: " << path;
         }
         if (IsSoftLink(path.c_str())) {
@@ -98,7 +98,7 @@ public:
     {
         static uint8_t matMulGeluFusionKernelBinData[DYNAMICSIZE];
         std::string path = std::string(std::getenv("HOME")) + "/.atb_auto_fusion/bishengir_bin/matmul_gelu.cpp";
-        if (CheckNameValid(path, 256)) { // 256: 最大路径路径长度
+        if (Mki::CheckNameValid(path, 256)) { // 256: 最大路径路径长度
             ATB_LOG(ERROR) << "path is invalid, please check the path: " << path;
         }
         if (IsSoftLink(path.c_str())) {
@@ -141,7 +141,7 @@ public:
     {
         static uint8_t matMulSigmoidFusionKernelBinData[DYNAMICSIZE];
         std::string path = std::string(std::getenv("HOME")) + "/.atb_auto_fusion/bishengir_bin/matmul_sigmoid.cpp";
-        if (CheckNameValid(path, 256)) { // 256: 最大路径路径长度
+        if (Mki::CheckNameValid(path, 256)) { // 256: 最大路径路径长度
             ATB_LOG(ERROR) << "path is invalid, please check the path: " << path;
         }
         if (IsSoftLink(path.c_str())) {
@@ -184,7 +184,7 @@ public:
     {
         static uint8_t matMulSwigluFusionKernelBinData[DYNAMICSIZE];
         std::string path = std::string(std::getenv("HOME")) + "/.atb_auto_fusion/bishengir_bin/matmul_swiglu.cpp";
-        if (CheckNameValid(path, 256)) { // 256: 最大路径路径长度
+        if (Mki::CheckNameValid(path, 256)) { // 256: 最大路径路径长度
             ATB_LOG(ERROR) << "path is invalid, please check the path: " << path;
         }
         if (IsSoftLink(path.c_str())) {
