@@ -22,6 +22,10 @@
         ```sh
         g++ -D_GLIBCXX_USE_CXX11_ABI=1 -I ...
         ```
+    - 生成的二进制文件***_demo可以额外传入一个int参数作为deviceId，默认为0，如：
+        ```sh
+        ./ring_mla_demo 0
+        ```
 
 ## 额外说明
 示例中生成的数据不代表实际场景，如需数据生成参考请查看python用例目录：
