@@ -939,7 +939,8 @@ Status GetPagedAttentionTilingParam(const LaunchParam &launchParam, const PagedA
             return Status::FailStatus(ERROR_INVALID_VALUE));
     } else {
         auto tilingHeadSize = is910A ? TILING_HEAD_SIZE_910A : TILING_HEAD_SIZE_NZ;
-        curTilingParamSize = (tilingHeadSize + TILING_PARA_SIZE_NZ * param.qSeqLen.size()) * sizeof(uint32_t);
+        curTilingParamSize =
+            (static_cast<uint64_t>(tilingHeadSize) + TILING_PARA_SIZE_NZ * param.qSeqLen.size()) * sizeof(uint32_t);
         MKI_CHECK(memset_s(tilingParam, tilingParamSize, 0,
             curTilingParamSize) == EOK,
             "init tiling failed", return Status::FailStatus(ERROR_INVALID_VALUE));

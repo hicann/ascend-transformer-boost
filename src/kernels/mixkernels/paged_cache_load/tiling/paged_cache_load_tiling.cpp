@@ -72,7 +72,7 @@ bool CommonPagedCacheLoadTiling(const LaunchParam &launchParam, KernelInfo &kern
     tilingDataPtr->numblkTabCol = numblkTabCol;
     tilingDataPtr->tokenSizeK = tokenSizeK;
     tilingDataPtr->tokenSizeV = tokenSizeV;
-    tilingDataPtr->typeByte = typeByte;
+    tilingDataPtr->typeByte = static_cast<int32_t>(typeByte);
     tilingDataPtr->hasSeqStarts = param.hasSeqStarts;
     tilingDataPtr->cuSeqLens = param.cuSeqLens;
 

@@ -247,7 +247,7 @@ Status EncoderFillTilingParam(const UnpadFlashAttentionInfo &mmInfo, const uint3
                 PP_MM[mIbd]) * mmInfo.tileQ : 0;
             uint32_t textBlKNum =  (qSeqlen != 0 && kvSeqlen != 0) ? ((mmInfo.textQLen + PP_MM[mIbd] - 1) /
                 PP_MM[mIbd]) : 0;
-            addrOffsets.totalQBlkNum += razorBlkNum + textBlKNum;
+            addrOffsets.totalQBlkNum +=  static_cast<int32_t>(razorBlkNum + textBlKNum);
             tilingParam[TILING_HEAD_SIZE + seqIdx * TILING_PARA_SIZE + INDEX3] = static_cast<uint32_t>(PP_NN[nIbd]);
         } else {
             addrOffsets.totalQBlkNum += (qSeqlen != 0 && kvSeqlen != 0) ? ((qSeqlen + mUbd - 1) / mUbd) : 0;
@@ -280,14 +280,18 @@ void FillAddrOffsets(const AtbOps::UnpadFlashAttentionInfo &mmInfo, AtbOps::Addr
                       << mmInfo.innerBatchSize << "mmInfo.embeddingSize" << mmInfo.embeddingSize;
         addrOffsets.addrQSeqOffset +=
             static_cast<uint64_t>(mmInfo.maxQSeqLen) * mmInfo.innerBatchSize * mmInfo.embeddingSize;
-        addrOffsets.addrKSeqOffset += static_cast<uint64_t>(mmInfo.maxKvSeqLen) * kvRealHeads * mmInfo.embeddingSize;
-        addrOffsets.addrVSeqOffset += static_cast<uint64_t>(mmInfo.maxKvSeqLen) * kvRealHeads * mmInfo.embeddingSizeV;
+        addrOffsets.addrKSeqOffset +=
+            static_cast<uint64_t>(mmInfo.maxKvSeqLen) * static_cast<uint64_t>(kvRealHeads) * mmInfo.embeddingSize;
+        addrOffsets.addrVSeqOffset +=
+            static_cast<uint64_t>(mmInfo.maxKvSeqLen) * static_cast<uint64_t>(kvRealHeads) * mmInfo.embeddingSizeV;
         addrOffsets.addrOSeqOffset +=
             static_cast<uint64_t>(mmInfo.maxQSeqLen) * mmInfo.innerBatchSize * mmInfo.embeddingSizeV;
     } else {
         addrOffsets.addrQSeqOffset += static_cast<uint64_t>(qSeqlen) * mmInfo.innerBatchSize * mmInfo.embeddingSize;
-        addrOffsets.addrKSeqOffset += static_cast<uint64_t>(kvFactor) * kvRealHeads * mmInfo.embeddingSize;
-        addrOffsets.addrVSeqOffset += static_cast<uint64_t>(kvFactor) * kvRealHeads * mmInfo.embeddingSizeV;
+        addrOffsets.addrKSeqOffset +=
+            static_cast<uint64_t>(kvFactor) * static_cast<uint64_t>(kvRealHeads) * mmInfo.embeddingSize;
+        addrOffsets.addrVSeqOffset +=
+            static_cast<uint64_t>(kvFactor) * static_cast<uint64_t>(kvRealHeads) * mmInfo.embeddingSizeV;
         addrOffsets.addrOSeqOffset += static_cast<uint64_t>(qSeqlen) * mmInfo.innerBatchSize * mmInfo.embeddingSizeV;
     }
 }
@@ -323,8 +327,8 @@ void FillSplitBatchPtr(const UnpadFlashAttentionInfo &mmInfo, uint32_t *tilingPa
 void SplitTaskRelay(const UnpadFlashAttentionInfo &mmInfo, uint32_t *tilingParam, int32_t groupNum,
                     uint32_t blockIdx, uint32_t shareBlockTiling)
 {
-    int32_t taskHeadStart = tilingParam[TILING_RELAY_HEAD_SIZE + blockIdx * shareBlockTiling];
-    int32_t taskHeadEnd = tilingParam[TILING_RELAY_HEAD_SIZE + blockIdx * shareBlockTiling + 1];
+    int32_t taskHeadStart = static_cast<int32_t>(tilingParam[TILING_RELAY_HEAD_SIZE + blockIdx * shareBlockTiling]);
+    int32_t taskHeadEnd = static_cast<int32_t>(tilingParam[TILING_RELAY_HEAD_SIZE + blockIdx * shareBlockTiling + 1]);
     int32_t curBatch = taskHeadStart % (mmInfo.batchSize * groupNum) / groupNum;
     int32_t curHeadId = taskHeadStart / (mmInfo.batchSize * groupNum) * groupNum;
     uint32_t shareIndex = TILING_RELAY_HEAD_SIZE + blockIdx * shareBlockTiling + INDEX3;
@@ -335,15 +339,15 @@ void SplitTaskRelay(const UnpadFlashAttentionInfo &mmInfo, uint32_t *tilingParam
         if (mmInfo.batchSize * groupNum * (headId / groupNum) + nowBatch * groupNum >= taskHeadEnd) {
             break;
         }
-        uint64_t offsetTiling = TILING_RELAY_HEAD_SIZE +
-                                shareBlockTiling * mmInfo.blockDim + TILING_PARA_SIZE * nowBatch;
+        uint64_t offsetTiling = TILING_RELAY_HEAD_SIZE + shareBlockTiling * mmInfo.blockDim +
+                                TILING_PARA_SIZE * static_cast<uint32_t>(nowBatch);
         uint32_t nowShare = tilingParam[INDEX18 + offsetTiling];
         uint32_t qLen = 0;
         while (mmInfo.batchSize * groupNum * (headId / groupNum) +
                nowBatch * groupNum < taskHeadEnd && nowBatch < mmInfo.batchSize) {
             uint32_t shareIdx = tilingParam[INDEX18 + offsetTiling];
-            tilingParam[unshareIndex] = nowBatch;
-            tilingParam[unshareIndex + 1] = headId;
+            tilingParam[unshareIndex] = static_cast<uint32_t>(nowBatch);
+            tilingParam[unshareIndex + 1] = static_cast<uint32_t>(headId);
             unshareIndex += INDEX4;
             if (shareIdx == static_cast<uint32_t>(-1)) {
                 nowBatch++;
@@ -354,8 +358,8 @@ void SplitTaskRelay(const UnpadFlashAttentionInfo &mmInfo, uint32_t *tilingParam
                 nowShare = shareIdx;
                 qLen = 0;
             }
-            tilingParam[shareIndex] = nowBatch;
-            tilingParam[shareIndex + 1] = headId;
+            tilingParam[shareIndex] = static_cast<uint32_t>(nowBatch);
+            tilingParam[shareIndex + 1] = static_cast<uint32_t>(headId);
             tilingParam[shareIndex + INDEX2] = shareIdx;
             tilingParam[shareIndex + INDEX3] = 0;
             if (qLen == 0 && (mmInfo.batchSize * groupNum * (headId / groupNum) +
@@ -365,12 +369,12 @@ void SplitTaskRelay(const UnpadFlashAttentionInfo &mmInfo, uint32_t *tilingParam
             }
             shareIndex += INDEX4;
             totalShareNum++;
-            qLen = qLen + groupNum;
+            qLen = qLen + static_cast<uint32_t>(groupNum);
             nowBatch++;
             offsetTiling += TILING_PARA_SIZE;
         }
     }
-    tilingParam[TILING_RELAY_HEAD_SIZE + blockIdx * shareBlockTiling + INDEX2] = totalShareNum;
+    tilingParam[TILING_RELAY_HEAD_SIZE + blockIdx * shareBlockTiling + INDEX2] = static_cast<uint32_t>(totalShareNum);
 }
 
 void SplitCoreRelay(const UnpadFlashAttentionInfo &mmInfo, uint32_t *tilingParam, uint32_t shareBlockTiling)
@@ -378,9 +382,9 @@ void SplitCoreRelay(const UnpadFlashAttentionInfo &mmInfo, uint32_t *tilingParam
     uint32_t taskNum = mmInfo.batchSize * mmInfo.kvHead;
     uint32_t taskNumPerCore = taskNum / mmInfo.blockDim;
     uint32_t tailTaskNum = taskNum % mmInfo.blockDim;
-    int32_t groupNum = mmInfo.innerBatchSize / mmInfo.kvHead;
-    int32_t taskStart = 0;
-    int32_t taskEnd = 0;
+    uint32_t groupNum = mmInfo.innerBatchSize / mmInfo.kvHead;
+    uint32_t taskStart = 0;
+    uint32_t taskEnd = 0;
     for (uint32_t blockIdx = 0; blockIdx < mmInfo.blockDim; blockIdx++) {
         taskStart = taskEnd;
         taskEnd = taskEnd + (blockIdx < tailTaskNum ? taskNumPerCore + 1 : taskNumPerCore);
@@ -509,9 +513,9 @@ Status DecoderFillTilingParamRelay(const UnpadFlashAttentionInfo &mmInfo, const 
                                          mmInfo.innerBatchSize * mmInfo.embeddingSize);
             addrOffsets.addrOSeqOffset = static_cast<uint64_t>(seqIdx * qSeqlen *
                                          mmInfo.innerBatchSize * mmInfo.embeddingSize);
-            addrOffsets.addrLSeqOffset = seqIdx * mmInfo.innerBatchSize * INDEX2;
-            addrOffsets.addrOFdSeqOffset = seqIdx * static_cast<uint64_t>(mmInfo.innerBatchSize *
-                                            mmInfo.embeddingSize * qSeqlen) * INDEX2;
+            addrOffsets.addrLSeqOffset = static_cast<uint64_t>(seqIdx * mmInfo.innerBatchSize) * INDEX2;
+            addrOffsets.addrOFdSeqOffset =
+                static_cast<uint64_t>(seqIdx * mmInfo.innerBatchSize * mmInfo.embeddingSize * qSeqlen) * INDEX2;
             uint32_t nowBatchTiling = TILING_RELAY_HEAD_SIZE + shareBlockTiling * mmInfo.blockDim +
                                       nowBatch * TILING_PARA_SIZE;
             tilingParam[nowBatchTiling] = static_cast<uint32_t>(qSeqlen);
@@ -523,7 +527,7 @@ Status DecoderFillTilingParamRelay(const UnpadFlashAttentionInfo &mmInfo, const 
             tilingParam[nowBatchTiling + INDEX11] = GetLoww32Bit(addrOffsets.addrOSeqOffset);
             tilingParam[nowBatchTiling + INDEX13] = static_cast<uint32_t>(shareLen);
             tilingParam[nowBatchTiling + INDEX18] = static_cast<uint32_t>(it.first);
-            tilingParam[nowBatchTiling + INDEX19] = seqIdx;
+            tilingParam[nowBatchTiling + INDEX19] = static_cast<uint32_t>(seqIdx);
             tilingParam[nowBatchTiling + INDEX20] = GetHigh32Bit(addrOffsets.addrLSeqOffset);
             tilingParam[nowBatchTiling + INDEX21] = GetLoww32Bit(addrOffsets.addrLSeqOffset);
             tilingParam[nowBatchTiling + INDEX22] = GetHigh32Bit(addrOffsets.addrOFdSeqOffset);

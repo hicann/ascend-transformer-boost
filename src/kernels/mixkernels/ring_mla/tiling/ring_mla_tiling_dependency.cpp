@@ -224,10 +224,10 @@ void GetNdMLAMtpTilingTP1(const RINGMLAInfo &mmInfo, uint32_t &blockDim, uint32_
             int32_t tilingOffset = TILING_HEAD_SIZE + TILING_PARA_SIZE_TP1 * prevTaskNum;
             int32_t curQLen = ((qSeqLen - qSeq) > maxQPerJob) ? maxQPerJob : (qSeqLen - qSeq);
             curKvSeq += curQLen;
-            tilingParam[tilingOffset] = seqIdx;
-            tilingParam[tilingOffset + NUM1] = qRowIdx;
-            tilingParam[tilingOffset + NUM2] = curKvSeq;
-            tilingParam[tilingOffset + NUM3] = curQLen;
+            tilingParam[tilingOffset] = static_cast<uint32_t>(seqIdx);
+            tilingParam[tilingOffset + NUM1] = static_cast<uint32_t>(qRowIdx);
+            tilingParam[tilingOffset + NUM2] = static_cast<uint32_t>(curKvSeq);
+            tilingParam[tilingOffset + NUM3] = static_cast<uint32_t>(curQLen);
             prevTaskNum++;
             qRowIdx += curQLen;
             totalTaskNum -= curQLen;

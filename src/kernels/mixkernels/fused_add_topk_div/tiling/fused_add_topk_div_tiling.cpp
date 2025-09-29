@@ -228,7 +228,8 @@ namespace AtbOps {
         tilingDataPtr.groupEles = tilingDataPtr.groupNum == 0 ? tilingDataPtr.secondDimSize :
                                    tilingDataPtr.secondDimSize / tilingDataPtr.groupNum;
         tilingDataPtr.scale = param.scale;
-        if (static_cast<bool>(tilingDataPtr.enableExpertMapping)) {
+        bool enableExpertMapping = static_cast<bool>(tilingDataPtr.enableExpertMapping);
+        if (enableExpertMapping) {
             const Tensor &inTensor3 = launchParam.GetInTensor(MAPPING_TABLE_INPUT_INDEX);
             tilingDataPtr.expertNum = inTensor3.desc.dims[DIM_INDEX0];
             tilingDataPtr.tableDim = inTensor3.desc.dims[DIM_INDEX1];
