@@ -94,6 +94,24 @@ tests/apitest/opstest/python/operations/reshape_and_cache/
         - kvCache shape改为：[block_num, head_size \times head_num / 16, block_size, 16]。
         - kvCache数据格式改为：ACL_FORMAT_FRACTAL_NZ。
 
+        **参数设置：**
+
+        | 成员名称     | 取值                    |
+        | :----------- | :---------------------- |
+        | compressType | COMPRESS_TYPE_UNDEFINED |
+        | kvCacheCfg   | K_CACHE_V_CACHE         |
+
+        | tensor名字      | 数据类型 | 数据格式 | 维度信息         |
+        | :-------------- | :------- | :------- | :----------------- |
+        | `key`           | bf16     | nd       | [3, 4, 128]        |
+        | `value`         | bf16     | nd       | [3, 4, 128]        |
+        | `keyCache`      | bf16     | nd       | [512, 32, 128, 16] |
+        | `valueCache`    | bf16     | nd       | [512, 32, 128, 16] |
+        | `slotMapping`   | int32    | nd       | [3]                |
+        | `keyCacheOut`   | bf16     | nd       | [512, 32, 128, 16] |
+        | `valueCacheOut` | bf16     | nd       | [512, 32, 128, 16] |
+
+
     - 更改编译脚本为：
     `g++ -D_GLIBCXX_USE_CXX11_ABI=$cxx_abi -I "${ATB_HOME_PATH}/include" -I "${ASCEND_HOME_PATH}/include" -L "${ATB_HOME_PATH}/lib" -L "${ASCEND_HOME_PATH}/lib64" reshape_and_cache_inference_demo.cpp demo_util.h -l atb -l ascendcl -o reshape_and_cache_inference_demo`
     - 运行时调用：
