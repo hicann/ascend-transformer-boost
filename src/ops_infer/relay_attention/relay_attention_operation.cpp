@@ -268,7 +268,7 @@ Status RelayAttentionOperation::SetupCheckImpl(const SVector<Tensor> &inTensors,
     }
     TensorDesc outTensorDesc = outTensors.at(0).desc;
     if (!TensorUtil::TensorDescEqual(outTensorDesc, inTensorDescs.at(0))) {
-        ATB_LOG(ERROR) << "outTensor shape should be the same as inTensor";
+        ATB_LOG(ERROR) << GetLogPrefix() << "outTensor shape should be the same as inTensor";
         return ERROR_INVALID_TENSOR_DIM;
     }
     return NO_ERROR;
