@@ -376,10 +376,10 @@ EOF
 }
 
 function fn_get_pytorch_npu_install_path(){
-    lcoal location
+    local location
     location="$(pip show torch-npu 2> /dev/null | awk '/^Location:/ {print $2}')"
     if [ -z "$location" ]; then
-        echo "torch-npu not found"
+        echo "error: torch-npu not found"
         exit 1
     fi
     echo "${location}/torch_npu"
