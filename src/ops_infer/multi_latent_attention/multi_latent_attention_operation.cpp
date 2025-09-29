@@ -106,13 +106,6 @@ static bool ParamCheck(const infer::MultiLatentAttentionParam &opParam)
         ATB_LOG(ERROR) << "only mtp(CALC_TYPE_SPEC) support mask";
         return false;
     }
-    if ((opParam.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_RING ||
-         opParam.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC_AND_RING) &&
-        (opParam.cacheMode != infer::MultiLatentAttentionParam::CacheMode::KROPE_CTKV &&
-         opParam.cacheMode != infer::MultiLatentAttentionParam::CacheMode::INT8_NZCACHE)) {
-        ATB_LOG(ERROR) << "CalcType is ring only support krppe ctkv and int8 nzcache";
-        return false;
-    }
     if ((opParam.cacheMode == infer::MultiLatentAttentionParam::CacheMode::INT8_NZCACHE) &&
         (opParam.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_RING ||
          opParam.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC_AND_RING) &&
