@@ -56,7 +56,7 @@ Status MlaPreprocessAclnnRunner::BuildAclnnVariantPack(const RunnerVariantPack &
     bool isRopeCache = param_.cacheMode != infer::MlaPreprocessParam::CacheMode::KVCACHE;
     this->aclnnVariantPack_.aclInTensors.reserve(IN_TENSOR_NUM);
     this->aclnnVariantPack_.aclInTensors.resize(IN_TENSOR_NUM);
-    for (int32_t i = 0; i < this->aclnnVariantPack_.aclInTensors.size(); ++i) {
+    for (size_t i = 0; i < this->aclnnVariantPack_.aclInTensors.size(); ++i) {
         std::shared_ptr<AclNNTensor> aclnnTensorPtr = std::make_shared<AclNNTensor>();
         if (i == KV_CACHE_ROPE_INDEX && !isRopeCache) {
             // kvCache不带rope转置时kvCacheRope为nullptr
@@ -71,14 +71,14 @@ Status MlaPreprocessAclnnRunner::BuildAclnnVariantPack(const RunnerVariantPack &
             ATB_LOG(ERROR) << GetLogPrefix() << "create aclTensor by aclCreateTensor failed!";
             return ret;
         }
-        aclnnTensorPtr->tensorIdx = i;
+        aclnnTensorPtr->tensorIdx = static_cast<int>(i);
         aclnnTensorPtr->needUpdateTensorDataPtr = true;
         this->aclnnVariantPack_.aclInTensors[i] = aclnnTensorPtr;
     }
 
     this->aclnnVariantPack_.aclOutTensors.reserve(OUT_TENSOR_NUM);
     this->aclnnVariantPack_.aclOutTensors.resize(OUT_TENSOR_NUM);
-    for (int32_t i = 0; i < this->aclnnVariantPack_.aclOutTensors.size(); ++i) {
+    for (size_t i = 0; i < this->aclnnVariantPack_.aclOutTensors.size(); ++i) {
         std::shared_ptr<AclNNTensor> aclnnTensorPtr = std::make_shared<AclNNTensor>();
         if ((i == Q_OUT1_INDEX || i == KV_CACHE_OUT1_INDEX) && !isRopeCache) {
             // kvCache不带rope转置时不生成2个rope分量
@@ -93,7 +93,7 @@ Status MlaPreprocessAclnnRunner::BuildAclnnVariantPack(const RunnerVariantPack &
             ATB_LOG(ERROR) << GetLogPrefix() << "create aclTensor by aclCreateTensor failed!";
             return ret;
         }
-        aclnnTensorPtr->tensorIdx = i;
+        aclnnTensorPtr->tensorIdx = static_cast<int>(i);
         aclnnTensorPtr->needUpdateTensorDataPtr = true;
         this->aclnnVariantPack_.aclOutTensors[i] = aclnnTensorPtr;
     }

@@ -54,7 +54,7 @@ Status LinearParallelAclnnRunner::BuildAclnnVariantPack(const RunnerVariantPack 
     Status ret = NO_ERROR;
     this->aclnnVariantPack_.aclInTensors.reserve(LINEAR_REDUCE_SCATTER_IN_TENSOR_NUM);
     this->aclnnVariantPack_.aclInTensors.resize(LINEAR_REDUCE_SCATTER_IN_TENSOR_NUM);
-    for (int32_t i = 0; i < this->aclnnVariantPack_.aclInTensors.size(); ++i) {
+    for (size_t i = 0; i < this->aclnnVariantPack_.aclInTensors.size(); ++i) {
         std::shared_ptr<AclNNTensor> aclnnTensorPtr = std::make_shared<AclNNTensor>();
         if (i > 1) {
             this->aclnnVariantPack_.aclInTensors[i] = aclnnTensorPtr;
@@ -75,14 +75,14 @@ Status LinearParallelAclnnRunner::BuildAclnnVariantPack(const RunnerVariantPack 
             ATB_LOG(ERROR) << GetLogPrefix() << "create aclTensor by aclCreateTensor failed!";
             return ret;
         }
-        aclnnTensorPtr->tensorIdx = i;
+        aclnnTensorPtr->tensorIdx = static_cast<int>(i);
         aclnnTensorPtr->needUpdateTensorDataPtr = true;
         this->aclnnVariantPack_.aclInTensors[i] = aclnnTensorPtr;
     }
 
     this->aclnnVariantPack_.aclOutTensors.reserve(LINEAR_REDUCE_SCATTER_OUT_TENSOR_NUM);
     this->aclnnVariantPack_.aclOutTensors.resize(LINEAR_REDUCE_SCATTER_OUT_TENSOR_NUM);
-    for (int32_t i = 0; i < this->aclnnVariantPack_.aclOutTensors.size(); ++i) {
+    for (size_t i = 0; i < this->aclnnVariantPack_.aclOutTensors.size(); ++i) {
         std::shared_ptr<AclNNTensor> aclnnTensorPtr = std::make_shared<AclNNTensor>();
         if (i >= 1) {
             this->aclnnVariantPack_.aclOutTensors[i] = aclnnTensorPtr;
@@ -96,7 +96,7 @@ Status LinearParallelAclnnRunner::BuildAclnnVariantPack(const RunnerVariantPack 
             ATB_LOG(ERROR) << GetLogPrefix() << "create aclTensor by aclCreateTensor failed!";
             return ret;
         }
-        aclnnTensorPtr->tensorIdx = i;
+        aclnnTensorPtr->tensorIdx = static_cast<int>(i);
         aclnnTensorPtr->needUpdateTensorDataPtr = true;
         this->aclnnVariantPack_.aclOutTensors[i] = aclnnTensorPtr;
     }
