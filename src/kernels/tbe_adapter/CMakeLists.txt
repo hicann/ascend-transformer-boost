@@ -128,7 +128,6 @@ if("${PACKAGE_COMPILE}" STREQUAL "ON" AND NOT "${LOCAL_RELEASE_COMPILE}" STREQUA
         ${TBE_TILING_DIR}/runtime/layer_norm_v3.cc
         ${TBE_TILING_DIR}/runtime/layer_norm_v3/layer_norm_v3_tiling.cc
         ${TBE_TILING_DIR}/runtime/layer_norm_v3/layer_norm_v3_tiling_base.cc
-        ${OPS_THIRD_PARTY_DIR}/canndev/ops/norm/layer_norm_v4/op_host/layer_norm_v4_tiling_base.cpp
         ${TBE_TILING_DIR}/runtime/one_hot/one_hot.cc
         ${TBE_TILING_DIR}/runtime/one_hot/one_hot_tiling.cc
         ${TBE_TILING_DIR}/runtime/pack_tiling.cc
