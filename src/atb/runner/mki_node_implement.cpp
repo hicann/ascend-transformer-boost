@@ -387,7 +387,7 @@ Status MkiNodeImplement::BuildLaunchParam(const SVector<Mki::Tensor *> &inTensor
     return NO_ERROR;
 }
 
-static const std::unordered_map<const Mki::ErrorType, atb::ErrorType> InitAtbMkiErrorHash() noexcept
+const std::unordered_map<const Mki::ErrorType, atb::ErrorType> InitAtbMkiErrorHash() noexcept
 {
     return {{Mki::ErrorType::NO_ERROR, atb::ErrorType::NO_ERROR},
             {Mki::ErrorType::ERROR_INVALID_VALUE, atb::ErrorType::ERROR_INVALID_PARAM},

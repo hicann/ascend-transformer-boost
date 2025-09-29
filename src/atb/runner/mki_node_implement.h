@@ -76,8 +76,6 @@ private:
     void *argsHostBuffer_ = nullptr;
 };
 
-static const std::unordered_map<const Mki::ErrorType, atb::ErrorType> InitAtbMkiErrorHash() noexcept;
-
 extern const std::unordered_map<const Mki::ErrorType, atb::ErrorType> ATB_MKI_ERROR_HASH;
 } // namespace atb
 #endif
