@@ -10,7 +10,6 @@
 #ifndef ATB_LCOC_RUNNER_H
 #define ATB_LCOC_RUNNER_H
 
-
 #include <memory>
 #include "lccl.h"
 #include "lcoc.h"
