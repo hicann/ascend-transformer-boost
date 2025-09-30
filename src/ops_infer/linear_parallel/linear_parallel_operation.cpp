@@ -145,7 +145,7 @@ template <> Status CreateOperation(const infer::LinearParallelParam &opParam, Op
         return ERROR_INVALID_PARAM;
     }
     int rankSize = opParam.rankSize;
-    if (opParam.rankSize <= 0 || (rankSize & (rankSize - 1)) != 0) {
+    if ((opParam.rankSize <= 0 || (rankSize & (rankSize - 1)) != 0) && opParam.backend == "lcoc") {
         ATB_LOG(ERROR) << "LinearParallel rankSize support power of 2 but got [" << opParam.rankSize << "]";
         return ERROR_INVALID_PARAM;
     }
@@ -409,12 +409,6 @@ Status LinearParallelOperation::InferShapeCheckLinearReduceScatter(const SVector
         return ERROR_INVALID_TENSOR_INI_MATCH;
     }
 
-    int64_t xTensorM = OperationUtil::GetXTensorM(inTensorDescs.at(0));
-    if (xTensorM % param_.rankSize != 0) {
-        ATB_LOG(ERROR) << GetLogPrefix() << "inTensor0 m [" << xTensorM
-                       << "] should be an integer multiple of rankSize :" << param_.rankSize;
-        return ERROR_INVALID_TENSOR_DIM;
-    }
     if (param_.backend == "mc2") {
         int64_t xTensorK = OperationUtil::GetXTensorK(inTensorDescs.at(0));
         if (xTensorK < 256 || xTensorK > 65535) {
