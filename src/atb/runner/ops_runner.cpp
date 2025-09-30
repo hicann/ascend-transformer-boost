@@ -17,6 +17,7 @@
 #include <securec.h>
 #include <unistd.h>
 #include <acl/acl_rt.h>
+#include <iostream>
 #include <mki/utils/time/timer.h>
 #include <mki/utils/file_system/file_system.h>
 #include <asdops/params/params.h>
@@ -37,10 +38,11 @@
 #include "atb/operation/operation_base.h"
 #include "atb/utils/singleton.h"
 #include "atb/utils/mstx_mem_register.h"
+#include "atb/utils/operation_register.h"
 
 namespace atb {
 const int ALIGN_INT = 512;
-thread_local std::vector<KernelCache> g_globalKernelCaches(RUNNER_TYPE_MAX);
+thread_local std::vector<KernelCache> g_globalKernelCaches;
 constexpr uint32_t K_TENSOR_INFO_BYTES = 44UL;
 constexpr uint32_t K_TENSOR_INFO_BYTES_WITH_CAP = 56U;
 constexpr uint64_t MAX_TILING_BUFFER_SIZE = 1048576000;
@@ -62,12 +64,20 @@ enum OpType : int {
     OP_TYPE_INVALID
 };
 
-OpsRunner::OpsRunner(const std::string &name, RunnerType runnerType) : Runner(name), runnerType_(runnerType)
+OpsRunner::OpsRunner(const std::string &name) : Runner(name)
 {
     if (GetSingleton<Config>().IsworkspaceMemAllocGlobal()) {
         memAllocationSolver_ = GetGlobalMemAllocationSolver();
     } else {
         memAllocationSolver_ = CreateMemAllocationSolver();
+    }
+
+    runnerTypeIdx_ = RunnerTypeRegister::GetRunnerTypeIdx(name);
+
+    // 在此对g_globalKernelCaches进行resize
+    if (g_globalKernelCaches.size() != RunnerTypeRegister::GetRunnerTypeMapSize()) {
+        std::cout << "---------size of RunnerTypeMap: " << RunnerTypeRegister::GetRunnerTypeMapSize() << std::endl;
+        g_globalKernelCaches.resize(RunnerTypeRegister::GetRunnerTypeMapSize());
     }
 }
 
@@ -991,8 +1001,8 @@ void OpsRunner::InitKernelCache()
     localKernelCache_.Init(kernelGraph_.nodes.size(), localCacheCount);
     kernelCaches_.push_back(std::make_pair(&localKernelCache_, true));
 
-    g_globalKernelCaches.at(runnerType_).Init(kernelGraph_.nodes.size(), globalCacheCount);
-    kernelCaches_.push_back(std::make_pair(&(g_globalKernelCaches.at(runnerType_)), false));
+    g_globalKernelCaches.at(runnerTypeIdx_).Init(kernelGraph_.nodes.size(), globalCacheCount);
+    kernelCaches_.push_back(std::make_pair(&(g_globalKernelCaches.at(runnerTypeIdx_)), false));
 
     kernelCacheInited_ = true;
 }

@@ -11,9 +11,12 @@
 #include <asdops/params/params.h>
 #include "atb/utils/log.h"
 #include "atb/utils/tensor_util.h"
+#include "atb/utils/operation_register.h"
+#include "atb/utils/param_compare.h"
+
 namespace atb {
 ConcatOpsRunner::ConcatOpsRunner(const infer::ConcatParam &param)
-    : OpsRunner("ConcatOpsRunner", RUNNER_TYPE_CONCAT), param_(param)
+    : OpsRunner("ConcatOpsRunner"), param_(param)
 {
     ATB_LOG(INFO) << "ConcatOpsRunner::ConcatOpsRunner called";
     kernelGraph_.inTensors.resize(2); // dim:2
@@ -34,5 +37,6 @@ ConcatOpsRunner::ConcatOpsRunner(const infer::ConcatParam &param)
 }
 
 ConcatOpsRunner::~ConcatOpsRunner() {}
-
+REG_RUNNER_TYPE(ConcatOpsRunner);
+REG_OP_PARAM(AsdOps::OpParam::Concat);
 } // namespace atb

@@ -11,11 +11,13 @@
 #include "pad_with_hidden_state_ops_runner.h"
 #include <atbops/params/params.h>
 #include "atb/utils/log.h"
+#include "atb/utils/operation_register.h"
+#include "atb/utils/param_compare.h"
 
 namespace atb {
 
 PadWithHiddenStateOpsRunner::PadWithHiddenStateOpsRunner(const train::PadWithHiddenStateParam &param)
-    : OpsRunner("PadWithHiddenStateOpsRunner", RUNNER_TYPE_PAD_WITH_HIDDEN_STATE), param_(param)
+    : OpsRunner("PadWithHiddenStateOpsRunner"), param_(param)
 {
 }
 PadWithHiddenStateOpsRunner::~PadWithHiddenStateOpsRunner() {}
@@ -50,4 +52,7 @@ void PadWithHiddenStateOpsRunner::SetParam(const Mki::Any &param)
         isParamUpdated_ = true;
     }
 }
+
+REG_RUNNER_TYPE(PadWithHiddenStateOpsRunner);
+REG_OP_PARAM(AtbOps::OpParam::PadWithHiddenState);
 } // namespace atb

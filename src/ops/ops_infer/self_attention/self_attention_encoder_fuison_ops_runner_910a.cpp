@@ -14,7 +14,7 @@
 #include "atb/utils/log.h"
 #include "param.h"
 #include "self_attention_runner_utils.h"
-
+#include "atb/utils/operation_register.h"
 
 namespace atb {
 void TransQKVEncoderViewFunc910a(const Mki::SVector<int64_t> &oldDims, Mki::SVector<int64_t> &newDims)
@@ -28,7 +28,7 @@ void TransQKVEncoderViewFunc910a(const Mki::SVector<int64_t> &oldDims, Mki::SVec
 }
 
 SelfAttentionEncoderFusionOpsRunner910A::SelfAttentionEncoderFusionOpsRunner910A(const infer::SelfAttentionParam &param)
-    : OpsRunner("SelfAttentionEncoderFusionOpsRunner910A", RUNNER_TYPE_SELF_ATTENTION_PA_ENCODER), param_(param)
+    : OpsRunner("SelfAttentionEncoderFusionOpsRunner910A"), param_(param)
 {
     needKernelGraphModify_ = true;
     ATB_LOG(INFO) << "SelfAttentionEncoderFusionOpsRunner910A::SelfAttentionEncoderFusionOpsRunner910A called";
@@ -236,4 +236,6 @@ void SelfAttentionEncoderFusionOpsRunner910A::SetParam(const Mki::Any &param)
 }
 
 SelfAttentionEncoderFusionOpsRunner910A::~SelfAttentionEncoderFusionOpsRunner910A() {}
+
+REG_RUNNER_TYPE(SelfAttentionEncoderFusionOpsRunner910A);
 } // namespace atb

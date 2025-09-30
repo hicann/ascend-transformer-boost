@@ -15,6 +15,7 @@
 #include "param.h"
 #include "atb/utils/runner_util.h"
 #include "self_attention_runner_utils.h"
+#include "atb/utils/param_compare.h"
 
 namespace atb {
 void TransKVViewFunc910a(const Mki::SVector<int64_t> &oldDims, Mki::SVector<int64_t> &newDims)
@@ -65,7 +66,7 @@ void FlashAttentionInferShapePreFunc910a(Mki::LaunchParam &launchParam)
 }
 
 SelfAttentionFusionOpsRunner910A::SelfAttentionFusionOpsRunner910A(const infer::SelfAttentionParam &param)
-    : OpsRunner("SelfAttentionFusionOpsRunner", RUNNER_TYPE_SELF_ATTENTION), param_(param)
+    : OpsRunner("SelfAttentionFusionOpsRunner"), param_(param)
 {
     needKernelGraphModify_ = true;
     needMask_ = param.maskType != infer::SelfAttentionParam::MASK_TYPE_UNDEFINED &&
@@ -415,4 +416,6 @@ void SelfAttentionFusionOpsRunner910A::SetParam(const Mki::Any &param)
 }
 
 SelfAttentionFusionOpsRunner910A::~SelfAttentionFusionOpsRunner910A() {}
+
+REG_OP_PARAM(AtbOps::OpParam::UnpadFlashAttentionNz);
 } // namespace atb

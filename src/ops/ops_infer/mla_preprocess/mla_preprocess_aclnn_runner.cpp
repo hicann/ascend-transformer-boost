@@ -34,13 +34,13 @@ aclnnStatus (*MlaPreprocessAclnnRunner::aclnnGetWorkspaceSizeFunc_)(
 aclnnStatus (*MlaPreprocessAclnnRunner::aclnnExecuteFunc_)(void *, uint64_t, aclOpExecutor *, aclrtStream) = nullptr;
 
 MlaPreprocessAclnnRunner::MlaPreprocessAclnnRunner(const infer::MlaPreprocessParam &param)
-    : AclnnRunner("MlaPreprocessAclnnRunner", RUNNER_TYPE_MLA_PREPROCESS_ACLNN), param_(param)
+    : AclnnRunner("MlaPreprocessAclnnRunner"), param_(param)
 {
     ATB_LOG(INFO) << GetLogPrefix() << "MlaPreprocessAclnnRunner::MlaPreprocessAclnnRunner called";
 }
 
 MlaPreprocessAclnnRunner::MlaPreprocessAclnnRunner(const infer::MlaPreprocessParam &param, bool doRmsNorm)
-    : AclnnRunner("MlaPreprocessAclnnRunner", RUNNER_TYPE_MLA_PREPROCESS_ACLNN), param_(param), doRmsNorm_(doRmsNorm)
+    : AclnnRunner("MlaPreprocessAclnnRunner"), param_(param), doRmsNorm_(doRmsNorm)
 {
     ATB_LOG(INFO) << GetLogPrefix()
                   << "MlaPreprocessAclnnRunnecr::MlaPreprocessAclnnRunner called, set doRmsNorm: " << doRmsNorm;
@@ -219,4 +219,6 @@ Status MlaPreprocessAclnnRunner::LoadMethod()
     ATB_LOG(INFO) << "load aclnnMlaPreprocess two-staged method success!";
     return NO_ERROR;
 }
+
+REG_RUNNER_TYPE(MlaPreprocessAclnnRunner);
 } // namespace atb

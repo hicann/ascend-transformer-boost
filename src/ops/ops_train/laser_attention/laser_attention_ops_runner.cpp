@@ -11,13 +11,15 @@
 #include <asdops/params/params.h>
 #include <atbops/params/params.h>
 #include "atb/utils/log.h"
+#include "atb/utils/operation_register.h"
+#include "atb/utils/param_compare.h"
 
 static constexpr size_t SIZE_4 = 4;
 static constexpr size_t SIZE_10 = 10;
 
 namespace atb {
 LaserAttentionOpsRunner::LaserAttentionOpsRunner(const train::LaserAttentionParam &param)
-    : OpsRunner("LaserAttentionOpsRunner", RUNNER_TYPE_LASER_ATTENTION), param_(param)
+    : OpsRunner("LaserAttentionOpsRunner"), param_(param)
 {
 }
 
@@ -81,4 +83,7 @@ void LaserAttentionOpsRunner::SetParam(const Mki::Any &param)
         isParamUpdated_ = true;
     }
 }
+
+REG_RUNNER_TYPE(LaserAttentionOpsRunner);
+REG_OP_PARAM(AtbOps::OpParam::LaserAttention);
 } // namespace atb

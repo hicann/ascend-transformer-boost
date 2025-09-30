@@ -11,11 +11,13 @@
 #include "fastsoftmaxgrad_ops_runner.h"
 #include <atbops/params/params.h>
 #include "atb/utils/log.h"
+#include "atb/utils/operation_register.h"
+#include "atb/utils/param_compare.h"
 
 namespace atb {
 
 FastSoftMaxGradOpsRunner::FastSoftMaxGradOpsRunner(const train::FastSoftMaxGradParam &param)
-    : OpsRunner("FastSoftMaxGradOpsRunner", RUNNER_TYPE_FASTSOFTMAXGRAD), param_(param)
+    : OpsRunner("FastSoftMaxGradOpsRunner"), param_(param)
 {
 }
 FastSoftMaxGradOpsRunner::~FastSoftMaxGradOpsRunner() {}
@@ -53,4 +55,7 @@ void FastSoftMaxGradOpsRunner::SetParam(const Mki::Any &param)
         isParamUpdated_ = true;
     }
 }
+
+REG_RUNNER_TYPE(FastSoftMaxGradOpsRunner);
+REG_OP_PARAM(AtbOps::OpParam::FastSoftMaxGrad);
 } // namespace atb

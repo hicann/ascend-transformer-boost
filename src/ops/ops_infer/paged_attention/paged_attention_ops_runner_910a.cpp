@@ -15,6 +15,8 @@
 #include "atb/utils/tensor_util.h"
 #include "atb/utils/config.h"
 #include "paged_attention_runner_utils.h"
+#include "atb/utils/operation_register.h"
+#include "atb/utils/param_compare.h"
 
 namespace atb {
 void PATransQViewFunc910a(const Mki::SVector<int64_t> &oldDims, Mki::SVector<int64_t> &newDims)
@@ -26,7 +28,7 @@ void PATransQViewFunc910a(const Mki::SVector<int64_t> &oldDims, Mki::SVector<int
 }
 
 PagedAttentionOpsRunner910A::PagedAttentionOpsRunner910A(const infer::PagedAttentionParam &param)
-    : OpsRunner("PagedAttentionOpsRunner", RUNNER_TYPE_PAGED_ATTENTION), param_(param)
+    : OpsRunner("PagedAttentionOpsRunner"), param_(param)
 {
     needKernelGraphModify_ = true;
     ATB_LOG(INFO) << "PagedAttentionOpsRunner910A::PagedAttentionOpsRunner910A called";
@@ -194,4 +196,7 @@ void PagedAttentionOpsRunner910A::SetParam(const Mki::Any &param)
         isParamUpdated_ = true;
     }
 }
+
+REG_RUNNER_TYPE(PagedAttentionOpsRunner);
+REG_OP_PARAM(AtbOps::OpParam::PagedAttention);
 } // namespace atb
