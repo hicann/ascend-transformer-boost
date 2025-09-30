@@ -19,7 +19,7 @@ Ascend Transformer Boost加速库（下文简称为ATB加速库）是一款高�
 - [贡献指南](docs/贡献指南.md)：介绍了如何向ATB库贡献代码。
 - [日志与调试](docs/debug_tour.md)：介绍ATB的日志相关环境变量，以及调测方法。
 - [API文档](https://www.hiascend.com/document/detail/zh/canncommercial/82RC1/API/ascendtbapi/ascendtb_01_0098.html)：介绍了ATB库的接口和相关术语。
-- [问题报告](https://gitee.com/ascend/ascend-transformer-boost/issues)：通过issue提交发现的问题。
+- [问题报告](https://gitcode.com/cann/ascend-transformer-boost/issues)：通过issue提交发现的问题。
 
 ## 什么是ATB
 ### ATB介绍
@@ -108,7 +108,7 @@ pip3 install attrs cython 'numpy>=1.19.2,<=1.24.0' decorator sympy cffi pyyaml p
 ### ATB编译
  - 加速库下载
     ```sh
-    git clone https://gitee.com/ascend/ascend-transformer-boost.git
+    git clone https://gitcode.com/cann/ascend-transformer-boost.git
     ```
    您可自行选择需要的分支。
  - 加速库编译<br>
