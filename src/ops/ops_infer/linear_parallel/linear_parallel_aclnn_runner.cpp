@@ -12,7 +12,7 @@
 #include <hccl/hccl.h>
 #include "atb/utils/dl_manager.h"
 #include "atb/utils/aclnn_util.h"
-
+#include "atb/utils/operation_register.h"
 
 namespace atb {
 

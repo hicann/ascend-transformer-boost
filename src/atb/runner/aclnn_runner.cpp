@@ -16,7 +16,7 @@
 
 namespace atb {
 
-AclnnRunner::AclnnRunner(const std::string &name, RunnerType runnerType) : Runner(name) {
+AclnnRunner::AclnnRunner(const std::string &name) : Runner(name) {
     runnerTypeIdx_ = RunnerTypeRegister::GetRunnerTypeIdx(name);
 }
 

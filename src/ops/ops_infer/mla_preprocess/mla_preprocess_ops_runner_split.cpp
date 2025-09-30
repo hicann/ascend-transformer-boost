@@ -11,7 +11,6 @@
 #include <atb/utils/log.h>
 #include <atbops/params/params.h>
 #include "atb/utils/operation_register.h"
-#include "atb/utils/param_compare.h"
 
 namespace {
 static const uint32_t IN_TENSOR_NUM_SPLIT = 24;

@@ -31,6 +31,7 @@ public:
                         const std::string &rankTableFile = "", const std::string &commDomain = "");
     HcclRunner(const std::string &name, HcclComm hcclComm);
     ~HcclRunner() override;
+    HcclCommSharedPtr GetHcclCommSharedPtr() const;
 
 protected:
     Status ExecuteImpl(RunnerVariantPack &runnerVariantPack) override;
