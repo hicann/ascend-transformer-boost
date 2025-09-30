@@ -10,6 +10,9 @@
 #ifndef LCAL_LCOC_WORKSPACE_H
 #define LCAL_LCOC_WORKSPACE_H
 
+#include <cstdint>
+#include "lcal_types.h"
+
 #if !defined(__DAV_C220_VEC__) && !defined(__DAV_M200_VEC__) && !defined(__DAV_C220_CUBE__) && !defined(__DAV__C310__)
 #define __aicore__
 #define GM_ADDR int64_t
