@@ -14,12 +14,13 @@
 #include <asdops/params/params.h>
 #include "atb/utils.h"
 #include "atb/utils/common_utils.h"
+#include "atb/utils/operation_register.h"
 
 namespace atb {
 BroadcastHcclRunner::BroadcastHcclRunner(const infer::BroadcastParam &param, bool useRankTableFile)
-    : HcclRunner(!useRankTableFile ? HcclRunner("BroadcastHcclRunner", RUNNER_TYPE_BROADCAST, param.rank,
+    : HcclRunner(!useRankTableFile ? HcclRunner("BroadcastHcclRunner", param.rank,
                                                 param.rankSize, param.rankRoot, param.commDomain) :
-                                     HcclRunner("BroadcastHcclRunner", RUNNER_TYPE_BROADCAST, param.rank,
+                                     HcclRunner("BroadcastHcclRunner", param.rank,
                                                 param.rankTableFile, param.commDomain)),
       param_(param)
 {
@@ -27,7 +28,7 @@ BroadcastHcclRunner::BroadcastHcclRunner(const infer::BroadcastParam &param, boo
 }
 
 BroadcastHcclRunner::BroadcastHcclRunner(const infer::BroadcastParam &param, HcclComm hcclComm)
-    : HcclRunner("BroadcastHcclRunner", hcclComm, RUNNER_TYPE_BROADCAST), param_(param)
+    : HcclRunner("BroadcastHcclRunner", hcclComm), param_(param)
 {
     ATB_LOG(INFO) << "BroadcastHcclRunner::BroadcastHcclRunner hcclComm called";
 }
@@ -55,4 +56,5 @@ Status BroadcastHcclRunner::ExecuteImpl(RunnerVariantPack &runnerVariantPack)
 }
 
 BroadcastHcclRunner::~BroadcastHcclRunner() {}
+REG_RUNNER_TYPE(BroadcastHcclRunner);
 } // namespace atb

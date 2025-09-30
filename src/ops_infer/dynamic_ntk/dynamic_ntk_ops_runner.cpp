@@ -9,7 +9,8 @@
  */
 #include "dynamic_ntk_ops_runner.h"
 #include <asdops/params/params.h>
-
+#include "atb/utils/operation_register.h"
+#include "atb/utils/param_compare.h"
 
 static const uint32_t ONE_CUSTOM_INPUT_IN_TENSOR_NUM = 2;
 static const uint32_t TWO_CUSTOM_INPUT_IN_TENSOR_NUM = 3;
@@ -18,7 +19,7 @@ static const uint32_t OUT_TENSOR_NUM = 2;
 namespace atb {
 
 DynamicNTKOpsRunner::DynamicNTKOpsRunner(const infer::DynamicNTKParam &param)
-    : OpsRunner("DynamicNTKOpsRunner", RUNNER_TYPE_DYNAMICNTK), param_(param), asdopsParam_({})
+    : OpsRunner("DynamicNTKOpsRunner"), param_(param), asdopsParam_({})
 {
     kernelGraph_.nodes.resize(1);
     asdopsParam_.outType = param_.outDataType == ACL_FLOAT16 ? 0 : 1; // 0: 输出fp16, 1: 输出bf16
@@ -41,4 +42,6 @@ DynamicNTKOpsRunner::DynamicNTKOpsRunner(const infer::DynamicNTKParam &param)
 }
 
 DynamicNTKOpsRunner::~DynamicNTKOpsRunner() {}
+REG_RUNNER_TYPE(DynamicNTKOpsRunner);
+REG_OP_PARAM(AsdOps::OpParam::DynamicNTK);
 } // namespace atb

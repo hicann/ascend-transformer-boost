@@ -11,6 +11,8 @@
 #include <asdops/params/params.h>
 #include <atbops/params/params.h>
 #include "atb/utils/log.h"
+#include "atb/utils/operation_register.h"
+#include "atb/utils/param_compare.h"
 
 static constexpr size_t SIZE_2 = 2;
 static constexpr size_t SIZE_3 = 3;
@@ -18,7 +20,7 @@ static constexpr size_t SIZE_4 = 4;
 
 namespace atb {
 FusedAddTopkDivOpsRunner::FusedAddTopkDivOpsRunner(const infer::FusedAddTopkDivParam &param)
-    : OpsRunner("FusedAddTopkDivOpsRunner", RUNNER_TYPE_FUSED_ADD_TOPK_DIV), param_(param)
+    : OpsRunner("FusedAddTopkDivOpsRunner"), param_(param)
 {
 }
 
@@ -68,4 +70,7 @@ Status FusedAddTopkDivOpsRunner::SetupKernelGraph(const OpsTensorPack &opsTensor
     (void)opsTensorPack;
     return NO_ERROR;
 }
+
+REG_RUNNER_TYPE(FusedAddTopkDivOpsRunner);
+REG_OP_PARAM(AtbOps::OpParam::FusedAddTopkDiv);
 } // namespace atb

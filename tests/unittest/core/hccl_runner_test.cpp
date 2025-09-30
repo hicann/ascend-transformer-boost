@@ -19,7 +19,7 @@ using namespace atb;
 
 TEST(TestHcclRunner, ExecuteFailRunnerTypeInvalid)
 {
-    Runner *runner = new HcclRunner("TestHcclRunner", RUNNER_TYPE_REDUCE, 0, 1, 0);
+    Runner *runner = new HcclRunner("TestHcclRunner", 0, 1, 0);
     RunnerVariantPack variantPack;
     variantPack.inTensors.resize(1);
     variantPack.inTensors.at(0).desc = { ACL_FLOAT16, ACL_FORMAT_ND, { { 1, 2 }, 2 } };
@@ -32,7 +32,7 @@ TEST(TestHcclRunner, ExecuteFailRunnerTypeInvalid)
 
 TEST(TestHcclRunner, ExecuteFailDeviceDataIsNull)
 {
-    Runner *runner = new HcclRunner("TestHcclRunner", RUNNER_TYPE_BROADCAST, 0, 1, 0);
+    Runner *runner = new HcclRunner("TestHcclRunner", 0, 1, 0);
     RunnerVariantPack variantPack;
     variantPack.inTensors.resize(1);
     variantPack.inTensors.at(0).desc = { ACL_FLOAT16, ACL_FORMAT_ND, { { 1, 2 }, 2 } };

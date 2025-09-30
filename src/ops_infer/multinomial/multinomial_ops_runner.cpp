@@ -11,10 +11,12 @@
 #include "multinomial_ops_runner.h"
 #include <atb/utils/log.h>
 #include <asdops/params/params.h>
+#include "atb/utils/operation_register.h"
+#include "atb/utils/param_compare.h"
 
 namespace atb {
 MultinomialOpsRunner::MultinomialOpsRunner(const infer::MultinomialParam &param)
-    : OpsRunner("MultinomialOpsRunner", RUNNER_TYPE_MULTINOMIAL), param_(param)
+    : OpsRunner("MultinomialOpsRunner"), param_(param)
 {
     ATB_LOG(INFO) << "MultinomialOpsRunner::MultinomialOpsRunner called";
     kernelGraph_.inTensors.resize(1);
@@ -35,4 +37,7 @@ MultinomialOpsRunner::MultinomialOpsRunner(const infer::MultinomialParam &param)
     multiNomialNode.outTensors = {&resultTensor};
 }
 MultinomialOpsRunner::~MultinomialOpsRunner() {}
+
+REG_RUNNER_TYPE(MultinomialOpsRunner);
+REG_OP_PARAM(AsdOps::OpParam::Multinomial);
 } // namespace atb

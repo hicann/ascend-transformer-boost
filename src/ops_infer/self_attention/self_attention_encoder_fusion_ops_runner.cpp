@@ -13,13 +13,14 @@
 #include "atb/utils/log.h"
 #include "atb/utils/tensor_util.h"
 #include "param.h"
+#include "atb/utils/operation_register.h"
 
 static constexpr uint32_t VALUE_TENSOR_POS = 2;
 
 namespace atb {
 
 SelfAttentionEncoderFusionOpsRunner::SelfAttentionEncoderFusionOpsRunner(const infer::SelfAttentionParam &param)
-    : OpsRunner("SelfAttentionEncoderFusionOpsRunner", RUNNER_TYPE_SELF_ATTENTION_PA_ENCODER), param_(param)
+    : OpsRunner("SelfAttentionEncoderFusionOpsRunner"), param_(param)
 {
     needKernelGraphModify_ = true;
     skipSetUpKernelGraphWhenCacheHit_ = false;
@@ -203,4 +204,6 @@ void SelfAttentionEncoderFusionOpsRunner::SetFAParam(AtbOps::OpParam::UnpadFlash
 }
 
 SelfAttentionEncoderFusionOpsRunner::~SelfAttentionEncoderFusionOpsRunner() {}
+
+REG_RUNNER_TYPE(SelfAttentionEncoderFusionOpsRunner);
 } // namespace atb

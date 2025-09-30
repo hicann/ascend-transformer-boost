@@ -9,7 +9,9 @@
 */
 #include "norm_rope_reshape_ops_runner.h"
 #include "atb/utils/log.h"
- 
+#include "atb/utils/operation_register.h"
+#include "atb/utils/param_compare.h"
+
 namespace atb {
 static const uint64_t IN_TENSOR_COUNT_SEVEN = 7;
  
@@ -49,7 +51,7 @@ void NormRopeReshapeOpsRunner::BuildNormRopeReshapeGraph
  
 NormRopeReshapeOpsRunner::NormRopeReshapeOpsRunner
 (const infer::NormRopeReshapeParam &param)
-    : OpsRunner("NormRopeReshapeOpsRunner", RUNNER_TYPE_NORM_ROPE_RESHAPE), param_(param)
+    : OpsRunner("NormRopeReshapeOpsRunner"), param_(param)
 {
     AtbOps::OpParam::RmsNormAndRopeAndReshapeAndCache rmsNormAndRopeAndReshapeAndCacheParam;
     SetNormRopeReshapeParam(param_, rmsNormAndRopeAndReshapeAndCacheParam);
@@ -61,4 +63,7 @@ NormRopeReshapeOpsRunner::NormRopeReshapeOpsRunner
 }
  
 NormRopeReshapeOpsRunner::~NormRopeReshapeOpsRunner() {}
+
+REG_RUNNER_TYPE(NormRopeReshapeOpsRunner);
+REG_OP_PARAM(AtbOps::OpParam::RmsNormAndRopeAndReshapeAndCache);
 } // namespace atb

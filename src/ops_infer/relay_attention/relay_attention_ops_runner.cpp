@@ -12,6 +12,7 @@
 #include "atb/utils/tensor_util.h"
 #include "param.h"
 #include "relay_attention_ops_runner.h"
+#include "atb/utils/operation_register.h"
 
 static const uint32_t UNDEFINED_IN_TENSOR_NUM = 10;
 static const uint32_t UNDEFINED_OUT_TENSOR_NUM = 1;
@@ -20,7 +21,7 @@ static const uint32_t UNDEFINED_OUT_TENSOR_NUM = 1;
 namespace atb {
 
 RelayAttentionOpsRunner::RelayAttentionOpsRunner(const infer::RelayAttentionParam &param)
-    : OpsRunner("RelayAttentionOpsRunner", RUNNER_TYPE_RELAY_ATTENTION), param_(param)
+    : OpsRunner("RelayAttentionOpsRunner"), param_(param)
 {
     needKernelGraphModify_ = true;
     skipSetUpKernelGraphWhenCacheHit_ = false;
@@ -108,4 +109,6 @@ void RelayAttentionOpsRunner::SetRAParam(AtbOps::OpParam::UnpadFlashAttention &f
 }
 
 RelayAttentionOpsRunner::~RelayAttentionOpsRunner() {}
+
+REG_RUNNER_TYPE(RelayAttentionOpsRunner);
 } // namespace atb
