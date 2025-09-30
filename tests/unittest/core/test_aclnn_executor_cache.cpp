@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2025 Huawei Technologies Co., Ltd.
  * This file is a part of the CANN Open Software.
- * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Licensed under CANN Open Software License Agreement Version 2.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
@@ -18,7 +18,7 @@
 // 设置各个inTensor的属性
 static void CreateTensorDescs(atb::SVector<atb::TensorDesc> &inTensorDescs, atb::SVector<atb::Dims> dimsVec)
 {
-    ASSERT_EQ(inTensorDescs.size(), dimsVec.size());
+    inTensorDescs.resize(dimsVec.size());
     for (size_t i = 0; i < inTensorDescs.size(); ++i) {
         inTensorDescs.at(i).dtype = ACL_FLOAT16;
         inTensorDescs.at(i).format = ACL_FORMAT_ND;
