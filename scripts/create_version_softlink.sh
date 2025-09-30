@@ -15,7 +15,7 @@ version_dir=""
 torch_atb_flag=""
 
 # 获取上n层目录
-updir()
+function updir()
 {
     local dir=$1
     local n=$2
@@ -23,6 +23,26 @@ updir()
         dir=$(dirname "$dir")
     done
     printf '%s\n' "$dir"
+}
+
+# 将日志记录到日志文件并打屏
+function print() {
+    if [ ! -f "$log_file" ]; then
+        if [ ! -d "${LOG_PATH}" ];then
+            mkdir -p ${LOG_PATH}
+        fi
+        touch $log_file
+    fi
+    if [ x"$log_file" = x ]; then
+        echo -e "[cann-atb] [$(date +%Y%m%d-%H:%M:%S)] [$1] $2"
+    else
+        if [ $(stat -c %s $log_file) -gt $MAX_LOG_SIZE ];then 
+            echo -e "[cann-atb] [$(date +%Y%m%d-%H:%M:%S)] [$1] log file is bigger than $MAX_LOG_SIZE, stop write log to file"
+            echo -e "[cann-atb] [$(date +%Y%m%d-%H:%M:%S)] [$1] $2"
+        else
+            echo -e "[cann-atb] [$(date +%Y%m%d-%H:%M:%S)] [$1] $2" | tee -a $log_file
+        fi
+    fi
 }
 
 function init()
@@ -62,6 +82,7 @@ function switch_to_new_version()
     current_version_dir="$(updir "$script_dir" 1)"
     ln -s "${current_version_dir}" latest
     cp "${current_version_dir}/atb/set_env.sh" "${version_dir}"
+    print "INFO" "Successfully switched latest symlink and set_env."
 
     py_version=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
     py_major_version=${py_version%%.*}
@@ -70,9 +91,9 @@ function switch_to_new_version()
     wheel_path="latest/whl/${wheel_file}"
     if [ -n "$torch_atb_flag" ]; then
         if pip3 install --force-reinstall "$wheel_path" > /dev/null 2>&1; then
-            echo "INFO: torch_atb reinstall succeess."
+            print "INFO" "torch_atb reinstall succeess."
         else
-            echo "ERROR: torch_atb reinstallation failed!"
+            print "ERROR" "torch_atb reinstallation failed!"
             exit 1
         fi
     fi
