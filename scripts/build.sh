@@ -1,6 +1,6 @@
-#!/bin/bash
+#!/bin/bash 
 #
-# Copyright (c) 2024 Huawei Technologies Co., Ltd.
+# Copyright (c) 2024 Huawei Technologies Co., Ltd.ci
 # This file is a part of the CANN Open Software.
 # Licensed under CANN Open Software License Agreement Version 2.0 (the "License").
 # Please refer to the License for details. You may not use this file except in compliance with the License.
