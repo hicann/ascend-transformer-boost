@@ -11,7 +11,6 @@
 #define ASDOPS_PARAMS_FUSION_H
 
 #include <mki/types.h>
-#include <mki/utils/compare/compare.h>
 
 namespace AtbOps {
 namespace OpParam {

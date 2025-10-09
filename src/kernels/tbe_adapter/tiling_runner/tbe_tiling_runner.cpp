@@ -216,9 +216,10 @@ public:
         KernelContextHolder tilingParseContextHolder;
         auto status = GetTilingParseContextHolder(tilingParseContextHolder, computeNodePtr);
         MKI_CHECK(status.Ok(), "failed to get tiling parse context", return Mki::Status::FailStatus(1));
-
-        KernelContextHolder tilingContextHolder = BuildTilingContextHolder(computeNodePtr,
-            *((tilingParseContextHolder.context_)->GetOutputPointer<void **>(0)), tilingDataLen);
+        void **outputPointer = (tilingParseContextHolder.context_)->GetOutputPointer<void **>(0);
+        MKI_CHECK(outputPointer != nullptr, "OutputPointer is nullptr", return Mki::Status::FailStatus(1));
+        KernelContextHolder tilingContextHolder =
+            BuildTilingContextHolder(computeNodePtr, *outputPointer, tilingDataLen);
         MKI_CHECK(tilingContextHolder.context_ != nullptr,
             "failed to build tiling context", return Mki::Status::FailStatus(1));
 

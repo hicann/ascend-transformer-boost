@@ -11,8 +11,6 @@
 #ifndef ASCEND_OPS_STUB_FRAMEWORK_COMMON_UTIL_H
 #define ASCEND_OPS_STUB_FRAMEWORK_COMMON_UTIL_H
 
-#include <functional>
-
 #include "debug/ge_log.h"
 #include "debug/log.h"
 #include "external/ge_common/ge_api_error_codes.h"

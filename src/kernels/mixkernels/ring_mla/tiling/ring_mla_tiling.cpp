@@ -93,8 +93,10 @@ Status GetTilingKeyTypeBase(RINGMLAInfo &mmInfo, const Tensor &qTensor, const Te
 
 Status GenTilingKey(RINGMLAInfo &mmInfo, KernelInfo &kernelInfo, OpParam::RINGMLA &param)
 {
-    uint32_t dataType = static_cast<int32_t>(mmInfo.type);
-    uint32_t tilingKey = dataType + (mmInfo.kNz << NUM4) + (mmInfo.mtpTp1Flag << NUM2) + (param.isRing << NUM5);
+    uint32_t dataType = static_cast<uint32_t>(mmInfo.type);
+    uint32_t tilingKey = dataType + (static_cast<uint32_t>(mmInfo.kNz) << NUM4) +
+                         (static_cast<uint32_t>(mmInfo.mtpTp1Flag) << NUM2) +
+                         (static_cast<uint32_t>(param.isRing) << NUM5);
     kernelInfo.SetTilingId(tilingKey);
     MKI_LOG(INFO) << "TILING KEY IS = " << tilingKey;
     return Status::OkStatus();
@@ -167,12 +169,12 @@ Status GetAlibiMaskInfo(RINGMLAInfo &mmInfo, OpParam::RINGMLA &param, const Tens
     MKI_CHECK(maskDim <= DIM_4 && maskDim >= DIM_2, "maskdim invalid", return Status::FailStatus(ERROR_INVALID_VALUE));
     if (maskDim == DIM_3) { // [h, ms, ms]
         mmInfo.maskStride = 0;
-        mmInfo.headStride = static_cast<uint32_t>(maxSeq);
+        mmInfo.headStride = maxSeq;
     } else if (maskDim == DIM_4) { // [bs,1,ms,ms]  [bs,headnum,ms,ms]
         MKI_CHECK(maskShape.at(DIM_2) * maskShape.at(1) <= UINT32_MAX, "maxSeq * headnum can not large than UINT32_MAX",
                   return Status::FailStatus(ERROR_INVALID_VALUE));
         mmInfo.maskStride = maskShape.at(1) * maskShape.at(DIM_2);
-        mmInfo.headStride = static_cast<uint32_t>(maxSeq);
+        mmInfo.headStride = maxSeq;
     } else if (maskDim == DIM_2) {
         MKI_CHECK(maxSeq == LONG_SEQ_ALIBI_LEN, "alibi mask shape must be [256, 256] for long seq opt",
                   return Status::FailStatus(ERROR_INVALID_VALUE));
@@ -266,7 +268,7 @@ void MLAPrefillFillInfo(RINGMLAInfo &mmInfo, OpParam::RINGMLA &param, size_t bat
     mmInfo.vTensorList = param.vTensorList;
     mmInfo.maskType = static_cast<uint32_t>(param.maskType);
     mmInfo.quantType = static_cast<uint32_t>(param.quantType);
-    mmInfo.isRing =  param.isRing;
+    mmInfo.isRing = static_cast<uint32_t>(param.isRing);
 }
 
 Status InitInfo(RINGMLAInfo &mmInfo, OpParam::RINGMLA &param)
@@ -319,7 +321,7 @@ Status RINGMLAPrefillTiling(const LaunchParam &launchParam, KernelInfo &kernelIn
     OP_TILING_CHECK_STATUS_RETURN(ret);
     uint32_t blockDim = PlatformInfo::Instance().GetCoreNum(CoreType::CORE_TYPE_CUBE);
     MKI_CHECK(blockDim > 0, "blockDim cannot <= 0", return Status::FailStatus(ERROR_INVALID_VALUE));
-    mmInfo.blockDim = blockDim;
+    mmInfo.blockDim = static_cast<int32_t>(blockDim);
     uint8_t *tilingHost = kernelInfo.GetTilingHostAddr();
     uint64_t tilingSize = kernelInfo.GetTilingSize();
     uint32_t *tilingParam = reinterpret_cast<uint32_t *>(tilingHost);

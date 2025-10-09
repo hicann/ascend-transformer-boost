@@ -136,10 +136,14 @@ public:
         auto headSizeK = keyCache.desc.dims[DIM_3];
         auto headSizeV = valueCache.desc.dims[DIM_3];
         constexpr int32_t baiscBlockSize = 32;
-        MKI_CHECK(numHeads * headSizeK * GetTensorElementSize(inDtype) % baiscBlockSize == 0,
-            "dim_2*dim_3 of KCache should be 32B aligned", return Status::FailStatus(ERROR_INFERSHAPE_ERROR));
-        MKI_CHECK(numHeads * headSizeV * GetTensorElementSize(inDtype) % baiscBlockSize == 0,
-            "dim_2*dim_3 of VCache should be 32B aligned", return Status::FailStatus(ERROR_INFERSHAPE_ERROR));
+        MKI_CHECK(static_cast<uint32_t>(numHeads) * static_cast<uint32_t>(headSizeK) * GetTensorElementSize(inDtype) %
+                          baiscBlockSize ==
+                      0,
+                  "dim_2*dim_3 of KCache should be 32B aligned", return Status::FailStatus(ERROR_INFERSHAPE_ERROR));
+        MKI_CHECK(static_cast<uint32_t>(numHeads) * static_cast<uint32_t>(headSizeV) * GetTensorElementSize(inDtype) %
+                          baiscBlockSize ==
+                      0,
+                  "dim_2*dim_3 of VCache should be 32B aligned", return Status::FailStatus(ERROR_INFERSHAPE_ERROR));
 
         MKI_CHECK(key.desc.dims.size() == DIM_3 && value.desc.dims.size() == DIM_3,
             "K&V's dim num should be " << DIM_3, return Status::FailStatus(ERROR_INFERSHAPE_ERROR));
