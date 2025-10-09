@@ -2,7 +2,6 @@ set(NAMESPACE "AtbOps")
 
 if (IS_STANDALONE_BUILD)
     option(USE_MSSANITIZER "USE_MSSANITIZER" OFF)
-    option(USE_MSDEBUG "USE_MSDEBUG" OFF)
     option(USE_ASCENDC_DUMP "USE_ASCENDC_DUMP" OFF)
     set(MKI_SCRIPT_DIR "${MKI_SOURCE_DIR}/scripts")
     include(${MKI_SOURCE_DIR}/cmake/host_config.cmake)
@@ -65,22 +64,10 @@ list(APPEND BINARY_SRC_LIST ${CMAKE_CURRENT_LIST_DIR}/param_to_json.cpp ${CMAKE_
 add_library(customize_ops SHARED ${BINARY_SRC_LIST})
 add_dependencies(customize_ops CUSTOMIZE_BINARY_SRC_TARGET)
 target_link_libraries(customize_ops PRIVATE ${ops_objects} mki tiling_api register)
-if(NOT IS_STANDALONE_BUILD)
-    target_link_libraries(customize_ops PRIVATE
-        -Wl,--whole-archive
-        -Wl,--no-whole-archive
-    )
-endif()
 
 add_library(customize_ops_static STATIC $<TARGET_OBJECTS:customize_ops>)
 add_dependencies(customize_ops_static CUSTOMIZE_BINARY_SRC_TARGET)
 target_link_libraries(customize_ops_static PRIVATE ${ops_objects} mki tiling_api register)
-if(NOT IS_STANDALONE_BUILD)
-    target_link_libraries(customize_ops_static PRIVATE
-        -Wl,--whole-archive
-        -Wl,--no-whole-archive
-    )
-endif()
 
 add_executable(ops_sym_check sym_check.cpp)
 target_link_libraries(ops_sym_check PRIVATE customize_ops mki)

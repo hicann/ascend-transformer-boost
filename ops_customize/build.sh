@@ -18,8 +18,9 @@ USE_CXX11_ABI=""
 COMPILE_OPTIONS=""
 CMAKE_BUILD_TYPE=Release
 BUILD_OPTION_LIST="help default unittest clean"
-BUILD_CONFIGURE_LIST=("--use_cxx11_abi=0" "--use_cxx11_abi=1" "--debug")
+BUILD_CONFIGURE_LIST=("--use_cxx11_abi=0" "--use_cxx11_abi=1" "--debug" "--msdebug")
 CODE_BRANCH="master"
+USE_MSDEBUG=OFF
 
 function fn_get_code_branch()
 {
@@ -147,16 +148,6 @@ function fn_init_env()
             USE_CXX11_ABI=OFF
         fi
     fi
-    export PYTHON_INCLUDE_PATH="$(python3 -c 'from sysconfig import get_paths; print(get_paths()["include"])')"
-    export PYTHON_LIB_PATH="$(python3 -c 'from sysconfig import get_paths; print(get_paths()["include"])')"
-    export PYTORCH_INSTALL_PATH="$(python3 -c 'import torch, os; print(os.path.dirname(os.path.abspath(torch.__file__)))')"
-    export PYTORCH_NPU_INSTALL_PATH="$(python3 -c 'import torch, torch_npu, os; print(os.path.dirname(os.path.abspath(torch_npu.__file__)))')"
-    export LD_LIBRARY_PATH=$PYTORCH_INSTALL_PATH/../torch.libs:$LD_LIBRARY_PATH
-
-    echo "PYTHON_INCLUDE_PATH=$PYTHON_INCLUDE_PATH"
-    echo "PYTHON_LIB_PATH=$PYTHON_LIB_PATH"
-    echo "PYTORCH_INSTALL_PATH=$PYTORCH_INSTALL_PATH"
-    echo "PYTORCH_NPU_INSTALL_PATH=$PYTORCH_NPU_INSTALL_PATH"
     echo "USE_CXX11_ABI=$USE_CXX11_ABI"
 }
 
@@ -199,6 +190,10 @@ function fn_main()
         "--debug")
             CMAKE_BUILD_TYPE=Debug
             ;;
+        "--msdebug")
+            USE_MSDEBUG=ON
+            CHIP_TYPE=$(npu-smi info -m | grep -oE 'Ascend\s*\S+' | head -n 1 | tr -d ' ' | tr '[:upper:]' '[:lower:]')
+            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_MSDEBUG=ON -DCHIP_TYPE=${CHIP_TYPE}"
         esac
         shift
     }
@@ -227,7 +222,7 @@ function fn_main()
             ;;
         *)
         echo "Usage: "
-        echo "run build.sh help|default|unittest|clean| --use_cxx11_abi=0|--use_cxx11_abi=1|--debug"
+        echo "run build.sh help|default|unittest|clean| --use_cxx11_abi=0|--use_cxx11_abi=1|--debug|--msdebug"
         ;;
     esac
 }
