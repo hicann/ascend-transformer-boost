@@ -318,7 +318,7 @@ void GetNdMLAMtpTilingTP1(const MLAInfo &mmInfo, uint32_t &blockDim, uint32_t *t
 }
 
 void GetTilingHead(const MLAInfo &mmInfo, const OpParam::MLA &param, uint32_t *tilingParam,
-                   const uint32_t *torPtr, uint32_t blockDim)
+                   const uint32_t &torPtr, uint32_t blockDim)
 {
     tilingParam[TILING_BATCH] = static_cast<uint32_t>(mmInfo.batch);
     tilingParam[TILING_HEADSIZE] = static_cast<uint32_t>(TILING_HEAD_SIZE);
@@ -329,7 +329,7 @@ void GetTilingHead(const MLAInfo &mmInfo, const OpParam::MLA &param, uint32_t *t
     tilingParam[TILING_NUMBLOKS] = static_cast<uint32_t>(mmInfo.numBlocks);
     tilingParam[TILING_BLOCKSIZE] = static_cast<uint32_t>(mmInfo.blockSize);
     tilingParam[TILING_MAXBLOCKS] = static_cast<uint32_t>(mmInfo.maxNumBlocksPerQuery);
-    tilingParam[TILING_TOR] = *torPtr;
+    tilingParam[TILING_TOR] = torPtr;
     tilingParam[TILING_KVHEADS] = (mmInfo.kvHeads == 0) ? mmInfo.numHeads : mmInfo.kvHeads;
 
     tilingParam[TILING_MASK_TYPE_ND] = static_cast<uint32_t>(mmInfo.maskType);
@@ -377,7 +377,7 @@ Status GetMLATilingParam(const LaunchParam &launchParam, MLAInfo &mmInfo,
         GetNdMLATiling(mmInfo, blockDim, tilingParam, param);
         blockDim = mmInfo.batch == BATCH_MLA ? BLOCK_DIM_MLA : blockDim;
     }
-    GetTilingHead(mmInfo, param, tilingParam, torPtr, blockDim);
+    GetTilingHead(mmInfo, param, tilingParam, *torPtr, blockDim);
     return AtbOps::Status::OkStatus();
 }
 

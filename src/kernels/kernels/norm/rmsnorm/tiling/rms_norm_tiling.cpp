@@ -34,18 +34,18 @@ constexpr uint32_t RMS_NORM_TILING_KEY_GEMMAMODE = 1000;    // 0:gemmamode no; 1
 constexpr uint32_t RMS_NORM_TILING_KEY_PRECISIONMODE = 100; // 0:precisionmode; 1:performance mode
 constexpr uint32_t RMS_NORM_TILING_KEY_DTYPE = 10;          // 0:fp16;1:bf16
 
-void PrintRmsNormTiling(const RmsNormCommonTilingData *tilingDataPtr)
+void PrintRmsNormTiling(const RmsNormCommonTilingData &tilingDataPtr)
 {
     MKI_LOG(INFO) << "RmsNorm Tiling Data:"
-                  << " numCore " << tilingDataPtr->numCore
-                  << " numCol " << tilingDataPtr->numCol
-                  << " numRow " << tilingDataPtr->numRow
-                  << " avgFactor " << tilingDataPtr->avgFactor
-                  << " epsilon " << tilingDataPtr->epsilon
-                  << " sliceSize " << tilingDataPtr->sliceSize
-                  << " mode " << tilingDataPtr->mode
-                  << " precisionMode  " << tilingDataPtr->precisionMode
-                  << " gemmaMode " << tilingDataPtr->gemmaMode;
+                  << " numCore " << tilingDataPtr.numCore
+                  << " numCol " << tilingDataPtr.numCol
+                  << " numRow " << tilingDataPtr.numRow
+                  << " avgFactor " << tilingDataPtr.avgFactor
+                  << " epsilon " << tilingDataPtr.epsilon
+                  << " sliceSize " << tilingDataPtr.sliceSize
+                  << " mode " << tilingDataPtr.mode
+                  << " precisionMode  " << tilingDataPtr.precisionMode
+                  << " gemmaMode " << tilingDataPtr.gemmaMode;
 }
 uint64_t ComputeTilingKey(uint32_t gemmaMode, uint32_t precisionMode, bool isShortTail, const LaunchParam &launchParam)
 {
@@ -60,19 +60,19 @@ uint64_t ComputeTilingKey(uint32_t gemmaMode, uint32_t precisionMode, bool isSho
     return tilingKey;
 }
 
-void SetNonContiguousTenor(RmsNormCommonTilingData *tilingDataPtr, const LaunchParam &launchParam)
+void SetNonContiguousTenor(RmsNormCommonTilingData &tilingDataPtr, const LaunchParam &launchParam)
 {
     const auto& xStrides = launchParam.GetInTensor(0).desc.strides;
     const auto& shape = launchParam.GetInTensor(0).desc.dims;
     uint32_t dimNum = xStrides.size();
     if (xStrides.empty() || dimNum == 1 || xStrides[dimNum - NUM_TWO] == shape[dimNum - 1]) {
-        tilingDataPtr->xDimNum = 0;
+        tilingDataPtr.xDimNum = 0;
     } else {
         for (size_t i = 0; i < xStrides.size(); ++ i) {
-            tilingDataPtr->xStrides[i] = xStrides[i];
+            tilingDataPtr.xStrides[i] = xStrides[i];
         }
-        tilingDataPtr->xDimNum = dimNum;
-        tilingDataPtr->xOffset = launchParam.GetInTensor(0).desc.offset;
+        tilingDataPtr.xDimNum = dimNum;
+        tilingDataPtr.xOffset = launchParam.GetInTensor(0).desc.offset;
     }
 }
 
@@ -118,12 +118,12 @@ Status RmsNormTiling(const LaunchParam &launchParam, KernelInfo &kernelInfo)
         tilingDataPtr->quantMin = -127; // set int8 min to -127
     }
     kernelInfo.SetBlockDim(tilingDataPtr->numCore);
-    SetNonContiguousTenor(tilingDataPtr, launchParam);
+    SetNonContiguousTenor(*tilingDataPtr, launchParam);
     uint64_t tilingKey = ComputeTilingKey(tilingDataPtr->gemmaMode, tilingDataPtr->precisionMode, isShortTail,
                                           launchParam);
     MKI_LOG(INFO) << "post rmsnorm tilingKey is : " << tilingKey;
     kernelInfo.SetTilingId(tilingKey);
-    PrintRmsNormTiling(tilingDataPtr);
+    PrintRmsNormTiling(*tilingDataPtr);
     return Status::OkStatus();
 }
 

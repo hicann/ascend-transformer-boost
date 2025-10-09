@@ -206,12 +206,12 @@ Status MlaPreprocessAclnnRunner::LoadMethod()
     }
     static DlManager dlManager = DlManager(std::string(std::getenv("ASCEND_HOME_PATH")) + "/lib64/libopapi.so");
     Status ret = dlManager.getSymbol("aclnnMlaPreprocessGetWorkspaceSize",
-                                     (void **)&MlaPreprocessAclnnRunner::aclnnGetWorkspaceSizeFunc_);
+                                     (void *&)MlaPreprocessAclnnRunner::aclnnGetWorkspaceSizeFunc_);
     if (ret != NO_ERROR) {
         ATB_LOG(ERROR) << "load aclnnMlaPreprocessGetWorkspaceSize failed! Consider upgrade the CANN first!";
         return ret;
     }
-    ret = dlManager.getSymbol("aclnnMlaPreprocess", (void **)&MlaPreprocessAclnnRunner::aclnnExecuteFunc_);
+    ret = dlManager.getSymbol("aclnnMlaPreprocess", (void *&)MlaPreprocessAclnnRunner::aclnnExecuteFunc_);
     if (ret != NO_ERROR) {
         ATB_LOG(ERROR) << "load aclnnMlaPreprocess failed! Consider upgrade the CANN first!";
         return ret;

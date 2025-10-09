@@ -37,8 +37,8 @@ uint64_t ComputeTilingKey(uint32_t alignType, const LaunchParam &launchParam)
     return tilingKey;
 }
 
-Status ParseShape(const LaunchParam &launchParam, DynamicQuantTilingData *tilingDataPtr,
-    uint64_t *rowNumTotal)
+Status ParseShape(const LaunchParam &launchParam, DynamicQuantTilingData &tilingDataPtr,
+    uint64_t &rowNumTotal)
 {
     const Mki::SVector<int64_t> &shape = launchParam.GetInTensor(0).desc.dims;
     MKI_CHECK(!shape.empty(), "shape should not be empty",
@@ -47,22 +47,22 @@ Status ParseShape(const LaunchParam &launchParam, DynamicQuantTilingData *tiling
     size_t dims = shape.size();
     for (size_t i = 0; i < dims; ++i) {
         if (i < dims - 1) {
-            MKI_CHECK(shape[i] > 0 && *rowNumTotal < static_cast<uint64_t>(UINT32_MAX / shape[i]),
+            MKI_CHECK(shape[i] > 0 && rowNumTotal < static_cast<uint64_t>(UINT32_MAX / shape[i]),
                 "rowNumTotal or shape is invalid!",
                 return Status::FailStatus(ERROR_INVALID_VALUE, "rowNumTotal or shape is invalid!"));
-            *rowNumTotal *= shape[i];
+            rowNumTotal *= shape[i];
         } else {
-            tilingDataPtr->sizeH = shape[i];
+            tilingDataPtr.sizeH = shape[i];
         }
     }
     if (launchParam.GetInTensor(0).desc.dtype == TENSOR_DTYPE_BF16) {
-        MKI_CHECK(tilingDataPtr->sizeH <= DYNAMIC_QUANT_BF16_LAST_DIM_LIMITATION,
+        MKI_CHECK(tilingDataPtr.sizeH <= DYNAMIC_QUANT_BF16_LAST_DIM_LIMITATION,
             "Ascend910B BF16 input last dim is bigger than limitation!",
             return Status::FailStatus(ERROR_INVALID_VALUE,
             "Ascend910B BF16 input last dim is bigger than limitation!"));
     }
     if (PlatformInfo::Instance().GetPlatformType() == PlatformType::ASCEND_310P) {
-        MKI_CHECK(tilingDataPtr->sizeH <= DYNAMIC_QUANT_FP16_LAST_DIM_LIMITATION_310P,
+        MKI_CHECK(tilingDataPtr.sizeH <= DYNAMIC_QUANT_FP16_LAST_DIM_LIMITATION_310P,
             "Ascend310P F16 input last dim is bigger than limitation!",
             return Status::FailStatus(ERROR_INVALID_VALUE,
             "Ascend310P F16 input last dim is bigger than limitation!"));
@@ -78,33 +78,33 @@ Status ParseShape(const LaunchParam &launchParam, DynamicQuantTilingData *tiling
  * 3. sizeH > 512 -> numCopyRow: 64 ; 8 <= sizeH < 64 -> numCopyRow: 192
  *    64 <= sizeH <= 512 -> numCopyRow: Utils::RoundUp(213 - sizeX * 2 / 7, 8)
  */
-void SetSuitNumCopyRow(DynamicQuantTilingData *tilingDataPtr)
+void SetSuitNumCopyRow(DynamicQuantTilingData &tilingDataPtr)
 {
-    tilingDataPtr->sizeX = Utils::RoundUp(tilingDataPtr->sizeH, DYNAMIC_QUANT_ALIGN_NUM_X);
-    tilingDataPtr->sizeZOut = Utils::RoundUp(tilingDataPtr->sizeH);
+    tilingDataPtr.sizeX = Utils::RoundUp(tilingDataPtr.sizeH, DYNAMIC_QUANT_ALIGN_NUM_X);
+    tilingDataPtr.sizeZOut = Utils::RoundUp(tilingDataPtr.sizeH);
 
     uint32_t ubSize = PlatformInfo::Instance().GetUbSize();
-    tilingDataPtr->numCopyRow = (ubSize - tilingDataPtr->sizeX * DYNAMIC_QUANT_FP16_BUF_SCALE - \
-        DYNAMIC_QUANT_HEADSPACE) / (tilingDataPtr->sizeX * DYNAMIC_QUANT_COPY_ROW_SCALE);
-    MKI_LOG(INFO) << "numCopyRow = " << tilingDataPtr->numCopyRow;
-    uint32_t rowSuit = DYNAMIC_QUANT_ROW_SUIT_ADD - tilingDataPtr->sizeX * \
+    tilingDataPtr.numCopyRow = (ubSize - tilingDataPtr.sizeX * DYNAMIC_QUANT_FP16_BUF_SCALE - \
+        DYNAMIC_QUANT_HEADSPACE) / (tilingDataPtr.sizeX * DYNAMIC_QUANT_COPY_ROW_SCALE);
+    MKI_LOG(INFO) << "numCopyRow = " << tilingDataPtr.numCopyRow;
+    uint32_t rowSuit = DYNAMIC_QUANT_ROW_SUIT_ADD - tilingDataPtr.sizeX * \
         DYNAMIC_QUANT_ROW_SUIT_MUL / DYNAMIC_QUANT_ROW_SUIT_DIV;
     rowSuit = rowSuit - rowSuit % DYNAMIC_QUANT_ALIGN_NUM_SCALE;
-    if (tilingDataPtr->numCopyRow > DYNAMIC_QUANT_COPY_ROW_LONG &&
-        tilingDataPtr->sizeX >= DYNAMIC_QUANT_LEN_H_LONG) {
-        tilingDataPtr->numCopyRow = DYNAMIC_QUANT_COPY_ROW_LONG;
-    } else if (tilingDataPtr->numCopyRow > rowSuit && rowSuit > DYNAMIC_QUANT_ALIGN_NUM_SCALE &&
-        tilingDataPtr->sizeX >= DYNAMIC_QUANT_LEN_H_SHORT) {
-        tilingDataPtr->numCopyRow = rowSuit;
-    } else if (tilingDataPtr->numCopyRow > DYNAMIC_QUANT_COPY_ROW_SHORT &&
-        tilingDataPtr->sizeX < DYNAMIC_QUANT_LEN_H_SHORT &&
-        tilingDataPtr->sizeX > DYNAMIC_QUANT_ALIGN_NUM_SCALE) {
-        tilingDataPtr->numCopyRow = DYNAMIC_QUANT_COPY_ROW_SHORT;
-    } else if (tilingDataPtr->numCopyRow > DYNAMIC_QUANT_ALIGN_NUM_SCALE) {
-        tilingDataPtr->numCopyRow = tilingDataPtr->numCopyRow - tilingDataPtr->numCopyRow % \
+    if (tilingDataPtr.numCopyRow > DYNAMIC_QUANT_COPY_ROW_LONG &&
+        tilingDataPtr.sizeX >= DYNAMIC_QUANT_LEN_H_LONG) {
+        tilingDataPtr.numCopyRow = DYNAMIC_QUANT_COPY_ROW_LONG;
+    } else if (tilingDataPtr.numCopyRow > rowSuit && rowSuit > DYNAMIC_QUANT_ALIGN_NUM_SCALE &&
+        tilingDataPtr.sizeX >= DYNAMIC_QUANT_LEN_H_SHORT) {
+        tilingDataPtr.numCopyRow = rowSuit;
+    } else if (tilingDataPtr.numCopyRow > DYNAMIC_QUANT_COPY_ROW_SHORT &&
+        tilingDataPtr.sizeX < DYNAMIC_QUANT_LEN_H_SHORT &&
+        tilingDataPtr.sizeX > DYNAMIC_QUANT_ALIGN_NUM_SCALE) {
+        tilingDataPtr.numCopyRow = DYNAMIC_QUANT_COPY_ROW_SHORT;
+    } else if (tilingDataPtr.numCopyRow > DYNAMIC_QUANT_ALIGN_NUM_SCALE) {
+        tilingDataPtr.numCopyRow = tilingDataPtr.numCopyRow - tilingDataPtr.numCopyRow % \
             DYNAMIC_QUANT_ALIGN_NUM_SCALE;
     }
-    MKI_LOG(INFO) << "numCopyRow = " << tilingDataPtr->numCopyRow;
+    MKI_LOG(INFO) << "numCopyRow = " << tilingDataPtr.numCopyRow;
 }
 
 /**
@@ -116,44 +116,44 @@ void SetSuitNumCopyRow(DynamicQuantTilingData *tilingDataPtr)
  *             numCopyRow > alignRowNum, perRowNum < alignRowNum -> numCopyRow = perRowNum
  *             numCopyRow > perRowNum, perRowNum < 8 -> numCopyRow = perRowNum
  */
-Status CorrectNumCopyRow(DynamicQuantTilingData *tilingDataPtr, uint64_t rowNumTotal)
+Status CorrectNumCopyRow(DynamicQuantTilingData &tilingDataPtr, uint64_t rowNumTotal)
 {
-    uint32_t perRowNum = Utils::CeilDiv(static_cast<uint32_t>(rowNumTotal), tilingDataPtr->numCore);
+    uint32_t perRowNum = Utils::CeilDiv(static_cast<uint32_t>(rowNumTotal), tilingDataPtr.numCore);
     uint32_t alignRowNum = Utils::RoundUp(perRowNum, DYNAMIC_QUANT_ALIGN_NUM_SCALE);
     MKI_LOG(INFO) << "perRowNum = " << perRowNum;
     if (PlatformInfo::Instance().GetPlatformType() == PlatformType::ASCEND_310P) {
-        tilingDataPtr->alignType = DYNAMIC_QUANT_STATUS_UNALIGN_310P;
-        if (tilingDataPtr->numCopyRow >= DYNAMIC_QUANT_ALIGN_NUM_SCALE &&
+        tilingDataPtr.alignType = DYNAMIC_QUANT_STATUS_UNALIGN_310P;
+        if (tilingDataPtr.numCopyRow >= DYNAMIC_QUANT_ALIGN_NUM_SCALE &&
             perRowNum <= DYNAMIC_QUANT_ALIGN_NUM_SCALE) {
-            tilingDataPtr->numCopyRow = DYNAMIC_QUANT_ALIGN_NUM_SCALE;
-        } else if (tilingDataPtr->numCopyRow >= alignRowNum) {
-            tilingDataPtr->numCopyRow = alignRowNum;
+            tilingDataPtr.numCopyRow = DYNAMIC_QUANT_ALIGN_NUM_SCALE;
+        } else if (tilingDataPtr.numCopyRow >= alignRowNum) {
+            tilingDataPtr.numCopyRow = alignRowNum;
         }
-        if (tilingDataPtr->sizeH % DYNAMIC_QUANT_ALIGN_SIZE != 0 ||
-            tilingDataPtr->numCopyRow < DYNAMIC_QUANT_ALIGN_NUM_SCALE) {
+        if (tilingDataPtr.sizeH % DYNAMIC_QUANT_ALIGN_SIZE != 0 ||
+            tilingDataPtr.numCopyRow < DYNAMIC_QUANT_ALIGN_NUM_SCALE) {
             return Status::FailStatus(ERROR_INVALID_VALUE, "Ascend310P input last dim must 64Byte alignment");
         }
     } else {
-        tilingDataPtr->alignType = DYNAMIC_QUANT_STATUS_UNALIGN_910B;
-        if (perRowNum <= 0 && tilingDataPtr->numCopyRow > 0) {
-            tilingDataPtr->numCopyRow = 1;
-        } else if (tilingDataPtr->numCopyRow > alignRowNum && perRowNum > alignRowNum) {
-            tilingDataPtr->numCopyRow = alignRowNum;
-        } else if (tilingDataPtr->numCopyRow > alignRowNum && perRowNum < alignRowNum) {
-            tilingDataPtr->numCopyRow = perRowNum;
-        } else if (tilingDataPtr->numCopyRow > perRowNum && perRowNum < DYNAMIC_QUANT_ALIGN_NUM_SCALE) {
-            tilingDataPtr->numCopyRow = perRowNum;
+        tilingDataPtr.alignType = DYNAMIC_QUANT_STATUS_UNALIGN_910B;
+        if (perRowNum <= 0 && tilingDataPtr.numCopyRow > 0) {
+            tilingDataPtr.numCopyRow = 1;
+        } else if (tilingDataPtr.numCopyRow > alignRowNum && perRowNum > alignRowNum) {
+            tilingDataPtr.numCopyRow = alignRowNum;
+        } else if (tilingDataPtr.numCopyRow > alignRowNum && perRowNum < alignRowNum) {
+            tilingDataPtr.numCopyRow = perRowNum;
+        } else if (tilingDataPtr.numCopyRow > perRowNum && perRowNum < DYNAMIC_QUANT_ALIGN_NUM_SCALE) {
+            tilingDataPtr.numCopyRow = perRowNum;
         }
-        if (tilingDataPtr->numCopyRow == 0) {
+        if (tilingDataPtr.numCopyRow == 0) {
             return Status::FailStatus(ERROR_INVALID_VALUE, "Ascend910B input last dim is bigger than limitation");
         }
     }
-    MKI_LOG(INFO) << "numCopyRow = " << tilingDataPtr->numCopyRow;
-    tilingDataPtr->sizeCopyRow = Utils::RoundUp(tilingDataPtr->numCopyRow, DYNAMIC_QUANT_ALIGN_NUM_SCALE);
+    MKI_LOG(INFO) << "numCopyRow = " << tilingDataPtr.numCopyRow;
+    tilingDataPtr.sizeCopyRow = Utils::RoundUp(tilingDataPtr.numCopyRow, DYNAMIC_QUANT_ALIGN_NUM_SCALE);
     return Status::OkStatus();
 }
 
-Status SetTilingData(DynamicQuantTilingData *tilingDataPtr, uint64_t rowNumTotal)
+Status SetTilingData(DynamicQuantTilingData &tilingDataPtr, uint64_t rowNumTotal)
 {
     SetSuitNumCopyRow(tilingDataPtr);
 
@@ -162,17 +162,17 @@ Status SetTilingData(DynamicQuantTilingData *tilingDataPtr, uint64_t rowNumTotal
         return status;
     }
 
-    uint32_t patchTotal = rowNumTotal / tilingDataPtr->numCopyRow;
-    tilingDataPtr->numLastTailRow = rowNumTotal % tilingDataPtr->numCopyRow;
-    tilingDataPtr->numTailTimes = patchTotal / tilingDataPtr->numCore;
-    tilingDataPtr->numHeadCore = patchTotal % tilingDataPtr->numCore;
-    tilingDataPtr->numTailCore = tilingDataPtr->numCore - tilingDataPtr->numHeadCore;
-    tilingDataPtr->numHeadTimes = tilingDataPtr->numTailTimes + 1;
+    uint32_t patchTotal = rowNumTotal / tilingDataPtr.numCopyRow;
+    tilingDataPtr.numLastTailRow = rowNumTotal % tilingDataPtr.numCopyRow;
+    tilingDataPtr.numTailTimes = patchTotal / tilingDataPtr.numCore;
+    tilingDataPtr.numHeadCore = patchTotal % tilingDataPtr.numCore;
+    tilingDataPtr.numTailCore = tilingDataPtr.numCore - tilingDataPtr.numHeadCore;
+    tilingDataPtr.numHeadTimes = tilingDataPtr.numTailTimes + 1;
 
-    if (tilingDataPtr->numLastTailRow == 0 &&
-        tilingDataPtr->numCopyRow % DYNAMIC_QUANT_ALIGN_NUM_SCALE == 0 &&
-        tilingDataPtr->sizeH % DYNAMIC_QUANT_ALIGN_SIZE == 0) {
-        tilingDataPtr->alignType = DYNAMIC_QUANT_STATUS_ALIGN;
+    if (tilingDataPtr.numLastTailRow == 0 &&
+        tilingDataPtr.numCopyRow % DYNAMIC_QUANT_ALIGN_NUM_SCALE == 0 &&
+        tilingDataPtr.sizeH % DYNAMIC_QUANT_ALIGN_SIZE == 0) {
+        tilingDataPtr.alignType = DYNAMIC_QUANT_STATUS_ALIGN;
     }
     return Status::OkStatus();
 }
@@ -194,10 +194,10 @@ Status DynamicQuantTiling(const LaunchParam &launchParam, KernelInfo &kernelInfo
     tilingDataPtr->asymmetric = *reinterpret_cast<uint32_t *>(&attrs.asymmetric);
 
     uint64_t rowNumTotal = 1;
-    Status res = ParseShape(launchParam, tilingDataPtr, &rowNumTotal);
+    Status res = ParseShape(launchParam, *tilingDataPtr, rowNumTotal);
     OP_TILING_CHECK_STATUS_RETURN(res);
 
-    Status ret = SetTilingData(tilingDataPtr, rowNumTotal);
+    Status ret = SetTilingData(*tilingDataPtr, rowNumTotal);
     OP_TILING_CHECK_STATUS_RETURN(ret);
 
     MKI_LOG(INFO) << "numCore = "           << tilingDataPtr->numCore
