@@ -20,7 +20,7 @@
 - 编译自定义算子目录
     - bash build.sh
         
-        该脚本目前支持: default|clean|unittest| --use_cxx11_abi=0|--use_cxx11_abi=1|--debug
+        该脚本目前支持: default|clean|unittest| --use_cxx11_abi=0|--use_cxx11_abi=1|--debug|--msdebug
 - 执行用例
     - bash build.sh unittest
 
