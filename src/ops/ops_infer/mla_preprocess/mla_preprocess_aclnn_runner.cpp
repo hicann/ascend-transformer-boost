@@ -71,7 +71,7 @@ Status MlaPreprocessAclnnRunner::BuildAclnnVariantPack(const RunnerVariantPack &
             ATB_LOG(ERROR) << GetLogPrefix() << "create aclTensor by aclCreateTensor failed!";
             return ret;
         }
-        aclnnTensorPtr->tensorIdx = i;
+        aclnnTensorPtr->tensorIdx = static_cast<int>(i);
         aclnnTensorPtr->needUpdateTensorDataPtr = true;
         this->aclnnVariantPack_.aclInTensors[i] = aclnnTensorPtr;
     }
@@ -93,7 +93,7 @@ Status MlaPreprocessAclnnRunner::BuildAclnnVariantPack(const RunnerVariantPack &
             ATB_LOG(ERROR) << GetLogPrefix() << "create aclTensor by aclCreateTensor failed!";
             return ret;
         }
-        aclnnTensorPtr->tensorIdx = i;
+        aclnnTensorPtr->tensorIdx = static_cast<int>(i);
         aclnnTensorPtr->needUpdateTensorDataPtr = true;
         this->aclnnVariantPack_.aclOutTensors[i] = aclnnTensorPtr;
     }

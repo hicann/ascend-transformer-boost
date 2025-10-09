@@ -958,7 +958,7 @@ Status GraphRunner::ExecuteAllRunner(RunnerVariantPack &runnerVariantPack)
                     runnerVariantPack.mstxMemRegister->AddTensorMemRegions(tensor.deviceData, static_cast<uint64_t>(TensorUtil::AlignInt(tensor.dataSize, ALIGN_INT)));
                 }
             }
-            if (runnerVariantPack.mstxMemRegister->CheckTensorRange()) {
+            if (static_cast<bool>(runnerVariantPack.mstxMemRegister->CheckTensorRange())) {
                 runnerVariantPack.mstxMemRegister->MstxMemRegionsRegister();
             }
         }
@@ -973,7 +973,8 @@ Status GraphRunner::ExecuteAllRunner(RunnerVariantPack &runnerVariantPack)
             << "] execute fail, runner name:" << node.runner->GetName();
             return st;
         }
-        if (runnerVariantPack.mstxMemRegister != nullptr && runnerVariantPack.mstxMemRegister->CheckTensorRange()) {
+        if (runnerVariantPack.mstxMemRegister != nullptr &&
+            static_cast<bool>(runnerVariantPack.mstxMemRegister->CheckTensorRange())) {
             runnerVariantPack.mstxMemRegister->MstxMemRegionsUnregister();
         }
     }
