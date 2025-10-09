@@ -197,7 +197,7 @@ function fn_build_catlass()
     cd $THIRD_PARTY_DIR
     branch=catlass-v1-stable
     echo  "current branch for catlass: $branch"
-    git clone --branch $branch --depth 1 https://gitee.com/ascend/catlass.git
+    git clone --branch $branch --depth 1 https://gitcode.com/cann/catlass.git
 }
 
 function fn_build_nlohmann_json()
