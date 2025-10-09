@@ -85,7 +85,7 @@ Status GeluForwardTiling(const LaunchParam &launchParam, KernelInfo &kernelInfo)
         reinterpret_cast<GeluForwardTilingData *>(kernelInfo.GetTilingHostAddr());
     MKI_CHECK(tilingDataPtr != nullptr, "tilingDataPtr should not be empty",
                  return Status::FailStatus(ERROR_INVALID_VALUE, "tilingDataPtr should not be empty"));
-    MKI_CHECK(FillTilingParam(launchParam, tilingDataPtr, blockDim), "FillTilingParam Failed.",
+    MKI_CHECK(FillTilingParam(launchParam, *tilingDataPtr, blockDim), "FillTilingParam Failed.",
                  return Status::FailStatus(ERROR_INVALID_VALUE, "FillTilingParam Failed."));
     kernelInfo.SetBlockDim(blockDim);
     kernelInfo.SetTilingId(dataType); // 不同的数据类型用不同的分核策略，所以暂时用数据类型的枚举来表示分核ID

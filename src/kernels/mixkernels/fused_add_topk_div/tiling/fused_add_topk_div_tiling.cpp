@@ -291,7 +291,7 @@ namespace AtbOps {
         auto inputDatatype = launchParam.GetInTensor(X_INPUT_INDEX).desc.dtype;
         tilingDataPtr->dtype = g_dtypeMap[inputDatatype];
  
-        auto checkInputInfo = GetInputInfo(launchParam, tilingDataPtr);
+        auto checkInputInfo = GetInputInfo(launchParam, *tilingDataPtr);
         if (!checkInputInfo.Ok()) {
             return Status::FailStatus(ERROR_INVALID_VALUE);
         }
@@ -303,7 +303,7 @@ namespace AtbOps {
         kernelInfo.SetTilingId(tilingKey);
         uint32_t syncWorkspaceSize = sysWorkspaceSize + blockNum * tilingDataPtr->workspacePerCore;
         kernelInfo.GetScratchSizes() = {syncWorkspaceSize};
-        PrintTilingData(tilingDataPtr);
+        PrintTilingData(*tilingDataPtr);
         return Status::OkStatus();
     }
 } // namespace AtbOps
