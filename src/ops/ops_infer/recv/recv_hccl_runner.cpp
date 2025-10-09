@@ -49,7 +49,7 @@ Status RecvHcclRunner::ExecuteImpl(RunnerVariantPack &runnerVariantPack)
                  GetExecuteStream(runnerVariantPack.context));
     if (ret != HCCL_SUCCESS) {
         ATB_LOG(ERROR) << GetLogPrefix() << "HcclRecv Execute failed, HcclResult:" << ret;
-        return ERROR_CANN_ERROR;
+        return ConvertHcclResultToStatus(ret);
     }
     return NO_ERROR;
 }
