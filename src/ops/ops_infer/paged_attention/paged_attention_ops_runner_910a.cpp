@@ -72,7 +72,7 @@ Status PagedAttentionOpsRunner910A::SetupKernelGraph(const OpsTensorPack &opsTen
 
     size_t internalTensorId = 0;
     Mki::Tensor &transdataQResultTensor = kernelGraph_.internalTensors.at(internalTensorId++);
-    Mki::Tensor &mulQTensor = kernelGraph_.internalTensors.at(internalTensorId++);
+
     Mki::Tensor *transdataAttnMaskTensor =
         ((attnMaskFormat == static_cast<Mki::TensorFormat>(ACL_FORMAT_ND)) && needMask) ?
             &kernelGraph_.internalTensors.at(internalTensorId++) :
@@ -95,13 +95,6 @@ Status PagedAttentionOpsRunner910A::SetupKernelGraph(const OpsTensorPack &opsTen
         ntokens_ = launchParam.GetInTensor(0).desc.dims.at(1);
         hiddenSize_ = launchParam.GetInTensor(0).desc.dims.at(2); // 2: 第三维
     };
-
-    // muls
-    auto &mulsQNode = kernelGraph_.nodes.at(nodeId++);
-    mulsQNode.opDesc = {0, "ElewiseOperation", AsdOps::OpParam::Elewise({AsdOps::OpParam::Elewise::ELEWISE_MULS, 1.0})};
-    mulsQNode.inTensors = {&transdataQResultTensor};
-    mulsQNode.inTensorViewFuncs.resize(mulsQNode.inTensors.size());
-    mulsQNode.outTensors = {&mulQTensor};
 
     // Convert attentionMask from ND format to NZ format
     if ((attnMaskFormat == static_cast<Mki::TensorFormat>(ACL_FORMAT_ND)) && needMask) {
@@ -127,9 +120,9 @@ Status PagedAttentionOpsRunner910A::SetupKernelGraph(const OpsTensorPack &opsTen
 
     if (needMask && (attnMaskFormat == static_cast<Mki::TensorFormat>(ACL_FORMAT_ND))) {
         pagedAttentionNode.inTensors = {
-            &mulQTensor, &keyCache, &valueCache, &blockTables, &contextLens, transdataAttnMaskTensor, logN};
+            &transdataQResultTensor, &keyCache, &valueCache, &blockTables, &contextLens, transdataAttnMaskTensor, logN};
     } else {
-        pagedAttentionNode.inTensors = {&mulQTensor, &keyCache, &valueCache, &blockTables, &contextLens, mask, logN};
+        pagedAttentionNode.inTensors = {&transdataQResultTensor, &keyCache, &valueCache, &blockTables, &contextLens, mask, logN};
     }
     pagedAttentionNode.outTensors = {&context};
     pagedAttentionNode.inTensorViewFuncs.resize(pagedAttentionNode.inTensors.size()); // view
