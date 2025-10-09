@@ -2,7 +2,7 @@
 #
 # Copyright (c) 2024 Huawei Technologies Co., Ltd.
 # This file is a part of the CANN Open Software.
-# Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+# Licensed under CANN Open Software License Agreement Version 2.0 (the "License").
 # Please refer to the License for details. You may not use this file except in compliance with the License.
 # THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
 # INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
@@ -154,20 +154,14 @@ function fn_build_mki()
         return 0
     fi
     cd $THIRD_PARTY_DIR
-    if [ ! -d "ascend-boost-comm" ]; then
+    if [ ! -d "Mind-KernelInfra" ]; then
         branch=$(git symbolic-ref -q --short HEAD || git describe --tags --exact-match 2> /dev/null || echo "commit_id")
         [[ "$branch" == *br_personal* || "$branch" == "commit_id" || "$branch" == *revert-mr* ]] && branch=master
         echo  "current branch for mki: $branch"
-        git clone --branch $branch --depth 1 https://gitcode.com/cann/ascend-boost-comm.git
-
-        # 尝试克隆对应分支，失败则回退到 master
-        if ! git clone --branch $branch --depth 1 https://gitcode.com/cann/ascend-boost-comm.git 2>/dev/null; then
-            echo "Branch '$branch' not found in ascend-boost-comm, falling back to 'master'"
-            git clone --branch master --depth 1 https://gitcode.com/cann/ascend-boost-comm.git
-        fi
+        git clone --branch $branch --depth 1 https://gitcode.com/cann/ascend-transformer-boost.git Mind-KernelInfra
     fi
-    cd ascend-boost-comm
-    echo  "current commid id of ascend-boost-comm: $(git rev-parse HEAD)"
+    cd Mind-KernelInfra
+    echo  "current commid id of Mind-KernelInfra: $(git rev-parse HEAD)"
     if [ "$USE_CXX11_ABI" == "ON" ];then
         build_options="$build_options --use_cxx11_abi=1"
     else
@@ -175,8 +169,8 @@ function fn_build_mki()
     fi
     if [ "$MKI_BUILD_MODE" == "Test" ]; then
         echo "mki build by Test mode"
-        mkdir -p $THIRD_PARTY_DIR/ascend-boost-comm/3rdparty
-        cp -r $THIRD_PARTY_DIR/nlohmannJson $THIRD_PARTY_DIR/ascend-boost-comm/3rdparty
+        mkdir -p $THIRD_PARTY_DIR/Mind-KernelInfra/3rdparty
+        cp -r $THIRD_PARTY_DIR/nlohmannJson $THIRD_PARTY_DIR/Mind-KernelInfra/3rdparty
         build_type=testframework
     elif [ "$CMAKE_BUILD_TYPE" == "Release" ]; then
         echo "mki build by Develop mode"
