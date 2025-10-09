@@ -1,0 +1,87 @@
+name: Task|任务
+description: 当需求已澄清并需拆解为具体开发/测试/运维任务时，请使用此模板。
+title: "[Task|任务]: "
+labels: ["task"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        需求已确认，现需落地执行。请按以下模板填写，方便排期、估时与追踪。
+  - type: input
+    attributes:
+      label: 关联需求
+      description: 粘贴对应 Requirement issue 编号（如 #1234），便于回溯
+    validations:
+      required: true
+  - type: dropdown
+    attributes:
+      label: 任务类型
+      options:
+        - 开发
+        - 测试用例
+        - 自动化脚本
+        - 运维配置
+        - 文档
+        - 其他
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: 任务目标（What）
+      description: 一句话说明本任务交付物是什么，验收标准是什么
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: 背景 & 上下文（Why）
+      description: 简述上游需求、技术方案、前置依赖或风险
+    validations:
+      required: false
+  - type: textarea
+    attributes:
+      label: 详细步骤（How）
+      description: |
+        可按“检查点”方式列出关键步骤或技术要点，支持 Markdown 子任务列表
+        - [ ] 步骤 1
+        - [ ] 步骤 2
+    validations:
+      required: false
+  - type: input
+    attributes:
+      label: 预估工时
+      description: 请填写“人时”或“人日”，如 8h / 2d
+    validations:
+      required: true
+  - type: dropdown
+    attributes:
+      label: 优先级
+      options:
+        - 阻塞发布
+        - 本期必须
+        - 可延期
+    validations:
+      required: true
+  - type: input
+    attributes:
+      label: 期望完成日期
+      description: 格式 YYYY-MM-DD
+    validations:
+      required: false
+  - type: textarea
+    attributes:
+      label: 前置依赖
+      description: 列出本任务开始前必须完成的其他任务或 MR/PR
+    validations:
+      required: false
+  - type: textarea
+    attributes:
+      label: 测试要点
+      description: 需要 QA 重点验证的场景、边界或回归范围
+    validations:
+      required: false
+  - type: textarea
+    attributes:
+      label: 备注 / 风险
+      description: 任何需要同步的额外信息
+    validations:
+      required: false
