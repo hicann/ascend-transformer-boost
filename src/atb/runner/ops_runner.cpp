@@ -17,7 +17,6 @@
 #include <securec.h>
 #include <unistd.h>
 #include <acl/acl_rt.h>
-#include <iostream>
 #include <mki/utils/time/timer.h>
 #include <mki/utils/file_system/file_system.h>
 #include <asdops/params/params.h>
@@ -76,7 +75,6 @@ OpsRunner::OpsRunner(const std::string &name) : Runner(name)
 
     // 在此对g_globalKernelCaches进行resize
     if (g_globalKernelCaches.size() != RunnerTypeRegister::GetRunnerTypeMapSize()) {
-        std::cout << "---------size of RunnerTypeMap: " << RunnerTypeRegister::GetRunnerTypeMapSize() << std::endl;
         g_globalKernelCaches.resize(RunnerTypeRegister::GetRunnerTypeMapSize());
     }
 }

@@ -32,7 +32,7 @@ template <typename T> bool ParamCompareFuncImpl(const Mki::Any &any1, const Mki:
 
 class OpParamRegister {
 public:
-    OpParamRegister(size_t typeHashCode, std::string typeName, ParamCompareFunc func) noexcept;
+    OpParamRegister(size_t typeHashCode, ParamCompareFunc func) noexcept;
     static std::map<std::size_t, ParamCompareFunc> &GetOpParamCompareMap();
 };
 }
@@ -41,5 +41,5 @@ public:
 #define CONCAT2(a, b) CONCAT (a, b)
 #define UNIQUE_NAME(base) CONCAT2(base, __COUNTER__)
 #define REG_OP_PARAM(typeName) \
-    static atb::OpParamRegister UNIQUE_NAME(opParamRegister)(typeid(typeName).hash_code(), #typeName, atb::ParamCompareFuncImpl<typeName>)
+    static atb::OpParamRegister UNIQUE_NAME(opParamRegister)(typeid(typeName).hash_code(), atb::ParamCompareFuncImpl<typeName>)
 #endif

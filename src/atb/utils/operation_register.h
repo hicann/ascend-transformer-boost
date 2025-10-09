@@ -12,14 +12,12 @@
  #define ATB_OPERATION_REGISTER_H
  #include <map>
  #include <string>
- #include <iostream>
 
 namespace atb {
 class RunnerTypeRegister {
 public:
     RunnerTypeRegister(const char* runnerType) noexcept
     {
-        std::cout << "--------------RunnerType: " << runnerType << ", and runnerIdx: " << GetRunnerIdx() << std::endl;
         ATB_CHECK(runnerType != nullptr && runnerType[0] != '\0', "Invalid runnerType provided", return);
         auto &runnerTypeMap = GetRunnerTypeMap();
         auto res = runnerTypeMap.emplace(runnerType, GetRunnerIdx()++);
