@@ -43,7 +43,7 @@ const static std::map<std::string, SocVersion> CONVERT_MAP = {
 
 namespace {
 constexpr uint32_t DECIMAL = 10;
-uint32_t safeChangeStringtoUnit32(const std::string &str)
+uint32_t safeChangeStringtoUint32(const std::string &str)
 {
     if (str.empty()) {
         MKI_LOG(WARN) << "var is empty";
@@ -76,7 +76,7 @@ static inline uint32_t GetCoreNumByType(fe::PlatFormInfos *platformInfo, bool is
     }
     ret = platformInfo->GetPlatformResWithLock(STR_SOC_INFO, key, val);
     MKI_LOG_IF(!ret, ERROR) << "get platform failed, key is " << key << ", val is" << val;
-    return safeChangeStringtoUnit32(val);
+    return safeChangeStringtoUint32(val);
 }
 
 uint32_t PlatformAscendC::GetCoreNumVector(void) const
@@ -85,7 +85,7 @@ uint32_t PlatformAscendC::GetCoreNumVector(void) const
         std::string val;
         bool ret = GetPlatFormInfo()->GetPlatformResWithLock(STR_SOC_INFO, STR_CORE_CNT_VEC, val);
         MKI_LOG_IF(!ret, ERROR) << "get platform vector num failed, val is " << val;
-        return safeChangeStringtoUnit32(val);
+        return safeChangeStringtoUint32(val);
     }
     return 0;
 }
