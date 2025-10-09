@@ -158,7 +158,7 @@ function fn_build_mki()
         branch=$(git symbolic-ref -q --short HEAD || git describe --tags --exact-match 2> /dev/null || echo "commit_id")
         [[ "$branch" == *br_personal* || "$branch" == "commit_id" || "$branch" == *revert-mr* ]] && branch=master
         echo  "current branch for mki: $branch"
-        git clone --branch $branch --depth 1 https://gitcode.com/cann/ascend-transformer-boost.git Mind-KernelInfra
+        git clone --branch $branch --depth 1 https://gitcode.com/cann/ascend-boost-comm.git Mind-KernelInfra
     fi
     cd Mind-KernelInfra
     echo  "current commid id of Mind-KernelInfra: $(git rev-parse HEAD)"
