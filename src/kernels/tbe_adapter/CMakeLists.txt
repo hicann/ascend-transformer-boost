@@ -19,6 +19,14 @@ set(ASCEND_PATH $ENV{ASCEND_HOME_PATH})
 set(METADEF_DIR ${PROJECT_SOURCE_DIR}/3rdparty/metadef)
 set(CANN_OPS_DIR ${PROJECT_SOURCE_DIR}/3rdparty/cann-ops-adv/src/transformer)
 set(TBE_TILING_DIR ${PROJECT_SOURCE_DIR}/3rdparty/canndev/ops/built-in/op_tiling)
+set(OPS_NN_DIR ${PROJECT_SOURCE_DIR}/3rdparty/ops-nn)
+set(OPS_BASE_DIR ${PROJECT_SOURCE_DIR}/3rdparty/opbase)
+
+set(OPS_SOURCE
+    ${OPS_NN_DIR}/index/scatter_elements_v2/op_host/scatter_elements_v2_tiling.cpp
+    ${OPS_NN_DIR}/norm/layer_norm_v4/op_host/layer_norm_v4_tiling.cpp
+    ${OPS_NN_DIR}/norm/layer_norm_v4/op_host/layer_norm_v4_tiling_base.cpp
+)
 
 if("${PACKAGE_COMPILE}" STREQUAL "ON" AND NOT "${LOCAL_RELEASE_COMPILE}" STREQUAL "ON")
     set(ASDOPS_METADEF_FILES
@@ -128,8 +136,6 @@ if("${PACKAGE_COMPILE}" STREQUAL "ON" AND NOT "${LOCAL_RELEASE_COMPILE}" STREQUA
         ${TBE_TILING_DIR}/runtime/layer_norm_v3.cc
         ${TBE_TILING_DIR}/runtime/layer_norm_v3/layer_norm_v3_tiling.cc
         ${TBE_TILING_DIR}/runtime/layer_norm_v3/layer_norm_v3_tiling_base.cc
-        ${OPS_THIRD_PARTY_DIR}/canndev/ops/norm/layer_norm_v4/op_host/layer_norm_v4_tiling.cpp
-        ${OPS_THIRD_PARTY_DIR}/canndev/ops/norm/layer_norm_v4/op_host/layer_norm_v4_tiling_base.cpp
         ${TBE_TILING_DIR}/runtime/one_hot/one_hot.cc
         ${TBE_TILING_DIR}/runtime/one_hot/one_hot_tiling.cc
         ${TBE_TILING_DIR}/runtime/pack_tiling.cc
@@ -155,8 +161,8 @@ if("${PACKAGE_COMPILE}" STREQUAL "ON" AND NOT "${LOCAL_RELEASE_COMPILE}" STREQUA
         ${TBE_TILING_DIR}/runtime/space_to_depth_tiling.cc
         ${TBE_TILING_DIR}/runtime/view_copy.cc
         ${TBE_TILING_DIR}/runtime/view_copy_tiling.cc
-        ${OPS_THIRD_PARTY_DIR}/canndev/ops/index/scatter_elements_v2/op_host/scatter_elements_v2_tiling.cpp
         ${TBE_TILING_DIR}/runtime/runtime2_util.cc
+        ${TBE_TILING_DIR}/runtime/transpose_tiling_with_gather.cc
         ${TBE_TILING_DIR}/../fusion_pass/common/fp16_t.cc
         ${PROJECT_SOURCE_DIR}/3rdparty/canndev/ops/common/src/op_util.cc
         ${PROJECT_SOURCE_DIR}/3rdparty/canndev/ops/common/src/getcdim.cc
@@ -558,6 +564,7 @@ set_source_files_properties(
     ${TILING_API_SRCS}
     ${ASDOPS_TILING_FILES}
     ${ASDOPS_METADEF_FILES}
+    ${OPS_SOURCE}
     PROPERTIES
     COMPILE_FLAGS "-w"
 )
@@ -624,12 +631,45 @@ add_custom_target(OPS_REUSE_SRC_TARGET ALL
 add_library(ops_reuse_kernels OBJECT ${OPS_REUSE_BINARY_LIST} ${CMAKE_BINARY_DIR}/ops_wait_flag.cpp)
 add_dependencies(ops_reuse_kernels OPS_REUSE_SRC_TARGET)
 target_compile_definitions(ops_reuse_kernels PRIVATE OpSpace=AsdOps)
+
+# 部分算子源码使用的是迁移后的算子仓的源码，这部分代码新创建一个.o对象进行编译设置
+add_library(tbe_adapter_ops OBJECT ${OPS_SOURCE})
+target_include_directories(tbe_adapter_ops PRIVATE
+    ${KERNEL_TILING_DIR}
+    ${TILING_API_BASE_DIR}
+    ${TILING_API_BASE_DIR}/tiling
+    ${OPS_BASE_DIR}/include/op_common/op_host
+    ${OPS_BASE_DIR}/include/op_common
+    ${OPS_BASE_DIR}/include
+    ${OPS_NN_DIR}/common/inc
+    ${METADEF_DIR}/inc/external
+    $ENV{ASCEND_HOME_PATH}/include
+    $ENV{ASCEND_HOME_PATH}/include/tiling
+    $ENV{ASCEND_HOME_PATH}/include/toolchain
+)
+target_compile_definitions(tbe_adapter_ops PUBLIC
+    fe=AsdOpsFe
+    ge=AsdOpsGe
+    gert=AsdOpsGeRt
+    optiling=AsdOpsTiling
+    error_message=AsdOpsErrorMessage
+    ErrorManager=AsdOpsErrorManager
+    td_dsl=AsdOpsTdDsl
+    tuningtiling=AsdOpsTuningTiling
+    RuntimeKb=AsdOpsRuntimeKb
+    gemm_cache_tiling=AsdOpsGemmCacheTiling
+    transformer=AsdOpsTransformer
+    ops=AsdOpsOps
+    AscendC=AsdOpsAscendC
+    matmul_tiling=AsdOpsMatmulTiling
+    platform_ascendc=AsdOpsPlatformAscendC
+)
  
 # Target
 add_library(tbe_adapter SHARED ${SOURCE_FILES} ${ASDOPS_METADEF_FILES} ${ASDOPS_TILING_FILES} ${TILING_API_SRCS})
 add_dependencies(tbe_adapter GEN_KERNEL_TILING)
 target_include_directories(tbe_adapter PRIVATE ${ASDOPS_INC_DIRS})
-target_link_libraries(tbe_adapter PRIVATE mmpa c_sec ascendalog mix_reuse_kernels ops_reuse_kernels)
+target_link_libraries(tbe_adapter PRIVATE mmpa c_sec ascendalog mix_reuse_kernels ops_reuse_kernels tbe_adapter_ops)
 
 add_definitions(-DLOG_CPP)
 
