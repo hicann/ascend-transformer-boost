@@ -94,9 +94,11 @@ source ${HOME}/Ascend/ascend-toolkit/set_env.sh
 ```
 pip3 install attrs cython 'numpy>=1.19.2,<=1.24.0' decorator sympy cffi pyyaml pathlib2 psutil protobuf==3.20.0 scipy requests absl-py --user
 ```
-### 详细安装指南 
+### CANN详细安装指南 
 开发者可访问[昇腾文档-昇腾社区](https://www.hiascend.com/document)->CANN商用版->软件安装，查看CANN软件安装引导，根据机器环境、操作系统和业务场景选择后阅读详细安装步骤。
 
+### ATB安装部署相关依赖说明
+在编译加速库之前，需访问[加速库包安装部署](https://www.hiascend.com/document/detail/zh/canncommercial/82RC1/acce/ascendtb/ascendtb_0034.html)查看加速库相关依赖的版本要求，并进行对应依赖的安装部署。
 ### 基础工具版本要求与安装
 
 安装CANN之后，还需要安装一些工具方便后续开发，参见以下内容：
@@ -134,9 +136,9 @@ pip3 install attrs cython 'numpy>=1.19.2,<=1.24.0' decorator sympy cffi pyyaml p
         ```
  - run包使用<br>
     - run包获取
-    1. 进入网址：https://www.hiascend.com/developer/download/commercial
-    2. 产品系列选择服务器，产品型号根据设备型号选择，选择所需解决方案版本，随后在CANN区域选择软件包跟随指引即可获取相关run包
-    - 软件包名为：Ascend-cann-atb_{version}_linux-{arch}.run <br>
+      1. 进入网址：https://www.hiascend.com/developer/download/commercial
+      2. 产品系列选择服务器，产品型号根据设备型号选择，选择所需解决方案版本，随后在CANN区域选择软件包跟随指引即可获取相关run包
+    - 软件包名为：Ascend-cann-nnal_{version}_linux-{arch}.run  
     其中，{version}表示软件版本号，{arch}表示CPU架构。
     - 安装run包（需要依赖cann环境）
         ```sh
@@ -150,7 +152,7 @@ pip3 install attrs cython 'numpy>=1.19.2,<=1.24.0' decorator sympy cffi pyyaml p
 ### 调用示例说明
 本节示例代码分别展示了如何通过Python和C++调用算子。
 #### Python
-
+运行以下代码需要导入ATB Python API模块torch_atb，该插件运行依赖PyTorch和torch_npu，可访问[加速库包安装部署](https://www.hiascend.com/document/detail/zh/canncommercial/82RC1/acce/ascendtb/ascendtb_0034.html)查看版本要求和安装指导。  
 ```Python
 import torch
 import torch_atb#导入ATB Python API模块
@@ -241,7 +243,7 @@ ATB不推荐用户直接将样例作为业务代码，也不保证此种做法�
 您可参考以下文档进行自定义算子的开发：
 - [从开发一个简单算子开始](docs/从开发一个简单算子出发.md)：以简单的Add算子的增加为例，介绍了ATB算子开发的交付件和开发流程，适合新入门的选手。
 - [开发指南](docs/开发指南.md)：以一个融合算子为例，详细介绍了ATB算子开发的流程，以及如何对算子进行功能、精度、性能测试。  
-**注意**：您在开发过程中遇到的问题，可参考[ATB日志与调试](./debug_tour.md)尝试解决。
+**注意**：您在开发过程中遇到的问题，可参考[ATB日志与调试](docs/日志与调试.md)尝试解决。
 ## 参与贡献
  
 1.  fork仓库
