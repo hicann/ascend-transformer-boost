@@ -425,8 +425,8 @@ private:
             return Status::FailStatus(ERROR_INVALID_VALUE, "The dims of inDimsGamma should be equal to 2");
         }
         for (size_t i = 0; i < inDimsGamma.size(); ++i) {
-            int64_t dimsSize = inDims.size();
-            if (inDimsGamma[i] != inDims[dimsSize - COHERE_LAYER_NORM_GAMMA_DIM_SIZE + i]) {
+            int64_t dimsSize = static_cast<int64_t>(inDims.size());
+            if (inDimsGamma[i] != inDims[dimsSize - COHERE_LAYER_NORM_GAMMA_DIM_SIZE + static_cast<int64_t>(i)]) {
                 return Status::FailStatus(ERROR_INVALID_VALUE,
                                           "The dims of inDimsGamma should be equal to the last two dims of inDims");
             }

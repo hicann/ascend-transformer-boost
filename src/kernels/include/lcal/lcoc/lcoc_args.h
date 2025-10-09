@@ -13,6 +13,7 @@
 #include <map>
 #include <lcoc_base.h>
 #include <lcal_types.h>
+#include <hccl_types.h>
 
 constexpr int64_t WORKSPACE_REDUCE_SIZE = 4000000;
 #pragma once
