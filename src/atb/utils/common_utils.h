@@ -29,7 +29,7 @@
 #include <vector>
 #include <string>
 #include "atb/svector.h"
-
+#include "atb/types.h"
 namespace atb {
 template <typename T> std::vector<T> SVectorToVector(const SVector<T> &svector)
 {
