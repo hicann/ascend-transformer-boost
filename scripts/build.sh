@@ -159,6 +159,12 @@ function fn_build_mki()
         [[ "$branch" == *br_personal* || "$branch" == "commit_id" || "$branch" == *revert-mr* ]] && branch=master
         echo  "current branch for mki: $branch"
         git clone --branch $branch --depth 1 https://gitcode.com/cann/ascend-boost-comm.git
+
+        # 尝试克隆对应分支，失败则回退到 master
+        if ! git clone --branch $branch --depth 1 https://gitcode.com/cann/ascend-boost-comm.git 2>/dev/null; then
+            echo "Branch '$branch' not found in ascend-boost-comm, falling back to 'master'"
+            git clone --branch master --depth 1 https://gitcode.com/cann/ascend-boost-comm.git
+        fi
     fi
     cd ascend-boost-comm
     echo  "current commid id of ascend-boost-comm: $(git rev-parse HEAD)"
