@@ -9,13 +9,13 @@
  */
 #ifndef REPORT_TIMING_H
 #define REPORT_TIMING_H
+#include <cstdint>
 #include <cstring>
 #include <string>
 #include <sys/syscall.h>
 #include <unistd.h>
 #include <securec.h>
 #include <sys/types.h>
-#include <sys/stat.h>
 #include <fcntl.h>
 #include <toolchain/slog.h>
 #include <toolchain/prof_api.h>
@@ -163,7 +163,7 @@ public:
             LcclDumpBlockInfo *b = &(u->blockInfo);
             LcclDumpLogInfo *l = &((u + 1)->logInfo);
 
-            int32_t logLen = (dumpSizePerCore - b->dumpOffset) / sizeof(LcclDumpUnion) - 1;
+            int32_t logLen = static_cast<int32_t>((dumpSizePerCore - b->dumpOffset) / sizeof(LcclDumpUnion) - 1);
             for (int32_t logInfoIdx = 0; logInfoIdx < logLen; ++logInfoIdx) {
                 LcclDumpLogInfo *logInfo = l + logInfoIdx;
                 auto ret = memcpy_s(t.data, sizeof(LcclDumpLogInfo), logInfo, sizeof(LcclDumpLogInfo));

@@ -111,7 +111,7 @@ private:
         auto &tensorQRope = launchParam.GetInTensor(DIM_1);
         outTensors[DIM_0].desc = tensorQ.desc;
         outTensors[DIM_0].desc.dtype = tensorQRope.desc.dtype;
-        if (param.isRing) {
+        if (static_cast<bool>(param.isRing)) {
             // outTensor1  lse
             outTensors[DIM_1].desc = tensorQ.desc;
             if (tensorQ.desc.dims.size() == DIM_2) {
@@ -251,7 +251,7 @@ private:
         auto &tensorVcache = launchParam.GetInTensor(DIM_4); // V.shape = [batch, max_seqlen, hiddensize]
         auto kvSeqLen = param.kvSeqLen;
         uint32_t batch = kvSeqLen.size();
-        uint32_t head = param.kvHead;
+        uint32_t head = static_cast<uint32_t>(param.kvHead);
         if (CheckEmptyTensor(tensorKcache) || CheckEmptyTensor(tensorVcache)) {
             MKI_CHECK(CheckEmptyTensor(tensorKcache) && CheckEmptyTensor(tensorVcache),
                       "normal k and v should both be empty tensor if batches are split",
