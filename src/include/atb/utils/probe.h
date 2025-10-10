@@ -60,6 +60,9 @@ public:
     static bool IsOverflowStop();
     static void ReportOverflowKernel(const std::string &kernelPath);
 
+    static void UpdateConfig();
+    static bool IsSaveTensorInSpecificDir(const std::string &tensorDir);
+
 public:
     static bool ReportOperationGraphEnable();
     static void ReportOperationGraph(const std::string &opName, const std::string &graph);
