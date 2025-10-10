@@ -174,4 +174,12 @@ void Probe::ReportOverflowKernel(const std::string &kernelPath)
 {
     (void)kernelPath;
 }
+
+void Probe::UpdateConfig() {}
+
+bool Probe::IsSaveTensorInSpecificDir(const std::string &tensorDir)
+{
+    (void)tensorDir;
+    return true;
+}
 } // namespace atb
