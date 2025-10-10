@@ -284,7 +284,7 @@ OperationWrapper GraphBuilder::Build()
             }
         }
         for (const std::string &outTensorName : graphNode.outTensorIds) {
-            if (outTensorIds_.count(outTensorName)) {
+            if (outTensorIds_.count(outTensorName) != 0) {
                 node.outTensorIds.push_back(GetTensorId(outTensorName));
             } else {
                 uint32_t id = graphParam_.inTensorNum + graphParam_.outTensorNum + internalId++;

@@ -1074,7 +1074,7 @@ Status OperationBase::Execute(const VariantPack &variantPack, uint8_t *workspace
                                      OPERATION_EXECUTE :
                                      (executeType == EXECUTE_PRELAUNCH ? OPERATION_PRELAUNCH : OPERATION_LAUNCH);
     std::shared_ptr<MstxMemRegister> mstxMemRegister{nullptr};
-    if (workspaceSize && MstxMemRegister::IsMstxEnable()) {
+    if (workspaceSize != 0 && MstxMemRegister::IsMstxEnable()) {
         mstxMemRegister = std::make_shared<MstxMemRegister>();
         if (mstxMemRegister->MstxHeapRegister(workspace, workspaceSize) == NO_ERROR) {
             runnerVariantPack_.mstxMemRegister = mstxMemRegister.get();
