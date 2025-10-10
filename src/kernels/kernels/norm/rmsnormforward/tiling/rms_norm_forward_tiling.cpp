@@ -48,7 +48,7 @@ Status RmsNormForwardTiling(const LaunchParam &launchParam, KernelInfo &kernelIn
     auto gammaShape = launchParam.GetInTensor(GAMMA_INDEX).desc.dims;
     size_t gammaDimNum = launchParam.GetInTensor(GAMMA_INDEX).desc.dims.size();
     int64_t numRowTmp = 1;
-    int32_t startDim = xDimNum - gammaDimNum;
+    int32_t startDim = static_cast<int32_t>(xDimNum - gammaDimNum);
     MKI_CHECK(startDim >= 0, "x's dim should great than gamma's dim!",
               return Status::FailStatus(ERROR_INVALID_VALUE, "x's dim should great than gamma's dim!"));
     for (size_t i = 0; i < xDimNum - gammaDimNum; i++) {
@@ -56,9 +56,8 @@ Status RmsNormForwardTiling(const LaunchParam &launchParam, KernelInfo &kernelIn
                   "numRowTmp is invalid!", return Status::FailStatus(ERROR_INVALID_VALUE, "numRowTmp is invalid!"));
         numRowTmp *= xShape[i];
     }
-    for (size_t i = startDim; i < xDimNum; i++) {
-        MKI_CHECK(xShape[i] == gammaShape[i - startDim],
-                  "gamma shape invalid!",
+    for (size_t i = static_cast<size_t>(startDim); i < xDimNum; i++) {
+        MKI_CHECK(xShape[i] == gammaShape[i - static_cast<size_t>(startDim)], "gamma shape invalid!",
                   return Status::FailStatus(ERROR_INVALID_VALUE, "gamma shape invalid!"));
     }
     uint32_t numRow = static_cast<uint32_t>(numRowTmp);

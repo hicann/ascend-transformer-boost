@@ -14,6 +14,7 @@
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #pragma GCC diagnostic ignored "-Wfloat-equal"
 #include <torch/torch.h>
+#include "acl/acl.h"
 #pragma GCC diagnostic pop
 
 namespace TorchAtb {
