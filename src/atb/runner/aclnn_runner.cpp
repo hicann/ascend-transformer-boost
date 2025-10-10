@@ -32,7 +32,7 @@ Status AclnnRunner::SetupImpl(RunnerVariantPack &runnerVariantPack)
     // executorCache hit
     if (executorRepeatable_ &&
         GetSingleton<AclnnExecutorCache>().FetchCacheSlot(opName, runnerVariantPack, aclnnCacheSlot) == NO_ERROR) {
-        if (!IsAclnnRunnerVariankPackEqual(this->aclnnVariantPack_, runnerVariantPack)) {
+        if (!IsAclnnRunnerVariantPackEqual(this->aclnnVariantPack_, runnerVariantPack)) {
             ATB_LOG(INFO) << GetLogPrefix()
                           << "fetched cached runnerVariantPack not same as aclnnVariantPack_, build again";
             ret = BuildAclnnVariantPack(runnerVariantPack);

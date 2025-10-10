@@ -236,7 +236,7 @@ bool AreTensorVectorsEqual(
     return true;
 }
 
-bool IsAclnnRunnerVariankPackEqual(const AclNNVariantPack &aclnnVariantPack, const RunnerVariantPack &runnerVariantPack)
+bool IsAclnnRunnerVariantPackEqual(const AclNNVariantPack &aclnnVariantPack, const RunnerVariantPack &runnerVariantPack)
 {
     ATB_LOG(INFO) << "Compare AclNNVariantPack with RunnerVariantPack:";
     ATB_LOG(INFO) << PrintAclNNVariankPack(aclnnVariantPack);
@@ -252,7 +252,7 @@ bool IsAclnnRunnerVariankPackEqual(const AclNNVariantPack &aclnnVariantPack, con
     return true;
 }
 
-bool IsAclnnAtbVariankPackEqual(const AclNNVariantPack &aclnnVariantPack, const atb::VariantPack &atbVariantPack)
+bool IsAclnnAtbVariantPackEqual(const AclNNVariantPack &aclnnVariantPack, const atb::VariantPack &atbVariantPack)
 {
     ATB_LOG(INFO) << PrintAclNNVariankPack(aclnnVariantPack);
     ATB_LOG(INFO) << PrintATBVariankPack(atbVariantPack);
