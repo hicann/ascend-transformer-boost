@@ -46,6 +46,10 @@ add_custom_command(
         DEPENDS lccl_op lcoc_op
 )
 
+add_custom_target(lcal_cce_gen DEPENDS ${LCAL_CCE_PATH})
+add_dependencies(lcal lcal_cce_gen)
+add_dependencies(lcal_static lcal_cce_gen)
+
 set_source_files_properties(
         lcal_internal.cpp
         PROPERTIES

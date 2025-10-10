@@ -183,11 +183,35 @@ add_custom_target(mix_lccl_op2
 )
 add_dependencies(mix_lccl_op2 mix_lccl_op2_tmp_aic mix_lccl_op2_tmp_aiv)
 
+# 临时中间文件，作为不同.o文件的分隔符
+set(CONSTANT_FILE_SEPARATOR "${CMAKE_CURRENT_BINARY_DIR}/constant_separator.tmp")
+add_custom_command(
+        OUTPUT "${CONSTANT_FILE_SEPARATOR}"
+        COMMAND echo -n 'DDDD' > "${CONSTANT_FILE_SEPARATOR}"
+        COMMENT "Generating const file separator: ${CONSTANT_FILE_SEPARATOR}"
+)
+
+# 改用指定文件列表，避免find命令通配符被提前展开(globbing)问题
+set(OP_NAMES dump_lccl_op mix_lccl_op normal_lccl_op)
+set(OUTPUT_FILES "")
+foreach(OP_NAME IN LISTS OP_NAMES)
+        list(APPEND OUTPUT_FILES "${CONSTANT_FILE_SEPARATOR}")
+        list(APPEND OUTPUT_FILES "CMakeFiles/${OP_NAME}1.dir/lccl_op1.cpp.o")
+        list(APPEND OUTPUT_FILES "${CONSTANT_FILE_SEPARATOR}")
+        list(APPEND OUTPUT_FILES "CMakeFiles/${OP_NAME}2.dir/lccl_op2.cpp.o")
+endforeach()
+
 add_custom_target(lccl_op
         COMMAND echo "generating lccl op ... ENABLE_LCCL_910A5_OP=${ENABLE_LCCL_910A5_OP}"
         COMMAND rm -f lccl_op.o
-        COMMAND find CMakeFiles -name "*.o" ! -path "*tmp*" | sort | xargs -I {} sed '1s/^/DDDD/' {} >> lccl_op.o
+        COMMAND cat ${OUTPUT_FILES} > lccl_op.o
+        DEPENDS ${OUTPUT_FILES}
+        COMMAND ls -l lccl_op.o | xargs echo
         COMMAND truncate -c -s ${LCAL_1OP_BIN_SIZE} lccl_op.o
+        COMMAND ls -l lccl_op.o | xargs echo
         COMMAND rm -f ${LCAL_CCE_PATH}
 )
-add_dependencies(lccl_op dump_lccl_op1 dump_lccl_op2 mix_lccl_op1 mix_lccl_op2 normal_lccl_op1 normal_lccl_op2)
+
+foreach(OP_NAME IN LISTS OP_NAMES)
+        add_dependencies(lccl_op "${OP_NAME}1" "${OP_NAME}2")
+endforeach()
