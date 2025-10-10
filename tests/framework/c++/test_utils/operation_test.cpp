@@ -12,6 +12,7 @@
 #include <cstring>
 #include <acl/acl.h>
 #include <acl/acl_rt.h>
+#include <iomanip>
 #include <mki/types.h>
 #include "atb/utils/log.h"
 #include "atb/utils.h"
@@ -19,7 +20,7 @@
 #include "context/memory_context.h"
 #include "mki/utils/fp16/fp16_t.h"
 #include "atb/utils/singleton.h"
-#include <iomanip>
+#include "test_utils.h"
 
 const uint64_t MAX_NUMEL = 300000000000;
 
@@ -269,6 +270,56 @@ Status OperationTest::RunOperation()
     return ErrorType::NO_ERROR;
 }
 
+Status OperationTest::RunOperationWithPerf()
+{
+    Status st = NO_ERROR;
+    if (workSpace_ == nullptr) {
+        RunOperation();
+    }
+    std::vector<uint64_t> setupTime = {};
+    std::vector<uint64_t> executeTime = {};
+    std::vector<uint64_t> kernelTime = {};
+    uint64_t start, end;
+    aclError ret;
+    for (int i = 0; i < perfTimes_; ++i) {
+        // setup
+        start = std::chrono::high_resolution_clock::now();
+        st = operation_->Setup(variantPack_, workSpaceSize_, context_);
+        if (st != NO_ERROR) {
+            ATB_LOG(ERROR) << "Operation SetUp failed with error: " << st;
+            return st;
+        }
+        end = std::chrono::high_resolution_clock::now();
+        setupTime.push_back(end - start);
+        // execute
+        start = std::chrono::high_resolution_clock::now();
+        st = operation_->Execute(variantPack_, (uint8_t *)workSpace_, workSpaceSize_, context_);
+        if (st != NO_ERROR) {
+            ATB_LOG(ERROR) << "Operation Execute failed with error: " << st;
+            return st;
+        }
+        end = std::chrono::high_resolution_clock::now();
+        executeTime.push_back(end - start);
+    }
+        // wait for kernel to finish
+    start = std::chrono::high_resolution_clock::now();
+    ret = aclrtSynchronizeStream(context_->GetExecuteStream());
+    if (ret != NO_ERROR) {
+        ATB_LOG(ERROR) << "aclrtSynchronizeStream failed with error: " << ret;
+        return st;
+    }
+    end = std::chrono::high_resolution_clock::now();
+    kernelTime.push_back(end - start);
+    FilteredStats stat = CalculateFilteredMean(setupTime);
+    ATB_LOG(ERROR) << "setup: " << FilteredStatsToString(stat);
+    stat = CalculateFilteredMean(executeTime);
+    ATB_LOG(ERROR) << "execute: " << FilteredStatsToString(stat);
+    // stat = CalculateFilteredMean(kernelTime);
+    // ATB_LOG(ERROR) << "kernel: " << FilteredStatsToString(stat);
+    return ErrorType::NO_ERROR;
+}
+
+
 Status OperationTest::CopyDeviceTensorToHostTensor()
 {
     for (size_t i = 0; i < variantPack_.outTensors.size(); ++i) {
@@ -371,7 +422,7 @@ Status OperationTest::RunPrefImpl(atb::Operation *operation, const SVector<Tenso
     BuildVariantPack(inTensorLists);
     ATB_LOG(DEBUG) << "BuildVariantPack success!";
     // warmup 消除波动
-    for (int i = 0; i < 10; i++) {
+    for (int i = 0; i < warmUPTimes_; i++) {
         status = RunOperation();
         if (status != ErrorType::NO_ERROR) {
             return status;
@@ -382,7 +433,7 @@ Status OperationTest::RunPrefImpl(atb::Operation *operation, const SVector<Tenso
         ATB_LOG(ERROR) << "aclrtSynchronizeStream fail, ret:" << ret;
         return ret;
     }
-    for (int i = 0; i < 1000; i++) {
+    for (int i = 0; i < perfTimes_; i++) {
         status = RunOperation();
         if (status != ErrorType::NO_ERROR) {
             return status;
@@ -393,12 +444,77 @@ Status OperationTest::RunPrefImpl(atb::Operation *operation, const SVector<Tenso
     auto start = std::chrono::high_resolution_clock::now();
     ret = aclrtSynchronizeStream(context_->GetExecuteStream());
     auto end = std::chrono::high_resolution_clock::now();
-    avgSyncTime = (end - start) / 1000.0;
+    avgSyncTime = (end - start) / static_cast<double>(perfTimes_);
     ATB_LOG(ERROR) << "avgSyncTime: " << std::fixed << std::setprecision(2) << avgSyncTime.count() << " us";
     if (ret != 0) {
         ATB_LOG(ERROR) << "aclrtSynchronizeStream fail, ret:" << ret;
         return ret;
     }
+    status = CopyDeviceTensorToHostTensor();
+    if (status != ErrorType::NO_ERROR) {
+        return status;
+    }
+    return status;
+}
+
+Status OperationTest::RunHostPerf(atb::Operation *operation, const SVector<Tensor> &inTensorLists)
+{
+    return RunHostPrefImpl(operation, inTensorLists);
+}
+
+Status OperationTest::RunHostPerf(atb::Operation *operation, const SVector<TensorDesc> &inTensorDescs)
+{
+    SVector<Tensor> hostInTensors;
+    hostInTensors.resize(inTensorDescs.size());
+    ATB_LOG(DEBUG) << "GenerateRandomTensors Start!";
+    Status st = GenerateRandomTensors(inTensorDescs, hostInTensors);
+    if (st != NO_ERROR) {
+        ATB_LOG(ERROR) << "GenerateRandomTensors failed!";
+        return st;
+    }
+    ATB_LOG(DEBUG) << "RunHostPrefImpl Start!";
+    st = RunHostPrefImpl(operation, hostInTensors);
+    FreeInTensorList(hostInTensors);
+    return st;
+}
+
+Status OperationTest::RunHostPrefImpl(atb::Operation *operation, const SVector<Tensor> &inTensorLists)
+{
+    Cleanup();
+    ATB_LOG(DEBUG) << "Cleanup success!";
+    Status status = Init();
+    if (status != ErrorType::NO_ERROR) {
+        ATB_LOG(ERROR) << "Init error!";
+        return status;
+    }
+    ATB_LOG(DEBUG) << "Init success!";
+
+    status = Prepare(operation, inTensorLists);
+    ATB_LOG(DEBUG) << "Prepare success!";
+    if (mockFlag_) {
+        return status;
+    }
+
+    if (status != ErrorType::NO_ERROR) {
+        return status;
+    }
+
+    BuildVariantPack(inTensorLists);
+    ATB_LOG(DEBUG) << "BuildVariantPack success!";
+    // warmup 消除波动
+    for (int i = 0; i < warmUPTimes_; i++) {
+        status = RunOperation();
+        if (status != ErrorType::NO_ERROR) {
+            return status;
+        }
+    }
+    int ret = aclrtSynchronizeStream(context_->GetExecuteStream());
+    if (ret != 0) {
+        ATB_LOG(ERROR) << "aclrtSynchronizeStream fail, ret:" << ret;
+        return ret;
+    }
+
+    st = RunOperationWithPerf();
     status = CopyDeviceTensorToHostTensor();
     if (status != ErrorType::NO_ERROR) {
         return status;
@@ -704,6 +820,12 @@ void OperationTest::LongRand(int64_t min, int64_t max)
     randLongMin_ = min;
     randLongMax_ = max;
     ATB_LOG(DEBUG) << "randIntMin:" << randLongMin_ << ", randIntMax:" << randLongMax_;
+}
+
+void SetPerfTimes(size_t run)
+{
+    perfTimes_ = run;
+    ATB_LOG(DEBUG) << "perfTimes_:" << perfTimes_;
 }
 
 void OperationTest::SetMockFlag(bool flag)

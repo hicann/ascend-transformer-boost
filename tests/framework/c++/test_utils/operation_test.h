@@ -45,10 +45,14 @@ public:
     void Int8Rand(int8_t min, int8_t max);
     void IntRand(int32_t min, int32_t max);
     void LongRand(int64_t min, int64_t max);
+    void SetPerfTimes(size_t run);
+    void SetWarmUpTimes(size_t run);
     Status Run(atb::Operation *operation, const SVector<TensorDesc> &inTensorDescs);
     Status Run(atb::Operation *operation, const SVector<Tensor> &inTensorLists);
     Status RunPerf(atb::Operation *operation,  const SVector<Tensor> &inTensorLists);
     Status RunPerf(atb::Operation *operation, const SVector<TensorDesc> &inTensorDescs);
+    Status RunHostPerf(atb::Operation *operation, const SVector<Tensor> &inTensorLists);
+    Status RunHostPerf(atb::Operation *operation, const SVector<TensorDesc> &inTensorDescs);
     Mki::Status Run(atb::Operation *operation, const Mki::SVector<Mki::TensorDesc> &inTensorDescs);
     Mki::Status Run(atb::Operation *operation, const Mki::SVector<Mki::Tensor> &inTensorLists);
     Mki::Status Setup(atb::Operation *operation, const Mki::SVector<Mki::TensorDesc> &inTensorDescs);
@@ -68,10 +72,12 @@ private:
     Tensor CreateHostZeroTensor(const TensorDesc &tensorDesc);
     void BuildVariantPack(const SVector<Tensor> &inTensorLists);
     Status RunOperation();
+    Status RunOperationWithPerf();
     Mki::Status RunGolden();
     Status CreateHostRandTensor(const TensorDesc &tensorDesc, Tensor &tensor);
     Status RunImpl(atb::Operation *operation, const SVector<Tensor> &inTensorLists);
     Status RunPrefImpl(atb::Operation *operation, const SVector<Tensor> &inTensorLists);
+    Status RunHostPrefImpl(atb::Operation *operation, const SVector<Tensor> &inTensorLists);
     void FreeInTensorList(SVector<Tensor> &hostInTensors);
 
 private:
@@ -92,6 +98,8 @@ private:
     int32_t randIntMax_ = 1;
     int64_t randLongMin_ = 1;
     int64_t randLongMax_ = 1;
+    size_t perfTimes_ = 1000;
+    size_t warmUPTimes_ = 10;
 };
 } // namespace atb
 #endif
