@@ -10,11 +10,7 @@
 #ifndef LCAL_TILING_H
 #define LCAL_TILING_H
 
-#include <iostream>
-#include <array>
 #include "tiling_args.h"
-#include "lcal_types.h"
-#include "lcal_comm.h"
 #include "lcoc.h"
 
 namespace Lcal {
