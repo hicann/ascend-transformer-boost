@@ -11,10 +11,11 @@
 #include "reshape_and_cache_omni_ops_runner.h"
 #include <atbops/params/params.h>
 #include "atb/utils/log.h"
+#include "atb/utils/operation_register.h"
 
 namespace atb {
 ReshapeAndCacheOmniOpsRunner::ReshapeAndCacheOmniOpsRunner(const infer::ReshapeAndCacheOmniParam &param)
-    : OpsRunner("ReshapeAndCacheOmniOpsRunner", RUNNER_TYPE_RESHAPE_AND_CACHE_OMNI), param_(param)
+    : OpsRunner("ReshapeAndCacheOmniOpsRunner"), param_(param)
 {
     ATB_LOG(INFO) << "ReshapeAndCacheOmniOpsRunner::ReshapeAndCacheOmniOpsRunner called";
     const std::size_t intensorSize = 8;
@@ -65,4 +66,6 @@ void ReshapeAndCacheOmniOpsRunner::SetParam(const Mki::Any &param)
         isParamUpdated_ = true;
     }
 }
+
+REG_RUNNER_TYPE(ReshapeAndCacheOmniOpsRunner);
 } // namespace atb

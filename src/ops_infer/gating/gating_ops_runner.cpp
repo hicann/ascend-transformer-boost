@@ -11,10 +11,12 @@
 #include "gating_ops_runner.h"
 #include <atbops/params/params.h>
 #include "atb/utils/log.h"
+#include "atb/utils/operation_register.h"
+#include "atb/utils/param_compare.h"
 
 namespace atb {
 GatingOpsRunner::GatingOpsRunner(const infer::GatingParam &param)
-    : OpsRunner("GatingOpsRunner", RUNNER_TYPE_GATING), param_(param)
+    : OpsRunner("GatingOpsRunner"), param_(param)
 {
     ATB_LOG(INFO) << GetLogPrefix() << "GatingOpsRunner::GatingOpsRunner";
 
@@ -92,4 +94,7 @@ Status GatingOpsRunner::SetupKernelGraphGatingExpertParallelism()
 
     return NO_ERROR;
 }
+
+REG_RUNNER_TYPE(GatingOpsRunner);
+REG_OP_PARAM(AtbOps::OpParam::Gating);
 } // namespace atb

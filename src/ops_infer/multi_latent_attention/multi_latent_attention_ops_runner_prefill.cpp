@@ -10,6 +10,8 @@
 #include "multi_latent_attention_ops_runner_prefill.h"
 #include <atb/utils/log.h>
 #include <atbops/params/params.h>
+#include "atb/utils/operation_register.h"
+#include "atb/utils/param_compare.h"
 
 namespace {
 static const uint32_t IN_TENSOR_NUM_BASE = 13;
@@ -21,7 +23,7 @@ static const uint32_t QSEQLEN_INDEX = 5;
 namespace atb {
 MultiLatentAttentionOpsRunnerPrefill::MultiLatentAttentionOpsRunnerPrefill(
     const infer::MultiLatentAttentionParam &param)
-    : OpsRunner("MultiLatentAttentionOpsRunner", RUNNER_TYPE_MULTILATENTATTENTION), param_(param)
+    : OpsRunner("MultiLatentAttentionOpsRunner"), param_(param)
 {
     ATB_LOG(INFO) << "MultiLatentAttentionOpsRunnerPrefill::MultiLatentAttentionOpsRunnerPrefill called";
     needKernelGraphModify_ = true;
@@ -118,4 +120,7 @@ Status MultiLatentAttentionOpsRunnerPrefill::ModifyKernelGraph(const OpsTensorPa
     mlaNode.opDesc = {0, "MLAOperation", asdParam};
     return NO_ERROR;
 }
+
+REG_RUNNER_TYPE(MultiLatentAttentionOpsRunner);
+REG_OP_PARAM(AtbOps::OpParam::MLA);
 } // namespace atb

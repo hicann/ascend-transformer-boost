@@ -11,10 +11,11 @@
 #include <asdops/params/params.h>
 #include "atb/utils/tensor_util.h"
 #include "atb/utils/log.h"
+#include "atb/utils/operation_register.h"
 
 namespace atb {
 TransposeOpsRunner::TransposeOpsRunner(const infer::TransposeParam &param)
-    : OpsRunner("TransposeOpsRunner", RUNNER_TYPE_TRANSPOSE), param_(param)
+    : OpsRunner("TransposeOpsRunner"), param_(param)
 {
     ATB_LOG(INFO) << "TransposeOpsRunner::TransposeOpsRunner called, param_.perm:" << param_.perm;
     kernelGraph_.inTensors.resize(1);
@@ -36,4 +37,6 @@ TransposeOpsRunner::TransposeOpsRunner(const infer::TransposeParam &param)
 }
 
 TransposeOpsRunner::~TransposeOpsRunner() {}
+
+REG_RUNNER_TYPE(TransposeOpsRunner);
 } // namespace atb
