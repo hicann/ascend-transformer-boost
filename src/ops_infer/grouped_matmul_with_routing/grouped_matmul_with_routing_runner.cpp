@@ -8,11 +8,11 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
+#include "grouped_matmul_with_routing_runner.h"
 #include <atb/utils/log.h>
 #include <asdops/params/params.h>
 #include <atbops/params/params.h>
 #include "atb/utils/utils_internal.h"
-#include "grouped_matmul_with_routing_runner.h"
 #include "atb/utils/operation_register.h"
 #include "atb/utils/param_compare.h"
 
