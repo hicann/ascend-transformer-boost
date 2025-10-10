@@ -96,14 +96,14 @@ Status SortOperation::ParamCheckImpl(const TensorDesc &xTensorDesc) const
         ATB_LOG(ERROR) << "ParamCheckImpl:param.num should >0 && <= lastdim";
         return ERROR_INVALID_PARAM;
     }
-    int64_t numSize = param_.num.size();
+    uint64_t numSize = param_.num.size();
     if (GetSingleton<Config>().Is310P() && numSize == ONE && param_.num[ZERO] < SIXTEEN) {
         uint64_t xDimNum = xTensorDesc.shape.dimNum;
         for (size_t i = 0; i < xDimNum - 1; i++) {
             int64_t dim = xTensorDesc.shape.dims[i];
             if (dim > LIMITED_NUM) {
                 ATB_LOG(ERROR) << "ParamCheckImpl: dim should be less than or equal to " << LIMITED_NUM
-                            << " in Atlas 300I Duo inference products.";
+                               << " in Atlas 300I Duo inference products.";
                 return ERROR_INVALID_TENSOR_DIM;
             }
         }

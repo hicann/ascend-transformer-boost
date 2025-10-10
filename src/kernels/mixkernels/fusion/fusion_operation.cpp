@@ -18,6 +18,7 @@
 #include <mki/utils/log/log.h>
 #include <mki/utils/platform/platform_info.h>
 #include <mki/utils/strings/str_replace.h>
+#include <mki/utils/strings/str_checker.h>
 #include <mki_loader/op_register.h>
 #include "atbops/params/params.h"
 
@@ -54,6 +55,9 @@ public:
     {
         static uint8_t matMulAddFusionKernelBinData[DYNAMICSIZE];
         std::string path = std::string(std::getenv("HOME")) + "/.atb_auto_fusion/bishengir_bin/matmul_add.cpp";
+        if (Mki::CheckNameValid(path, 256)) { // 256: 最大路径路径长度
+            MKI_LOG(ERROR) << "path is invalid, please check the path: " << path;
+        }
         if (IsSoftLink(path.c_str())) {
             MKI_LOG(ERROR) << "MatMulAddFusion CPP SHOULD NOT be a symbolic link ";
             return;
@@ -94,6 +98,9 @@ public:
     {
         static uint8_t matMulGeluFusionKernelBinData[DYNAMICSIZE];
         std::string path = std::string(std::getenv("HOME")) + "/.atb_auto_fusion/bishengir_bin/matmul_gelu.cpp";
+        if (Mki::CheckNameValid(path, 256)) { // 256: 最大路径路径长度
+            MKI_LOG(ERROR) << "path is invalid, please check the path: " << path;
+        }
         if (IsSoftLink(path.c_str())) {
             MKI_LOG(ERROR) << "MatMulGeluFusion CPP SHOULD NOT be a symbolic link ";
             return;
@@ -134,6 +141,9 @@ public:
     {
         static uint8_t matMulSigmoidFusionKernelBinData[DYNAMICSIZE];
         std::string path = std::string(std::getenv("HOME")) + "/.atb_auto_fusion/bishengir_bin/matmul_sigmoid.cpp";
+        if (Mki::CheckNameValid(path, 256)) { // 256: 最大路径路径长度
+            MKI_LOG(ERROR) << "path is invalid, please check the path: " << path;
+        }
         if (IsSoftLink(path.c_str())) {
             MKI_LOG(ERROR) << "MatMulSigmoidFusion CPP SHOULD NOT be a symbolic link ";
             return;
@@ -174,6 +184,9 @@ public:
     {
         static uint8_t matMulSwigluFusionKernelBinData[DYNAMICSIZE];
         std::string path = std::string(std::getenv("HOME")) + "/.atb_auto_fusion/bishengir_bin/matmul_swiglu.cpp";
+        if (Mki::CheckNameValid(path, 256)) { // 256: 最大路径路径长度
+            MKI_LOG(ERROR) << "path is invalid, please check the path: " << path;
+        }
         if (IsSoftLink(path.c_str())) {
             MKI_LOG(ERROR) << "MatMulSwigluFusion CPP SHOULD NOT be a symbolic link ";
             return;
@@ -291,7 +304,7 @@ protected:
         }
         return Status::OkStatus();
     }
-    
+
     bool IsSoftLink(const char *path) const
     {
         struct stat fileStat;

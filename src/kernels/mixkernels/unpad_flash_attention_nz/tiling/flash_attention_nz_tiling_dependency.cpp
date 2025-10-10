@@ -122,7 +122,7 @@ void GetTilingKey(UnpadFlashAttentionNzInfo mmInfo, uint32_t *tilingParam)
 {
     if (mmInfo.type != OpParam::UnpadFlashAttentionNz::UNPAD_FLASH_ATTENTION_NZ_DECODER) {
         // tiling key
-        tilingParam[GetTilingKeyIndex()] = (mmInfo.precType << NZ_INDEX_3);
+        tilingParam[GetTilingKeyIndex()] = (static_cast<uint32_t>(mmInfo.precType) << NZ_INDEX_3);
     }
     MKI_LOG(INFO) << "tilingKey: " << tilingParam[GetTilingKeyIndex()];
 }
@@ -296,8 +296,9 @@ Status GetUnpadFlashAttentionTilingParam(const UnpadFlashAttentionNzInfo mmInfo,
     if (nzRealCoreNum <= CORE_NUM_LIMIT) {
         nzRealCoreNum = nzRealCoreNum <= USE_MAX_CORE_NUM ? nzRealCoreNum : USE_MAX_CORE_NUM;
     }
-    uint32_t initSize = static_cast<uint32_t>(mmInfo.batchSize * NZ_REAL_CORE_TILING_SIZE * sizeof(uint32_t) +
-                                              GetNzRealCoreTilingOffset());
+    uint32_t initSize =
+        static_cast<uint32_t>(mmInfo.batchSize) * static_cast<uint32_t>(NZ_REAL_CORE_TILING_SIZE) * sizeof(uint32_t) +
+        GetNzRealCoreTilingOffset();
     auto ret = memset_s(tilingParam, tilingParamSize, 0, initSize);
     MKI_CHECK(ret == EOK, "Failed to clear the array", return Status::FailStatus(-1));
     AddrOffsetsNz addrOffsets;
