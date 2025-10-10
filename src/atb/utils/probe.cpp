@@ -177,7 +177,7 @@ void Probe::ReportOverflowKernel(const std::string &kernelPath)
 
 void Probe::UpdateConfig() {}
 
-bool IsSaveTensorInSpecificDir(const std::string &tensorDir)
+bool Probe::IsSaveTensorInSpecificDir(const std::string &tensorDir)
 {
     (void)tensorDir;
     return true;
