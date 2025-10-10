@@ -161,14 +161,14 @@ int64_t MkiNodeImplement::GetWorkspaceSize() const
     }
     return kernel_->GetKernelInfo().GetTotalScratchSize();
 }
-Status MkiNodeImplement::InitKernelInfo(uint8_t *hostTilingBuffer, uint64_t tilingSize, bool isLaunchWithTiling)
+Status MkiNodeImplement::InitKernelInfo(uint8_t *hostTilingBuffer, uint64_t tilingSize, bool launchWithTiling)
 {
     ATB_LOG(DEBUG) << GetLogPrefix() << " init kernel info";
     if (kernel_ == nullptr) {
         ATB_LOG(ERROR) << GetLogPrefix() << " kernel is null";
         return ERROR_INVALID_PARAM;
     }
-    if (isLaunchWithTiling) {
+    if (launchWithTiling) {
         ATB_LOG(INFO) << GetLogPrefix() << " use tiling optimize";
         kernel_->SetLaunchWithTiling(true);
     } else {
@@ -237,7 +237,7 @@ Status MkiNodeImplement::Run(aclrtStream stream)
 }
 
 bool MkiNodeImplement::GetCachedTiling(KernelCache &kernelCache, size_t kernelIndex, uint8_t *kernelHostTilingBuffer,
-                                       uint64_t maxTilingSize, uint64_t &tilingSizeFetched, bool isLaunchWithTiling)
+                                       uint64_t maxTilingSize, uint64_t &tilingSizeFetched, bool launchWithTiling)
 {
     tilingBufferFilled_ = false;
     Mki::Timer kernelCacheGetTilingTimer;
@@ -246,7 +246,7 @@ bool MkiNodeImplement::GetCachedTiling(KernelCache &kernelCache, size_t kernelIn
     if (kernelCached != nullptr) {
         // 由于当前的kernel在设计上是带状态的，必须保证kernel状态与当前所需相同才能使用cache中的kernel
         bool cachedTilingLaunchStatus = kernelCached->GetKernelInfo().GetLaunchWithTiling();
-        if (cachedTilingLaunchStatus != isLaunchWithTiling) {
+        if (cachedTilingLaunchStatus != launchWithTiling) {
             ATB_LOG(INFO) << "Cache miss because of status of tilingLaunch mismatch.";
             return false;
         }
@@ -263,7 +263,7 @@ bool MkiNodeImplement::GetCachedTiling(KernelCache &kernelCache, size_t kernelIn
         ATB_LOG(ERROR) << GetLogPrefix() << " MkiNodeImplement do not have enough tiling buffer for cached tilnig";
         return false;
     }
-    if (!isLaunchWithTiling || Probe::IsSaveTiling()) {
+    if (!launchWithTiling || Probe::IsSaveTiling()) {
         int ret = memcpy_s(kernelHostTilingBuffer, maxTilingSize, cachedTilingBuffer->data(), tilingSizeFetched);
         if (ret != EOK) {
             ATB_LOG(ERROR) << GetLogPrefix() << " MkiNodeImplement memcpy_s cached tiling fail, error:" << ret;
@@ -386,4 +386,25 @@ Status MkiNodeImplement::BuildLaunchParam(const SVector<Mki::Tensor *> &inTensor
     }
     return NO_ERROR;
 }
+
+const std::unordered_map<const Mki::ErrorType, atb::ErrorType> InitAtbMkiErrorHash() noexcept
+{
+    return {{Mki::ErrorType::NO_ERROR, atb::ErrorType::NO_ERROR},
+            {Mki::ErrorType::ERROR_INVALID_VALUE, atb::ErrorType::ERROR_INVALID_PARAM},
+            {Mki::ErrorType::ERROR_OPERATION_NOT_EXIST, atb::ErrorType::ERROR_INVALID_PARAM},
+            {Mki::ErrorType::ERROR_TACTIC_NOT_EXIST, atb::ErrorType::ERROR_INVALID_PARAM},
+            {Mki::ErrorType::ERROR_KERNEL_NOT_EXIST, atb::ErrorType::ERROR_INVALID_PARAM},
+            {Mki::ErrorType::ERROR_ATTR_NOT_EXIST, atb::ErrorType::ERROR_INVALID_PARAM},
+            {Mki::ErrorType::ERROR_ATTR_INVALID_TYPE, atb::ErrorType::ERROR_INVALID_PARAM},
+            {Mki::ErrorType::ERROR_LAUNCH_KERNEL_ERROR, atb::ErrorType::ERROR_RT_FAIL},
+            {Mki::ErrorType::ERROR_SYNC_STREAM_ERROR, atb::ErrorType::ERROR_RT_FAIL},
+            {Mki::ErrorType::ERROR_INFERSHAPE_ERROR, atb::ErrorType::ERROR_RT_FAIL},
+            {Mki::ErrorType::ERROR_NOT_CONSISTANT, atb::ErrorType::ERROR_INVALID_PARAM},
+            {Mki::ErrorType::ERROR_ALLOC_HOST, atb::ErrorType::ERROR_OUT_OF_HOST_MEMORY},
+            {Mki::ErrorType::ERROR_MEMERY_COPY_ERROR, atb::ErrorType::ERROR_COPY_HOST_MEMORY_FAIL},
+            {Mki::ErrorType::ERROR_RUN_TIME_ERROR, atb::ErrorType::ERROR_RT_FAIL}};
+}
+
+const std::unordered_map<const Mki::ErrorType, atb::ErrorType> ATB_MKI_ERROR_HASH = InitAtbMkiErrorHash();
+
 } // namespace atb
