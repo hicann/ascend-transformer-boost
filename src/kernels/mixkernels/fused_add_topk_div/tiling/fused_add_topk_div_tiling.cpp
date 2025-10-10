@@ -213,22 +213,23 @@ namespace AtbOps {
     {
         auto inTensor0 = launchParam.GetInTensor(X_INPUT_INDEX).desc;
         auto inTensor1 = launchParam.GetInTensor(ADD_NUM_INPUT_INDEX).desc;
-        tilingDataPtr->firstDimSize = inTensor0.dims[DIM_INDEX0];
-        tilingDataPtr->secondDimSize = inTensor0.dims[DIM_INDEX1];
-        tilingDataPtr->addNumDimSize = inTensor1.dims[DIM_INDEX0];
- 
+        tilingDataPtr->firstDimSize = static_cast<uint32_t>(inTensor0.dims[DIM_INDEX0]);
+        tilingDataPtr->secondDimSize = static_cast<uint32_t>(inTensor0.dims[DIM_INDEX1]);
+        tilingDataPtr->addNumDimSize = static_cast<uint32_t>(inTensor1.dims[DIM_INDEX0]);
+
         auto param = AnyCast<OpParam::FusedAddTopkDiv>(launchParam.GetParam());
-        tilingDataPtr->groupNum = static_cast<int32_t>(param.groupNum);
-        tilingDataPtr->groupTopk = static_cast<int32_t>(param.groupTopk);
-        tilingDataPtr->n = static_cast<int32_t>(param.n);
-        tilingDataPtr->k = static_cast<int32_t>(param.k);
-        tilingDataPtr->activateType = static_cast<int32_t>(param.activateType);
+        tilingDataPtr->groupNum = static_cast<uint32_t>(param.groupNum);
+        tilingDataPtr->groupTopk = static_cast<uint32_t>(param.groupTopk);
+        tilingDataPtr->n = static_cast<uint32_t>(param.n);
+        tilingDataPtr->k = static_cast<uint32_t>(param.k);
+        tilingDataPtr->activateType = static_cast<uint32_t>(param.activateType);
         tilingDataPtr->isNorm = static_cast<uint32_t>(param.isNorm);
         tilingDataPtr->enableExpertMapping = static_cast<uint32_t>(param.enableExpertMapping);
         tilingDataPtr->groupEles = tilingDataPtr->groupNum == 0 ? tilingDataPtr->secondDimSize :
                                    tilingDataPtr->secondDimSize / tilingDataPtr->groupNum;
         tilingDataPtr->scale = param.scale;
-        if (tilingDataPtr->enableExpertMapping) {
+        bool enableExpertMapping = static_cast<bool>(tilingDataPtr->enableExpertMapping);
+        if (enableExpertMapping) {
             const Tensor &inTensor3 = launchParam.GetInTensor(MAPPING_TABLE_INPUT_INDEX);
             tilingDataPtr->expertNum = inTensor3.desc.dims[DIM_INDEX0];
             tilingDataPtr->tableDim = inTensor3.desc.dims[DIM_INDEX1];
@@ -253,15 +254,15 @@ namespace AtbOps {
                   return Status::FailStatus(ERROR_INVALID_VALUE));
         MKI_CHECK(k > 0, "k should be greater than 0.",
                   return Status::FailStatus(ERROR_INVALID_VALUE));
-        MKI_CHECK(b % groupNum == 0, "b should be a multiple of groupNum.",
+        MKI_CHECK(static_cast<uint32_t>(b) % groupNum == 0, "b should be a multiple of groupNum.",
                   return Status::FailStatus(ERROR_INVALID_VALUE));
         MKI_CHECK(groupTopk <= groupNum, "groupTopk should be less or equal to groupNum.",
                   return Status::FailStatus(ERROR_INVALID_VALUE));
         MKI_CHECK(k <= b, "k should be less or equal to b",
                   return Status::FailStatus(ERROR_INVALID_VALUE));
-        MKI_CHECK(n <= b / groupNum, "n should be less or equal to b / groupNum.",
+        MKI_CHECK(n <= static_cast<uint32_t>(b) / groupNum, "n should be less or equal to b / groupNum.",
                   return Status::FailStatus(ERROR_INVALID_VALUE));
-        MKI_CHECK(b / groupNum <= SORT_UNIT, "b / groupNum should be less or equal to 32.",
+        MKI_CHECK(static_cast<uint32_t>(b) / groupNum <= SORT_UNIT, "b / groupNum should be less or equal to 32.",
                   return Status::FailStatus(ERROR_INVALID_VALUE));
         MKI_CHECK(activateType == 0, "activateType currently only supports equal to 0.",
                   return Status::FailStatus(ERROR_INVALID_VALUE));
@@ -289,8 +290,8 @@ namespace AtbOps {
         uint32_t availableUb = ubSize - RESERVED_UB;
  
         auto inputDatatype = launchParam.GetInTensor(X_INPUT_INDEX).desc.dtype;
-        tilingDataPtr->dtype = g_dtypeMap[inputDatatype];
- 
+        tilingDataPtr->dtype = static_cast<uint32_t>(g_dtypeMap[inputDatatype]);
+
         auto checkInputInfo = GetInputInfo(launchParam, tilingDataPtr);
         if (!checkInputInfo.Ok()) {
             return Status::FailStatus(ERROR_INVALID_VALUE);
