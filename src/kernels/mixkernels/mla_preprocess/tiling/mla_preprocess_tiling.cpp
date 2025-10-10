@@ -623,7 +623,7 @@ Mki::Status MlaPreprocessTiling::Init(const Mki::LaunchParam &launchParam, Mki::
         false,                                     // transB
         false,                                     // enDequant
         deqOnTheFly);                                 // in bf16.cce?
-    mm3TilingApi.GetTilingData(*tilingParam->mm3);
+    mm3TilingApi.GetTilingData(tilingParam->mm3);
     SetTiling(*tilingParam);
     MKI_LOG(INFO) << *tilingParam;
     SetMlapoWorkSpace(inDtype, param, kernelInfo);
