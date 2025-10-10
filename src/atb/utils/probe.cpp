@@ -181,6 +181,6 @@ void Probe::UpdateConfig() {}
 bool IsSaveTensorInSpecificDir(const std::string &tensorDir)
 {
     (void)tensorDir;
-    return false;
+    return true;
 }
 } // namespace atb
