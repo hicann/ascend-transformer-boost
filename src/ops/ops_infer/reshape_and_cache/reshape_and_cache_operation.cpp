@@ -98,6 +98,9 @@ ReshapeAndCacheOperation::ReshapeAndCacheOperation(const infer::ReshapeAndCacheP
     } else {
         operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("ReshapeAndCacheOperation");
     }
+
+    ATB_LOG(INFO) << GetLogPrefix() << "ReshapeAndCacheParam compressType:" << param.compressType
+                  << ", kvCacheCfg:" << param.kvCacheCfg;
 }
 
 ReshapeAndCacheOperation::~ReshapeAndCacheOperation() {}
