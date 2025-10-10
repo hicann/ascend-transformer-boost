@@ -163,7 +163,7 @@ namespace AtbOps {
     }
 
     template <typename TilingData>
-    void FusedAddTopkDivTiling<TilingData>::GetTiling(TilingData *tilingDataPtr)
+    void FusedAddTopkDivTiling<TilingData>::GetTiling(TilingData &tilingDataPtr)
     {
         GetTilingKey(*tilingDataPtr);
         GetUsedCore();
@@ -172,7 +172,7 @@ namespace AtbOps {
     }
  
     template <typename TilingData>
-    void GetFusedAddTopkDivTiling(TilingData *tilingDataPtr, uint32_t coreNum, uint32_t ubSize)
+    void GetFusedAddTopkDivTiling(TilingData &tilingDataPtr, uint32_t coreNum, uint32_t ubSize)
     {
         class FusedAddTopkDivTiling<TilingData> tilingObj(*tilingDataPtr, coreNum, ubSize);
         tilingObj.GetTiling(tilingDataPtr);
@@ -295,7 +295,7 @@ namespace AtbOps {
         if (!checkInputInfo.Ok()) {
             return Status::FailStatus(ERROR_INVALID_VALUE);
         }
-        GetFusedAddTopkDivTiling<FusedAddTopkDivTilingData>(tilingDataPtr, coreNum, availableUb);
+        GetFusedAddTopkDivTiling<FusedAddTopkDivTilingData>(*tilingDataPtr, coreNum, availableUb);
         uint32_t sysWorkspaceSize = SYS_WORKSPACESIZE;
         uint32_t tilingKey = tilingDataPtr->tilingKey;
         uint32_t blockNum = tilingDataPtr->blockNum;
