@@ -72,7 +72,8 @@ bool IsAclnnAtbVariantPackEqual(const AclNNVariantPack &aclnnVariantPack, const 
 /// \param atbVariantPack An `atb::VariantPack` object containing tensor info passed through ATB framework.
 /// \return A boolean value that indicates whether `aclnnVariantPack` and `atbVariantPack` are the same,
 /// except for tensors' device data.
-bool IsAclnnRunnerVariantPackEqual(const AclNNVariantPack &aclnnVariantPack, const RunnerVariantPack &runnerVariantPack);
+bool IsAclnnRunnerVariantPackEqual(const AclNNVariantPack &aclnnVariantPack,
+const RunnerVariantPack &runnerVariantPack);
 
 /// Create a pointer to `AclNNTensor` by configuring it with tensor information extracted from `atbTensor`.
 ///
