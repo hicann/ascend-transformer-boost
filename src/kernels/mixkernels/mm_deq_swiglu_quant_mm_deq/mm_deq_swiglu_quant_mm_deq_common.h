@@ -10,6 +10,8 @@
 #ifndef ASCEND_OPS_MM_DEQ_SWIGLU_QUANT_MM_DEQ_H
 #define ASCEND_OPS_MM_DEQ_SWIGLU_QUANT_MM_DEQ_H
 
+#include <cstdint>
+
 constexpr int64_t MAX_M = 131072;
 constexpr int64_t SUPPORTED_K1 = 7168;
 constexpr int64_t SUPPORTED_N1 = 4096;

@@ -47,9 +47,9 @@ int RegisterBinaryKernel(const string &funcName, int8_t *funSig, const T *binStr
     rtDevBinary_t binary;
     void *binHandle = nullptr;
     binary.data = binStrPtr;
-    binary.length = (len == 0 ? LCAL_1OP_BIN_SIZE : len);
+    binary.length = (len == 0 ? LCAL_1OP_BIN_SIZE : static_cast<uint32_t>(len));
 
-    binary.magic = magic;
+    binary.magic = static_cast<uint32_t>(magic);
     binary.version = 0;
     rtError_t rtRet = rtDevBinaryRegister(&binary, &binHandle);
     if (rtRet != RT_ERROR_NONE) {

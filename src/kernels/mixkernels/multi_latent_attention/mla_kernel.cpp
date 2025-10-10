@@ -56,9 +56,10 @@ public:
         auto mtpTp1Flag = ((param.headSize == M_LIMIT) ||
                            (launchParam.GetInTensor(DIM_0).desc.dtype == TENSOR_DTYPE_INT8 && maxQSeqlen > 1));
         if (mtpTp1Flag) {
-            uint64_t taskNum = param.qSeqLen.data() == nullptr ? batch :
-                               std::accumulate(param.qSeqLen.data(),
-                                               param.qSeqLen.data() + batch, static_cast<int32_t>(0));
+            uint64_t taskNum = param.qSeqLen.data() == nullptr ?
+                                   batch :
+                                   static_cast<uint64_t>(std::accumulate(
+                                       param.qSeqLen.data(), param.qSeqLen.data() + batch, static_cast<int32_t>(0)));
             uint32_t blockDim = PlatformInfo::Instance().GetCoreNum(CoreType::CORE_TYPE_CUBE);
             uint64_t bufferSize =
                 Utils::RoundUp(launchBufferSize_ + TILING_PARA_SIZE_TP1 * (taskNum - 1) * sizeof(uint32_t) +
