@@ -12,7 +12,10 @@
 #include <thread>
 #include <atomic>
 #include "mki/utils/log/log.h"
-#include "lcal.h"
+#include "lcal_types.h"
+#include "lcal_comm.h"
+#include "lccl.h"
+#include "lcoc.h"
 #include "tools/socket/lcal_sock_exchange.h"
 
 using namespace std;

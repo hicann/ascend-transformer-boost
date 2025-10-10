@@ -11,11 +11,9 @@
 #ifndef ASCEND_OPS_MOE_GMM_TILING_H
 #define ASCEND_OPS_MOE_GMM_TILING_H
 
-#include <cstdint>
 #include <mki/utils/status/status.h>
 #include <mki/launch_param.h>
 #include <mki/kernel_info.h>
-#include <mki/utils/platform/platform_info.h>
 
 namespace AtbOps {
 Mki::Status GetMLAProprecessTiling(const Mki::LaunchParam &launchParam, Mki::KernelInfo &kernelInfo);

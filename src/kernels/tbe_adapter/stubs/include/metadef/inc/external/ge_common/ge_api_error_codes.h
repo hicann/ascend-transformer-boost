@@ -12,7 +12,6 @@
 #define ASCEND_OPS_STUB_GE_API_ERROR_CODES_H
 
 #include <cstdint>
-#include "graph/ascend_string.h"
 
 namespace ge {
 constexpr uint32_t SUCCESS = 0;

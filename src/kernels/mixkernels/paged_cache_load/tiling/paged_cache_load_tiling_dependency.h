@@ -10,6 +10,8 @@
 #ifndef ASCEND_OPS_PAGED_CACHE_LOAD_TILING_DEPENDENCY_H
 #define ASCEND_OPS_PAGED_CACHE_LOAD_TILING_DEPENDENCY_H
 
+#include <cstdint>
+
 namespace AtbOps {
 
 struct PagedCacheLoadTilingData {
