@@ -73,7 +73,6 @@ if (IS_STANDALONE_BUILD)
         ${ALL_OPS_IMPL_DIRS}
         ${CMAKE_CURRENT_LIST_DIR}/include
         $ENV{ASCEND_HOME_PATH}/include
-        $ENV{ASCEND_HOME_PATH}/${CMAKE_SYSTEM_PROCESSOR}-linux/include
         ${OPS_THIRD_PARTY_DIR}/nlohmannJson/include
         ${ATB_SOURCE_DIR}/include
         ${ATB_SOURCE_DIR}/src
@@ -118,7 +117,6 @@ else()
         ${ALL_OPS_IMPL_DIRS}
         ${CMAKE_CURRENT_LIST_DIR}/include
         $ENV{ASCEND_HOME_PATH}/include
-        $ENV{ASCEND_HOME_PATH}/${CMAKE_SYSTEM_PROCESSOR}-linux/include
         ${CMAKE_SOURCE_DIR}/include
         ${CMAKE_SOURCE_DIR}/src/include
         ${CMAKE_SOURCE_DIR}/src/kernels/include
