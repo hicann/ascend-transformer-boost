@@ -10,7 +10,7 @@
 #ifndef ASDOPS_DYNAMIC_QUANT_TILING_DATA
 #define ASDOPS_DYNAMIC_QUANT_TILING_DATA
 
-#include <stdint.h>
+#include <cstdint>
 
 namespace AsdOps {
 struct DynamicQuantTilingData {

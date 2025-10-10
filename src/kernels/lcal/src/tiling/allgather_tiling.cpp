@@ -71,7 +71,7 @@ void CoCAllGatherMatmulV2TilingFunc::GetDefaultTiling(const TaskParam &taskParam
 
 bool CheckKValue(const TaskParam &taskParam, const CoCTilingData &data)
 {
-    auto blockCount = data.is91093 ? BLOCK_COUNT_3 : MAX_BLOCK_COUNT;
+    auto blockCount = static_cast<bool>(data.is91093) ? BLOCK_COUNT_3 : MAX_BLOCK_COUNT;
     int32_t maxPeerMemPerRank = (taskParam.bufferSize * 1024 * 1024) / INPUT_DTYPE / data.rankSize / blockCount;
     if (data.pValue * data.m0 * data.k0 * data.kLoop >= maxPeerMemPerRank) {
         std::string str = "The k value is too large and is currently not supported. "
@@ -98,7 +98,7 @@ bool CoCAllGatherMatmulTilingFunc::CheckTiling(const TaskParam &taskParam)
     auto commDataSplit = cocTilingData.commDataSplit;
     auto coreNum = cocTilingData.blockDim;
     auto is91093 = cocTilingData.is91093;
-    auto minCoreCount = is91093 ? rankSize / A3_DIE_NUM : rankSize;
+    auto minCoreCount = static_cast<bool>(is91093) ? rankSize / A3_DIE_NUM : rankSize;
     int32_t useCoreCount = commNpuSplit * commDataSplit;
 
     std::vector<std::tuple<std::string, int, int, int>> paramCheckList = {

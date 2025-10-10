@@ -202,7 +202,7 @@ uint32_t GetAll2AllBlockNum(uint32_t rankSize, int64_t dataSize, uint32_t extraF
 
     if ((extraFlag & ExtraFlag::TOPO_910_93) != 0) {
         if (rankSize <= smallRankSize && dataSize > smallDataSize &&
-            dataSize % (smallRankSize * smallRankSize * rankSize) == 0) {
+            dataSize % static_cast<int64_t>(smallRankSize * smallRankSize * rankSize) == 0) {
             return twoStepBlockNum * twoBlockNum;
         } else {
             return rankSize <= twoStepBlockNum ? rankSize * twoBlockNum : twoStepBlockNum * twoBlockNum;
