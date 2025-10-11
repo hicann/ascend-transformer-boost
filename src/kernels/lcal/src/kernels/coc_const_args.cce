@@ -83,6 +83,9 @@ constexpr int LCAL_BUFF_BYTES = 204 * 1024 * 1024;
 constexpr int32_t FLAG_BUFF_BYTES = 5 * 512 * 1024;  // 2.5MB
 constexpr int32_t FLAG_OFFSET = (LCAL_BUFF_BYTES - FLAG_BUFF_BYTES) / sizeof(int32_t); // 201.5 * 1024 * 1024
 
+constexpr int32_t DATA_COPY_MAX_BLOCK_COUNT = 4095;
+constexpr int32_t DATA_COPY_MAX_BLOCK_LEN = 65535;
+
 enum QuantGranularity : int {
     QUANT_GRANULARITY_UNDEFINED = -1,
     PER_TENSOR = 0,
