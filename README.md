@@ -136,7 +136,7 @@ pip3 install attrs cython 'numpy>=1.19.2,<=1.24.0' decorator sympy cffi pyyaml p
         ```
  - run包使用<a id="run-package-usage"></a>
     - run包获取
-      1. 进入网址：https://www.hiascend.com/developer/download/commercial
+      1. 进入网址：https://www.hiascend.com/developer/download/community
       2. 产品系列选择服务器，产品型号根据设备型号选择，选择所需解决方案版本，随后在CANN区域选择软件包跟随指引即可获取相关run包
     - 软件包名为：Ascend-cann-nnal_{version}_linux-{arch}.run  
     其中，{version}表示软件版本号，{arch}表示CPU架构。
