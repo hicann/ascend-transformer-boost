@@ -28,7 +28,7 @@ function fn_build_mki()
     cd $THIRD_PARTY_DIR/Mind-KernelInfra	
     echo  "current commid id of Mind-KernelInfra: $(git rev-parse HEAD)"	
     if [ "$USE_CXX11_ABI" == "ON" ];then	
-        build_options="--use_cxx11_abi=1"	
+        build_options="--use_cxx11_abi=1"
     else
         build_options="--use_cxx11_abi=0"
     fi
