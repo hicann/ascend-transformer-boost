@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2024 Huawei Technologies Co., Ltd.
  * This file is a part of the CANN Open Software.
- * Licensed under CANN Open Software License Agreement Version 2.0 (the "License").
+ * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
@@ -200,6 +200,8 @@ protected:
         int32_t n_cols_round = Block32B<MmadDtype>::AlignUp(n_cols);
         int32_t max_rows_per_loop = (n_cols_round <= MAX_LEN) ? (MAX_LEN / n_cols_round) : 1;
         int32_t max_cols_per_loop = (n_cols_round <= MAX_LEN) ? n_cols : MAX_LEN;
+        max_rows_per_loop = max_rows_per_loop > DATA_COPY_MAX_BLOCK_COUNT ? DATA_COPY_MAX_BLOCK_COUNT : max_rows_per_loop;
+        max_cols_per_loop = max_cols_per_loop > DATA_COPY_MAX_BLOCK_LEN ? DATA_COPY_MAX_BLOCK_LEN : max_cols_per_loop;
 
         auto ub_base = reinterpret_cast<__ubuf__ MmadDtype *>((uintptr_t)0);
 
@@ -451,6 +453,8 @@ private:
         int32_t n_cols_round = Block32B<int8_t>::AlignUp(n_cols);
         int32_t max_rows_per_loop = (n_cols_round <= MAX_LEN) ? (MAX_LEN / n_cols_round) : 1;
         int32_t max_cols_per_loop = (n_cols_round <= MAX_LEN) ? n_cols : MAX_LEN;
+        max_rows_per_loop = max_rows_per_loop > DATA_COPY_MAX_BLOCK_COUNT ? DATA_COPY_MAX_BLOCK_COUNT : max_rows_per_loop;
+        max_cols_per_loop = max_cols_per_loop > DATA_COPY_MAX_BLOCK_LEN ? DATA_COPY_MAX_BLOCK_LEN : max_cols_per_loop;
 
         auto ub_vconv = reinterpret_cast<__ubuf__ int8_t *>((uintptr_t)0);
         auto ub_muls = reinterpret_cast<__ubuf__ half *>((uintptr_t)(MAX_LEN * sizeof(int8_t)));
