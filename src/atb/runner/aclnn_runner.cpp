@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2025 Huawei Technologies Co., Ltd.
  * This file is a part of the CANN Open Software.
- * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Licensed under CANN Open Software License Agreement Version 2.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
@@ -58,9 +58,9 @@ Status AclnnRunner::SetupImpl(RunnerVariantPack &runnerVariantPack)
         ATB_LOG(ERROR) << GetLogPrefix() << "Atb aclnn op set workspace failed with return value: " << aclnnRet;
         return ERROR_CANN_ERROR;
     }
-    ATB_LOG(INFO) << GetLogPrefix()
-                  << "getWorkspace success, workspaceSize: " << this->atbVariantPack_.workspaceBufferSize
-                  << ", workspace addr: " << this->atbVariantPack_.workspaceBuffer;
+    ATB_LOG(INFO) << GetLogPrefix() << "getWorkspace success, workspace addr: "
+                  << reinterpret_cast<void *>(this->atbVariantPack_.workspaceBuffer)
+                  << ", workspaceSize: " << this->atbVariantPack_.workspaceBufferSize;
     aclnnRet = aclSetAclOpExecutorRepeatable(this->aclnnExecutor_.get());
     if (aclnnRet != 0) {
         // 设置算子可复用失败，标记cache中executor不可复用
@@ -90,6 +90,10 @@ Status AclnnRunner::PreExecuteImpl(RunnerVariantPack &runnerVariantPack)
 {
     ATB_LOG(INFO) << GetLogPrefix() << "AclNNOpCacheUpdateAclNNVariantPack";
     for (size_t i = 0; i < this->aclnnVariantPack_.aclInTensors.size(); ++i) {
+        // 部分场景中存在aclnn接口使用空tensor占位最后可选tensor，但是runnerVariantPack中不存放tensor的情况，可以跳过
+        if (i >= runnerVariantPack.inTensors.size()) {
+            break;
+        }
         int ret = -1;
         if (!this->aclnnVariantPack_.aclInTensors[i]->needUpdateTensorDataPtr) {
             continue;
@@ -113,6 +117,9 @@ Status AclnnRunner::PreExecuteImpl(RunnerVariantPack &runnerVariantPack)
     }
 
     for (size_t i = 0; i < this->aclnnVariantPack_.aclOutTensors.size(); ++i) {
+        if (i >= runnerVariantPack.outTensors.size()) {
+            break;
+        }
         int ret = -1;
         if (!this->aclnnVariantPack_.aclOutTensors[i]->needUpdateTensorDataPtr) {
             continue;
@@ -148,6 +155,7 @@ void AclnnRunner::UpdateWorkspace(const RunnerVariantPack &runnerVariantPack)
 
 Status AclnnRunner::ExecuteImpl(RunnerVariantPack &runnerVariantPack)
 {
+    ATB_LOG(INFO) << GetLogPrefix() << "AclnnRunner::ExecuteImpl";
     UpdateWorkspace(runnerVariantPack);
     return LaunchAclnnKernel();
 }

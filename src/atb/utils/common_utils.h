@@ -1,7 +1,21 @@
 /*
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the Open Software License version 1.0
+ * as published by the Open Source Initiative (OSI-Approved Open Software License).
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * Open Software License version 1.0 for more details.
+ *
+ * You should have received a copy of the Open Software License
+ * version 1.0 along with this program; if not, you may obtain one at
+ * https://opensource.org/licenses/OSL-1.0
+ */
+/*
  * Copyright (c) 2024 Huawei Technologies Co., Ltd.
  * This file is a part of the CANN Open Software.
- * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Licensed under CANN Open Software License Agreement Version 2.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.

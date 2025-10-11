@@ -2,7 +2,7 @@
 #
 # Copyright (c) 2024 Huawei Technologies Co., Ltd.
 # This file is a part of the CANN Open Software.
-# Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+# Licensed under CANN Open Software License Agreement Version 2.0 (the "License").
 # Please refer to the License for details. You may not use this file except in compliance with the License.
 # THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
 # INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
@@ -227,7 +227,6 @@ function fn_build_secodefuzz()
     fi
     cd $CACHE_DIR
     rm -rf secodefuzz
-    git clone -b v2.4.5 --depth=1 https://szv-open.codehub.huawei.com/innersource/Fuzz/secodefuzz.git
     cd secodefuzz
     mkdir build && cd build
     cmake .. -DCMAKE_BUILD_TYPE=Release
@@ -581,9 +580,6 @@ function fn_build_coverage()
         fn_run_torchatbtest
         fn_run_kernel_cinterfacetest
     fi
-    if [ "$COVERAGE_TYPE" == "FUZZTEST" ];then
-        fn_run_fuzztest
-    fi
 
     cd $GCOV_DIR
     $LCOV_PATH -c --directory ./.. --output-file tmp_coverage.info --rc lcov_branch_coverage=1 >> $GCOV_DIR/log.txt
@@ -852,7 +848,6 @@ function fn_main()
             TEST_TIME=30
             python3 $CODE_ROOT/tests/apitest/fuzztest/generate_operation_fuzz_test.py $CODE_ROOT $RANDOM_SEED $TEST_TIME
             fn_build_3rdparty_for_test
-            fn_build_secodefuzz
             fn_build
             fn_build_coverage
             ;;

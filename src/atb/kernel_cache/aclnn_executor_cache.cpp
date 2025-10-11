@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2025 Huawei Technologies Co., Ltd.
  * This file is a part of the CANN Open Software.
- * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Licensed under CANN Open Software License Agreement Version 2.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
@@ -76,15 +76,16 @@ Status AclnnExecutorCache::AddCacheSlot(const std::string &opNameStr, const Runn
         return NO_ERROR;
     }
 
-    std::vector<std::pair<RunnerVariantPack, AclnnCacheSlot>> slotVec = it->second;
+    std::vector<std::pair<RunnerVariantPack, AclnnCacheSlot>> &slotVec = it->second;
     size_t slotVecSize = slotVec.size();
     if (slotVecSize < cacheCapacity_) {
         slotVec.emplace_back(aclnnCacheKey, inAclnnCacheSlot);
         ATB_LOG(INFO) << "ATB aclnn executor cache add op: " << opNameStr << " at index[" << slotVecSize << "]";
+        return NO_ERROR;
     }
 
     // 淘汰方式：使用等长vector+FIFO
-    ATB_LOG(INFO) << "ATB aclnn executor cache full for op: " << opNameStr << "update index [" << nextUpdateIndex_
+    ATB_LOG(INFO) << "ATB aclnn executor cache full for op: " << opNameStr << ", update index [" << nextUpdateIndex_
                   << "]";
     cachePool_[opNameStr][nextUpdateIndex_] = std::make_pair(aclnnCacheKey, inAclnnCacheSlot);
     nextUpdateIndex_ = (nextUpdateIndex_ + 1) % cacheCapacity_;

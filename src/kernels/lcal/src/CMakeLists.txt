@@ -1,7 +1,7 @@
 #
 # Copyright (c) 2024 Huawei Technologies Co., Ltd.
 # This file is a part of the CANN Open Software.
-# Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+# Licensed under CANN Open Software License Agreement Version 2.0 (the "License").
 # Please refer to the License for details. You may not use this file except in compliance with the License.
 # THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
 # INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
@@ -45,6 +45,10 @@ add_custom_command(
         COMMAND echo "concat op..."
         DEPENDS lccl_op lcoc_op
 )
+
+add_custom_target(lcal_cce_gen DEPENDS ${LCAL_CCE_PATH})
+add_dependencies(lcal lcal_cce_gen)
+add_dependencies(lcal_static lcal_cce_gen)
 
 set_source_files_properties(
         lcal_internal.cpp
