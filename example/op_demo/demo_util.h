@@ -31,7 +31,7 @@ const char *const ATB_ERROR_DOC =
     do {                                                                                                               \
         if ((status) != 0) {                                                                                           \
             std::cout << __FILE__ << ":" << __LINE__ << " [ErrorCode]: " << (status) << std::endl;                     \
-            if (MIN_ACL_ERROR_CODE <= status && status <= MAX_ACL_ERROR_CODE) {                                        \
+            if ((MIN_ACL_ERROR_CODE) <= (status) && (status) <= (MAX_ACL_ERROR_CODE)) {                                \
                 std::cout << "For error code details, visit: " << ACL_ERROR_DOC << std::endl;                          \
             } else {                                                                                                   \
                 std::cout << "For error code details, visit: " << ATB_ERROR_DOC << std::endl;                          \
@@ -44,7 +44,7 @@ const char *const ATB_ERROR_DOC =
     do {                                                                                                               \
         if ((status) != 0) {                                                                                           \
             std::cout << __FILE__ << ":" << __LINE__ << " [ErrorCode]: " << (status) << std::endl;                     \
-            if (MIN_ACL_ERROR_CODE <= status && status <= MAX_ACL_ERROR_CODE) {                                        \
+            if ((MIN_ACL_ERROR_CODE) <= (status) && (status) <= (MAX_ACL_ERROR_CODE)) {                                \
                 std::cout << "For error code details, visit: " << ACL_ERROR_DOC << std::endl;                          \
             } else {                                                                                                   \
                 std::cout << "For error code details, visit: " << ATB_ERROR_DOC << std::endl;                          \
