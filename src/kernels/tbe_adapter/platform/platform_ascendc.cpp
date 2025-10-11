@@ -50,8 +50,7 @@ uint32_t safeChangeStringtoUint32(const std::string &str)
         return 0;
     }
     char *endptr = nullptr;
-    const char* cstr = str.c_str();
-    long result = std::strtol(cstr, &endptr, DECIMAL);
+    long result = std::strtol(str.c_str(), &endptr, DECIMAL);
     if (cstr == endptr || *endptr != '\0') {
         MKI_LOG(WARN) << "Failed to convert string to uint32: " << str;
         return 0;
