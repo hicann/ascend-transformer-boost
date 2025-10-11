@@ -331,7 +331,7 @@ class LinearParallelCoverOperationTest(operation_test.OperationTest):
             # EP = 8 # EP * TP = WORLDSIZE
             EP = world_size
             TP = world_size // EP
-            # TP = 1 # 客户场景 TP=1
+            # TP = 1 # 某些场景 TP=1
             # out_data_type = 1 # 1对应data_type=0 27对应data_type=1
 
             # dequant_granularity = -1  # 量化类型 -1 非量化
