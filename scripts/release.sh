@@ -207,6 +207,7 @@ EOF
     mkdir -p $RELEASE_DIR/$ARCH
     cp $ATB_DIR/scripts/install.sh $OUTPUT_DIR
     cp $ATB_DIR/scripts/set_env.sh $OUTPUT_DIR
+    cp $ATB_DIR/scripts/create_version_softlink.sh $OUTPUT_DIR/scripts
     cp $ATB_DIR/scripts/uninstall.sh $OUTPUT_DIR/scripts
     cp $ATB_DIR/scripts/filelist.csv $OUTPUT_DIR/scripts
     sed -i "s/ATBPKGARCH/${ARCH}/" $OUTPUT_DIR/install.sh

@@ -70,5 +70,6 @@ atb/cxx_abi_1/lib/libexp_ops_static.a
 atb/cxx_abi_1/lib/libexp_mixops_static.a
 whl/torch_atb-0.0.1-cp310-none-any.whl
 whl/torch_atb-0.0.1-cp311-none-any.whl
+scripts/create_version_softlink.sh
 scripts/filelist.csv
 scripts/uninstall.sh
