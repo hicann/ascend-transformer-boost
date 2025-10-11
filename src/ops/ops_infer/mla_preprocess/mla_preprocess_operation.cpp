@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2025 Huawei Technologies Co., Ltd.
  * This file is a part of the CANN Open Software.
- * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Licensed under CANN Open Software License Agreement Version 2.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
@@ -428,6 +428,12 @@ Status MlaPreprocessOperation::CheckAclnnKernel(const SVector<TensorDesc> &inTen
         return NO_ERROR;
     }
     useAclnnKernel_ = true;
+    if (param_.quantMode != infer::MlaPreprocessParam::QuantMode::PER_TENSOR_QUANT_ASYMM) {
+        ATB_LOG(INFO) << GetLogPrefix()
+                      << "aclnn mlaPreprocess only supports quantMode as PER_TENSOR_QUANT_ASYMM, but got: "
+                      << param_.quantMode;
+        return ERROR_INVALID_PARAM;
+    }
     Status ret = MlaPreprocessAclnnRunner::LoadMethod();
     ATB_LOG(INFO) << GetLogPrefix() << "MlaPreprocessAclnnRunner::LoadMethod() ret: " << ret;
     if (ret != NO_ERROR) {
@@ -444,7 +450,8 @@ Status MlaPreprocessOperation::CheckAclnnKernel(const SVector<TensorDesc> &inTen
             return ret;
         }
     }
-    ATB_LOG(INFO) << GetLogPrefix() << "aclnn kernel is required and usable, generalizedHiddenSize: " << generalizedHiddenSize
+    ATB_LOG(INFO) << GetLogPrefix()
+                  << "aclnn kernel is required and usable, generalizedHiddenSize: " << generalizedHiddenSize
                   << ", doRmsNorm: " << doRmsNorm_;
     return NO_ERROR;
 }

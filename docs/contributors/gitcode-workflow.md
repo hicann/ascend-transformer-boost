@@ -1,9 +1,9 @@
-# Gitee 工作流说明
+# Gitcode 工作流说明
 
 ### 1. 开展工作流前的准备
 
 - 安装Git：请先确保您的电脑上已经安装了Git软件。如您需了解GIt，可以在Google、baidu或其他搜索引擎上求助相关内容。
-- 在开展Gitee的工作流之前，您需要先在Ascend的代码托管平台的上找到[ATB](https://gitee.com/ascend/ascend-transformer-boost)仓库。
+- 在开展Gitcode的工作流之前，您需要先在Ascend的代码托管平台的上找到[ATB](https://gitcode.com/cann/ascend-transformer-boost)仓库。
 
 ### 2. 准备本地代码
 
@@ -12,7 +12,7 @@
 1)  找到并打开对应的开放项目的首页
 2)  点击右上角的 `Fork` 按钮，按照指引，建立一个属于"**个人**"的云上fork分支。
 
-  ![gitee-fork](../images/gitee-fork.png)   
+  ![gitcode-fork](../images/gitcode-fork.png)   
 
 #### 2.2 把fork分支克隆到本地
 
@@ -28,10 +28,10 @@ mkdir ${your_working_dir}
 
 2）**完成git上用户名和邮箱的全局配置**（如果您之前已经完成过此项配置，请忽略）
 
-把git上的 `user` 设置成您gitee的个人名称：
+把git上的 `user` 设置成您gitcode的个人名称：
 
 ```
-git config --global user.name "your Gitee Name"
+git config --global user.name "your Gitcode Name"
 ```
 
 配置您的git邮箱
@@ -49,23 +49,23 @@ git config --global user.email "email@your_email.com"
   cat ~/.ssh/id_rsa.pub
   ```
 
-- ② 登录您个人的远程仓库网站Gitee账户并添加您的SSH公钥
+- ② 登录您个人的远程仓库网站Gitcode账户并添加您的SSH公钥
 
 
-- ② 登录您个人的远程仓库网站Gitee账户并添加您的ssh公钥
+- ② 登录您个人的远程仓库网站Gitcode账户并添加您的ssh公钥
 
-  请在Gitee网页点击右上角的“个人头像”进入个人Gitee账户，并点击个人头像下的“个人设置”，进入个人设置页面。在“个人设置->安全设置”下，点击“SSH公钥”，在“添加公钥”内把cat命令获取到的ssh公钥添加进去。
+  请在Gitcode网页点击右上角的“个人头像”进入个人Gitcode账户，并点击个人头像下的“个人设置”，进入个人设置页面。在“个人设置->安全设置”下，点击“SSH公钥”，在“添加公钥”内把cat命令获取到的ssh公钥添加进去。
 
-  ![gitee-ssh](https://obs-book.obs.cn-east-2.myhuaweicloud.com/cann-ops/images/gitee-ssh.png)
+  ![gitcode-ssh](../images/gitcode-ssh.png)
 
-  在个人电脑上完成gitee在SSH上的注册
+  在个人电脑上完成gitcode在SSH上的注册
 
   ```
-  ssh -T git@gitee.com
+  ssh -T git@gitcode.com
   ```
 
   如果获得如下“成功”提示，则表示 SSH 公钥已经生效：  
-  `Hi $user_name! You've successfully authenticated, but GITEE.COM does not provide shell access.`
+  `Hi $user_name! You've successfully authenticated, but GITCODE.COM does not provide shell access.`
 
 4）**复制远程仓库到本地**
 
@@ -77,17 +77,17 @@ git config --global user.email "email@your_email.com"
   
 - ② **复制远程仓库到本地**
 
-  - 您可以在需要下载的远程仓库首页，单击“克隆/下载”，得到`$remote_link`：
+  - 您可以在需要下载的远程仓库首页，单击“克隆/下载”，得到`$remote_link`（您需要创建令牌并输入以替代密码登录）：
 
-    ![gitee-clone](../images/gitee-clone.png)
+    ![gitcode-clone](../images/gitcode-clone.png)
 
   - 在本地电脑执行如下命令：
 
     ```
     # 下载远程仓库到本地
-    git clone https://gitee.com/$user_name/ascend-transformer-boost.git
+    git clone https://gitcode.com/$user_name/ascend-transformer-boost.git
     # 设置本地工作目录的上游源（原始仓库）
-    git remote add upstream https://gitee.com/ascend/ascend-transformer-boost.git
+    git remote add upstream https://gitcode.com/cann/ascend-transformer-boost.git
     ```
 
 
@@ -144,15 +144,15 @@ git commit -m "提交内容描述"
 
 ### 6. 将变更推送到您的远端目录
 
-准备进行审查（或只是建立工作的异地备份）时，将分支推到您在`gitee.com`的fork分支:
+准备进行审查（或只是建立工作的异地备份）时，将分支推到您在`gitcode.com`的fork分支:
 
 ```
 git push -f origin myfeature
 ```
 
-### 7. 在Gitee上创建一个 pull request
+### 7. 在Gitcode上创建一个 pull request
 
-1. 访问您在 `https://gitee.com/$user/ascend-transformer-boost` 的页面，单击 `+Pull Request`。
+1. 访问您在 `https://gitcode.com/$user/ascend-transformer-boost` 的页面，单击 `+Pull Request`。
    
    ![新建PR](../images/create-pr.png)
 
@@ -190,7 +190,7 @@ git push -f origin myfeature
 
    您可以在PR列表内找到您提交的PR，并看到对该PR的评论和评审意见。
 
-   ![](https://obs-book.obs.cn-east-2.myhuaweicloud.com/cann-ops/images/pr-list.png)
+   ![](../images/pr-list.png)
 
 
 
@@ -200,7 +200,7 @@ git push -f origin myfeature
 
 如果您想回退提交，请采用下面的方式
 
-*如果您具有上游写访问权限*，请不要使用`Revert`Gitee UI中的按钮创建PR，因为Gitee会在主存储库而不是您的fork中创建PR分支。
+*如果您具有上游写访问权限*，请不要使用`Revert`Gitcode UI中的按钮创建PR，因为Gitcode会在主存储库而不是您的fork中创建PR分支。
 
 - 创建一个分支并用upstream进行同步
 
@@ -243,7 +243,7 @@ git push ${your_remote_name} myrevert
 
 如果您发现提交的PR带有以下的标记，说明您提交的PR和您本地存在冲突，您需要处理冲突。
 
-![](https://obs-book.obs.cn-east-2.myhuaweicloud.com/cann-ops/images/gitee-conflict.png)
+![](../images/gitcode-conflict.png)
 
 1. 先将分支切换到master上，并完成master的rebase
 
@@ -298,4 +298,4 @@ git push ${your_remote_name} myrevert
    git push -f origin yourbranch
    ```
 
-5. 回到gitee上的PR提交页面查看，您就可以看到之前的提交已经合并了。
+5. 回到gitcode上的PR提交页面查看，您就可以看到之前的提交已经合并了。
