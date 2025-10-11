@@ -10,10 +10,12 @@
 #include "group_topk_ops_runner.h"
 #include <asdops/params/params.h>
 #include <atb/utils/log.h>
+#include "atb/utils/operation_register.h"
+#include "atb/utils/param_compare.h"
 
 namespace atb {
 GroupTopkOpsRunner::GroupTopkOpsRunner(const infer::GroupTopkParam &param)
-    : OpsRunner("GroupTopkOpsRunner", RUNNER_TYPE_GROUP_TOPK), param_(param)
+    : OpsRunner("GroupTopkOpsRunner"), param_(param)
 {
     ATB_LOG(INFO) << "GroupTopkOpsRunner::GroupTopkOpsRunner";
 }
@@ -69,4 +71,7 @@ void GroupTopkOpsRunner::SetParam(const Mki::Any &param)
         isParamUpdated_ = true;
     }
 }
+
+REG_RUNNER_TYPE(GroupTopkOpsRunner);
+REG_OP_PARAM(AsdOps::OpParam::GroupTopk);
 } // namespace atb

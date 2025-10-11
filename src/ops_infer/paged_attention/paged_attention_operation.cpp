@@ -19,6 +19,7 @@
 #include "atb/operation/atb_operation_ir_cfg.h"
 #include "atb/utils/singleton.h"
 #include "atb/operation/op_param_funcs.h"
+#include "atb/utils/operation_register.h"
 
 namespace {
 static const uint32_t IN_TENSOR_NUM = 5;
@@ -971,7 +972,8 @@ std::shared_ptr<Runner> PagedAttentionOperation::CreateRunner(Context &context) 
         ATB_LOG(DEBUG) << "context cast to contextBase failed!";
         return nullptr;
     }
-    RunnerPool &pool = contextBase->GetRunnerPool(RUNNER_TYPE_PAGED_ATTENTION);
+    int64_t runnerTypeIdx = RunnerTypeRegister::GetRunnerTypeIdx("PagedAttentionOpsRunner");
+    RunnerPool &pool = contextBase->GetRunnerPool(runnerTypeIdx);
     if (!GetSingleton<Config>().Is910B()) {
         Runner *runner = pool.MallocRunner<PagedAttentionOpsRunner910A, infer::PagedAttentionParam>(param_);
         return runner ? std::shared_ptr<Runner>(runner, [&pool](Runner *runner) { pool.FreeRunner(runner); }) :

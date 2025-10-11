@@ -15,6 +15,7 @@
 #include "atb/utils/tensor_check.h"
 #include "atb/utils/tensor_util.h"
 #include "laser_attention_ops_runner.h"
+#include "atb/utils/operation_register.h"
 
 #define CHECK_STATUS_AND_RETURN(status)                                                                                \
     if ((status) != 0) {                                                                                               \
@@ -197,7 +198,8 @@ std::shared_ptr<Runner> LaserAttentionOperation::CreateRunner(Context &context) 
         ATB_LOG(DEBUG) << "context cast to contextBase failed!";
         return nullptr;
     }
-    RunnerPool &pool = contextBase->GetRunnerPool(RUNNER_TYPE_LASER_ATTENTION);
+    int64_t runnerTypeIdx = RunnerTypeRegister::GetRunnerTypeIdx("LaserAttentionOpsRunner");
+    RunnerPool &pool = contextBase->GetRunnerPool(runnerTypeIdx);
     Runner *runner = pool.MallocRunner<LaserAttentionOpsRunner, train::LaserAttentionParam>(param_);
     if (!runner) {
         ATB_LOG(DEBUG) << "MallocRunner from pool failed!";

@@ -18,6 +18,7 @@
 #include "atb/operation/atb_operation_ir_cfg.h"
 #include "atb/utils/singleton.h"
 #include "grouped_matmul_inplace_add_ops_runner.h"
+#include "atb/utils/operation_register.h"
 
 static constexpr uint32_t IN_TENSOR_NUM = 4;
 static constexpr uint32_t OUT_TENSOR_NUM = 1;
@@ -113,7 +114,8 @@ std::shared_ptr<Runner> GroupedMatmulInplaceAddOperation::CreateRunner(Context &
         ATB_LOG(ERROR) << "context cast to contextBase failed!";
         return nullptr;
     }
-    RunnerPool &pool = contextBase->GetRunnerPool(RUNNER_TYPE_GROUPED_MATMUL_INPLACE_ADD);
+    int64_t runnerTypeIdx = RunnerTypeRegister::GetRunnerTypeIdx("GroupedMatmulInplaceAddOpsRunner");
+    RunnerPool &pool = contextBase->GetRunnerPool(runnerTypeIdx);
     Runner *runner = pool.MallocRunner<GroupedMatmulInplaceAddOpsRunner, infer::GroupedMatmulInplaceAddParam>(param_);
     if (!runner) {
         ATB_LOG(DEBUG) << "MallocRunner from pool failed!";

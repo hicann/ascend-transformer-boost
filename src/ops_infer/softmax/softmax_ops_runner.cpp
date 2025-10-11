@@ -11,10 +11,12 @@
 #include "softmax_ops_runner.h"
 #include <atb/utils/log.h>
 #include <asdops/params/params.h>
+#include "atb/utils/operation_register.h"
+#include "atb/utils/param_compare.h"
 
 namespace atb {
 SoftmaxOpsRunner::SoftmaxOpsRunner(const infer::SoftmaxParam &param)
-    : OpsRunner("SoftmaxOpsRunner", RUNNER_TYPE_SOFTMAX), param_(param)
+    : OpsRunner("SoftmaxOpsRunner"), param_(param)
 {
     ATB_LOG(INFO) << "SoftmaxOpsRunner::SoftmaxOpsRunner called";
     kernelGraph_.inTensors.resize(1);
@@ -36,4 +38,7 @@ SoftmaxOpsRunner::SoftmaxOpsRunner(const infer::SoftmaxParam &param)
     sortNode.outTensors = {&resultTensor};
 }
 SoftmaxOpsRunner::~SoftmaxOpsRunner() {}
+
+REG_RUNNER_TYPE(SoftmaxOpsRunner);
+REG_OP_PARAM(AsdOps::OpParam::Softmax);
 } // namespace atb

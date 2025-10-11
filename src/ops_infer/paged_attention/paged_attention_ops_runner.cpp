@@ -57,7 +57,7 @@ std::size_t PagedAttentionOpsRunner::IntensorSizeGenerate()
 }
 
 PagedAttentionOpsRunner::PagedAttentionOpsRunner(const infer::PagedAttentionParam &param)
-    : OpsRunner("PagedAttentionOpsRunner", RUNNER_TYPE_PAGED_ATTENTION), param_(param)
+    : OpsRunner("PagedAttentionOpsRunner"), param_(param)
 {
     needKernelGraphModify_ = true;
     skipSetUpKernelGraphWhenCacheHit_ = false;

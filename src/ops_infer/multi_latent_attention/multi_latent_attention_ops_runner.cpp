@@ -19,7 +19,7 @@ static const uint32_t QSEQLEN_INDEX = 6;
 } // namespace
 namespace atb {
 MultiLatentAttentionOpsRunner::MultiLatentAttentionOpsRunner(const infer::MultiLatentAttentionParam &param)
-    : OpsRunner("MultiLatentAttentionOpsRunner", RUNNER_TYPE_MULTILATENTATTENTION), param_(param)
+    : OpsRunner("MultiLatentAttentionOpsRunner"), param_(param)
 {
     ATB_LOG(INFO) << "MultiLatentAttentionOpsRunner::MultiLatentAttentionOpsRunner called";
     needKernelGraphModify_ = true;

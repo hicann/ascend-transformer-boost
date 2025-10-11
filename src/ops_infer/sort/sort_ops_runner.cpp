@@ -12,12 +12,14 @@
 #include <atb/utils/log.h>
 #include <asdops/params/params.h>
 #include "atb/utils/tensor_util.h"
+#include "atb/utils/operation_register.h"
+#include "atb/utils/param_compare.h"
 
 namespace atb {
 static const uint64_t OUT_TENSOR_COUNT = 2;
 
 SortOpsRunner::SortOpsRunner(const infer::SortParam &param)
-    : OpsRunner("SortOpsRunner", RUNNER_TYPE_SORT), param_(param)
+    : OpsRunner("SortOpsRunner"), param_(param)
 {
     ATB_LOG(INFO) << "SortOpsRunner::SortOpsRunner called";
     kernelGraph_.inTensors.resize(1);
@@ -41,4 +43,7 @@ SortOpsRunner::SortOpsRunner(const infer::SortParam &param)
 }
 
 SortOpsRunner::~SortOpsRunner() {}
+
+REG_RUNNER_TYPE(SortOpsRunner);
+REG_OP_PARAM(AsdOps::OpParam::Sort);
 } // namespace atb

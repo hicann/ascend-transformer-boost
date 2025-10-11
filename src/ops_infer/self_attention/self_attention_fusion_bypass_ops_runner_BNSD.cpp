@@ -13,6 +13,7 @@
 #include "atb/utils/log.h"
 #include "atb/utils/tensor_util.h"
 #include "param.h"
+#include "atb/utils/operation_register.h"
 
 static constexpr uint32_t VALUE_TENSOR_POS = 2;
 
@@ -29,7 +30,7 @@ void FlashAttentionInferShapeBypassBNSDPreFunc(Mki::LaunchParam &launchParam)
 }
 
 SelfAttentionFusionBypassOpsRunnerBNSD::SelfAttentionFusionBypassOpsRunnerBNSD(const infer::SelfAttentionParam &param)
-    : OpsRunner("SelfAttentionFusionBypassOpsRunnerBNSD", RUNNER_TYPE_SELF_ATTENTION_KV_BYPASS_BNSD), param_(param)
+    : OpsRunner("SelfAttentionFusionBypassOpsRunnerBNSD"), param_(param)
 {
     skipSetUpKernelGraphWhenCacheHit_ = false;
     needKernelGraphModify_ = true;
@@ -202,4 +203,6 @@ void SelfAttentionFusionBypassOpsRunnerBNSD::SetFAParam(AtbOps::OpParam::UnpadFl
 }
 
 SelfAttentionFusionBypassOpsRunnerBNSD::~SelfAttentionFusionBypassOpsRunnerBNSD() {}
+
+REG_RUNNER_TYPE(SelfAttentionFusionBypassOpsRunnerBNSD);
 } // namespace atb

@@ -9,6 +9,7 @@
  */
 #include "rms_norm_with_stride_ops_runner.h"
 #include "atb/utils/log.h"
+#include "atb/utils/operation_register.h"
 
 namespace atb {
 static const uint64_t IN_TENSOR_COUNT_TWO = 2;
@@ -52,7 +53,7 @@ void RmsNormWithStrideOpsRunner::BuildRmsNormGraph(const AsdOps::OpParam::Norm &
 }
 
 RmsNormWithStrideOpsRunner::RmsNormWithStrideOpsRunner(const infer::RmsNormWithStrideParam &param)
-    : OpsRunner("RmsNormWithStrideOpsRunner", RUNNER_TYPE_RMS_NORM_WITH_STRIDE), param_(param)
+    : OpsRunner("RmsNormWithStrideOpsRunner"), param_(param)
 {
     AsdOps::OpParam::Norm rmsNormParam = {AsdOps::OpParam::Norm::RMS_NORM};
     rmsNormParam.normType = AsdOps::OpParam::Norm::RMS_NORM;
@@ -81,4 +82,6 @@ Status RmsNormWithStrideOpsRunner::SetupKernelGraph(const OpsTensorPack &opsTens
 }
 
 RmsNormWithStrideOpsRunner::~RmsNormWithStrideOpsRunner() {}
+
+REG_RUNNER_TYPE(RmsNormWithStrideOpsRunner);
 } // namespace atb

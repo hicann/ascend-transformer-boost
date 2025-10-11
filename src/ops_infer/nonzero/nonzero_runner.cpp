@@ -11,12 +11,13 @@
 #include "nonzero_runner.h"
 #include <atb/utils/log.h>
 #include <asdops/params/params.h>
+#include "atb/utils/operation_register.h"
 
 namespace atb {
 static const uint32_t IN_TENSOR_NUM = 1;
 static const uint32_t OUT_TENSOR_NUM = 2;
 NonzeroRunner::NonzeroRunner(const infer::NonzeroParam &param)
-    : OpsRunner("NonzeroRunner", RUNNER_TYPE_NONZERO), param_(param)
+    : OpsRunner("NonzeroRunner"), param_(param)
 {
     ATB_LOG(INFO) << "NonzeroRunner::NonzeroRunner called:";
     kernelGraph_.inTensors.resize(IN_TENSOR_NUM);
@@ -36,4 +37,6 @@ NonzeroRunner::NonzeroRunner(const infer::NonzeroParam &param)
 }
 
 NonzeroRunner::~NonzeroRunner() {}
+
+REG_RUNNER_TYPE(NonzeroRunner);
 } // namespace atb

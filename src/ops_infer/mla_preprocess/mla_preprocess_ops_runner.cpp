@@ -10,6 +10,8 @@
 #include "mla_preprocess_ops_runner.h"
 #include <atb/utils/log.h>
 #include <atbops/params/params.h>
+#include "atb/utils/operation_register.h"
+#include "atb/utils/param_compare.h"
 
 namespace {
 static const uint32_t IN_TENSOR_NUM = 24;
@@ -18,7 +20,7 @@ static const uint32_t WUK_INDEX = 18;
 } // namespace
 namespace atb {
 MlaPreprocessOpsRunner::MlaPreprocessOpsRunner(const infer::MlaPreprocessParam &param)
-    : OpsRunner("MlaPreprocessOpsRunner", RUNNER_TYPE_MLAPREPROCESS), param_(param)
+    : OpsRunner("MlaPreprocessOpsRunner"), param_(param)
 {
     ATB_LOG(INFO) << "MlaPreprocessOpsRunner::MlaPreprocessOpsRunner called";
     needKernelGraphModify_ = true;
@@ -87,4 +89,7 @@ Status MlaPreprocessOpsRunner::ModifyKernelGraph(const OpsTensorPack &opsTensorP
     mlaPreprocessNode.opDesc = {0, "MlaPreprocessOperation", asdParam};
     return NO_ERROR;
 }
+
+REG_RUNNER_TYPE(MlaPreprocessOpsRunner);
+REG_OP_PARAM(AtbOps::OpParam::MlaPreprocess);
 } // namespace atb

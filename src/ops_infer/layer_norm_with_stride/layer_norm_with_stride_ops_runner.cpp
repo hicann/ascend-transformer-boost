@@ -10,6 +10,7 @@
 
 #include "layer_norm_with_stride_ops_runner.h"
 #include "atb/utils/log.h"
+#include "atb/utils/operation_register.h"
 
 namespace atb {
 static const uint64_t IN_TENSOR_COUNT_SIX = 6;
@@ -52,7 +53,7 @@ void LayerNormWithStrideOpsRunner::BuildLayerNormGraph(const AsdOps::OpParam::No
 }
 
 LayerNormWithStrideOpsRunner::LayerNormWithStrideOpsRunner(const infer::LayerNormWithStrideParam &param)
-    : OpsRunner("LayerNormWithStrideOpsRunner", RUNNER_TYPE_LAYER_NORM_WITH_STRIDE), param_(param)
+    : OpsRunner("LayerNormWithStrideOpsRunner"), param_(param)
 {
     AsdOps::OpParam::Norm layerNormParam = {AsdOps::OpParam::Norm::LAYER_NORM};
     SetLayerNormParam(param_, layerNormParam);
@@ -80,4 +81,6 @@ Status LayerNormWithStrideOpsRunner::SetupKernelGraph(const OpsTensorPack &opsTe
 }
 
 LayerNormWithStrideOpsRunner::~LayerNormWithStrideOpsRunner() {}
+
+REG_RUNNER_TYPE(LayerNormWithStrideOpsRunner);
 } // namespace atb

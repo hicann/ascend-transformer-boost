@@ -11,6 +11,8 @@
 #include <asdops/params/params.h>
 #include <atbops/params/params.h>
 #include "atb/utils/log.h"
+#include "atb/utils/operation_register.h"
+#include "atb/utils/param_compare.h"
 
 static constexpr size_t SIZE_2 = 2;
 static constexpr size_t SIZE_3 = 3;
@@ -18,7 +20,7 @@ static constexpr size_t SIZE_4 = 4;
 
 namespace atb {
 GroupedMatmulInplaceAddOpsRunner::GroupedMatmulInplaceAddOpsRunner(const infer::GroupedMatmulInplaceAddParam &param)
-    : OpsRunner("GroupedMatmulInplaceAddOpsRunner", RUNNER_TYPE_GROUPED_MATMUL_INPLACE_ADD), param_(param)
+    : OpsRunner("GroupedMatmulInplaceAddOpsRunner"), param_(param)
 {
 }
 
@@ -83,4 +85,8 @@ Status GroupedMatmulInplaceAddOpsRunner::SetupKernelGraph(const OpsTensorPack &o
     (void)opsTensorPack;
     return NO_ERROR;
 }
+
+REG_RUNNER_TYPE(GroupedMatmulInplaceAddOpsRunner);
+REG_OP_PARAM(AtbOps::OpParam::GmmAdd);
+REG_OP_PARAM(AsdOps::OpParam::Transpose);
 } // namespace atb

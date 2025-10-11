@@ -27,6 +27,7 @@
 #include "atb/utils/singleton.h"
 #include "atb/operation/atb_operation_ir_cfg.h"
 #include "atb/operation/op_param_funcs.h"
+#include "atb/utils/operation_register.h"
 
 namespace atb {
 static constexpr uint32_t FUSION_IN_TENSOR_NUM = 8;
@@ -1630,27 +1631,31 @@ std::shared_ptr<Runner> SelfAttentionOperation::CreateRunner(Context &context) c
         }
     } else {
         if (param_.calcType == infer::SelfAttentionParam::PA_ENCODER) {
-            RunnerPool &pool = contextBase->GetRunnerPool(RUNNER_TYPE_SELF_ATTENTION_PA_ENCODER);
+            int64_t runnerTypeIdx = RunnerTypeRegister::GetRunnerTypeIdx("SelfAttentionEncoderFusionOpsRunner910A");
+            RunnerPool &pool = contextBase->GetRunnerPool(runnerTypeIdx);
             Runner *runner =
                 pool.MallocRunner<SelfAttentionEncoderFusionOpsRunner910A, infer::SelfAttentionParam>(param_);
             return runner ? std::shared_ptr<Runner>(runner, [&pool](Runner *runner) { pool.FreeRunner(runner); }) :
                             std::make_shared<SelfAttentionEncoderFusionOpsRunner910A>(param_);
         } else if (param_.kvcacheCfg == atb::infer::SelfAttentionParam::K_BYPASS_V_BYPASS) {
             if (param_.inputLayout == atb::infer::InputLayout::TYPE_BNSD) {
-                RunnerPool &pool = contextBase->GetRunnerPool(RUNNER_TYPE_SELF_ATTENTION_KV_BYPASS_BNSD);
+                int64_t runnerTypeIdx = RunnerTypeRegister::GetRunnerTypeIdx("SelfAttentionFusionBypassOpsRunnerBNSD910A");
+                RunnerPool &pool = contextBase->GetRunnerPool(runnerTypeIdx);
                 Runner *runner =
                     pool.MallocRunner<SelfAttentionFusionBypassOpsRunnerBNSD910A, infer::SelfAttentionParam>(param_);
                 return runner ? std::shared_ptr<Runner>(runner, [&pool](Runner *runner) { pool.FreeRunner(runner); }) :
                                 std::make_shared<SelfAttentionFusionBypassOpsRunnerBNSD910A>(param_);
             } else {
-                RunnerPool &pool = contextBase->GetRunnerPool(RUNNER_TYPE_SELF_ATTENTION_KV_BYPASS);
+                int64_t runnerTypeIdx = RunnerTypeRegister::GetRunnerTypeIdx("SelfAttentionFusionBypassOpsRunner910A");
+                RunnerPool &pool = contextBase->GetRunnerPool(runnerTypeIdx);
                 Runner *runner =
                     pool.MallocRunner<SelfAttentionFusionBypassOpsRunner910A, infer::SelfAttentionParam>(param_);
                 return runner ? std::shared_ptr<Runner>(runner, [&pool](Runner *runner) { pool.FreeRunner(runner); }) :
                                 std::make_shared<SelfAttentionFusionBypassOpsRunner910A>(param_);
             }
         }
-        RunnerPool &pool = contextBase->GetRunnerPool(RUNNER_TYPE_SELF_ATTENTION);
+        int64_t runnerTypeIdx = RunnerTypeRegister::GetRunnerTypeIdx("SelfAttentionFusionOpsRunner");
+        RunnerPool &pool = contextBase->GetRunnerPool(runnerTypeIdx);
         Runner *runner = pool.MallocRunner<SelfAttentionFusionOpsRunner910A, infer::SelfAttentionParam>(param_);
         return runner ? std::shared_ptr<Runner>(runner, [&pool](Runner *runner) { pool.FreeRunner(runner); }) :
                         std::make_shared<SelfAttentionFusionOpsRunner910A>(param_);

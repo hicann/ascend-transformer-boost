@@ -12,13 +12,14 @@
 #include "atb/utils/log.h"
 #include "atb/utils/operation_util.h"
 #include "atb/utils/common_utils.h"
+#include "atb/utils/operation_register.h"
 
 namespace atb {
 static constexpr size_t DIM_2 = 2;
 static constexpr size_t DIM_3 = 3;
 
 LinearParallelLcocRunner::LinearParallelLcocRunner(const infer::LinearParallelParam &param, Context &context)
-    : LcocRunner("LinearParallelLcocRunner", RUNNER_TYPE_LINEAR_PARALLEL, param.rank, param.rankSize, param.commMode,
+    : LcocRunner("LinearParallelLcocRunner", param.rank, param.rankSize, param.commMode,
                  context, param.commDomain),
       param_(param)
 {
@@ -261,4 +262,5 @@ Status LinearParallelLcocRunner::ExecuteImpl(RunnerVariantPack &runnerVariantPac
     }
     return NO_ERROR;
 }
+REG_RUNNER_TYPE(LinearParallelLcocRunner);
 } // namespace atb
