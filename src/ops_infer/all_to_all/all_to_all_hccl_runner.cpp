@@ -14,12 +14,13 @@
 #include <asdops/params/params.h>
 #include "atb/utils.h"
 #include "atb/utils/common_utils.h"
+#include "atb/utils/operation_register.h"
 
 namespace atb {
 AllToAllHcclRunner::AllToAllHcclRunner(const infer::AllToAllParam &param, bool useRankTableFile)
-    : HcclRunner(!useRankTableFile ? HcclRunner("AllToAllHcclRunner", RUNNER_TYPE_ALL_TO_ALL, param.rank,
+    : HcclRunner(!useRankTableFile ? HcclRunner("AllToAllHcclRunner", param.rank,
                                                 param.rankSize, param.rankRoot, param.commDomain) :
-                                     HcclRunner("AllToAllHcclRunner", RUNNER_TYPE_ALL_TO_ALL, param.rank,
+                                     HcclRunner("AllToAllHcclRunner", param.rank,
                                                 param.rankTableFile, param.commDomain)),
       param_(param)
 {
@@ -27,7 +28,7 @@ AllToAllHcclRunner::AllToAllHcclRunner(const infer::AllToAllParam &param, bool u
 }
 
 AllToAllHcclRunner::AllToAllHcclRunner(const infer::AllToAllParam &param, HcclComm hcclComm)
-    : HcclRunner("AllToAllHcclRunner", hcclComm, RUNNER_TYPE_ALL_TO_ALL), param_(param)
+    : HcclRunner("AllToAllHcclRunner", hcclComm), param_(param)
 {
     ATB_LOG(INFO) << "AllToAllHcclRunner::AllToAllHcclRunner ext called";
 }
@@ -57,4 +58,5 @@ Status AllToAllHcclRunner::ExecuteImpl(RunnerVariantPack &runnerVariantPack)
 }
 
 AllToAllHcclRunner::~AllToAllHcclRunner() {}
+REG_RUNNER_TYPE(AllToAllHcclRunner);
 } // namespace atb

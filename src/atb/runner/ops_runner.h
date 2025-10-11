@@ -19,7 +19,6 @@
 #include <mki/launch_param.h>
 #include "atb/runner/runner.h"
 #include "atb/utils/log.h"
-#include "atb/runner/runner_type.h"
 #include "atb/types.h"
 #include "atb/utils/runner_variant_pack.h"
 #include "atb/svector.h"
@@ -27,7 +26,6 @@
 #include "atb/kernel_cache/kernel_cache.h"
 #include "atb/runner/atb_kernel_method.h"
 #include "atb/runner/kernel_graph.h"
-
 
 namespace atb {
 struct OpsTensorPack {
@@ -37,7 +35,7 @@ struct OpsTensorPack {
 
 class OpsRunner : public Runner {
 public:
-    explicit OpsRunner(const std::string &name, RunnerType runnerType = RUNNER_TYPE_UNDEFINED);
+    explicit OpsRunner(const std::string &name);
     ~OpsRunner() override;
     void ReserveSvector(RunnerVariantPack &runnerPack);
     bool IsSupportGlbWorkspace() override;
@@ -144,7 +142,7 @@ private:
     std::map<Mki::Tensor *, bool> isOutTensorNeedMalloc_;
     std::set<Mki::Tensor *> tensorMalloced_;
     std::shared_ptr<MemAllocationSolver> memAllocationSolver_;
-    RunnerType runnerType_ = RUNNER_TYPE_UNDEFINED;
+    int64_t runnerTypeIdx_ = -1; // 默认值为-1
     RunnerVariantPack lastRunnerVariantPack_;
     OpsTensorPack opsTensorPack_;
     std::vector<std::pair<Mki::Tensor *, bool>> mallocCache_; // true: malloc, false: free

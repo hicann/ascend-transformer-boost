@@ -12,13 +12,14 @@
 #include <asdops/params/params.h>
 #include <atb/utils/log.h>
 #include <atb/utils/tensor_util.h>
+#include "atb/utils/operation_register.h"
 
 namespace atb {
 static const uint64_t IN_TENSOR_COUNT = 4;
 static const uint64_t OUT_TENSOR_COUNT = 2;
 
 RmsNormBackwardOpsRunner::RmsNormBackwardOpsRunner(const train::RmsNormBackwardParam &param)
-    : OpsRunner("RmsNormBackwardOpsRunner", RUNNER_TYPE_RMS_NORM_BACKWARD), param_(param)
+    : OpsRunner("RmsNormBackwardOpsRunner"), param_(param)
 {
     ATB_LOG(INFO) << "RmsNormBackwardOpsRunner::RmsNormBackwardOpsRunner called";
     kernelGraph_.inTensors.resize(IN_TENSOR_COUNT);
@@ -45,4 +46,6 @@ RmsNormBackwardOpsRunner::RmsNormBackwardOpsRunner(const train::RmsNormBackwardP
 }
 
 RmsNormBackwardOpsRunner::~RmsNormBackwardOpsRunner() {}
+
+REG_RUNNER_TYPE(RmsNormBackwardOpsRunner);
 } // namespace atb

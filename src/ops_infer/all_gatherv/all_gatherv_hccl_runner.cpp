@@ -14,12 +14,13 @@
 #include <asdops/params/params.h>
 #include "atb/utils.h"
 #include "atb/utils/common_utils.h"
+#include "atb/utils/operation_register.h"
 
 namespace atb {
 AllGatherVHcclRunner::AllGatherVHcclRunner(const infer::AllGatherVParam &param, bool useRankTableFile)
-    : HcclRunner(!useRankTableFile ? HcclRunner("AllGatherVHcclRunner", RUNNER_TYPE_ALL_GATHERV, param.rank,
+    : HcclRunner(!useRankTableFile ? HcclRunner("AllGatherVHcclRunner", param.rank,
                                                 param.rankSize, param.rankRoot, param.commDomain) :
-                                     HcclRunner("AllGatherVHcclRunner", RUNNER_TYPE_ALL_GATHERV, param.rank,
+                                     HcclRunner("AllGatherVHcclRunner", param.rank,
                                                 param.rankTableFile, param.commDomain)),
       param_(param)
 {
@@ -27,7 +28,7 @@ AllGatherVHcclRunner::AllGatherVHcclRunner(const infer::AllGatherVParam &param, 
 }
 
 AllGatherVHcclRunner::AllGatherVHcclRunner(const infer::AllGatherVParam &param, HcclComm hcclComm)
-    : HcclRunner("AllGatherVHcclRunner", hcclComm, RUNNER_TYPE_ALL_GATHERV),
+    : HcclRunner("AllGatherVHcclRunner", hcclComm),
       param_(param)
 {
     ATB_LOG(INFO) << "AllGatherVHcclRunner::AllGatherVHcclRunner ext called";
@@ -60,4 +61,5 @@ Status AllGatherVHcclRunner::ExecuteImpl(RunnerVariantPack &runnerVariantPack)
 }
 
 AllGatherVHcclRunner::~AllGatherVHcclRunner() {}
+REG_RUNNER_TYPE(AllGatherVHcclRunner);
 }  // namespace atb

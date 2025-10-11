@@ -11,10 +11,12 @@
 #include "kv_cache_ops_runner.h"
 #include <atbops/params/params.h>
 #include "atb/utils/log.h"
+#include "atb/utils/operation_register.h"
+#include "atb/utils/param_compare.h"
 
 namespace atb {
 KvCacheOpsRunner::KvCacheOpsRunner(const infer::KvCacheParam &param)
-    : OpsRunner("KvCacheOpsRunner", RUNNER_TYPE_KV_CACHE), param_(param)
+    : OpsRunner("KvCacheOpsRunner"), param_(param)
 {
     ATB_LOG(INFO) << "KvCacheOpsRunner::KvCacheOpsRunner called";
     const std::size_t intensorSize = 5;
@@ -51,4 +53,7 @@ KvCacheOpsRunner::KvCacheOpsRunner(const infer::KvCacheParam &param)
 }
 
 KvCacheOpsRunner::~KvCacheOpsRunner() {}
+
+REG_RUNNER_TYPE(KvCacheOpsRunner);
+REG_OP_PARAM(AtbOps::OpParam::KVCache);
 } // namespace atb

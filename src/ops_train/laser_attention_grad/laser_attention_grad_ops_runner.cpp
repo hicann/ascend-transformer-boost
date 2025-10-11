@@ -11,13 +11,15 @@
 #include <asdops/params/params.h>
 #include <atbops/params/params.h>
 #include "atb/utils/log.h"
+#include "atb/utils/operation_register.h"
+#include "atb/utils/param_compare.h"
 
 static constexpr size_t SIZE_4 = 4;
 static constexpr size_t SIZE_15 = 15;
 
 namespace atb {
 LaserAttentionGradOpsRunner::LaserAttentionGradOpsRunner(const train::LaserAttentionGradParam &param)
-    : OpsRunner("LaserAttentionGradOpsRunner", RUNNER_TYPE_LASER_ATTENTION_GRAD), param_(param)
+    : OpsRunner("LaserAttentionGradOpsRunner"), param_(param)
 {
 }
 
@@ -88,4 +90,7 @@ void LaserAttentionGradOpsRunner::SetParam(const Mki::Any &param)
         isParamUpdated_ = true;
     }
 }
+
+REG_RUNNER_TYPE(LaserAttentionGradOpsRunner);
+REG_OP_PARAM(AtbOps::OpParam::LaserAttentionGrad);
 } // namespace atb
