@@ -10,10 +10,12 @@
 
 #include "paged_cache_load_ops_runner.h"
 #include "atb/utils/log.h"
+#include "atb/utils/operation_register.h"
+#include "atb/utils/param_compare.h"
 
 namespace atb {
 PagedCacheLoadOpsRunner::PagedCacheLoadOpsRunner(const infer::PagedCacheLoadParam &param)
-    : OpsRunner("PagedCacheLoadOpsRunner", RUNNER_TYPE_PAGED_CACHE_LOAD), param_(param)
+    : OpsRunner("PagedCacheLoadOpsRunner"), param_(param)
 {
     const std::size_t intensorSize = 7;
     const std::size_t outtensorSize = 2;
@@ -82,4 +84,6 @@ PagedCacheLoadOpsRunner::PagedCacheLoadOpsRunner(const infer::PagedCacheLoadPara
 
 PagedCacheLoadOpsRunner::~PagedCacheLoadOpsRunner() {}
 
+REG_RUNNER_TYPE(PagedCacheLoadOpsRunner);
+REG_OP_PARAM(AtbOps::OpParam::PagedCacheLoad);
 } // namespace atb

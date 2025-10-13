@@ -12,12 +12,14 @@
 #include <asdops/params/params.h>
 #include "atb/utils/log.h"
 #include "atb/utils/tensor_util.h"
+#include "atb/utils/operation_register.h"
+#include "atb/utils/param_compare.h"
 
 namespace atb {
 static const uint64_t IN_TENSOR_COUNT = 2;
 
 SetValueOpsRunner::SetValueOpsRunner(const infer::SetValueParam &param)
-    : OpsRunner("SetValueOpsRunner", RUNNER_TYPE_SET_VALUE), param_(param)
+    : OpsRunner("SetValueOpsRunner"), param_(param)
 {
     ATB_LOG(INFO) << "SetValueOpsRunner::SetValueOpsRunner called";
 }
@@ -76,4 +78,7 @@ Status SetValueOpsRunner::SetupKernelGraph(const OpsTensorPack &opsTensorPack)
     copyNode.outTensors = {&dst};
     return NO_ERROR;
 }
+
+REG_RUNNER_TYPE(SetValueOpsRunner);
+REG_OP_PARAM(AsdOps::OpParam::Copy);
 } // namespace atb

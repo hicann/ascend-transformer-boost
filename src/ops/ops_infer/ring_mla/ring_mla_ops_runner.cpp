@@ -13,6 +13,8 @@
 #include "atb/utils/log.h"
 #include "atb/utils/tensor_util.h"
 #include "param.h"
+#include "atb/utils/operation_register.h"
+#include "atb/utils/param_compare.h"
 
 namespace {
 // query_split1, query_split2, key_split1, key_split2, value, mask, seqLen, prevOut (optional), prevLse(optional)
@@ -26,7 +28,7 @@ static constexpr uint32_t OUT_TENSOR_NUM = 2;
 namespace atb {
 
 RingMLAOpsRunner::RingMLAOpsRunner(const infer::RingMLAParam &param)
-    : OpsRunner("RingMLAOpsRunner", RUNNER_TYPE_RING_MLA), param_(param)
+    : OpsRunner("RingMLAOpsRunner"), param_(param)
 {
     needKernelGraphModify_ = true;
     skipSetUpKernelGraphWhenCacheHit_ = false;
@@ -128,4 +130,7 @@ void RingMLAOpsRunner::SetRingMLAParam(AtbOps::OpParam::RINGMLA &ringMLAParam)
 }
 
 RingMLAOpsRunner::~RingMLAOpsRunner() {}
+
+REG_RUNNER_TYPE(RingMLAOpsRunner);
+REG_OP_PARAM(AtbOps::OpParam::RINGMLA);
 } // namespace atb

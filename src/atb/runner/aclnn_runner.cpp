@@ -12,10 +12,13 @@
 #include "atb/utils/aclnn_util.h"
 #include "atb/utils/log.h"
 #include "atb/utils/singleton.h"
+#include "atb/utils/operation_register.h"
 
 namespace atb {
 
-AclnnRunner::AclnnRunner(const std::string &name, RunnerType runnerType) : Runner(name), runnerType_(runnerType) {}
+AclnnRunner::AclnnRunner(const std::string &name) : Runner(name) {
+    runnerTypeIdx_ = RunnerTypeRegister::GetRunnerTypeIdx(name);
+}
 
 AclnnRunner::~AclnnRunner() {}
 

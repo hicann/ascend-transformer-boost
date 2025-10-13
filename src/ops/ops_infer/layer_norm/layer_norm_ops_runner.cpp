@@ -10,6 +10,7 @@
 
 #include "layer_norm_ops_runner.h"
 #include "atb/utils/log.h"
+#include "atb/utils/operation_register.h"
 
 namespace atb {
 static const uint64_t IN_TENSOR_COUNT_SIX = 6;
@@ -213,7 +214,7 @@ void LayerNormOpsRunner::BuildPostLayerNormQuantGraph(const AsdOps::OpParam::Nor
 }
 
 LayerNormOpsRunner::LayerNormOpsRunner(const infer::LayerNormParam &param)
-    : OpsRunner("LayerNormOpsRunner", RUNNER_TYPE_LAYER_NORM), param_(param)
+    : OpsRunner("LayerNormOpsRunner"), param_(param)
 {
     AsdOps::OpParam::Norm layerNormParam = {AsdOps::OpParam::Norm::LAYER_NORM};
     if (param_.layerType == infer::LayerNormParam::LAYER_NORM_NORM) {
@@ -256,4 +257,6 @@ LayerNormOpsRunner::LayerNormOpsRunner(const infer::LayerNormParam &param)
 }
 
 LayerNormOpsRunner::~LayerNormOpsRunner() {}
+
+REG_RUNNER_TYPE(LayerNormOpsRunner);
 } // namespace atb

@@ -10,6 +10,7 @@
 #include "mla_preprocess_ops_runner_split.h"
 #include <atb/utils/log.h>
 #include <atbops/params/params.h>
+#include "atb/utils/operation_register.h"
 
 namespace {
 static const uint32_t IN_TENSOR_NUM_SPLIT = 24;
@@ -18,7 +19,7 @@ static const uint32_t WUK_INDEX = 18;
 } // namespace
 namespace atb {
 MlaPreprocessOpsRunnerSplit::MlaPreprocessOpsRunnerSplit(const infer::MlaPreprocessParam &param)
-    : OpsRunner("MlaPreprocessOpsRunnerSplit", RUNNER_TYPE_MLAPREPROCESS_SPLIT), param_(param)
+    : OpsRunner("MlaPreprocessOpsRunnerSplit"), param_(param)
 {
     ATB_LOG(INFO) << "MlaPreprocessOpsRunnerSplit::MlaPreprocessOpsRunnerSplit called";
     needKernelGraphModify_ = true;
@@ -89,4 +90,6 @@ Status MlaPreprocessOpsRunnerSplit::ModifyKernelGraph(const OpsTensorPack &opsTe
     mlaPreprocessNode.opDesc = {0, "MlaPreprocessOperation", asdParam};
     return NO_ERROR;
 }
+
+REG_RUNNER_TYPE(MlaPreprocessOpsRunnerSplit);
 } // namespace atb

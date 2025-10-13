@@ -12,7 +12,7 @@
 #include <hccl/hccl.h>
 #include "atb/utils/dl_manager.h"
 #include "atb/utils/aclnn_util.h"
-
+#include "atb/utils/operation_register.h"
 
 namespace atb {
 
@@ -28,10 +28,10 @@ aclnnStatus (*LinearParallelAclnnRunner::aclnnMatmulReduceScatterV2Func_)(void *
                                                                           aclrtStream) = nullptr;
 
 LinearParallelAclnnRunner::LinearParallelAclnnRunner(const infer::LinearParallelParam &param, bool useRankTableFile)
-    : AclnnRunner("LinearParallelAclnnRunner", RUNNER_TYPE_LINEAR_PARALLEL),
-      hcclRunner_(!useRankTableFile ? HcclRunner("LinearParallelAclnnRunner", RUNNER_TYPE_LINEAR_PARALLEL, param.rank,
+    : AclnnRunner("LinearParallelAclnnRunner"),
+      hcclRunner_(!useRankTableFile ? HcclRunner("LinearParallelAclnnRunner", param.rank,
                                                  param.rankSize, param.rankRoot, param.commDomain) :
-                                      HcclRunner("LinearParallelAclnnRunner", RUNNER_TYPE_LINEAR_PARALLEL, param.rank,
+                                      HcclRunner("LinearParallelAclnnRunner", param.rank,
                                                  param.rankTableFile, param.commDomain)),
       param_(param)
 {
@@ -39,8 +39,8 @@ LinearParallelAclnnRunner::LinearParallelAclnnRunner(const infer::LinearParallel
 }
 
 LinearParallelAclnnRunner::LinearParallelAclnnRunner(const infer::LinearParallelParam &param, HcclComm hcclComm)
-    : AclnnRunner("LinearParallelAclnnRunner", RUNNER_TYPE_LINEAR_PARALLEL),
-      hcclRunner_("LinearParallelAclnnRunner", hcclComm, RUNNER_TYPE_LINEAR_PARALLEL), param_(param)
+    : AclnnRunner("LinearParallelAclnnRunner"),
+      hcclRunner_("LinearParallelAclnnRunner", hcclComm), param_(param)
 {
     ATB_LOG(INFO) << "LinearParallelAclnnRunner::LinearParallelAclnnRunner ext called";
 }
@@ -210,4 +210,5 @@ Status LinearParallelAclnnRunner::LoadMethodMatmulReduceScatter()
     return NO_ERROR;
 }
 
+REG_RUNNER_TYPE(LinearParallelAclnnRunner);
 } // namespace atb

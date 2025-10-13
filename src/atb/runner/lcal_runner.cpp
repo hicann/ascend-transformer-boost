@@ -15,15 +15,17 @@
 #include "atb/utils/config.h"
 #include "atb/utils/comm_pool.h"
 #include "atb/utils/singleton.h"
+#include "atb/utils/operation_register.h"
 
 namespace atb {
-LcalRunner::LcalRunner(const std::string &name, RunnerType runnerType, int32_t rank, int32_t rankSize,
+LcalRunner::LcalRunner(const std::string &name, int32_t rank, int32_t rankSize,
                        const infer::CommMode commMode, const std::string &commDomain, Context &context)
-    : Runner(name), runnerType_(runnerType), rank_(rank), rankSize_(rankSize), commMode_(commMode),
+    : Runner(name), rank_(rank), rankSize_(rankSize), commMode_(commMode),
       commDomain_(commDomain)
 {
     magicNumberDisabled_ = context.GetLaunchMode() == GRAPH_LAUNCH_MODE;
-    ATB_LOG(INFO) << GetLogPrefix() << "LcalRunner::LcalRunner " << runnerType_ << " called, rank : "
+    runnerTypeIdx_ = RunnerTypeRegister::GetRunnerTypeIdx(name);
+    ATB_LOG(INFO) << GetLogPrefix() << "LcalRunner::LcalRunner " << runnerTypeIdx_ << " called, rank : "
                   << rank << "/" << rankSize << " commMode: " << commMode_
                   << " commDomain: " << commDomain_ << " magicNumberDisabled: " << magicNumberDisabled_;
     InitLcalComm();

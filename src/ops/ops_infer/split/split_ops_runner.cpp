@@ -12,12 +12,14 @@
 #include <asdops/params/params.h>
 #include "atb/utils/log.h"
 #include "atb/utils/tensor_util.h"
+#include "atb/utils/operation_register.h"
+#include "atb/utils/param_compare.h"
 
 namespace atb {
 static constexpr uint32_t DIM_2 = 2;
 static constexpr uint32_t DIM_3 = 3;
 SplitOpsRunner::SplitOpsRunner(const infer::SplitParam &param)
-    : OpsRunner("SplitOpsRunner", RUNNER_TYPE_SPLIT), param_(param)
+    : OpsRunner("SplitOpsRunner"), param_(param)
 {
     ATB_LOG(INFO) << "SplitOpsRunner::SplitOpsRunner called";
     kernelGraph_.inTensors.resize(1);
@@ -50,4 +52,7 @@ SplitOpsRunner::SplitOpsRunner(const infer::SplitParam &param)
 }
 
 SplitOpsRunner::~SplitOpsRunner() {}
+
+REG_RUNNER_TYPE(SplitOpsRunner);
+REG_OP_PARAM(AsdOps::OpParam::Split);
 } // namespace atb

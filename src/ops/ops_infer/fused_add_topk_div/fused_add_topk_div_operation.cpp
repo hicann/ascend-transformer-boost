@@ -14,6 +14,7 @@
 #include "atb/utils/param_to_json.h"
 #include "atb/utils/tensor_check.h"
 #include "fused_add_topk_div_ops_runner.h"
+#include "atb/utils/operation_register.h"
 
 static constexpr uint32_t IN_TENSOR_NUM = 2;
 static constexpr uint32_t IN_TENSOR_NUM_EXPERT_MAPPING = 4;
@@ -126,7 +127,8 @@ std::shared_ptr<Runner> FusedAddTopkDivOperation::CreateRunner(Context &context)
         ATB_LOG(DEBUG) << "context cast to contextBase failed!";
         return nullptr;
     }
-    RunnerPool &pool = contextBase->GetRunnerPool(RUNNER_TYPE_FUSED_ADD_TOPK_DIV);
+    int64_t runnerTypeIdx = RunnerTypeRegister::GetRunnerTypeIdx("FusedAddTopkDivOpsRunner");
+    RunnerPool &pool = contextBase->GetRunnerPool(runnerTypeIdx);
     Runner *runner = pool.MallocRunner<FusedAddTopkDivOpsRunner, infer::FusedAddTopkDivParam>(param_);
     if (!runner) {
         ATB_LOG(DEBUG) << "MallocRunner from pool failed!";

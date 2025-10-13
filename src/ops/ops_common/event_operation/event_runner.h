@@ -26,7 +26,7 @@ protected:
     Status ExecuteImpl(RunnerVariantPack &runnerVariantPack) override;
 
 protected:
-    RunnerType runnerType_ = RUNNER_TYPE_UNDEFINED;
+    int64_t runnerTypeIdx_ = -1;
     
 private:
     common::EventParam param_;

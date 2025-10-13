@@ -12,6 +12,8 @@
 #include <atbops/params/params.h>
 #include "atb/utils/log.h"
 #include "atb/utils/tensor_util.h"
+#include "atb/utils/operation_register.h"
+#include "atb/utils/param_compare.h"
 
 namespace atb {
 static const uint64_t IN_TENSOR_COUNT = 5;
@@ -29,7 +31,7 @@ void RopeKqView(const Mki::SVector<int64_t> &oldDims, Mki::SVector<int64_t> &new
 }
 
 RopeOpsRunner::RopeOpsRunner(const infer::RopeParam &param)
-    : OpsRunner("RopeOpsRunner", RUNNER_TYPE_ROPE), param_(param)
+    : OpsRunner("RopeOpsRunner"), param_(param)
 {
 }
 
@@ -79,4 +81,7 @@ void RopeOpsRunner::SetParam(const Mki::Any &param)
         isParamUpdated_ = true;
     }
 }
+
+REG_RUNNER_TYPE(RopeOpsRunner);
+REG_OP_PARAM(AtbOps::OpParam::Rope);
 } // namespace atb

@@ -12,13 +12,14 @@
 #include "atb/utils/log.h"
 #include "atb/utils/operation_util.h"
 #include "atb/utils/common_utils.h"
+#include "atb/utils/operation_register.h"
 
 namespace atb {
 static constexpr size_t DIM_2 = 2;
 static constexpr size_t DIM_3 = 3;
 
 LinearParallelLcocRunner::LinearParallelLcocRunner(const infer::LinearParallelParam &param, Context &context)
-    : LcocRunner("LinearParallelLcocRunner", RUNNER_TYPE_LINEAR_PARALLEL, param.rank, param.rankSize, param.commMode,
+    : LcocRunner("LinearParallelLcocRunner", param.rank, param.rankSize, param.commMode,
                  context, param.commDomain),
       param_(param)
 {
@@ -116,10 +117,6 @@ Status LinearParallelLcocRunner::SetupImpl(RunnerVariantPack &runnerVariantPack)
     Lcal::CoCDataTypeDesc dataTypeDesc = GetCoCDataTypeDesc(input, weight, runnerVariantPack.outTensors.at(0).desc);
     if (dataTypeDesc == Lcal::CoCDataTypeDesc::COC_DATA_TYPE_UNDEFINED) {
         ATB_LOG(ERROR) << GetLogPrefix() << "GetCoCDataTypeDesc failed.";
-        return ERROR_INVALID_PARAM;
-    }
-    if (mmInfo.transB && mmInfo.weightNz) {
-        ATB_LOG(ERROR) << GetLogPrefix() << "transWeight and weightNz can not be true at the same time.";
         return ERROR_INVALID_PARAM;
     }
     Lcal::CoCParamDesc coCParamDesc{
@@ -261,4 +258,5 @@ Status LinearParallelLcocRunner::ExecuteImpl(RunnerVariantPack &runnerVariantPac
     }
     return NO_ERROR;
 }
+REG_RUNNER_TYPE(LinearParallelLcocRunner);
 } // namespace atb

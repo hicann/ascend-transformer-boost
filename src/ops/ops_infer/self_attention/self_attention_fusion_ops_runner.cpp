@@ -13,6 +13,7 @@
 #include "atb/utils/log.h"
 #include "atb/utils/tensor_util.h"
 #include "param.h"
+#include "atb/utils/operation_register.h"
 
 static constexpr uint32_t VALUE_TENSOR_POS = 2;
 
@@ -35,7 +36,7 @@ void FlashAttentionInferShapePreFunc(Mki::LaunchParam &launchParam)
 }
 
 SelfAttentionFusionOpsRunner::SelfAttentionFusionOpsRunner(const infer::SelfAttentionParam &param)
-    : OpsRunner("SelfAttentionFusionOpsRunner", RUNNER_TYPE_SELF_ATTENTION), param_(param)
+    : OpsRunner("SelfAttentionFusionOpsRunner"), param_(param)
 {
     needKernelGraphModify_ = true;
     skipSetUpKernelGraphWhenCacheHit_ = false;
@@ -280,4 +281,6 @@ void SelfAttentionFusionOpsRunner::SetFAParam(AtbOps::OpParam::UnpadFlashAttenti
 }
 
 SelfAttentionFusionOpsRunner::~SelfAttentionFusionOpsRunner() {}
+
+REG_RUNNER_TYPE(SelfAttentionFusionOpsRunner);
 } // namespace atb

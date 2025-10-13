@@ -10,6 +10,8 @@
 #include "cohere_layernorm_runner.h"
 #include <asdops/params/params.h>
 #include "atb/utils/log.h"
+#include "atb/utils/operation_register.h"
+#include "atb/utils/param_compare.h"
 
 namespace atb {
 static const uint64_t IN_TENSOR_COUNT_TWO = 2;
@@ -17,7 +19,7 @@ static const uint64_t OUT_TENSOR_COUNT_ONE = 1;
 static const uint64_t NODE_SIZE_ONE = 1;
 
 CohereLayerNormRunner::CohereLayerNormRunner(const infer::CohereLayerNormParam &param)
-    : OpsRunner("CohereLayerNormRunner", RUNNER_TYPE_COHERE_LAYER_NORM), param_(param)
+    : OpsRunner("CohereLayerNormRunner"), param_(param)
 {
     AsdOps::OpParam::Norm layerNormParam = {AsdOps::OpParam::Norm::LAYER_NORM};
     layerNormParam.inGamma = true;
@@ -45,4 +47,6 @@ CohereLayerNormRunner::CohereLayerNormRunner(const infer::CohereLayerNormParam &
 }
 
 CohereLayerNormRunner::~CohereLayerNormRunner() {}
+REG_RUNNER_TYPE(CohereLayerNormRunner);
+REG_OP_PARAM(AsdOps::OpParam::Norm);
 } // namespace atb

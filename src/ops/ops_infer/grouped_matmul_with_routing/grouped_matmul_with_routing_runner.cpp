@@ -13,6 +13,8 @@
 #include <atbops/params/params.h>
 #include "atb/utils/utils_internal.h"
 #include "grouped_matmul_with_routing_runner.h"
+#include "atb/utils/operation_register.h"
+#include "atb/utils/param_compare.h"
 
 namespace atb {
 static const uint32_t IN_TENSOR_NUM = 4;
@@ -28,7 +30,7 @@ static constexpr int64_t INT8_ALIGN = 32;
 static const uint32_t TRANSPOSE_HIDDEN_SIZE = 1;
 static const uint32_t NO_TRANSPOSE_HIDDEN_SIZE = 2;
 GroupedMatmulWithRoutingRunner::GroupedMatmulWithRoutingRunner(const infer::GroupedMatmulWithRoutingParam &param)
-    : OpsRunner("GroupedMatmulWithRoutingRunner", RUNNER_TYPE_GROUPED_MATMUL_WITH_ROUTING), param_(param)
+    : OpsRunner("GroupedMatmulWithRoutingRunner"), param_(param)
 {
     ATB_LOG(INFO) << GetLogPrefix() << "GroupedMatmulWithRoutingRunner::GroupedMatmulWithRoutingRunner called:";
 }
@@ -91,4 +93,7 @@ Status GroupedMatmulWithRoutingRunner::SetupKernelGraph(const OpsTensorPack &ops
 }
 
 GroupedMatmulWithRoutingRunner::~GroupedMatmulWithRoutingRunner() {}
+
+REG_RUNNER_TYPE(GroupedMatmulWithRoutingRunner);
+REG_OP_PARAM(AtbOps::OpParam::MoeGmm);
 } // namespace atb

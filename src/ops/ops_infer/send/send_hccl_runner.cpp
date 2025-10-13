@@ -14,20 +14,21 @@
 #include <asdops/params/params.h>
 #include "atb/utils.h"
 #include "atb/utils/common_utils.h"
+#include "atb/utils/operation_register.h"
 
 namespace atb {
 SendHcclRunner::SendHcclRunner(const infer::SendParam &param, bool useRankTableFile)
     : HcclRunner(!useRankTableFile ?
-                     HcclRunner("SendHcclRunner", RUNNER_TYPE_SEND, param.rank, param.rankSize, param.rankRoot,
+                     HcclRunner("SendHcclRunner", param.rank, param.rankSize, param.rankRoot,
                                 param.commDomain) :
-                     HcclRunner("SendHcclRunner", RUNNER_TYPE_SEND, param.rank, param.rankTableFile, param.commDomain)),
+                     HcclRunner("SendHcclRunner", param.rank, param.rankTableFile, param.commDomain)),
       param_(param)
 {
     ATB_LOG(INFO) << "SendHcclRunner::SendHcclRunner called";
 }
 
 SendHcclRunner::SendHcclRunner(const infer::SendParam &param, HcclComm hcclComm)
-    : HcclRunner("SendHcclRunner", hcclComm, RUNNER_TYPE_SEND), param_(param)
+    : HcclRunner("SendHcclRunner", hcclComm), param_(param)
 {
     ATB_LOG(INFO) << "SendHcclRunner::SendHcclRunner ext called";
 }
@@ -56,4 +57,6 @@ Status SendHcclRunner::ExecuteImpl(RunnerVariantPack &runnerVariantPack)
 }
 
 SendHcclRunner::~SendHcclRunner() {}
+
+REG_RUNNER_TYPE(SendHcclRunner);
 } // namespace atb

@@ -18,6 +18,7 @@
 #include "atb/utils/singleton.h"
 #include "atb/operation/atb_operation_ir_cfg.h"
 #include "atb/operation/op_param_funcs.h"
+#include "atb/utils/operation_register.h"
 
 namespace atb {
 static const int32_t IN_TENSOR_NUM = 5;
@@ -178,7 +179,8 @@ std::shared_ptr<Runner> RopeOperation::CreateRunner(Context &context) const
         ATB_LOG(DEBUG) << "context cast to contextBase failed!";
         return nullptr;
     }
-    RunnerPool &pool = contextBase->GetRunnerPool(RUNNER_TYPE_ROPE);
+    int64_t runnerTypeIdx = RunnerTypeRegister::GetRunnerTypeIdx("RopeOpsRunner");
+    RunnerPool &pool = contextBase->GetRunnerPool(runnerTypeIdx);
     Runner *runner = pool.MallocRunner<RopeOpsRunner, infer::RopeParam>(param_);
     if (!runner) {
         ATB_LOG(DEBUG) << "MallocRunner from pool failed!";

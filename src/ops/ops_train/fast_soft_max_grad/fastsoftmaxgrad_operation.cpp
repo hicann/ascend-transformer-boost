@@ -16,6 +16,7 @@
 #include "atb/operation/op_param_funcs.h"
 #include "atb/utils/operation_util.h"
 #include "atb/utils/singleton.h"
+#include "atb/utils/operation_register.h"
 
 namespace {
 constexpr int32_t MAX_SEQLEN = 4096;
@@ -141,7 +142,8 @@ std::shared_ptr<Runner> FastSoftMaxGradOperation::CreateRunner(Context &context)
         ATB_LOG(DEBUG) << "context cast to contextBase failed!";
         return nullptr;
     }
-    RunnerPool &pool = contextBase->GetRunnerPool(RUNNER_TYPE_FASTSOFTMAXGRAD);
+    int64_t runnerTypeIdx = RunnerTypeRegister::GetRunnerTypeIdx("FastSoftMaxGradOpsRunner");
+    RunnerPool &pool = contextBase->GetRunnerPool(runnerTypeIdx);
     Runner *runner = pool.MallocRunner<FastSoftMaxGradOpsRunner, train::FastSoftMaxGradParam>(param_);
     if (!runner) {
         ATB_LOG(DEBUG) << "MallocRunner from pool failed!";

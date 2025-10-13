@@ -9,15 +9,15 @@
  */
 #include <asdops/params/params.h>
 #include <atbops/params/params.h>
-
 #include "atb/utils/log.h"
-
 #include "gmm_deq_swiglu_quant_gmm_deq_ops_runner.h"
+#include "atb/utils/operation_register.h"
+#include "atb/utils/param_compare.h"
 
 namespace atb {
 GmmDeqSwigluQuantGmmDeqOpsRunner::GmmDeqSwigluQuantGmmDeqOpsRunner(
     const infer::GmmDeqSwigluQuantGmmDeqParam &param)
-    : OpsRunner("GmmDeqSwigluQuantGmmDeqOpsRunner", RUNNER_TYPE_GMM_DEQ_SWIGLU_QUANT_GMM_DEQ), param_(param)
+    : OpsRunner("GmmDeqSwigluQuantGmmDeqOpsRunner"), param_(param)
 {
 }
 
@@ -104,4 +104,7 @@ Status GmmDeqSwigluQuantGmmDeqOpsRunner::SetupKernelGraph(const OpsTensorPack &o
 
     return NO_ERROR;
 }
+
+REG_RUNNER_TYPE(GmmDeqSwigluQuantGmmDeqOpsRunner);
+REG_OP_PARAM(AtbOps::OpParam::GmmDeqSwigluQuantGmmDeq);
 } // namespace atb

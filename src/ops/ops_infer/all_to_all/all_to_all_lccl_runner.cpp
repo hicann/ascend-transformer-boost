@@ -13,10 +13,11 @@
 #include <asdops/params/params.h>
 #include "atb/utils.h"
 #include "atb/utils/common_utils.h"
+#include "atb/utils/operation_register.h"
 
 namespace atb {
 AllToAllLcclRunner::AllToAllLcclRunner(const infer::AllToAllParam &param, Context &context)
-    : LcclRunner("AllToAllLcclRunner", RUNNER_TYPE_ALL_TO_ALL, param.rank, param.rankSize, param.commMode, context,
+    : LcclRunner("AllToAllLcclRunner", param.rank, param.rankSize, param.commMode, context,
                  param.commDomain),
       param_(param)
 {
@@ -60,4 +61,5 @@ Status AllToAllLcclRunner::ExecuteImpl(RunnerVariantPack &runnerVariantPack)
 }
 
 AllToAllLcclRunner::~AllToAllLcclRunner() {}
+REG_RUNNER_TYPE(AllToAllLcclRunner);
 } // namespace atb

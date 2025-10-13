@@ -12,10 +12,12 @@
 #include "atb/utils/log.h"
 #include "atb/utils/runner_util.h"
 #include "atb/utils/tensor_util.h"
+#include "atb/utils/operation_register.h"
+#include "atb/utils/param_compare.h"
 
 namespace atb {
 RepeatOpsRunner::RepeatOpsRunner(const infer::RepeatParam &param)
-    : OpsRunner("RepeatOpsRunner", RUNNER_TYPE_REPEAT), param_(param)
+    : OpsRunner("RepeatOpsRunner"), param_(param)
 {
     ATB_LOG(INFO) << "RepeatOpsRunner::RepeatOpsRunner called, param_.multiples:" << param_.multiples;
     kernelGraph_.inTensors.resize(1);
@@ -74,4 +76,7 @@ void RepeatOpsRunner::InTensorViewFunc(const Mki::SVector<int64_t> &oldDims, Mki
 }
 
 RepeatOpsRunner::~RepeatOpsRunner() {}
+
+REG_RUNNER_TYPE(RepeatOpsRunner);
+REG_OP_PARAM(AsdOps::OpParam::Expand);
 } // namespace atb
