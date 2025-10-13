@@ -154,14 +154,14 @@ function fn_build_mki()
         return 0
     fi
     cd $THIRD_PARTY_DIR
-    if [ ! -d "Mind-KernelInfra" ]; then
+    if [ ! -d "ascend-boost-comm" ]; then
         branch=$(git symbolic-ref -q --short HEAD || git describe --tags --exact-match 2> /dev/null || echo "commit_id")
         [[ "$branch" == *br_personal* || "$branch" == "commit_id" || "$branch" == *revert-mr* ]] && branch=master
         echo  "current branch for mki: $branch"
-        git clone --branch $branch --depth 1 https://gitcode.com/cann/ascend-boost-comm.git Mind-KernelInfra
+        git clone --branch $branch --depth 1 https://gitcode.com/cann/ascend-boost-comm.git
     fi
-    cd Mind-KernelInfra
-    echo  "current commid id of Mind-KernelInfra: $(git rev-parse HEAD)"
+    cd ascend-boost-comm
+    echo  "current commid id of ascend-boost-comm: $(git rev-parse HEAD)"
     if [ "$USE_CXX11_ABI" == "ON" ];then
         build_options="$build_options --use_cxx11_abi=1"
     else
@@ -169,8 +169,8 @@ function fn_build_mki()
     fi
     if [ "$MKI_BUILD_MODE" == "Test" ]; then
         echo "mki build by Test mode"
-        mkdir -p $THIRD_PARTY_DIR/Mind-KernelInfra/3rdparty
-        cp -r $THIRD_PARTY_DIR/nlohmannJson $THIRD_PARTY_DIR/Mind-KernelInfra/3rdparty
+        mkdir -p $THIRD_PARTY_DIR/ascend-boost-comm/3rdparty
+        cp -r $THIRD_PARTY_DIR/nlohmannJson $THIRD_PARTY_DIR/ascend-boost-comm/3rdparty
         build_type=testframework
     elif [ "$CMAKE_BUILD_TYPE" == "Release" ]; then
         echo "mki build by Develop mode"
@@ -227,7 +227,6 @@ function fn_build_secodefuzz()
     fi
     cd $CACHE_DIR
     rm -rf secodefuzz
-    git clone -b v2.4.5 --depth=1 https://szv-open.codehub.huawei.com/innersource/Fuzz/secodefuzz.git
     cd secodefuzz
     mkdir build && cd build
     cmake .. -DCMAKE_BUILD_TYPE=Release
@@ -851,7 +850,6 @@ function fn_main()
             TEST_TIME=30
             python3 $CODE_ROOT/tests/apitest/fuzztest/generate_operation_fuzz_test.py $CODE_ROOT $RANDOM_SEED $TEST_TIME
             fn_build_3rdparty_for_test
-            fn_build_secodefuzz
             fn_build
             fn_build_coverage
             ;;
