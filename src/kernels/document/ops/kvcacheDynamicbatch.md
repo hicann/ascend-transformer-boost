@@ -23,7 +23,7 @@
 ## 功能描述
 - 算子功能：当前轮输出seqlen长度的token结果与上一轮的cache存储结果进行拼接, 支持动态batch, 即通过batch_run_status参数来控制当前kv是否进行cache拼接。
 ntokens是原始向量的[batch, seqlen]维度进行unpad合并之后的产生的维度, 每个batch的实际seqlen通过“seqlen”向量传入。
-max_seqlen是预申请的一个较大的长度, 实际的每个batch的seqlen通过seqlen向量传入, tokenoffset表示放入cache后的实际长度。
+max_seqlen是预申请的一个较大的长度, 实际的每个batch的seqlen通过seqlen向量传入, token_offset表示放入cache后的实际长度。
 输入向量cache_in与输出向量cache_out的data指向同一块地址。
  
 ## 支持芯片型号

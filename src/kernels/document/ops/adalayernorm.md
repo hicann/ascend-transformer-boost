@@ -46,5 +46,4 @@ $\mu_B=\frac{1}{m}\sum_{i=1}^{m}x_i \quad \delta_B^2=\frac{1}{m}\sum_{i=1}^{m}(x
 |芯片名称|约束 | 
 | ------------ | ------------ | 
 |  ascend910b|输入tensor最后一维（n）必须32byte对齐 |
-|  ascend310p|输入tensor最后一维（n）必须32byte对齐 |
-||310p中不支持bfloat16类型数据|
+|  ascend310p|输入tensor最后一维（n）必须32byte对齐；310p中不支持bfloat16类型数据|

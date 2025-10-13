@@ -20,7 +20,7 @@
 ## 功能描述
 - 算子功能：size、stride、offset与InTensor，生成一个数据重新排布过的OutTensor。
 - 计算公式：
-y.Shape=param.size;
+y.shape=param.size;  
 y.data.at(0)=x.data.at(param.offset.at(0))
  
 ## 示例

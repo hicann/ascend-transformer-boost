@@ -28,7 +28,8 @@
  
 ## 功能描述
 - 算子功能：topk是每个token选择topkExpertNum个专家的矩阵拉平后得到的为一维向量（长度n=token数*topkExpertNum），idxArr是从0开始的0、1、2...n-1，也是一个一维向量，这两个输入的长度都为n。将topk从小到大排序，同时idxArr联动（比如，排序后得到idxArrSorted），此时idxArrSorted即为输出originalIndex。然后将originalIndex中每个元素都除以topkExpertNum，即得到输出tokenIndex。将输入topk进行bincount计算（即统计每个专家出现的次数），然后将每个元素累加求和，得到输出CumSum。当开启EP功能时，会将参数中指定的专家的相关输出放到最前，用validIndex指示最后有效位，之后的数据不做保证。
-- 计算公式：$originalIndex=argsort(topk)$
+- 计算公式：  
+  $originalIndex=argsort(topk)$
     $tokenIndex=originalIndex/topkExpertNum$
     $CumSum=accumulate(bincount(topk))$
  

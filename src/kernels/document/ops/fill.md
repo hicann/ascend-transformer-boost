@@ -20,7 +20,7 @@
 
 ## 功能描述
 
-- 算子功能：生成一个指定shape的Tensor,并将其填充为value。
+- 算子功能：生成一个指定shape的Tensor，并将其填充为value。
   shape通过outDim参数描述。
 
 ## 示例

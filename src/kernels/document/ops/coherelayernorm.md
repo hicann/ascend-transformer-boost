@@ -44,5 +44,4 @@ E[x]为均值, Var[x]为方差, ε为epsilon, γ为权重
 |芯片名称|约束 | 
 | ------------ | ------------ | 
 |  ascend910b|输入tensor最后一维（n）必须32byte对齐|
-|  ascend310p|输入tensor最后一维（n）必须32byte对齐|
-|  |310p中不支持bfloat16类型数据|
+|  ascend310p|输入tensor最后一维（n）必须32byte对齐；310p中不支持bfloat16类型数据|
