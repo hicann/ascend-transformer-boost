@@ -1,7 +1,7 @@
 
 #### 1.  **请问提交PR后出现ascend-cla/no红色标签，如何处理？**
 
-出现该标签表示该PR中所包含的commit中，有部分贡献者没有签署Ascend社区的贡献者协议(CLA)。[签署地址](https://clasign.osinfra.cn/sign/gitee_ascend-1720446461942705242)可以在PR评论区找到。如果是个人贡献者请选择“签署个人CLA”，如果是作为企业管理员参与贡献请选择“企业管理员”签署CLA。CLA检查是使用commit信息进行验证的。
+出现该标签表示该PR中所包含的commit中，有部分贡献者没有签署Ascend社区的贡献者协议(CLA)。[签署地址](https://clasign.osinfra.cn/sign/68cbd4a3dbabc050b436cdd4)可以在PR评论区找到。如果是个人贡献者请选择“签署个人CLA”，如果是作为企业管理员参与贡献请选择“企业管理员”签署CLA。CLA检查是使用commit信息进行验证的。
 
 <table>
 <tbody>
@@ -11,18 +11,18 @@
 <th>处理方案</th>
 </tr>
 <tr>
-<td>commit邮箱和Gitee提交邮箱一致</td>
+<td>commit邮箱和Gitcode提交邮箱一致</td>
 <td>统一用该邮箱</td>
 <td>使用该邮箱直接在上述“签署地址”签署CLA即可</td>
 </tr>
 <tr>
-<td rowspan="2">commit邮箱和Gitee提交邮箱不一致</td>
+<td rowspan="2">commit邮箱和Gitcode提交邮箱不一致</td>
 <td>希望使用commit邮箱签署</td>
-<td>调整Gitee提交邮箱为commit邮箱，在Gitee个人设置页面添加commit邮箱并设置为提交邮箱，然后在上述签署地址完成CLA签署即可</td>
+<td>调整Gitcode提交邮箱为commit邮箱，在Gitcode个人设置页面添加commit邮箱并设置为提交邮箱，然后在上述签署地址完成CLA签署即可</td>
 </tr>
 <tr>
-<td>希望使用gitee提交邮箱签署</td>
-<td>在git运行的本地通过 git config --global user.name **** 和 git config --global user.email ****修改配置可调整git的commit邮箱信息为gitee的提交邮箱，完成后再进入签署地址进行CLA签署</td>
+<td>希望使用gitcode提交邮箱签署</td>
+<td>在git运行的本地通过 git config --global user.name **** 和 git config --global user.email ****修改配置可调整git的commit邮箱信息为gitcode的提交邮箱，完成后再进入签署地址进行CLA签署</td>
 </tr>
 </tbody>
 </table>
