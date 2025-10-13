@@ -9,7 +9,6 @@
  */
 #ifndef ATB_MLAPREPROCESS_OPS_RUNNER_H
 #define ATB_MLAPREPROCESS_OPS_RUNNER_H
-#include <cfloat>
 #include "atb/runner/ops_runner.h"
 #include "atb/infer_op_params.h"
 #include "atb/utils/utils_internal.h"

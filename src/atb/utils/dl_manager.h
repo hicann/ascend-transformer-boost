@@ -11,7 +11,6 @@
 #ifndef ATB_DISKUTIL_H
 #define ATB_DISKUTIL_H
 
-#include <dlfcn.h>
 #include "atb/utils/log.h"
 
 namespace atb {

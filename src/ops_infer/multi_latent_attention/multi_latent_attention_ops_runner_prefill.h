@@ -11,7 +11,6 @@
 #define ATB_MULTI_LATENT_ATTENTION_OPS_RUNNER_PREFILL_H
 #include "atb/runner/ops_runner.h"
 #include "atb/infer_op_params.h"
-#include "atb/utils/utils_internal.h"
 #include "param.h"
 
 namespace atb {

@@ -88,7 +88,7 @@ Status AclnnExecutorCache::AddCacheSlot(const std::string &opNameStr, const Runn
     ATB_LOG(INFO) << "ATB aclnn executor cache full for op: " << opNameStr << ", update index [" << nextUpdateIndex_
                   << "]";
     cachePool_[opNameStr][nextUpdateIndex_] = std::make_pair(aclnnCacheKey, inAclnnCacheSlot);
-    nextUpdateIndex_ = (nextUpdateIndex_ + 1) % cacheCapacity_;
+    nextUpdateIndex_ = (nextUpdateIndex_ + 1) % static_cast<int>(cacheCapacity_);
     return NO_ERROR;
 }
 
