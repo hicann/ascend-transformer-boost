@@ -19,7 +19,7 @@ Ascend Transformer Boost加速库（下文简称为ATB加速库）是一款高�
 - [贡献指南](docs/贡献指南.md)：介绍了如何向ATB库贡献代码。
 - [日志与调试](docs/日志与调试.md)：介绍ATB的日志相关环境变量，以及调测方法。
 - [API文档](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/83RC1alpha002/API/ascendtbapi/ascendtb_01_0098.html)：介绍了ATB库的接口和相关术语。
-- [问题报告](https://gitcode.com/cann/ascend-transformer-boost/issues)：通过issue提交发现的问题。
+- [问题报告](https://gitcode.com/cann/ascend-transformer-boost/issues)：通过Issue提交发现的问题。
 
 ## 什么是ATB
 ### ATB介绍
@@ -232,7 +232,7 @@ CHECK_STATUS(aclFinalize());
 #### 样例安全声明
 `example`目录下的样例旨在提供快速上手、开发和调试ATB特性的最小化实现，其核心目标是使用最精简的代码展示ATB核心功能，**而非提供生产级的安全保障**。与成熟的生产级使用方法相比，此样例中的安全功能（如输入校验、边界校验）相对有限。
 
-ATB不推荐用户直接将样例作为业务代码，也不保证此种做法的安全性。若用户将`example`中的示例代码应用在自身的真是业务场景中且发生了安全问题，则由用户自行承担。
+ATB不推荐用户直接将样例作为业务代码，也不保证此种做法的安全性。若用户将`example`中的示例代码应用在自身的真实业务场景中且发生了安全问题，则由用户自行承担。
 
 ### 日志和环境变量说明
 - 加速库日志现在已经部分适配CANN日志，环境变量说明请参考

@@ -21,7 +21,7 @@ atb::Status TransdataOp(atb::Context *contextPtr, aclrtStream stream, const atb:
 |`stream`  |  用于执行操作的流 |
 |  `inTensor`| 待转换的 ND 格式的tensor |
 |`tensorType`| 输入 tensor 的数据类型|
-|`outTensor`|输入 tensor 的数据类型|
+|`outTensor`|输出 tensor |
 |`outTensor`|输出的 `FRACTAL_NZ` 格式的 tensor，函数执行后将被填充|
 |`shape`|输出 tensor的维度|
 

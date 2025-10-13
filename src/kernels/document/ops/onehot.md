@@ -17,7 +17,7 @@
 | off_value |In | [1]|int64、int32|ND|
 |y|Out|[$d_0$, $d_1$, ..., $d_{depth}$]|与on_value一致|ND|
 ## 功能描述
-- 算子功能：在字符串x中,由索引表示的位置取值为on_value,而其他位置取值为off_value。
+- 算子功能：在张量x中，由索引表示的位置取值为on_value，而其他位置取值为off_value。
  
 ## 示例
 ```

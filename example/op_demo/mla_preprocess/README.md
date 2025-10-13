@@ -3,12 +3,12 @@
 该目录下为加速库MlaPreprocessOperation C++调用示例。
 
 ## 使用说明
-- 首先source 对应的CANN和nnal包
+- 首先source 对应的CANN和nnal包的安装路径
     1. source [cann安装路径]/set_env.sh
         默认：source /usr/local/Ascend/ascend-toolkit/set_env.sh
-    2. source [nnal安装路径]/set_env.sh
-        默认：source /usr/local/Ascend/nnal/atb/set_env.sh
-        1. 如果使用加速库源码编译，source [加速库源码路径]/output/atb/set_env.sh
+    2. source [nnal安装路径]/set_env.sh  
+        默认：source /usr/local/Ascend/nnal/atb/set_env.sh  
+        ①. 如果使用加速库源码编译，source [加速库源码路径]/output/atb/set_env.sh  
         例如： source ./ascend-transformer-boost/output/atb/set_env.sh
 
 - 运行demo
@@ -33,11 +33,11 @@ tests/apitest/opstest/python/operations/mla_preprocess/
 ### 场景说明
 提供demo分别对应不同产品/场景，具体场景区别可以参见官网。
 用户调用demo二进制文件时key输入`dtype`，`tokenNum`，`headNum`，控制数据类型和shape。
-    `dtype`对应input的数据类型，分别支持float16/bf16，对应下面数据规格的俩列。
+    `dtype`对应input的数据类型，分别支持float16/bf16，对应下面数据规格的两列。
 
 mlapo_demo.cpp：
 + 场景：MLAPO int8量化叠加rope切分
-  + ctkv和qNope经过per_head静态对称量化为int8类型；并使用rope拆分kvcache和query，并且krope和ctkv转为NZ格式输出，ctkv和qnope经过per_head静态对称量化为int8类型。
+  + ctkv和qNope经过per_head静态对称量化为int8类型；并使用rope拆分kvcache和query，并且krope和ctkv转为NZ格式输出，ctkv和qNope经过per_head静态对称量化为int8类型。
 
 **参数设置**：
 | 成员名称  | 取值         |
@@ -47,6 +47,7 @@ mlapo_demo.cpp：
 **数据规格**：
 | tensor名字     | 数据类型     | 数据格式 | 维度信息                        |
 | -------------- | ------------ | -------- | ------------------------------- |
+| **Input**      |
 | `input`        | float16/bf16 | nd       | [tokenNum, 7168]                |
 | `gamma0`       | float16/bf16 | nd       | [7168]                          |
 | `beta0`        | float16/bf16 | nd       | [7168]                          |
@@ -100,6 +101,7 @@ mlapo_ds_demo.cpp：
 **数据规格**：
 | tensor名字     | 数据类型     | 数据格式 | 维度信息                 |
 | -------------- | ------------ | -------- | ------------------------ |
+| **Input**      |
 | `input`        | float16/bf16 | nd       | [tokenNum, 7168]         |
 | `gamma0`       | float16/bf16 | nd       | [7168]                   |
 | `beta0`        | float16/bf16 | nd       | [7168]                   |
@@ -128,5 +130,5 @@ mlapo_ds_demo.cpp：
 | `qOut0`        | int8         | nd       | [tokenNum, headNum, 512] |
 | `kvCacheOut0`  | int8         | nz       | [161, 128, 1, 512]       |
 | `qOut1`        | float16/bf16 | nd       | [tokenNum, headNum, 64]  |
-| `kvCacheOut1`  | float16/bf16 | nz       | [161, 128, 1, 564]       |
+| `kvCacheOut1`  | float16/bf16 | nz       | [161, 128, 1, 64]       |
 > 默认值：`dtype = float16`, `tokenNum = 32`, `headNum = 128`
