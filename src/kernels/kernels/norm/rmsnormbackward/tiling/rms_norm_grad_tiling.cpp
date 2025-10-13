@@ -181,12 +181,11 @@ Status RmsNormGradTiling(const LaunchParam &launchParam, KernelInfo &kernelInfo)
     size_t gammaDimNum = launchParam.GetInTensor(GAMMA_INPUT).desc.dims.size();
     Mki::SVector<int64_t> xShape = launchParam.GetInTensor(X_INPUT).desc.dims;
     Mki::SVector<int64_t> gammaShape = launchParam.GetInTensor(GAMMA_INPUT).desc.dims;
-    int32_t startDim = launchParam.GetInTensor(X_INPUT).desc.dims.size() - gammaDimNum;
+    int32_t startDim = static_cast<int32_t>(launchParam.GetInTensor(X_INPUT).desc.dims.size() - gammaDimNum);
     MKI_CHECK(startDim > NEG_ONE, "x's dim - gamma's dim should not less than 0!",
               return Status::FailStatus(ERROR_INVALID_VALUE, "x's dim - gamma's dim should not less than 0!"));
     for (size_t i = 0; i < gammaDimNum; i++) {
-        MKI_CHECK(xShape[startDim + i] == gammaShape[i],
-                  "input gamma's shape invalid!",
+        MKI_CHECK(xShape[startDim + static_cast<int32_t>(i)] == gammaShape[i], "input gamma's shape invalid!",
                   return Status::FailStatus(ERROR_INVALID_VALUE, "input gamma's shape invalid!"));
     }
     int64_t colVal = 1;

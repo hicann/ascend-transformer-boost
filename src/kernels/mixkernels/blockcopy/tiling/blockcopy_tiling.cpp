@@ -42,7 +42,7 @@ bool BlockCopyTilingNd(const LaunchParam &launchParam, KernelInfo &kernelInfo)
     MKI_CHECK(headSizeV > 0, "headSizeV is invalid", return false);
     tilingDataPtr->headSizeK = headSizeK;
     tilingDataPtr->headSizeV = headSizeV;
-    uint64_t maxVal = std::numeric_limits<int64_t>::max();
+    uint64_t maxVal = static_cast<uint64_t>(std::numeric_limits<int64_t>::max());
     MKI_CHECK(numHead <= maxVal / blockSize,
           "blockSize * numHead exceeds uint64_t limit", return false);
     uint64_t tmp = static_cast<uint64_t>(blockSize) * static_cast<uint64_t>(numHead);
@@ -72,7 +72,7 @@ bool BlockCopyTilingNz(const LaunchParam &launchParam, KernelInfo &kernelInfo)
     tilingDataPtr->numHead = numHead;
     tilingDataPtr->headSizeK = headSizeK;
     tilingDataPtr->headSizeV = headSizeV;
-    uint64_t maxVal = std::numeric_limits<int64_t>::max();
+    uint64_t maxVal = static_cast<uint64_t>(std::numeric_limits<int64_t>::max());
     MKI_CHECK(numHead <= maxVal / blockSize,
           "blockSize * numHead exceeds uint64_t limit", return false);
     uint64_t tmp = static_cast<uint64_t>(blockSize) * static_cast<uint64_t>(numHead);
