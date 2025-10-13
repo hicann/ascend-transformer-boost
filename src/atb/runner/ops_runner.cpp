@@ -268,7 +268,8 @@ Status OpsRunner::FillHostTilingBufferImpl(uint8_t *hostTilingBuffer, uint64_t t
             ATB_LOG(ERROR) << GetLogPrefix() << " node[" << nodeId << "] fill tiling buffer fail, error code:" << ret;
             return ret;
         }
-        if (nodesSaveTensorFlag_.at(nodeId) && Probe::IsExecuteCountInRange(executeCount_) && Probe::IsSaveTiling()) {
+        if (nodesSaveTensorFlag_.at(nodeId) && Probe::IsExecuteCountInRange(executeCount_) && Probe::IsSaveTiling()
+            && Probe::IsSaveTensorInSpecificDir(GetSaveTensorDir() + "/" + std::to_string(nodeId) + "_" + node.GetName())) {
             std::string fileDir = GetSaveTensorDir() + "/" + std::to_string(nodeId) + "_" + node.GetName();
             Probe::SaveTiling(kernelHostTilingBuffer + offset, tilingSize, fileDir + "/kernel_tilingdata.bin");
         }
