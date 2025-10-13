@@ -183,6 +183,11 @@ Status LinearParallelAclnnRunner::LaunchAclnnKernel()
     return NO_ERROR;
 }
 
+bool LinearParallelAclnnRunner::useCache()
+{
+    return false;
+}
+
 Status LinearParallelAclnnRunner::LoadMethodMatmulReduceScatter()
 {
     ATB_LOG(INFO) << "LinearParallelAclnnRunner LoadMethod";
