@@ -6,7 +6,7 @@ multiStream_singleGraph_demo.cpp
 ### 图间同步
 multiStream_multiGraph_demo.cpp
 ## 使用说明
-- 首先source 对应的CANN和nnal包
+- 首先source 对应的CANN和nnal包的安装路径
     - source [cann安装路径]（默认为/usr/local/Ascend/ascend-toolkit）/set_env.sh
     - source [nnal安装路径] (默认为/usr/local/Ascend/nnal/atb) /set_env.sh
     - 如果使用加速库源码编译，source [源码路径]/output/atb目录下面的set_env.sh

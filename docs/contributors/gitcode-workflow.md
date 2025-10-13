@@ -2,8 +2,8 @@
 
 ### 1. 开展工作流前的准备
 
-- 安装Git：请先确保您的电脑上已经安装了Git软件。如您需了解GIt，可以在Google、baidu或其他搜索引擎上求助相关内容。
-- 在开展Gitcode的工作流之前，您需要先在Ascend的代码托管平台的上找到[ATB](https://gitcode.com/cann/ascend-transformer-boost)仓库。
+- 安装Git：请先确保您的电脑上已经安装了Git软件。如您需了解Git，可以在Google、baidu或其他搜索引擎上求助相关内容。
+- 在开展Gitcode的工作流之前，您需要先在CANN的代码托管平台上找到[ATB](https://gitcode.com/cann/ascend-transformer-boost)仓库。
 
 ### 2. 准备本地代码
 
@@ -48,9 +48,6 @@ git config --global user.email "email@your_email.com"
   ssh-keygen -t rsa -C "your_email@example.com"
   cat ~/.ssh/id_rsa.pub
   ```
-
-- ② 登录您个人的远程仓库网站Gitcode账户并添加您的SSH公钥
-
 
 - ② 登录您个人的远程仓库网站Gitcode账户并添加您的ssh公钥
 
@@ -125,9 +122,7 @@ git fetch upstream
 git rebase upstream/master
 ```
 
-执行merge的时候，请不要使用 `git pull` 替代上面的 `fetch` / `rebase`. `git pull` 。因为这种方式会使提交历史变得混乱，并使代码更难被理解。您也可以通过更改文件来达到目的， `.git/config` 文件通过 `git config branch.autoSetupRebase always` 去改变 `git pull`的行为。
-
-
+执行merge的时候，请不要使用 `git pull` 替代上面的 `fetch` / `rebase`。因为这种方式会使提交历史变得混乱，并使代码更难被理解。您可以通过修改 `.git/config` 文件或使用 `git config branch.autoSetupRebase always` 命令来改变 `git pull` 的行为，使其默认使用 `rebase`。
 
 ### 5. 在本地工作目录提交变更
 
@@ -138,7 +133,7 @@ git add .
 git commit -m "提交内容描述"
 ```
 
-您可能会在前次提交的基础上，继续编辑构建并测试更多内容，可以使用 `commit --amend` 继续添加提交。
+您可能会在前次提交的基础上，继续编辑构建并测试更多内容，可以使用 `git commit --amend` 继续添加提交。
 
 
 
