@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2025 Huawei Technologies Co., Ltd.
  * This file is a part of the CANN Open Software.
- * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Licensed under CANN Open Software License Agreement Version 2.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
@@ -111,9 +111,12 @@ atb::Status PrepareOperation(atb::Operation **paEncoderOp)
 
 int main(int argc, char **argv)
 {
+    int32_t deviceId = 0;
+    if (argc == 2) {
+        deviceId = std::stoi(argv[1]);
+    }
     CHECK_STATUS(aclInit(nullptr));
     // 设置卡号、创建context、设置stream
-    int32_t deviceId = 0;
     CHECK_STATUS(aclrtSetDevice(deviceId));
     atb::Context *context = nullptr;
     CHECK_STATUS(atb::CreateContext(&context));

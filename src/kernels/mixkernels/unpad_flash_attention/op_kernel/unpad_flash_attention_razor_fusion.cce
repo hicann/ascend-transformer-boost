@@ -1,7 +1,7 @@
 /*
 * Copyright (c) 2024 Huawei Technologies Co., Ltd.
 * This file is a part of the CANN Open Software.
-* Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+* Licensed under CANN Open Software License Agreement Version 2.0 (the "License").
 * Please refer to the License for details. You may not use this file except in compliance with the License.
 * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
 * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
@@ -938,9 +938,7 @@ public:
                                 );
                                 SetVectorMask<int8_t>((uint64_t)-1, (uint64_t)-1);
                             }
-                            if (sub_m <= 16) {
-                                PIPE_BARRIER(V);
-                            }
+                            PIPE_BARRIER(V);
                             for (uint32_t ms_idx = 0; ms_idx < loop_m; ms_idx++) {
                                 uint32_t nowm = (ms_idx == (loop_m - 1))? sub_m - ms_idx * sub_km : sub_km;
                                 uint32_t now_roundm = (nowm + BLOCK_SIZE - 1) / BLOCK_SIZE * BLOCK_SIZE;

@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2025 Huawei Technologies Co., Ltd.
  * This file is a part of the CANN Open Software.
- * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Licensed under CANN Open Software License Agreement Version 2.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
@@ -16,9 +16,13 @@
 namespace {
 static const uint32_t IN_TENSOR_NUM = 24;
 static const uint32_t OUT_TENSOR_NUM = 4;
+static const uint32_t INPUT_INDEX = 0;
 static const uint32_t Q_OUT1_INDEX = 2;
 static const uint32_t KV_CACHE_OUT1_INDEX = 3;
 static const uint32_t KV_CACHE_ROPE_INDEX = 20;
+static const uint32_t CTKV_SCALE_INDEX = 22;
+static const uint32_t Q_NOPE_SCALE_INDEX = 23;
+
 } // namespace
 
 namespace atb {
@@ -51,22 +55,35 @@ MlaPreprocessAclnnRunner::~MlaPreprocessAclnnRunner() {}
 Status MlaPreprocessAclnnRunner::BuildAclnnVariantPack(const RunnerVariantPack &runnerVariantPack)
 {
     ATB_LOG(INFO) << GetLogPrefix() << "BuildAclnnVariantPack";
+    ATB_LOG(INFO) << GetLogPrefix() << "variantPack: " << runnerVariantPack.ToString();
     this->atbVariantPack_ = runnerVariantPack;
     Status ret = NO_ERROR;
     bool isRopeCache = param_.cacheMode != infer::MlaPreprocessParam::CacheMode::KVCACHE;
     this->aclnnVariantPack_.aclInTensors.reserve(IN_TENSOR_NUM);
     this->aclnnVariantPack_.aclInTensors.resize(IN_TENSOR_NUM);
+    aclDataType inputDataType = runnerVariantPack.inTensors.at(INPUT_INDEX).desc.dtype;
     for (size_t i = 0; i < this->aclnnVariantPack_.aclInTensors.size(); ++i) {
+        ATB_LOG(INFO) << GetLogPrefix() << "MlaPreprocessAclnnRunner::BuildAclnnVariantPack inTensor index: " << i;
         std::shared_ptr<AclNNTensor> aclnnTensorPtr = std::make_shared<AclNNTensor>();
-        if (i == KV_CACHE_ROPE_INDEX && !isRopeCache) {
-            // kvCache不带rope转置时kvCacheRope为nullptr
-            this->aclnnVariantPack_.aclInTensors[i] = aclnnTensorPtr;
-            continue;
-        }
         atb::Tensor atbTensor = runnerVariantPack.inTensors.at(i);
+        if (i == KV_CACHE_ROPE_INDEX && !isRopeCache) {
+            // kvCache不带rope转置时kvCacheRope为空tensor
+            TensorDesc desc = {};
+            desc.dtype = runnerVariantPack.inTensors.at(INPUT_INDEX).desc.dtype;
+            desc.format = runnerVariantPack.inTensors.at(INPUT_INDEX).desc.format;
+            atbTensor.desc = desc;
+        }
         aclnnTensorPtr->atbTensor = atbTensor;
         aclnnTensorPtr->strides = GetCopyTensorStride(atbTensor.desc.shape);
-        ret = CallAclCreateTensor(atbTensor.desc.shape, atbTensor.desc.shape, atbTensor, aclnnTensorPtr);
+        if (param_.cacheMode != infer::MlaPreprocessParam::CacheMode::INT8_NZCACHE &&
+            (i == CTKV_SCALE_INDEX || i == Q_NOPE_SCALE_INDEX)) {
+            // 非KROPE_CTKV场景，不传入ctkvScale和qNopeScale，使用inputDataType绕过空tensor的dtype检测
+            ret = CallAclCreateTensor(atbTensor.desc.shape, atbTensor.desc.shape, atbTensor, aclnnTensorPtr,
+                                      inputDataType);
+        } else {
+            ret = CallAclCreateTensor(atbTensor.desc.shape, atbTensor.desc.shape, atbTensor, aclnnTensorPtr,
+                                      atbTensor.desc.dtype);
+        }
         if (ret != NO_ERROR) {
             ATB_LOG(ERROR) << GetLogPrefix() << "create aclTensor by aclCreateTensor failed!";
             return ret;
@@ -80,15 +97,22 @@ Status MlaPreprocessAclnnRunner::BuildAclnnVariantPack(const RunnerVariantPack &
     this->aclnnVariantPack_.aclOutTensors.resize(OUT_TENSOR_NUM);
     for (size_t i = 0; i < this->aclnnVariantPack_.aclOutTensors.size(); ++i) {
         std::shared_ptr<AclNNTensor> aclnnTensorPtr = std::make_shared<AclNNTensor>();
-        if ((i == Q_OUT1_INDEX || i == KV_CACHE_OUT1_INDEX) && !isRopeCache) {
+        ATB_LOG(INFO) << GetLogPrefix() << "MlaPreprocessAclnnRunner::BuildAclnnVariantPack outTensor index: " << i;
+        atb::Tensor atbTensor = {};
+        if ((i != Q_OUT1_INDEX && i != KV_CACHE_OUT1_INDEX) || isRopeCache) {
+            atbTensor = runnerVariantPack.outTensors.at(i);
+        } else {
             // kvCache不带rope转置时不生成2个rope分量
-            this->aclnnVariantPack_.aclOutTensors[i] = aclnnTensorPtr;
-            continue;
+            // 使用input的dtype和format填补空tensor
+            TensorDesc desc = {};
+            desc.dtype = runnerVariantPack.inTensors.at(INPUT_INDEX).desc.dtype;
+            desc.format = runnerVariantPack.inTensors.at(INPUT_INDEX).desc.format;
+            atbTensor.desc = desc;
         }
-        atb::Tensor atbTensor = runnerVariantPack.outTensors.at(i);
         aclnnTensorPtr->atbTensor = atbTensor;
         aclnnTensorPtr->strides = GetCopyTensorStride(atbTensor.desc.shape);
-        ret = CallAclCreateTensor(atbTensor.desc.shape, atbTensor.desc.shape, atbTensor, aclnnTensorPtr);
+        ret = CallAclCreateTensor(atbTensor.desc.shape, atbTensor.desc.shape, atbTensor, aclnnTensorPtr,
+                                  atbTensor.desc.dtype);
         if (ret != NO_ERROR) {
             ATB_LOG(ERROR) << GetLogPrefix() << "create aclTensor by aclCreateTensor failed!";
             return ret;
@@ -135,9 +159,6 @@ aclnnStatus MlaPreprocessAclnnRunner::SetAclNNWorkspaceExecutor()
     aclTensor *wuk = this->aclnnVariantPack_.aclInTensors.at(inTensorStart++)->tensor;
     aclTensor *kvCache = this->aclnnVariantPack_.aclInTensors.at(inTensorStart++)->tensor;
     aclTensor *kRope = this->aclnnVariantPack_.aclInTensors.at(inTensorStart++)->tensor;
-    if (!isRopeCache) {
-        kRope = nullptr;
-    }
     aclTensor *slotmapping = this->aclnnVariantPack_.aclInTensors.at(inTensorStart++)->tensor;
     aclTensor *ctkvScale = this->aclnnVariantPack_.aclInTensors.at(inTensorStart++)->tensor;
     aclTensor *qNopeScale = this->aclnnVariantPack_.aclInTensors.at(inTensorStart++)->tensor;
@@ -146,10 +167,8 @@ aclnnStatus MlaPreprocessAclnnRunner::SetAclNNWorkspaceExecutor()
     aclTensor *kvCacheOut0 = this->aclnnVariantPack_.aclOutTensors.at(outTensorStart++)->tensor;
     aclTensor *qOut1 = nullptr;
     aclTensor *kvCacheOut1 = nullptr;
-    if (isRopeCache) {
-        qOut1 = this->aclnnVariantPack_.aclOutTensors.at(outTensorStart++)->tensor;
-        kvCacheOut1 = this->aclnnVariantPack_.aclOutTensors.at(outTensorStart++)->tensor;
-    }
+    qOut1 = this->aclnnVariantPack_.aclOutTensors.at(outTensorStart++)->tensor;
+    kvCacheOut1 = this->aclnnVariantPack_.aclOutTensors.at(outTensorStart++)->tensor;
 
     aclOpExecutor *raw_executor_ptr = this->aclnnExecutor_.get();
     ATB_LOG(INFO) << GetLogPrefix() << "&(this->aclnnExecutor_): " << &(this->aclnnExecutor_)
@@ -178,7 +197,7 @@ aclnnStatus MlaPreprocessAclnnRunner::SetAclNNWorkspaceExecutor()
 
 Status MlaPreprocessAclnnRunner::LaunchAclnnKernel()
 {
-    ATB_LOG(INFO) << GetLogPrefix() << " execute start.";
+    ATB_LOG(INFO) << GetLogPrefix() << "LaunchAclnnKernel execute start.";
     Status status = MlaPreprocessAclnnRunner::LoadMethod();
     if (status != NO_ERROR) {
         ATB_LOG(ERROR) << GetLogPrefix()
@@ -193,7 +212,7 @@ Status MlaPreprocessAclnnRunner::LaunchAclnnKernel()
         ATB_LOG(ERROR) << GetLogPrefix() << "Atb aclnn op kernel launch failed with return value: " << ret;
         return ERROR_CANN_ERROR;
     }
-    ATB_LOG(INFO) << GetLogPrefix() << " execute success.";
+    ATB_LOG(INFO) << GetLogPrefix() << "LaunchAclnnKernel execute success.";
     return NO_ERROR;
 }
 

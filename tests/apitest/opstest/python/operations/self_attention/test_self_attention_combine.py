@@ -1,7 +1,7 @@
 #
 # Copyright (c) 2024 Huawei Technologies Co., Ltd.
 # This file is a part of the CANN Open Software.
-# Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+# Licensed under CANN Open Software License Agreement Version 2.0 (the "License").
 # Please refer to the License for details. You may not use this file except in compliance with the License.
 # THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
 # INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
@@ -1907,6 +1907,61 @@ class TestFlashAttention(operation_test.OperationTest):
         self.execute_with_param(OP_NAME, PARAM, RUN_PARAM, [
             torch.reshape(self.q, (2048, 2, 128)).npu(), torch.reshape(self.k, (2048, 2, 128)).npu(), torch.reshape(self.v, (2048, 2, 128)).npu(), torch.from_numpy(self.mask).npu(), torch.from_numpy(self.q_seqlen.astype(np.int32)).npu()
         ])
+
+    def test_flash_attention_encoder_bnsd_same_seqlen_bf16(self):
+        # unpad encoder
+        if not operation_test.get_soc_version() == 'Ascend910B':
+            print("this testcase only supports Ascend910B")
+            return
+        for i in range(1):
+            batch = random.randint(1, 10)
+            kv_head = random.randint(1, 10)       # kv_head num
+            isdecoder = 0       # prefill or decoder
+            heads = kv_head * 2      # llama7b  hidden_size 4096
+            embeddim = random.randint(1, 85)
+            tor = 1.0 / math.sqrt(1.0 * embeddim)
+            dynamic_batch = False
+            q_seqLen = [33] * batch
+            kv_seqLen = [66] * batch
+            max_seq = max(max(q_seqLen), max(kv_seqLen))
+            is_clamp = 0
+
+            clamp_min = 0
+            clamp_max = 0
+            print(
+                f"--i-is--{i}, "
+                f"batch is {batch}, "
+                f"q_seqLen[0] is {q_seqLen[0]}, "
+                f"kv_seqLen[0] is {kv_seqLen[0]}, "
+                f"kv_head is {kv_head}, "
+                f"heads is {heads}, "
+                f"embeddim is {embeddim}, "
+                f"is_clamp is {is_clamp}, "
+                f"clamp_min is {clamp_min}, "
+                f"clamp_max is {clamp_max}")
+            OP_NAME = "SelfAttentionOperation"
+
+            data_type = torch.bfloat16
+            scaleType = ScaleType.SCALE_TOR.value
+
+
+            self.set_data_params(dynamic_batch = dynamic_batch, no_cache=True,
+                                 is_decoder = isdecoder, batch = batch, kv_head = kv_head, heads = heads,
+                                 embeddim = embeddim, max_seq = max_seq, q_seqlens = q_seqLen,kv_seqLen = kv_seqLen,
+                                 is_clamp = is_clamp, clamp_max = clamp_max, clamp_min = clamp_min,
+                                 data_type = data_type, is_alibi = False,scaleType = scaleType, is_splitm = True,
+                                 op_type = 10, mask_type = MASK_TYPE_NO_MASK, is_mask = False, tor = tor)
+            self.gen_out_tensor_bnsd()
+            self.mask = np.reshape(self.mask, (max_seq, max_seq))
+
+            param_seqlen = self.q_seqlen
+            seqlen = torch.from_numpy(np.array(self.q_seqlen)).to(torch.int32)
+            PARAM = json.dumps({"headNum": heads, "kvHeadNum":kv_head, "qkScale": 1.0 / math.sqrt(1.0 * embeddim),
+                                "maskType": 0, "inputLayout":1, "calcType":3, "clampType": is_clamp, "clampMin": clamp_min, "clampMax":clamp_max})
+            RUN_PARAM = json.dumps({"seqLen": param_seqlen, "maskType": 0})
+            self.execute_with_param(OP_NAME, PARAM, RUN_PARAM, [
+                    self.qbnsd.npu(), self.kbnsd[0].npu(), self.vbnsd[0].npu(), seqlen.npu()
+                ])
 
 if __name__ == '__main__':
     unittest.main()

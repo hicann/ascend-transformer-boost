@@ -42,9 +42,10 @@ atb::SVector<int64_t> GetTransposeTensorStride(atb::Dims &tensorDims);
 /// \param atbTensor The tensor passed through ATB framework.
 /// \param aclnnTensor A pointer to an `AclNNTensor` object whose `tensor` attribute is updated
 ///     using the return value of `aclCreateTensor`.
+/// \param dataType the dataType of the tensor, used for specifying empty tensors.
 /// \return A status code that indicates whether `aclTensor` has been created.
 atb::Status CallAclCreateTensor(atb::Dims &viewDims, atb::Dims &storageDims, atb::Tensor &atbTensor,
-                                std::shared_ptr<AclNNTensor> aclnnTensor);
+                                std::shared_ptr<AclNNTensor> aclnnTensor, aclDataType dataType = ACL_DT_UNDEFINED);
 
 /// Reshape a tensor by squeezing batch size axis and seq len axis if the tensor's shape has two dimensions.
 ///
@@ -72,7 +73,8 @@ bool IsAclnnAtbVariankPackEqual(const AclNNVariantPack &aclnnVariantPack, const 
 /// \param atbVariantPack An `atb::VariantPack` object containing tensor info passed through ATB framework.
 /// \return A boolean value that indicates whether `aclnnVariantPack` and `atbVariantPack` are the same,
 /// except for tensors' device data.
-bool IsAclnnRunnerVariankPackEqual(const AclNNVariantPack &aclnnVariantPack, const RunnerVariantPack &runnerVariantPack);
+bool IsAclnnRunnerVariankPackEqual(const AclNNVariantPack &aclnnVariantPack,
+                                   const RunnerVariantPack &runnerVariantPack);
 
 /// Create a pointer to `AclNNTensor` by configuring it with tensor information extracted from `atbTensor`.
 ///

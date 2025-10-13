@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2025 Huawei Technologies Co., Ltd.
  * This file is a part of the CANN Open Software.
- * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Licensed under CANN Open Software License Agreement Version 2.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
@@ -104,9 +104,12 @@ int main(int argc, char **argv)
     // kv隐藏层大小，用于输出tensor shape
     uint32_t kvHiddenSize = KV_HEAD_NUM * HEAD_SIZE;
 
+    int32_t deviceId = 0;
+    if (argc == 2) {
+        deviceId = std::stoi(argv[1]);
+    }
     // 设置卡号、创建context、设置stream
     CHECK_STATUS(aclInit(nullptr));
-    int32_t deviceId = 0;
     CHECK_STATUS(aclrtSetDevice(deviceId));
     atb::Context *context = nullptr;
     CHECK_STATUS(atb::CreateContext(&context));
