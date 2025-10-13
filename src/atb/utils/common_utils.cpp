@@ -79,9 +79,6 @@ atb::Status ConvertHcclResultToStatus(const HcclResult hcclResult)
         case HcclResult::HCCL_E_MEMORY:
             return atb::ERROR_OUT_OF_DEVICE_MEMORY;
 
-        case HcclResult::HCCL_E_INTERNAL:
-            return atb::ERROR_INTERNAL_ERROR;
-
         default:
             return atb::ERROR_HCCL_FAIL;
     }
