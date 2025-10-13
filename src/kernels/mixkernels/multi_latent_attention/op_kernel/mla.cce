@@ -2594,7 +2594,7 @@ private:
             SET_FLAG(MTE2, V, EVENT_ID0);
             WAIT_FLAG(MTE2, V, EVENT_ID0);
 
-            if (mask_type == 3 || (need_mask && mask_type == 4)) {
+            if (mask_type == 3) {
                 AscendC::Cast(
                     mask32_ubuf_tensor,
                     mask_ubuf_tensor,
@@ -2984,14 +2984,13 @@ private:
         uint32_t cur_head_num,
         uint32_t head_used_col_num,
         uint32_t one_process_copy_qseqlen_num,
-        uint32_t tail_used_col_num,
-        bool need_mask)
+        uint32_t tail_used_col_num)
     {
         uint32_t sub_m_d64 = (sub_m + 63) / 64;     // up aligned to 64
         uint32_t round_sub_m = (sub_m + 15) / 16 * 16;
         WAIT_FLAG(V, MTE2, EVENT_ID0);
         if (n_idx != 0) {
-            if (mask_type == 3 || (need_mask && mask_type == 4)) {
+            if (mask_type == 3) {
                 if (n_idx != n_loop - 1 && head_loop_idx == 0) {
                     WAIT_FLAG(V, MTE3, EVENT_ID4);
                 }
@@ -3137,7 +3136,7 @@ private:
                     );
                 PIPE_BARRIER(V);
             }
-            if ((mask_type == 3 || (need_mask && mask_type == 4)) && head_loop_idx == 0) {
+            if (mask_type == 3 && head_loop_idx == 0) {
                 WAIT_FLAG(V, MTE3, EVENT_ID4);
             }
             gm_to_ub<ArchType::ASCEND_V220, mm2CopyType>(
@@ -3729,10 +3728,9 @@ private:
         /* if tail length smalller than q_len - 1, then need to mask the last two tile*/
         uint32_t tail_len = cur_kv_seqlen - (n_loop - 1) * pp_n_scalar;
         bool prev_tail_mask = (n_loop > 1 && tail_len < cur_q_seqlen - 1);
-        bool need_mask = false;
         for (uint32_t n_idx = 0; n_idx < n_loop + 1; n_idx++) {
             if (n_idx != n_loop) {
-                need_mask = false;
+                bool need_mask = false;
                 uint32_t mask_start_offset = 0;
                 if (n_idx == (n_loop - 2)) {
                     need_mask = prev_tail_mask;
@@ -3829,7 +3827,7 @@ private:
                             n_idx - 1, n_loop, qk_n_2, RoundUp<T_BLOCK_SIZE>(qk_round_n_2), cur_sub_m, o_offset,
                             head_idx + head_loop_idx * process_row_num,
                             pm_flag_scalar1, head_loop, head_loop_idx, cur_q_seqlen, sub_head_num, cur_head_num,
-                            head_used_col_num, one_process_copy_qseqlen_num, tail_used_col_num, need_mask);
+                            head_used_col_num, one_process_copy_qseqlen_num, tail_used_col_num);
                     }
                 }
             }
