@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2025 Huawei Technologies Co., Ltd.
  * This file is a part of the CANN Open Software.
- * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Licensed under CANN Open Software License Agreement Version 2.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
@@ -12,14 +12,12 @@
  #define ATB_OPERATION_REGISTER_H
  #include <map>
  #include <string>
- #include <iostream>
 
 namespace atb {
 class RunnerTypeRegister {
 public:
     RunnerTypeRegister(const char* runnerType) noexcept
     {
-        std::cout << "--------------RunnerType: " << runnerType << ", and runnerIdx: " << GetRunnerIdx() << std::endl;
         ATB_CHECK(runnerType != nullptr && runnerType[0] != '\0', "Invalid runnerType provided", return);
         auto &runnerTypeMap = GetRunnerTypeMap();
         auto res = runnerTypeMap.emplace(runnerType, GetRunnerIdx()++);

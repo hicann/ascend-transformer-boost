@@ -7,8 +7,6 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
-#include <iostream>
-#include <string>
 #include "atb/utils/param_compare.h"
 #include <asdops/params/params.h>
 #include <atbops/params/params.h>
@@ -43,10 +41,8 @@ bool IsLaunchParamEqual(const Mki::LaunchParam &launchParam1, const Mki::LaunchP
 }
 
 // 注册OpParam的Map
-OpParamRegister::OpParamRegister(size_t typeHashCode, std::string typeName, ParamCompareFunc func) noexcept
+OpParamRegister::OpParamRegister(size_t typeHashCode, ParamCompareFunc func) noexcept
 {
-    // 当前传入typeName只为了debug使用
-    std::cout << "Op Param TypeName: " << typeName << ", and hash code: " << typeHashCode << std::endl;
     auto &opParamCompareMap = GetOpParamCompareMap();
     auto res = opParamCompareMap.emplace(typeHashCode, std::move(func));
     if (!res.second) {
