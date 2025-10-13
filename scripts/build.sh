@@ -154,14 +154,14 @@ function fn_build_mki()
         return 0
     fi
     cd $THIRD_PARTY_DIR
-    if [ ! -d "Mind-KernelInfra" ]; then
+    if [ ! -d "ascend-boost-comm" ]; then
         branch=$(git symbolic-ref -q --short HEAD || git describe --tags --exact-match 2> /dev/null || echo "commit_id")
         [[ "$branch" == *br_personal* || "$branch" == "commit_id" || "$branch" == *revert-mr* ]] && branch=master
         echo  "current branch for mki: $branch"
-        git clone --branch $branch --depth 1 https://gitee.com/ascend/Mind-KernelInfra.git
+        git clone --branch $branch --depth 1 https://gitcode.com/cann/ascend-boost-comm.git
     fi
-    cd Mind-KernelInfra
-    echo  "current commid id of Mind-KernelInfra: $(git rev-parse HEAD)"
+    cd ascend-boost-comm
+    echo  "current commid id of ascend-boost-comm: $(git rev-parse HEAD)"
     if [ "$USE_CXX11_ABI" == "ON" ];then
         build_options="$build_options --use_cxx11_abi=1"
     else
@@ -169,8 +169,8 @@ function fn_build_mki()
     fi
     if [ "$MKI_BUILD_MODE" == "Test" ]; then
         echo "mki build by Test mode"
-        mkdir -p $THIRD_PARTY_DIR/Mind-KernelInfra/3rdparty
-        cp -r $THIRD_PARTY_DIR/nlohmannJson $THIRD_PARTY_DIR/Mind-KernelInfra/3rdparty
+        mkdir -p $THIRD_PARTY_DIR/ascend-boost-comm/3rdparty
+        cp -r $THIRD_PARTY_DIR/nlohmannJson $THIRD_PARTY_DIR/ascend-boost-comm/3rdparty
         build_type=testframework
     elif [ "$CMAKE_BUILD_TYPE" == "Release" ]; then
         echo "mki build by Develop mode"
@@ -197,7 +197,7 @@ function fn_build_catlass()
     cd $THIRD_PARTY_DIR
     branch=catlass-v1-stable
     echo  "current branch for catlass: $branch"
-    git clone --branch $branch --depth 1 https://gitee.com/ascend/catlass.git
+    git clone --branch $branch --depth 1 https://gitcode.com/cann/catlass.git
 }
 
 function fn_build_nlohmann_json()
