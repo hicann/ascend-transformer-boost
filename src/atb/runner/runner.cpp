@@ -53,6 +53,7 @@ Status Runner::Setup(RunnerVariantPack &runnerVariantPack)
     multiStreamWorkspaceSizes_.resize(runnerVariantPack.context->GetExecuteStreams().size());
     Status st = SetupImpl(runnerVariantPack);
     setupCount_++;
+    Probe::UpdateConfig();
     return st;
 }
 
@@ -198,7 +199,7 @@ void Runner::SetSaveTensorDir(const std::string &tensorDir)
 
 bool Runner::IsSaveTensor() const
 {
-    return Probe::IsExecuteCountInRange(executeCount_) && saveTensorFlag_;
+    return Probe::IsExecuteCountInRange(executeCount_) && saveTensorFlag_ && Probe::IsSaveTensorInSpecificDir(tensorDir_);
 }
 
 std::string Runner::GetLogPrefix() const

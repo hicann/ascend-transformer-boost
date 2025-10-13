@@ -999,7 +999,8 @@ void OpsRunner::InitKernelCache()
 
 void OpsRunner::RunKernelPreProcess(KernelGraphNode &node, size_t nodeId, aclrtStream stream)
 {
-    if (nodesSaveTensorFlag_.at(nodeId) && Probe::IsExecuteCountInRange(executeCount_) && Probe::IsSaveTensorBefore()) {
+    if (nodesSaveTensorFlag_.at(nodeId) && Probe::IsExecuteCountInRange(executeCount_) && Probe::IsSaveTensorBefore()
+        && Probe::IsSaveTensorInSpecificDir(GetSaveTensorDir() + "/" + std::to_string(nodeId) + "_" + node.GetName())) {
         std::string dirPath = GetSaveTensorDir() + "/" + std::to_string(nodeId) + "_" + node.GetName() + "/before";
         node.impl->SaveLaunchParam(stream, dirPath);
         ATB_LOG(INFO) << GetLogPrefix() << " " << node.GetName() << " SaveRunInfo " << dirPath;
@@ -1016,7 +1017,8 @@ void OpsRunner::RunKernelPostProcess(KernelGraphNode &node, size_t nodeId, aclrt
     if (GetSingleton<Config>().IsStreamSyncEveryKernelEnable()) {
         SyncStream(node, nodeId, stream);
     }
-    if (nodesSaveTensorFlag_.at(nodeId) && Probe::IsExecuteCountInRange(executeCount_) && Probe::IsSaveTensorAfter()) {
+    if (nodesSaveTensorFlag_.at(nodeId) && Probe::IsExecuteCountInRange(executeCount_) && Probe::IsSaveTensorAfter()
+        && Probe::IsSaveTensorInSpecificDir(GetSaveTensorDir() + "/" + std::to_string(nodeId) + "_" + node.GetName())) {
         std::string dirPath = GetSaveTensorDir() + "/" + std::to_string(nodeId) + "_" + node.GetName() + "/after";
         node.impl->SaveLaunchParam(stream, dirPath);
         ATB_LOG(INFO) << GetLogPrefix() << " " << node.GetName() << " SaveLaunchParam " << dirPath;
