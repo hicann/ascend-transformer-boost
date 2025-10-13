@@ -10,6 +10,8 @@
 #ifndef DYNAMIC_QUANT_UTIL_H
 #define DYNAMIC_QUANT_UTIL_H
 
+#include <cstdint>
+
 namespace AsdOps {
 constexpr uint32_t DYNAMIC_QUANT_BUFFER_NUM_ONE = 1;
 constexpr uint32_t DYNAMIC_QUANT_BUFFER_NUM_TWO = 2;

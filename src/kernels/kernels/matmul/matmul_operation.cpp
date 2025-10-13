@@ -260,7 +260,7 @@ protected:
         auto opParam = AnyCast<OpParam::MatMul>(launchParam.GetParam());
         outTensorDesc.dtype = launchParam.GetInTensor(0).desc.dtype;
         auto &outTensorDims = outTensorDesc.dims;
-        uint64_t bSize = GetTensorBatchB(launchParam.GetInTensor(1).desc);
+        uint64_t bSize = static_cast<uint64_t>(GetTensorBatchB(launchParam.GetInTensor(1).desc));
         uint64_t mSize = opParam.transposeA ? inTensorDims0.at(DIM_2) : inTensorDims0.at(DIM_0);
         uint64_t kSizeA = opParam.transposeA ? inTensorDims0.at(DIM_0) : inTensorDims0.at(DIM_2);
         uint64_t kSizeB = 0;

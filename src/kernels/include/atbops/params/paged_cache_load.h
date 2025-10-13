@@ -10,8 +10,6 @@
 #ifndef ATBOPS_PARAMS_PAGED_CACHE_LOAD_H
 #define ATBOPS_PARAMS_PAGED_CACHE_LOAD_H
 
-#include <vector>
-
 namespace AtbOps {
 namespace OpParam {
 struct PagedCacheLoad {
