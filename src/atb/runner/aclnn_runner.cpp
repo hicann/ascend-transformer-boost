@@ -65,23 +65,26 @@ Status AclnnRunner::SetupImpl(RunnerVariantPack &runnerVariantPack)
     ATB_LOG(INFO) << GetLogPrefix() << "getWorkspace success, workspace addr: "
                   << reinterpret_cast<void *>(this->atbVariantPack_.workspaceBuffer)
                   << ", workspaceSize: " << this->atbVariantPack_.workspaceBufferSize;
-    aclnnRet = aclSetAclOpExecutorRepeatable(this->aclnnExecutor_.get());
-    if (aclnnRet != 0) {
-        // 设置算子可复用失败，标记cache中executor不可复用
-        ATB_LOG(INFO) << this->GetName() << " call aclSetAclOpExecutorRepeatable fail with error code: " << aclnnRet;
-        this->executorRepeatable_ = false;
-    } else {
-        // 设置算子可复用成功，标记cache中executor可复用
-        ATB_LOG(INFO) << this->GetName() << " call aclSetAclOpExecutorRepeatable success: ";
-        this->executorRepeatable_ = true;
+    if (useCache()) {
+        aclnnRet = aclSetAclOpExecutorRepeatable(this->aclnnExecutor_.get());
+        if (aclnnRet != 0) {
+            // 设置算子可复用失败，标记cache中executor不可复用
+            ATB_LOG(INFO) << this->GetName()
+                          << " call aclSetAclOpExecutorRepeatable fail with error code: " << aclnnRet;
+            this->executorRepeatable_ = false;
+        } else {
+            // 设置算子可复用成功，标记cache中executor可复用
+            ATB_LOG(INFO) << this->GetName() << " call aclSetAclOpExecutorRepeatable success: ";
+            this->executorRepeatable_ = true;
+        }
+        aclnnCacheSlot = {this->atbVariantPack_.workspaceBufferSize, aclnnExecutor_};
+        ret = GetSingleton<AclnnExecutorCache>().AddCacheSlot(opName, runnerVariantPack, aclnnCacheSlot);
+        if (ret != NO_ERROR) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "AclnnExecutorCache update cache failed!";
+        }
+        ATB_LOG(INFO) << GetLogPrefix() << "AclnnExecutorCache AddCacheSlot success opName: " << opName
+                      << ", runnerVariantPack: " << runnerVariantPack.ToString();
     }
-    aclnnCacheSlot = {this->atbVariantPack_.workspaceBufferSize, aclnnExecutor_};
-    ret = GetSingleton<AclnnExecutorCache>().AddCacheSlot(opName, runnerVariantPack, aclnnCacheSlot);
-    if (ret != NO_ERROR) {
-        ATB_LOG(ERROR) << GetLogPrefix() << "AclnnExecutorCache update cache failed!";
-    }
-    ATB_LOG(INFO) << GetLogPrefix() << "AclnnExecutorCache AddCacheSlot success opName: " << opName
-                  << ", runnerVariantPack: " << runnerVariantPack.ToString();
     return ret;
 }
 
@@ -155,6 +158,11 @@ void AclnnRunner::UpdateWorkspace(const RunnerVariantPack &runnerVariantPack)
 {
     this->atbVariantPack_.workspaceBufferSize = runnerVariantPack.workspaceBufferSize;
     this->atbVariantPack_.workspaceBuffer = runnerVariantPack.workspaceBuffer;
+}
+
+bool AclnnRunner::useCache()
+{
+    return true;
 }
 
 Status AclnnRunner::ExecuteImpl(RunnerVariantPack &runnerVariantPack)

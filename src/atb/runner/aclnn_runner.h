@@ -27,6 +27,7 @@ protected:
     virtual Status LaunchAclnnKernel() = 0;
     uint64_t GetWorkspaceBufferSizeImpl() override;
     void UpdateWorkspace(const RunnerVariantPack &runnerVariantPack);
+    virtual bool useCache();
     int64_t runnerTypeIdx_ = -1;
     bool executorRepeatable_ = false;
     std::shared_ptr<aclOpExecutor> aclnnExecutor_ = nullptr;
