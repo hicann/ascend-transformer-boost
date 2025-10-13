@@ -11,14 +11,14 @@
 
 set -e
 
-function fn_build_mki()	
+function fn_build_mki()
 {
     if [ ! -d "$THIRD_PARTY_DIR"/Mind-KernelInfra ]; then
         [[ ! -d "$THIRD_PARTY_DIR" ]] && mkdir $THIRD_PARTY_DIR
         cd $THIRD_PARTY_DIR
         branch=$(git symbolic-ref -q --short HEAD || git describe --tags --exact-match 2> /dev/null || echo "commit_id") 
         [[ "$branch" == *br_personal* || "$branch" == "commit_id" ]] && branch=master
-        echo  "current branch for atb and mki: $branch"	
+        echo  "current branch for atb and mki: $branch"
         git clone --branch $branch --depth 1 https://gitcode.com/cann/ascend-boost-comm.git Mind-KernelInfra
     else
         [[ -d "$THIRD_PARTY_DIR"/Mind-KernelInfra/build ]] && rm -rf $THIRD_PARTY_DIR/Mind-KernelInfra/build
