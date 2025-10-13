@@ -471,6 +471,7 @@ public:
                                                                                               0,                      // dstfracGapIn
                                                                                               0)                      // addrModeIn
                             );
+                            PIPE_BARRIER(MTE1);
                         }
                     }
                     else {
@@ -1677,8 +1678,8 @@ public:
                                     AscendC::Cast<int8_t, half, false>(lp_ubuf_tensor.template ReinterpretCast<int8_t>()[offset * 2 + row_idx * VectorSize<half>()],
                                                                     lp_ubuf_tensor.template ReinterpretCast<half>()[offset + row_idx * VectorSize<half>()], AscendC::RoundMode::CAST_RINT,
                                                                     (uint64_t)0, sub_m, {1, 1, (uint8_t)(qk_round_n / BlockSize<half>()), (uint8_t)(qk_round_n / BlockSize<half>())});
+                                    PIPE_BARRIER(V);
                                 }
-                                PIPE_BARRIER(V);
                                 if (qk_n % VectorSize<half>() > 0) {
                                     __set_mask(qk_n % VectorSize<half>());
                                     AscendC::Cast<int8_t, half, false>(lp_ubuf_tensor.template ReinterpretCast<int8_t>()[offset * 2 + qk_n / VectorSize<half>() * VectorSize<half>()],
@@ -2173,6 +2174,7 @@ public:
                                         AscendC::Cast<int8_t, half, false>(lp_ubuf_tensor.template ReinterpretCast<int8_t>()[(split_idx * m_slice * qk_round_n) * 2 + row_idx * VectorSize<half>()],
                                                                         lp_ubuf_tensor.template ReinterpretCast<half>()[split_idx * m_slice * qk_round_n + row_idx * VectorSize<half>()], AscendC::RoundMode::CAST_RINT,
                                                                         (uint64_t)0, m_split, {1, 1, (uint8_t)(qk_round_n / BlockSize<half>()), (uint8_t)(qk_round_n / BlockSize<half>())});
+                                        PIPE_BARRIER(V);
                                     }
                                     if (qk_n % VectorSize<half>() > 0) {
                                         __set_mask(qk_n % VectorSize<half>());
