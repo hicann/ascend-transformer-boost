@@ -16,6 +16,71 @@
 #include "mki/types.h"
 #include "platform_infos_impl.h"
 
+namespace {
+using AclrtGetResInCurrentThreadFunc = int(*)(int, uint32_t*);
+
+int GetResInCurrentThread(int type, uint32_t &resource)
+{
+    static std::once_flag onceFlag;
+    static std::atomic<int> initFlag{Mki::ERROR_FUNC_NOT_INITIALIZED};  
+    static std::unique_ptr<Mki::Dl> mkiDl; // 持久保存，避免库被卸载
+    static AclrtGetResInCurrentThreadFunc aclFn = nullptr;
+
+    std::call_once(onceFlag, []() {
+        std::string p;
+        const char *c = Mki::GetEnv("ASCEND_HOME_PATH");
+        if (c) {
+            p = std::string(c) + "/runtime/lib64/libascendcl.so";
+        } else {
+            p = "libascendcl.so";
+        }
+        auto dl = std::make_unique<Mki::Dl>(p, false);
+        if (!dl->IsValid()) {
+            MKI_LOG(ERROR) << "Try load libascendcl.so failed: " << p;
+            initFlag.store(Mki::ERROR_FUNC_NOT_FOUND, std::memory_order_release);
+            return;
+        }
+        auto sym = dl->GetSymbol("aclrtGetResInCurrentThread");
+        if (sym == nullptr) {
+            MKI_LOG(WARN) << "Symbol aclrtGetResInCurrentThread not found in: " << p;
+            initFlag.store(Mki::ERROR_FUNC_NOT_FOUND, std::memory_order_release);
+            return;
+        }
+        mkiDl = std::move(dl); // 保留句柄，防止卸载
+        aclFn = reinterpret_cast<AclrtGetResInCurrentThreadFunc>(sym);
+        initFlag.store(Mki::NO_ERROR, std::memory_order_release);
+        MKI_LOG(INFO) << "Loaded libascendcl.so and resolved aclrtGetResInCurrentThread from: " << p;
+    });
+
+    // 初始化结果判定
+    int rc = initFlag.load(std::memory_order_acquire);
+    if (rc != Mki::NO_ERROR) {
+        return rc;
+    }
+
+    if (type != 0 && type != 1) {
+        MKI_LOG(ERROR) << "aclrtGetResInCurrentThread not support resource type: " << type;
+        return Mki::ERROR_INVALID_VALUE;
+    }
+
+    // 调用前检查函数指针有效性
+    if (aclFn == nullptr) {
+        MKI_LOG(ERROR) << "aclrtGetResInCurrentThread function pointer is null.";
+        return Mki::ERROR_FUNC_NOT_FOUND;
+    }
+
+    // 调用底层函数
+    const int ret = aclFn(type, &resource);
+    if (ret != 0) {
+        MKI_LOG(ERROR) << "aclrtGetResInCurrentThread failed. type: " << type << " err: " << ret;
+        return Mki::ERROR_RUN_TIME_ERROR;
+    }
+
+    MKI_LOG(INFO) << "Got resource in current thread. type: " << type << " resource: " << resource;
+    return Mki::NO_ERROR;
+}
+}
+
 namespace fe {
 constexpr uint32_t MAX_CORE_NUM = 128;
 std::mutex g_asdopsFePlatMutex;
@@ -101,69 +166,6 @@ void PlatFormInfos::SetFixPipeDtypeMap(const std::map<std::string, std::vector<s
         return;
     }
     platform_infos_impl_->SetFixPipeDtypeMap(fixpipeDtypeMap);
-}
-
-using AclrtGetResInCurrentThreadFunc = int(*)(int, uint32_t*);
-
-int GetResInCurrentThread(int type, uint32_t &resource)
-{
-    static std::once_flag onceFlag;
-    static std::atomic<int> initFlag{Mki::ERROR_FUNC_NOT_INITIALIZED};  
-    static std::unique_ptr<Mki::Dl> mkiDl; // 持久保存，避免库被卸载
-    static AclrtGetResInCurrentThreadFunc aclFn = nullptr;
-
-    std::call_once(onceFlag, []() {
-        std::string p;
-        const char *c = Mki::GetEnv("ASCEND_HOME_PATH");
-        if (c) {
-            p = std::string(c) + "/runtime/lib64/libascendcl.so";
-        } else {
-            p = "libascendcl.so";
-        }
-        auto dl = std::make_unique<Mki::Dl>(p, false);
-        if (!dl->IsValid()) {
-            MKI_LOG(ERROR) << "Try load libascendcl.so failed: " << p;
-            initFlag.store(Mki::ERROR_FUNC_NOT_FOUND, std::memory_order_release);
-            return;
-        }
-        auto sym = dl->GetSymbol("aclrtGetResInCurrentThread");
-        if (sym == nullptr) {
-            MKI_LOG(WARN) << "Symbol aclrtGetResInCurrentThread not found in: " << p;
-            initFlag.store(Mki::ERROR_FUNC_NOT_FOUND, std::memory_order_release);
-            return;
-        }
-        mkiDl = std::move(dl); // 保留句柄，防止卸载
-        aclFn = reinterpret_cast<AclrtGetResInCurrentThreadFunc>(sym);
-        initFlag.store(Mki::NO_ERROR, std::memory_order_release);
-        MKI_LOG(INFO) << "Loaded libascendcl.so and resolved aclrtGetResInCurrentThread from: " << p;
-    });
-
-    // 初始化结果判定
-    int rc = initFlag.load(std::memory_order_acquire);
-    if (rc != Mki::NO_ERROR) {
-        return rc;
-    }
-
-    if (type != 0 && type != 1) {
-        MKI_LOG(ERROR) << "aclrtGetResInCurrentThread not support resource type: " << type;
-        return Mki::ERROR_INVALID_VALUE;
-    }
-
-    // 调用前检查函数指针有效性
-    if (aclFn == nullptr) {
-        MKI_LOG(ERROR) << "aclrtGetResInCurrentThread function pointer is null.";
-        return Mki::ERROR_FUNC_NOT_FOUND;
-    }
-
-    // 调用底层函数
-    const int ret = aclFn(type, &resource);
-    if (ret != 0) {
-        MKI_LOG(ERROR) << "aclrtGetResInCurrentThread failed. type: " << type << " err: " << ret;
-        return Mki::ERROR_RUN_TIME_ERROR;
-    }
-
-    MKI_LOG(INFO) << "Got resource in current thread. type: " << type << " resource: " << resource;
-    return Mki::NO_ERROR;
 }
 
 void PlatFormInfos::SetCoreNumByCoreType(const std::string &core_type)
