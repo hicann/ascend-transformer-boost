@@ -3723,7 +3723,6 @@ private:
         uint32_t sub_m_d128 = (sub_m + 127) / 128;  // up aligned to 128
         uint32_t sub_m_d64 = (sub_m + 63) / 64;     // up aligned to 128
         uint32_t round_sub_m = (sub_m + 15) / 16 * 16;
-
         uint32_t start_kv = 0;
         /* if tail length smalller than q_len - 1, then need to mask the last two tile*/
         uint32_t tail_len = cur_kv_seqlen - (n_loop - 1) * pp_n_scalar;
