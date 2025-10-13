@@ -72,13 +72,13 @@ static Lcal::CoCDataTypeDesc GetCoCDataTypeDesc(const TensorDesc &input, const T
         if (weight.dtype == ACL_FLOAT16) {
             return Lcal::CoCDataTypeDesc::FP16FP16_FP32_FP16;
         } else if (weight.dtype == ACL_INT8) {
-            return Lcal::CoCDataTypeDesc::FP16INT8_INT32_FP16;
+            return Lcal::CoCDataTypeDesc::FP16INT8_FP32_FP16;
         }
     } else if (input.dtype == ACL_BF16) {
         if (weight.dtype == ACL_BF16) {
             return Lcal::CoCDataTypeDesc::BF16BF16_FP32_BF16;
         } else if (weight.dtype == ACL_INT8) {
-            return Lcal::CoCDataTypeDesc::BF16INT8_INT32_BF16;
+            return Lcal::CoCDataTypeDesc::BF16INT8_FP32_BF16;
         }
     } else if (input.dtype == ACL_INT8 && weight.dtype == ACL_INT8) {
         return output.dtype == ACL_BF16 ? Lcal::CoCDataTypeDesc::INT8INT8_INT32_BF16 :
