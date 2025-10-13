@@ -67,7 +67,7 @@ protected:
             } else if (sizeValue < -1) {
                 return Status::FailStatus(ERROR_INVALID_VALUE, "The value of size can not < -1");
             }
-            if (offsetValue + sizeValue > xDims[i]) {
+            if (static_cast<uint64_t>(offsetValue) + static_cast<uint64_t>(sizeValue) > static_cast<uint64_t>(xDims[i])) {
                 return Status::FailStatus(ERROR_INVALID_VALUE, "Wrong offsets or size");
             }
             outputDims.push_back(sizeValue);
