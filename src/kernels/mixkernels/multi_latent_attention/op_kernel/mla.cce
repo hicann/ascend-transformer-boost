@@ -3729,9 +3729,10 @@ private:
         /* if tail length smalller than q_len - 1, then need to mask the last two tile*/
         uint32_t tail_len = cur_kv_seqlen - (n_loop - 1) * pp_n_scalar;
         bool prev_tail_mask = (n_loop > 1 && tail_len < cur_q_seqlen - 1);
+        bool need_mask = false;
         for (uint32_t n_idx = 0; n_idx < n_loop + 1; n_idx++) {
             if (n_idx != n_loop) {
-                bool need_mask = false;
+                need_mask = false;
                 uint32_t mask_start_offset = 0;
                 if (n_idx == (n_loop - 2)) {
                     need_mask = prev_tail_mask;
