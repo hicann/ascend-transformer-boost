@@ -66,4 +66,21 @@ HcclReduceOp GetAllReduceType(const std::string &allReduceType)
         return HCCL_REDUCE_RESERVED;
     }
 }
+
+atb::Status ConvertHcclResultToStatus(const HcclResult hcclResult)
+{
+    switch (hcclResult) {
+        case HcclResult::HCCL_SUCCESS:
+            return atb::NO_ERROR;
+
+        case HcclResult::HCCL_E_PARA:
+            return atb::ERROR_INVALID_PARAM;
+
+        case HcclResult::HCCL_E_MEMORY:
+            return atb::ERROR_OUT_OF_DEVICE_MEMORY;
+
+        default:
+            return atb::ERROR_HCCL_FAIL;
+    }
+}
 } // namespace atb
