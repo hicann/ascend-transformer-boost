@@ -18,7 +18,7 @@ Ascend Transformer Boost加速库（下文简称为ATB加速库）是一款高�
 - [开发指南](docs/开发指南.md)：以一个融合算子为例，详细介绍了ATB算子开发的流程，以及如何对算子进行功能、精度、性能测试。
 - [贡献指南](docs/贡献指南.md)：介绍了如何向ATB库贡献代码。
 - [日志与调试](docs/日志与调试.md)：介绍ATB的日志相关环境变量，以及调测方法。
-- [API文档](https://www.hiascend.com/document/detail/zh/canncommercial/82RC1/API/ascendtbapi/ascendtb_01_0098.html)：介绍了ATB库的接口和相关术语。
+- [API文档](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/83RC1alpha002/API/ascendtbapi/ascendtb_01_0098.html)：介绍了ATB库的接口和相关术语。
 - [问题报告](https://gitcode.com/cann/ascend-transformer-boost/issues)：通过issue提交发现的问题。
 
 ## 什么是ATB
@@ -79,7 +79,7 @@ ascend-transformer-boost
 
 #### 安装前准备
 在线安装和离线安装时，需确保已具备Python环境及pip3，当前CANN支持Python3.7.x至3.11.4版本。
-离线安装时，请单击[获取链接](https://www.hiascend.com/developer/download/commercial/result?module=cann)下载CANN软件包，并上传到安装环境任意路径。
+离线安装时，请单击[获取链接](https://www.hiascend.com/developer/download/community/result?module=cann)下载CANN软件包，并上传到安装环境任意路径。
 #### 安装CANN
 ```shell
 chmod +x Ascend-cann-toolkit_8.2.RC1_linux-$(arch).run
@@ -95,16 +95,16 @@ source ${HOME}/Ascend/ascend-toolkit/set_env.sh
 pip3 install attrs cython 'numpy>=1.19.2,<=1.24.0' decorator sympy cffi pyyaml pathlib2 psutil protobuf==3.20.0 scipy requests absl-py --user
 ```
 ### CANN详细安装指南 
-开发者可访问[昇腾文档-昇腾社区](https://www.hiascend.com/document)->CANN商用版->软件安装，查看CANN软件安装引导，根据机器环境、操作系统和业务场景选择后阅读详细安装步骤。
+开发者可访问[昇腾文档-昇腾社区](https://www.hiascend.com/document)->CANN社区版->软件安装，查看CANN软件安装引导，根据机器环境、操作系统和业务场景选择后阅读详细安装步骤。
 
 ### ATB安装部署相关依赖说明
-在编译加速库之前，需访问[加速库包安装部署](https://www.hiascend.com/document/detail/zh/canncommercial/82RC1/acce/ascendtb/ascendtb_0034.html)查看加速库相关依赖的版本要求，并进行对应依赖的安装部署。
+在编译加速库之前，需访问[加速库包安装部署](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/83RC1alpha002/acce/ascendtb/ascendtb_0034.html)查看加速库相关依赖的版本要求，并进行对应依赖的安装部署。
 ### 基础工具版本要求与安装
 
 安装CANN之后，您可安装一些工具方便后续开发，参见以下内容：
 
-* [CANN依赖列表](https://www.hiascend.com/document/detail/zh/canncommercial/82RC1/softwareinst/instg/instg_0045.html?Mode=PmIns&InstallType=local&OS=Debian&Software=cannToolKit)
-* [CANN安装后操作](https://www.hiascend.com/document/detail/zh/canncommercial/82RC1/softwareinst/instg/instg_0094.html?Mode=PmIns&InstallType=local&OS=Debian&Software=cannToolKit)
+* [CANN依赖列表](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/83RC1alpha002/softwareinst/instg/instg_0045.html?Mode=PmIns&InstallType=local&OS=Debian&Software=cannToolKit)
+* [CANN安装后操作](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/83RC1alpha002/softwareinst/instg/instg_0094.html?Mode=PmIns&InstallType=local&OS=Debian&Software=cannToolKit)
 
 ## 快速上手
 ### ATB编译
@@ -152,7 +152,7 @@ pip3 install attrs cython 'numpy>=1.19.2,<=1.24.0' decorator sympy cffi pyyaml p
 ### 调用示例说明
 本节示例代码分别展示了如何通过Python和C++调用算子。
 #### Python
-运行以下代码需要导入ATB Python API模块torch_atb，该插件运行依赖PyTorch和torch_npu，可访问[加速库包安装部署](https://www.hiascend.com/document/detail/zh/canncommercial/82RC1/acce/ascendtb/ascendtb_0034.html)查看版本要求和安装指导。  
+运行以下代码需要导入ATB Python API模块torch_atb，该插件运行依赖PyTorch和torch_npu，可访问[加速库包安装部署](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/83RC1alpha002/acce/ascendtb/ascendtb_0034.html)查看版本要求和安装指导。  
 ```Python
 import torch
 import torch_atb#导入ATB Python API模块
@@ -173,7 +173,7 @@ outputs = op.forward([x, y])
 torch.npu.synchronize()
 ```
 
-代码编写指导可访问[算子使用指导（ATB Python API）-昇腾社区](https://www.hiascend.com/document/detail/zh/canncommercial/82RC1/acce/ascendtb/ascendtb_0077.html)。
+代码编写指导可访问[算子使用指导（ATB Python API）-昇腾社区](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/83RC1alpha002/acce/ascendtb/ascendtb_0077.html)。
 
 #### C++
 
@@ -227,7 +227,7 @@ CHECK_STATUS(DestroyContext(context)); // context，全局资源，后释放
 CHECK_STATUS(aclFinalize());
 ```
 文件编译说明：进入`example/op_demo/faupdate`，执行`bash build.sh`完成编译和执行。  
-代码编写指导：可访问[单算子-昇腾社区](https://www.hiascend.com/document/detail/zh/canncommercial/82RC1/acce/ascendtb/ascendtb_0046.html)。
+代码编写指导：可访问[单算子-昇腾社区](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/83RC1alpha002/acce/ascendtb/ascendtb_0046.html)。
 
 #### 样例安全声明
 `example`目录下的样例旨在提供快速上手、开发和调试ATB特性的最小化实现，其核心目标是使用最精简的代码展示ATB核心功能，**而非提供生产级的安全保障**。与成熟的生产级使用方法相比，此样例中的安全功能（如输入校验、边界校验）相对有限。
@@ -236,7 +236,7 @@ ATB不推荐用户直接将样例作为业务代码，也不保证此种做法�
 
 ### 日志和环境变量说明
 - 加速库日志现在已经部分适配CANN日志，环境变量说明请参考
-  **[CANN商用版文档/环境变量参考](https://www.hiascend.com/document/detail/zh/canncommercial/82RC1/maintenref/envvar/envref_07_0119.html)**；
+  **[CANN社区版文档/环境变量参考](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/83RC1alpha002/maintenref/envvar/envref_07_0119.html)**；
 - 由于CANN日志暂时没有ATB模块，ASCEND_MODULE_LOG_LEVEL请勿设置ATB。
 
 ## 自定义算子开发
@@ -253,5 +253,5 @@ ATB不推荐用户直接将样例作为业务代码，也不保证此种做法�
 详细步骤可参考[贡献指南](docs/贡献指南.md)
 
 ## 参考文档
-**[CANN商用版文档](https://www.hiascend.com/document/detail/zh/canncommercial/82RC1/index/index.html)**  
-**[ATB商用版文档](https://www.hiascend.com/document/detail/zh/canncommercial/82RC1/acce/ascendtb/ascendtb_0001.html)**
+**[CANN社区版文档](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/83RC1alpha002/index/index.html)**  
+**[ATB社区版文档](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/83RC1alpha002/acce/ascendtb/ascendtb_0001.html)**
