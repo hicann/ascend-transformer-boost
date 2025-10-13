@@ -30,7 +30,6 @@ protected:
     Status LaunchAclnnKernel() override;
     bool useCache() override;
 
-
 private:
     HcclRunner hcclRunner_;
     infer::LinearParallelParam param_;
