@@ -10,7 +10,6 @@
 #include <array>
 #include <chrono>
 #include <vector>
-#include <numeric>
 #include <algorithm>
 #include <cmath>
 #include <map>
@@ -206,10 +205,11 @@ void GetDecodingNormalTaskTiling(MLAInfo &mmInfo, uint32_t blockDim, uint32_t *t
             int32_t tilingOffset = TILING_HEAD_SIZE + TILING_PARA_SIZE_TP1 * prevTaskNum;
             int32_t curQLen = ((qSeqLen - qSeq) > maxQPerJob) ? maxQPerJob : (qSeqLen - qSeq);
             curKvSeq += curQLen;
-            tilingParam[tilingOffset] = batchIdx;
-            tilingParam[tilingOffset + NUM1] = batchIdx * qSeqLen + qSeq;
-            tilingParam[tilingOffset + NUM2] = curKvSeq;
-            tilingParam[tilingOffset + NUM3] = curQLen;
+            tilingParam[tilingOffset] = static_cast<uint32_t>(batchIdx);
+            tilingParam[tilingOffset + NUM1] =
+                static_cast<uint32_t>(batchIdx) * static_cast<uint32_t>(qSeqLen) + static_cast<uint32_t>(qSeq);
+            tilingParam[tilingOffset + NUM2] = static_cast<uint32_t>(curKvSeq);
+            tilingParam[tilingOffset + NUM3] = static_cast<uint32_t>(curQLen);
             prevTaskNum++;
             qRowIdx += curQLen;
         }
@@ -224,12 +224,11 @@ void GetDecodingTailBatchTiling(MLAInfo &mmInfo, uint32_t *tilingParam, int32_t 
         int32_t batchIdx = mmInfo.batchList[taskIdx].batchIdx;
         int32_t qSeqLen = mmInfo.qSeqLen == nullptr ? 1 : *(mmInfo.qSeqLen + batchIdx);
         for (int32_t qSeq = 0; qSeq < qSeqLen; qSeq++) {
-            tilingParam[batchTilingOffset +
-                        ((taskIdx - curTask) * qSeqLen + qSeq) * NUM2] = mmInfo.quantFlag ?
-                                                                         batchTilingMap[batchIdx * qSeqLen + qSeq] :
-                                                                         batchTilingMap[batchIdx * qSeqLen];
-            tilingParam[batchTilingOffset +
-                        ((taskIdx - curTask) * qSeqLen + qSeq) * NUM2 + 1] = mmInfo.quantFlag ? 0 : qSeq;
+            tilingParam[batchTilingOffset + ((taskIdx - curTask) * qSeqLen + qSeq) * NUM2] =
+                mmInfo.quantFlag ? static_cast<uint32_t>(batchTilingMap[batchIdx * qSeqLen + qSeq]) :
+                                   static_cast<uint32_t>(batchTilingMap[batchIdx * qSeqLen]);
+            tilingParam[batchTilingOffset + ((taskIdx - curTask) * qSeqLen + qSeq) * NUM2 + 1] =
+                mmInfo.quantFlag ? 0 : static_cast<uint32_t>(qSeq);
         }
     }
 }
@@ -263,15 +262,20 @@ Status GetNdMLADecodingMtpTilingTP1(MLAInfo &mmInfo, uint32_t blockDim, uint32_t
             batchTilingMap[batchIdx * qSeqLen + qSeq] = tilingOffset;
             for (int kvBlockIdx = 0; kvBlockIdx < splitNum; kvBlockIdx++) {
                 int32_t nowBlocks = kvBlockIdx < resBlocks ? splitBlocks - 1 : splitBlocks;
-                tilingParam[tilingOffset] = batchIdx;
-                tilingParam[tilingOffset + 1] = qSeqLen;
-                tilingParam[tilingOffset + NUM2] = kvBlockIdx == splitNum - 1 ?
-                nowKVSeqlen - prevKVSeqlen : nowBlocks * mmInfo.blockSize;
-                tilingParam[tilingOffset + NUM3] = prevKVSeqlen;
-                tilingParam[tilingOffset + NUM4] = mmInfo.quantFlag ? batchIdx * qSeqLen + qSeq : batchIdx * qSeqLen;
-                tilingParam[tilingOffset + NUM5] = splitNum;
-                tilingParam[tilingOffset + NUM6] = mmInfo.prevSplitNumSum;
-                prevKVSeqlen += tilingParam[tilingOffset + NUM2];
+                tilingParam[tilingOffset] = static_cast<uint32_t>(batchIdx);
+                tilingParam[tilingOffset + 1] = static_cast<uint32_t>(qSeqLen);
+                tilingParam[tilingOffset + NUM2] =
+                    kvBlockIdx == splitNum - 1 ?
+                        static_cast<uint32_t>(nowKVSeqlen - prevKVSeqlen) :
+                        static_cast<uint32_t>(nowBlocks) * static_cast<uint32_t>(mmInfo.blockSize);
+                tilingParam[tilingOffset + NUM3] = static_cast<uint32_t>(prevKVSeqlen);
+                tilingParam[tilingOffset + NUM4] =
+                    mmInfo.quantFlag ?
+                        static_cast<uint32_t>(batchIdx) * static_cast<uint32_t>(qSeqLen) + static_cast<uint32_t>(qSeq) :
+                        static_cast<uint32_t>(batchIdx) * static_cast<uint32_t>(qSeqLen);
+                tilingParam[tilingOffset + NUM5] = static_cast<uint32_t>(splitNum);
+                tilingParam[tilingOffset + NUM6] = static_cast<uint32_t>(mmInfo.prevSplitNumSum);
+                prevKVSeqlen += static_cast<int32_t>(tilingParam[tilingOffset + NUM2]);
                 tilingOffset += TILING_PARA_SIZE_TP1;
                 prevTaskNum++;
             }
@@ -302,10 +306,10 @@ void GetNdMLAMtpTilingTP1(const MLAInfo &mmInfo, uint32_t &blockDim, uint32_t *t
             int32_t tilingOffset = TILING_HEAD_SIZE + TILING_PARA_SIZE_TP1 * prevTaskNum;
             int32_t curQLen = ((qSeqLen - qSeq) > maxQPerJob) ? maxQPerJob : (qSeqLen - qSeq);
             curKvSeq += curQLen;
-            tilingParam[tilingOffset] = batchIdx;
-            tilingParam[tilingOffset + NUM1] = beginQ + qSeq;
-            tilingParam[tilingOffset + NUM2] = curKvSeq;
-            tilingParam[tilingOffset + NUM3] = curQLen;
+            tilingParam[tilingOffset] = static_cast<uint32_t>(batchIdx);
+            tilingParam[tilingOffset + NUM1] = static_cast<uint32_t>(beginQ) + static_cast<uint32_t>(qSeq);
+            tilingParam[tilingOffset + NUM2] = static_cast<uint32_t>(curKvSeq);
+            tilingParam[tilingOffset + NUM3] = static_cast<uint32_t>(curQLen);
             prevTaskNum++;
             totalTaskNum -= curQLen;
             MKI_LOG(INFO) << "seqIdx = " << tilingParam[tilingOffset];
@@ -495,10 +499,14 @@ Status PrefillTilingParam(const MLAInfo &mmInfo, const uint32_t &torUptr, AddrOf
             static_cast<uint32_t>(addrOffsets.totalQBlkNum);
         tilingParam[TILING_HEAD_SIZE_PREFILL + seqIdx * TILING_PARA_SIZE_PREFILL + NUM14] = 1;
         auto kvFactor = GetKvFactor(mmInfo, kvSeqlen);
-        addrOffsets.addrQSeqOffset += static_cast<uint64_t>(qSeqlen) * mmInfo.numHeads * mmInfo.embeddingSizeV;
-        addrOffsets.addrKSeqOffset += static_cast<uint64_t>(kvFactor) * kvRealHeads * mmInfo.embeddingSizeV;
-        addrOffsets.addrVSeqOffset += static_cast<uint64_t>(kvFactor) * kvRealHeads * mmInfo.embeddingSizeV;
-        addrOffsets.addrOSeqOffset += static_cast<uint64_t>(qSeqlen) * mmInfo.numHeads * mmInfo.embeddingSizeV;
+        addrOffsets.addrQSeqOffset += static_cast<uint64_t>(qSeqlen) * static_cast<uint64_t>(mmInfo.numHeads) *
+                                      static_cast<uint64_t>(mmInfo.embeddingSizeV);
+        addrOffsets.addrKSeqOffset += static_cast<uint64_t>(kvFactor) * static_cast<uint64_t>(kvRealHeads) *
+                                      static_cast<uint64_t>(mmInfo.embeddingSizeV);
+        addrOffsets.addrVSeqOffset += static_cast<uint64_t>(kvFactor) * static_cast<uint64_t>(kvRealHeads) *
+                                      static_cast<uint64_t>(mmInfo.embeddingSizeV);
+        addrOffsets.addrOSeqOffset += static_cast<uint64_t>(qSeqlen) * static_cast<uint64_t>(mmInfo.numHeads) *
+                                      static_cast<uint64_t>(mmInfo.embeddingSizeV);
     }
     PrefillTilingHead(mmInfo, torUptr, addrOffsets, tilingParam, kvRealHeads);
     addrOffsets.block = static_cast<int64_t>(mmInfo.numHeads) * addrOffsets.totalQBlkNum;
