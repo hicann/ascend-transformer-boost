@@ -11,10 +11,11 @@
 #include "reshape_and_cache_ops_runner_SISO.h"
 #include <atbops/params/params.h>
 #include "atb/utils/log.h"
+#include "atb/utils/operation_register.h"
 
 namespace atb {
 ReshapeAndCacheOpsRunnerSISO::ReshapeAndCacheOpsRunnerSISO(const infer::ReshapeAndCacheParam &param)
-    : OpsRunner("ReshapeAndCacheOpsRunnerSISO", RUNNER_TYPE_RESHAPE_AND_CACHE_SISO), param_(param)
+    : OpsRunner("ReshapeAndCacheOpsRunnerSISO"), param_(param)
 {
     ATB_LOG(INFO) << "ReshapeAndCacheOpsRunnerSISO::ReshapeAndCacheOpsRunnerSISO called";
     const std::size_t intensorSize = 3;
@@ -48,4 +49,6 @@ ReshapeAndCacheOpsRunnerSISO::ReshapeAndCacheOpsRunnerSISO(const infer::ReshapeA
 }
 
 ReshapeAndCacheOpsRunnerSISO::~ReshapeAndCacheOpsRunnerSISO() {}
+
+REG_RUNNER_TYPE(ReshapeAndCacheOpsRunnerSISO);
 } // namespace atb

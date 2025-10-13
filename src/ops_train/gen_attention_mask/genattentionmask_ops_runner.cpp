@@ -12,10 +12,12 @@
 #include <atb/utils/log.h>
 #include <asdops/params/params.h>
 #include <atbops/params/params.h>
+#include "atb/utils/operation_register.h"
+#include "atb/utils/param_compare.h"
 
 namespace atb {
 GenAttentionMaskOpsRunner::GenAttentionMaskOpsRunner(const train::GenAttentionMaskParam &param)
-    : OpsRunner("GenAttentionMaskOpsRunner", RUNNER_TYPE_GENATTENTIONMASK), param_(param)
+    : OpsRunner("GenAttentionMaskOpsRunner"), param_(param)
 {
 }
 GenAttentionMaskOpsRunner::~GenAttentionMaskOpsRunner() {}
@@ -53,4 +55,7 @@ void GenAttentionMaskOpsRunner::SetParam(const Mki::Any &param)
         isParamUpdated_ = true;
     }
 }
+
+REG_RUNNER_TYPE(GenAttentionMaskOpsRunner);
+REG_OP_PARAM(AtbOps::OpParam::GenAttentionMask);
 } // namespace atb

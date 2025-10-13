@@ -7,17 +7,17 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
+#include "mm_deq_swiglu_quant_mm_deq_ops_runner.h"
 #include <asdops/params/params.h>
 #include <atbops/params/params.h>
-
 #include "atb/utils/log.h"
-
-#include "mm_deq_swiglu_quant_mm_deq_ops_runner.h"
+#include "atb/utils/operation_register.h"
+#include "atb/utils/param_compare.h"
 
 namespace atb {
 MmDeqSwigluQuantMmDeqOpsRunner::MmDeqSwigluQuantMmDeqOpsRunner(
     const infer::MmDeqSwigluQuantMmDeqParam &param)
-    : OpsRunner("MmDeqSwigluQuantMmDeqOpsRunner", RUNNER_TYPE_MM_DEQ_SWIGLU_QUANT_MM_DEQ), param_(param)
+    : OpsRunner("MmDeqSwigluQuantMmDeqOpsRunner"), param_(param)
 {
 }
 
@@ -90,4 +90,7 @@ Status MmDeqSwigluQuantMmDeqOpsRunner::SetupKernelGraph(const OpsTensorPack &ops
 
     return NO_ERROR;
 }
+
+REG_RUNNER_TYPE(MmDeqSwigluQuantMmDeqOpsRunner);
+REG_OP_PARAM(AtbOps::OpParam::MmDeqSwigluQuantMmDeq);
 } // namespace atb

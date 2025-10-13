@@ -37,10 +37,11 @@
 #include "atb/operation/operation_base.h"
 #include "atb/utils/singleton.h"
 #include "atb/utils/mstx_mem_register.h"
+#include "atb/utils/operation_register.h"
 
 namespace atb {
 const int ALIGN_INT = 512;
-thread_local std::vector<KernelCache> g_globalKernelCaches(RUNNER_TYPE_MAX);
+thread_local std::vector<KernelCache> g_globalKernelCaches;
 constexpr uint32_t K_TENSOR_INFO_BYTES = 44UL;
 constexpr uint32_t K_TENSOR_INFO_BYTES_WITH_CAP = 56U;
 constexpr uint64_t MAX_TILING_BUFFER_SIZE = 1048576000;
@@ -62,12 +63,19 @@ enum OpType : int {
     OP_TYPE_INVALID
 };
 
-OpsRunner::OpsRunner(const std::string &name, RunnerType runnerType) : Runner(name), runnerType_(runnerType)
+OpsRunner::OpsRunner(const std::string &name) : Runner(name)
 {
     if (GetSingleton<Config>().IsworkspaceMemAllocGlobal()) {
         memAllocationSolver_ = GetGlobalMemAllocationSolver();
     } else {
         memAllocationSolver_ = CreateMemAllocationSolver();
+    }
+
+    runnerTypeIdx_ = RunnerTypeRegister::GetRunnerTypeIdx(name);
+
+    // 在此对g_globalKernelCaches进行resize
+    if (g_globalKernelCaches.size() != RunnerTypeRegister::GetRunnerTypeMapSize()) {
+        g_globalKernelCaches.resize(RunnerTypeRegister::GetRunnerTypeMapSize());
     }
 }
 
@@ -268,7 +276,8 @@ Status OpsRunner::FillHostTilingBufferImpl(uint8_t *hostTilingBuffer, uint64_t t
             ATB_LOG(ERROR) << GetLogPrefix() << " node[" << nodeId << "] fill tiling buffer fail, error code:" << ret;
             return ret;
         }
-        if (nodesSaveTensorFlag_.at(nodeId) && Probe::IsExecuteCountInRange(executeCount_) && Probe::IsSaveTiling()) {
+        if (nodesSaveTensorFlag_.at(nodeId) && Probe::IsExecuteCountInRange(executeCount_) && Probe::IsSaveTiling()
+            && Probe::IsSaveTensorInSpecificDir(GetSaveTensorDir() + "/" + std::to_string(nodeId) + "_" + node.GetName())) {
             std::string fileDir = GetSaveTensorDir() + "/" + std::to_string(nodeId) + "_" + node.GetName();
             Probe::SaveTiling(kernelHostTilingBuffer + offset, tilingSize, fileDir + "/kernel_tilingdata.bin");
         }
@@ -991,15 +1000,16 @@ void OpsRunner::InitKernelCache()
     localKernelCache_.Init(kernelGraph_.nodes.size(), localCacheCount);
     kernelCaches_.push_back(std::make_pair(&localKernelCache_, true));
 
-    g_globalKernelCaches.at(runnerType_).Init(kernelGraph_.nodes.size(), globalCacheCount);
-    kernelCaches_.push_back(std::make_pair(&(g_globalKernelCaches.at(runnerType_)), false));
+    g_globalKernelCaches.at(runnerTypeIdx_).Init(kernelGraph_.nodes.size(), globalCacheCount);
+    kernelCaches_.push_back(std::make_pair(&(g_globalKernelCaches.at(runnerTypeIdx_)), false));
 
     kernelCacheInited_ = true;
 }
 
 void OpsRunner::RunKernelPreProcess(KernelGraphNode &node, size_t nodeId, aclrtStream stream)
 {
-    if (nodesSaveTensorFlag_.at(nodeId) && Probe::IsExecuteCountInRange(executeCount_) && Probe::IsSaveTensorBefore()) {
+    if (nodesSaveTensorFlag_.at(nodeId) && Probe::IsExecuteCountInRange(executeCount_) && Probe::IsSaveTensorBefore()
+        && Probe::IsSaveTensorInSpecificDir(GetSaveTensorDir() + "/" + std::to_string(nodeId) + "_" + node.GetName())) {
         std::string dirPath = GetSaveTensorDir() + "/" + std::to_string(nodeId) + "_" + node.GetName() + "/before";
         node.impl->SaveLaunchParam(stream, dirPath);
         ATB_LOG(INFO) << GetLogPrefix() << " " << node.GetName() << " SaveRunInfo " << dirPath;
@@ -1016,7 +1026,8 @@ void OpsRunner::RunKernelPostProcess(KernelGraphNode &node, size_t nodeId, aclrt
     if (GetSingleton<Config>().IsStreamSyncEveryKernelEnable()) {
         SyncStream(node, nodeId, stream);
     }
-    if (nodesSaveTensorFlag_.at(nodeId) && Probe::IsExecuteCountInRange(executeCount_) && Probe::IsSaveTensorAfter()) {
+    if (nodesSaveTensorFlag_.at(nodeId) && Probe::IsExecuteCountInRange(executeCount_) && Probe::IsSaveTensorAfter()
+        && Probe::IsSaveTensorInSpecificDir(GetSaveTensorDir() + "/" + std::to_string(nodeId) + "_" + node.GetName())) {
         std::string dirPath = GetSaveTensorDir() + "/" + std::to_string(nodeId) + "_" + node.GetName() + "/after";
         node.impl->SaveLaunchParam(stream, dirPath);
         ATB_LOG(INFO) << GetLogPrefix() << " " << node.GetName() << " SaveLaunchParam " << dirPath;

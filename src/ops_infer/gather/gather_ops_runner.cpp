@@ -13,10 +13,12 @@
 #include <asdops/params/params.h>
 #include "atb/utils/log.h"
 #include "atb/utils/tensor_util.h"
+#include "atb/utils/operation_register.h"
+#include "atb/utils/param_compare.h"
 
 namespace atb {
 GatherOpsRunner::GatherOpsRunner(const infer::GatherParam &param)
-    : OpsRunner("GatherOpsRunner", RUNNER_TYPE_GATHER), param_(param)
+    : OpsRunner("GatherOpsRunner"), param_(param)
 {
     ATB_LOG(INFO) << "GatherOpsRunner::GatherOpsRunner called";
     kernelGraph_.inTensors.resize(2); // intersorNum:2
@@ -38,4 +40,6 @@ GatherOpsRunner::GatherOpsRunner(const infer::GatherParam &param)
 
 GatherOpsRunner::~GatherOpsRunner() {}
 
+REG_RUNNER_TYPE(GatherOpsRunner);
+REG_OP_PARAM(AsdOps::OpParam::Gather);
 } // namespace atb

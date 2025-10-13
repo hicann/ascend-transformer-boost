@@ -7,10 +7,11 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
-
+#include "elewise_ops_runner.h"
 #include <iostream>
 #include "atb/utils/log.h"
-#include "elewise_ops_runner.h"
+#include "atb/utils/operation_register.h"
+#include "atb/utils/param_compare.h"
 
 namespace atb {
 static const uint32_t NUMONE = 1;
@@ -21,7 +22,7 @@ static const uint32_t INDEX_ONE = 1;
 static const uint32_t INDEX_TWO = 2;
 
 ElewiseOpsRunner::ElewiseOpsRunner(const infer::ElewiseParam &param)
-    : OpsRunner("ElewiseOpsRunner", RUNNER_TYPE_ELEWISE), param_(param)
+    : OpsRunner("ElewiseOpsRunner"), param_(param)
 {
     ATB_LOG(INFO) << "ElewiseOpsRunner::ElewiseOpsRunner called";
 
@@ -171,4 +172,7 @@ Mki::TensorDType ElewiseOpsRunner::GetOutTensorType(const aclDataType outType) c
     std::map<aclDataType, Mki::TensorDType>::const_iterator it = typeTable.find(outType);
     return it == typeTable.end() ? Mki::TensorDType::TENSOR_DTYPE_UNDEFINED : it->second;
 }
+
+REG_RUNNER_TYPE(ElewiseOpsRunner);
+REG_OP_PARAM(AsdOps::OpParam::Elewise);
 } // namespace atb

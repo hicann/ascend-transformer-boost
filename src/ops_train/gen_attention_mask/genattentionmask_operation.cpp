@@ -19,6 +19,7 @@
 #include "atb/operation/op_param_funcs.h"
 #include "atb/utils/operation_util.h"
 #include "atb/utils/singleton.h"
+#include "atb/utils/operation_register.h"
 
 namespace {
 constexpr size_t MAX_SEQLEN_SIZE = 32;
@@ -138,7 +139,8 @@ std::shared_ptr<Runner> GenAttentionMaskOperation::CreateRunner(Context &context
         ATB_LOG(DEBUG) << "context cast to contextBase failed!";
         return nullptr;
     }
-    RunnerPool &pool = contextBase->GetRunnerPool(RUNNER_TYPE_GENATTENTIONMASK);
+    int64_t runnerTypeIdx = RunnerTypeRegister::GetRunnerTypeIdx("GenAttentionMaskOpsRunner");
+    RunnerPool &pool = contextBase->GetRunnerPool(runnerTypeIdx);
     Runner *runner = pool.MallocRunner<GenAttentionMaskOpsRunner, train::GenAttentionMaskParam>(param_);
     if (!runner) {
         ATB_LOG(DEBUG) << "MallocRunner from pool failed!";

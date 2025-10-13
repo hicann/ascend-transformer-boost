@@ -9,6 +9,7 @@
  */
 #include "gather_pre_rms_norm_ops_runner.h"
 #include "atb/utils/log.h"
+#include "atb/utils/operation_register.h"
 
 namespace atb {
 static const uint64_t IN_TENSOR_COUNT_FOUR = 4;
@@ -42,7 +43,7 @@ void GatherPreRmsNormOpsRunner::BuildGatherPreRMSNormGraph(const AsdOps::OpParam
 }
 
 GatherPreRmsNormOpsRunner::GatherPreRmsNormOpsRunner(const infer::GatherPreRmsNormParam &param)
-    : OpsRunner("GatherPreRmsNormOpsRunner", RUNNER_TYPE_GATHER_PRE_RMS_NORM), param_(param)
+    : OpsRunner("GatherPreRmsNormOpsRunner"), param_(param)
 {
     AsdOps::OpParam::Norm rmsNormParam = {AsdOps::OpParam::Norm::RMS_NORM};
     SetGatherPreRMSNormParam(param_, rmsNormParam);
@@ -52,4 +53,6 @@ GatherPreRmsNormOpsRunner::GatherPreRmsNormOpsRunner(const infer::GatherPreRmsNo
 }
 
 GatherPreRmsNormOpsRunner::~GatherPreRmsNormOpsRunner() {}
+
+REG_RUNNER_TYPE(GatherPreRmsNormOpsRunner);
 } // namespace atb

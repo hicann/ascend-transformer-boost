@@ -13,10 +13,11 @@
 #include <asdops/params/params.h>
 #include "atb/utils.h"
 #include "atb/utils/common_utils.h"
+#include "atb/utils/operation_register.h"
 
 namespace atb {
 BroadcastLcclRunner::BroadcastLcclRunner(const infer::BroadcastParam &param, Context &context)
-    : LcclRunner("BroadcastLcclRunner", RUNNER_TYPE_BROADCAST, param.rank, param.rankSize, param.commMode,
+    : LcclRunner("BroadcastLcclRunner", param.rank, param.rankSize, param.commMode,
                  context, param.commDomain),
       param_(param)
 {
@@ -45,4 +46,5 @@ Status BroadcastLcclRunner::ExecuteImpl(RunnerVariantPack &runnerVariantPack)
     }
     return NO_ERROR;
 }
+REG_RUNNER_TYPE(BroadcastLcclRunner);
 } // namespace atb

@@ -12,6 +12,8 @@
 #include <asdops/params/params.h>
 #include "atb/utils/log.h"
 #include "atb/utils/tensor_util.h"
+#include "atb/utils/operation_register.h"
+#include "atb/utils/param_compare.h"
 
 namespace atb {
 static const int32_t IN_TENSOR_NUM = 3;
@@ -20,7 +22,7 @@ static const int32_t TENSOR_ONE_INDEX = 1;
 static const int32_t TENSOR_TWO_INDEX = 2;
 
 OnehotOpsRunner::OnehotOpsRunner(const infer::OnehotParam &param)
-    : OpsRunner("OnehotOpsRunner", RUNNER_TYPE_ONEHOT), param_(param)
+    : OpsRunner("OnehotOpsRunner"), param_(param)
 {
     ATB_LOG(INFO) << "OnehotOpsRunner::OnehotOpsRunner called";
     kernelGraph_.inTensors.resize(IN_TENSOR_NUM);
@@ -42,4 +44,7 @@ OnehotOpsRunner::OnehotOpsRunner(const infer::OnehotParam &param)
 }
 
 OnehotOpsRunner::~OnehotOpsRunner() {}
+
+REG_RUNNER_TYPE(OnehotOpsRunner);
+REG_OP_PARAM(AsdOps::OpParam::Onehot);
 } // namespace atb

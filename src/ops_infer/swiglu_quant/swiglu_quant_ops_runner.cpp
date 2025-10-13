@@ -12,14 +12,16 @@
 #include <atbops/params/params.h>
 #include "atb/utils/log.h"
 #include "atb/utils/tensor_util.h"
- 
+#include "atb/utils/operation_register.h"
+#include "atb/utils/param_compare.h"
+
 namespace atb {
 static const int32_t IN_TENSOR_NUM = 1;
 static const int32_t OUT_TENSOR_NUM = 2;
 static const int32_t TENSOR_ONE_INDEX = 1;
  
 SwigluQuantOpsRunner::SwigluQuantOpsRunner(const infer::SwigluQuantParam &param)
-    : OpsRunner("SwigluQuantOpsRunner", RUNNER_TYPE_SWIGLU_QUANT), param_(param)
+    : OpsRunner("SwigluQuantOpsRunner"), param_(param)
 {
     ATB_LOG(INFO) << "SwigluQuantOpsRunner::SwigluQuantOpsRunner called";
     kernelGraph_.inTensors.resize(IN_TENSOR_NUM);
@@ -39,4 +41,7 @@ SwigluQuantOpsRunner::SwigluQuantOpsRunner(const infer::SwigluQuantParam &param)
 }
  
 SwigluQuantOpsRunner::~SwigluQuantOpsRunner() {}
+
+REG_RUNNER_TYPE(SwigluQuantOpsRunner);
+REG_OP_PARAM(AtbOps::OpParam::SwigluQuant);
 } // namespace atb

@@ -158,7 +158,7 @@ function fn_build_mki()
         branch=$(git symbolic-ref -q --short HEAD || git describe --tags --exact-match 2> /dev/null || echo "commit_id")
         [[ "$branch" == *br_personal* || "$branch" == "commit_id" || "$branch" == *revert-mr* ]] && branch=master
         echo  "current branch for mki: $branch"
-        git clone --branch $branch --depth 1 https://gitcode.com/cann/ascend-boost-comm.git
+        git clone --branch $branch --depth 1 https://gitcode.com/cann/ascend-boost-comm.git Mind-KernelInfra
     fi
     cd ascend-boost-comm
     echo  "current commid id of ascend-boost-comm: $(git rev-parse HEAD)"
@@ -197,7 +197,7 @@ function fn_build_catlass()
     cd $THIRD_PARTY_DIR
     branch=catlass-v1-stable
     echo  "current branch for catlass: $branch"
-    git clone --branch $branch --depth 1 https://gitee.com/ascend/catlass.git
+    git clone --branch $branch --depth 1 https://gitcode.com/cann/catlass.git
 }
 
 function fn_build_nlohmann_json()

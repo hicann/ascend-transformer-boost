@@ -21,6 +21,7 @@
 #include "atb/utils/singleton.h"
 #include "atb/context/allocator/default_device_allocator.h"
 #include "atb/context/allocator/default_host_allocator.h"
+#include "atb/utils/operation_register.h"
 
 namespace atb {
 static constexpr size_t MAX_COPY_EVENT_NUM = 10;
@@ -83,7 +84,7 @@ Status ContextBase::Init(const std::function<void*(size_t)>& alloc, const std::f
         return st;
     }
 
-    runnerPools_.resize(RUNNER_TYPE_MAX);
+    runnerPools_.resize(RunnerTypeRegister::GetRunnerTypeMapSize());
     if (Probe::IsOverflowCheck()) {
         st = CreateOverflowOutTensor();
         if (st != NO_ERROR) {
@@ -242,9 +243,9 @@ Status ContextBase::DestoryCopyStreamAndEvents()
     return NO_ERROR;
 }
 
-RunnerPool &ContextBase::GetRunnerPool(RunnerType runnerType)
+RunnerPool &ContextBase::GetRunnerPool(int64_t runnerTypeIdx)
 {
-    return runnerPools_.at(runnerType);
+    return runnerPools_.at(runnerTypeIdx);
 }
 
 const Tensor &ContextBase::GetOverflowKernelOutTensor()
