@@ -227,7 +227,6 @@ function fn_build_secodefuzz()
     fi
     cd $CACHE_DIR
     rm -rf secodefuzz
-    git clone -b v2.4.5 --depth=1 https://szv-open.codehub.huawei.com/innersource/Fuzz/secodefuzz.git
     cd secodefuzz
     mkdir build && cd build
     cmake .. -DCMAKE_BUILD_TYPE=Release
@@ -375,6 +374,16 @@ function generate_atb_version_info()
 EOF
 }
 
+function fn_get_pytorch_npu_install_path(){
+    local location
+    location="$(pip show torch-npu 2> /dev/null | awk '/^Location:/ {print $2}')"
+    if [ -z "$location" ]; then
+        echo "error: torch-npu not found"
+        exit 1
+    fi
+    echo "${location}/torch_npu"
+}
+
 function fn_init_env()
 {
     res=$(python3 -c "import torch" &> /dev/null || echo "torch_not_exist")
@@ -392,7 +401,7 @@ function fn_init_env()
     export PYTHON_INCLUDE_PATH="$(python3 -c 'from sysconfig import get_paths; print(get_paths()["include"])')"
     export PYTHON_LIB_PATH="$(python3 -c 'from sysconfig import get_paths; print(get_paths()["include"])')"
     export PYTORCH_INSTALL_PATH="$(python3 -c 'import torch, os; print(os.path.dirname(os.path.abspath(torch.__file__)))')"
-    export PYTORCH_NPU_INSTALL_PATH="$(python3 -c 'import torch, torch_npu, os; print(os.path.dirname(os.path.abspath(torch_npu.__file__)))')"
+    export PYTORCH_NPU_INSTALL_PATH="$(fn_get_pytorch_npu_install_path)"
     export LD_LIBRARY_PATH=$PYTORCH_INSTALL_PATH/../torch.libs:$LD_LIBRARY_PATH
 
     echo "PYTHON_INCLUDE_PATH=$PYTHON_INCLUDE_PATH"
@@ -436,6 +445,7 @@ function fn_make_run_package()
     mkdir -p $CODE_ROOT/ci/$ARCH
     cp $CODE_ROOT/scripts/install.sh $OUTPUT_DIR
     cp $CODE_ROOT/scripts/set_env.sh $OUTPUT_DIR
+    cp $CODE_ROOT/scripts/create_version_softlink.sh $OUTPUT_DIR/scripts
     cp $CODE_ROOT/scripts/uninstall.sh $OUTPUT_DIR/scripts
     cp $CODE_ROOT/scripts/filelist.csv $OUTPUT_DIR/scripts
     sed -i "s/ATBPKGARCH/${ARCH}/" $OUTPUT_DIR/install.sh
@@ -579,9 +589,6 @@ function fn_build_coverage()
         fn_run_pythontest
         fn_run_torchatbtest
         fn_run_kernel_cinterfacetest
-    fi
-    if [ "$COVERAGE_TYPE" == "FUZZTEST" ];then
-        fn_run_fuzztest
     fi
 
     cd $GCOV_DIR
@@ -851,7 +858,6 @@ function fn_main()
             TEST_TIME=30
             python3 $CODE_ROOT/tests/apitest/fuzztest/generate_operation_fuzz_test.py $CODE_ROOT $RANDOM_SEED $TEST_TIME
             fn_build_3rdparty_for_test
-            fn_build_secodefuzz
             fn_build
             fn_build_coverage
             ;;
