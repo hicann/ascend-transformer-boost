@@ -20,6 +20,7 @@ bool SWAParamCheck(const infer::SelfAttentionParam &opParam);
 bool DeviceParamCheck(const infer::SelfAttentionParam &opParam);
 bool PrefixEncoderParamCheck(const infer::SelfAttentionParam &opParam);
 bool BNSDParamCheck(const infer::SelfAttentionParam &opParam);
+bool HeadNumCheck(const infer::SelfAttentionParam &opParam);
 
 class SelfAttentionOperation : public OperationBase {
 public:
