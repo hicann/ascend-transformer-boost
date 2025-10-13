@@ -51,24 +51,8 @@ template <> Status CreateOperation(const infer::SelfAttentionParam &opParam, Ope
         return ERROR_INVALID_PARAM;
     }
     OP_PARAM_RSV_CHECK(opParam);
-    ATB_LOG(INFO) << "SelfAttentionParam headNum: " << opParam.headNum << ", qScale: " << opParam.qScale
-                  << ", qkScale: " << opParam.qkScale << ", maskType: " << opParam.maskType
-                  << ", kvHeadNum: " << opParam.kvHeadNum << ", calcType: " << opParam.calcType
-                  << ", clampType: " << opParam.clampType << ", kvcacheCfg: " << opParam.kvcacheCfg
-                  << ", scaleType: " << opParam.scaleType << ", inputLayout: " << opParam.inputLayout
-                  << ", mlaVHeadSize: " << opParam.mlaVHeadSize << ", windowSize: " << opParam.windowSize
-                  << ", cacheType: " << opParam.cacheType << ", kernelType: " << opParam.kernelType
-                  << ", quantType: " << opParam.quantType << ", outDataType: " << opParam.outDataType
-                  << ", batchRunStatusEnable: " << opParam.batchRunStatusEnable << ", isTriuMask: "
-                  << opParam.isTriuMask << ", clampMin: " << opParam.clampMin << ", clampMax: " << opParam.clampMax;
-    if (opParam.headNum <= 0) {
-        ATB_LOG(ERROR) << "headNum should be greater than zero!";
-        return ERROR_INVALID_PARAM;
-    }
-    if (opParam.kvHeadNum < 0) {
-        ATB_LOG(ERROR) << "kvHeadNum should be no less than zero!";
-        return ERROR_INVALID_PARAM;
-    }
+    ATB_LOG(INFO) << OpParamToJson(opParam);
+
     if (opParam.kvcacheCfg != atb::infer::SelfAttentionParam::K_BYPASS_V_BYPASS &&
         opParam.kvcacheCfg != atb::infer::SelfAttentionParam::K_CACHE_V_CACHE) {
         ATB_LOG(ERROR) << "kvcacheCfg is invalid, should be K_CACHE_V_CACHE or K_BYPASS_V_BYPASS";
@@ -135,6 +119,23 @@ template <> Status CreateOperation(const infer::SelfAttentionParam &opParam, Ope
         return ERROR_OUT_OF_HOST_MEMORY;
     }
     return NO_ERROR;
+}
+
+bool HeadNumCheck(const infer::SelfAttentionParam &opParam)
+{
+    if (opParam.headNum <= 0) {
+        ATB_LOG(ERROR) << "headNum should be greater than zero!";
+        return ERROR_INVALID_PARAM;
+    }
+    if (opParam.kvHeadNum < 0) {
+        ATB_LOG(ERROR) << "kvHeadNum should be no less than zero!";
+        return ERROR_INVALID_PARAM;
+    }
+    if (opParam.kvHeadNum > 0 && opParam.headNum % opParam.kvHeadNum != 0) {
+        ATB_LOG(ERROR) << "headNum should be divisible by kvHeadNum";
+        return false;
+    }
+    return true;
 }
 
 bool BNSDParamCheck(const infer::SelfAttentionParam &opParam)
@@ -295,10 +296,6 @@ bool SWAParamCheck(const infer::SelfAttentionParam &opParam)
 
 bool PrefixEncoderParamCheck(const infer::SelfAttentionParam &opParam)
 {
-    if (opParam.kvHeadNum > 0 && opParam.headNum % opParam.kvHeadNum != 0) {
-        ATB_LOG(ERROR) << "PREFIX_ENCODER expects headNum is divisible by kvHeadNum";
-        return false;
-    }
     std::vector<std::pair<bool, const char *>> paramCheckList = {
         {GetSingleton<Config>().Is910B(), "PREFIX_ENCODER only support 800I A2/A3 inference product"},
         {opParam.quantType == infer::SelfAttentionParam::TYPE_QUANT_UNQUANT,
