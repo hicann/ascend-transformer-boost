@@ -131,6 +131,11 @@ function fn_load_3rdparty_for_compile()
 
 function fn_run_unittest()
 {
+    if [ "$USE_CXX11_ABI" == "ON" ]; then
+        export LD_LIBRARY_PATH=$OUTPUT_DIR/ops_customize/cxx_abi_1/lib:$LD_LIBRARY_PATH
+    else
+        export LD_LIBRARY_PATH=$OUTPUT_DIR/ops_customize/cxx_abi_0/lib:$LD_LIBRARY_PATH
+    fi
     $OUTPUT_DIR/bin/customize_blockcopy_test
 }
 
