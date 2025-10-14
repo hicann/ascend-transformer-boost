@@ -48,21 +48,21 @@ namespace AtbOps {
     template <typename TilingData>
     class FusedAddTopkDivTiling {
     public:
-        explicit FusedAddTopkDivTiling(FusedAddTopkDivTilingData *tilingDataPtr,
+        explicit FusedAddTopkDivTiling(FusedAddTopkDivTilingData &tilingDataPtr,
                                        const uint32_t inputCoreNum, const uint32_t inputUbSize)
         {
-            this->firstDimSize = tilingDataPtr->firstDimSize;
-            this->secondDimSize = tilingDataPtr->secondDimSize;
-            this->addNumDimSize = tilingDataPtr->addNumDimSize;
-            this->groupNum = tilingDataPtr->groupNum;
-            this->groupTopk = tilingDataPtr->groupTopk;
-            this->n = tilingDataPtr->n;
-            this->k = tilingDataPtr->k;
-            this->activateType = tilingDataPtr->activateType;
-            this->isNorm = tilingDataPtr->isNorm;
-            this->scale = tilingDataPtr->scale;
-            this->groupEles = tilingDataPtr->groupEles;
-            this->dtype = tilingDataPtr->dtype;
+            this->firstDimSize = tilingDataPtr.firstDimSize;
+            this->secondDimSize = tilingDataPtr.secondDimSize;
+            this->addNumDimSize = tilingDataPtr.addNumDimSize;
+            this->groupNum = tilingDataPtr.groupNum;
+            this->groupTopk = tilingDataPtr.groupTopk;
+            this->n = tilingDataPtr.n;
+            this->k = tilingDataPtr.k;
+            this->activateType = tilingDataPtr.activateType;
+            this->isNorm = tilingDataPtr.isNorm;
+            this->scale = tilingDataPtr.scale;
+            this->groupEles = tilingDataPtr.groupEles;
+            this->dtype = tilingDataPtr.dtype;
             this->ubSize = FloorAlign(inputUbSize, BYTE_BLOCK);
             this->coreNum = inputCoreNum;
             return;
@@ -71,10 +71,10 @@ namespace AtbOps {
         void GetTiling(TilingData *tilingDataPtr);
 
     private:
-        void GetTilingKey(TilingData *tilingDataPtr);
+        void GetTilingKey(TilingData &tilingDataPtr);
         void GetUsedCore();
         void SplitUb();
-        void FillTilingData(TilingData *tilingDataPtr) const;
+        void FillTilingData(TilingData &tilingDataPtr) const;
         template <typename T1, typename T2>
         inline T1 CeilAlign(T1 a, T2 b) const
         {
@@ -110,9 +110,9 @@ namespace AtbOps {
     };
 
     template <typename TilingData>
-    void FusedAddTopkDivTiling<TilingData>::GetTilingKey(TilingData *tilingDataPtr)
+    void FusedAddTopkDivTiling<TilingData>::GetTilingKey(TilingData &tilingDataPtr)
     {
-        tilingKey = tilingDataPtr->enableExpertMapping * NUM_TEN + dtype;
+        tilingKey = tilingDataPtr.enableExpertMapping * NUM_TEN + dtype;
     }
 
     template <typename TilingData>
@@ -139,69 +139,69 @@ namespace AtbOps {
     }
 
     template <typename TilingData>
-    void FusedAddTopkDivTiling<TilingData>::FillTilingData(TilingData *tilingDataPtr) const
+    void FusedAddTopkDivTiling<TilingData>::FillTilingData(TilingData &tilingDataPtr) const
     {
-        tilingDataPtr->firstDimSize = firstDimSize;
-        tilingDataPtr->secondDimSize = secondDimSize;
-        tilingDataPtr->addNumDimSize = addNumDimSize;
-        tilingDataPtr->groupNum = groupNum;
-        tilingDataPtr->groupTopk = groupTopk;
-        tilingDataPtr->n = n;
-        tilingDataPtr->k = k;
-        tilingDataPtr->activateType = activateType;
-        tilingDataPtr->isNorm = isNorm;
-        tilingDataPtr->scale = scale;
-        tilingDataPtr->groupEles = groupEles;
-        tilingDataPtr->blockNum = usedCoreNum;
-        tilingDataPtr->ubFactorElement = ubFactorElement;
-        tilingDataPtr->batchPerCore = batchPerCore;
-        tilingDataPtr->tailBatch = tailBatch;
-        tilingDataPtr->tilingKey = tilingKey;
+        tilingDataPtr.firstDimSize = firstDimSize;
+        tilingDataPtr.secondDimSize = secondDimSize;
+        tilingDataPtr.addNumDimSize = addNumDimSize;
+        tilingDataPtr.groupNum = groupNum;
+        tilingDataPtr.groupTopk = groupTopk;
+        tilingDataPtr.n = n;
+        tilingDataPtr.k = k;
+        tilingDataPtr.activateType = activateType;
+        tilingDataPtr.isNorm = isNorm;
+        tilingDataPtr.scale = scale;
+        tilingDataPtr.groupEles = groupEles;
+        tilingDataPtr.blockNum = usedCoreNum;
+        tilingDataPtr.ubFactorElement = ubFactorElement;
+        tilingDataPtr.batchPerCore = batchPerCore;
+        tilingDataPtr.tailBatch = tailBatch;
+        tilingDataPtr.tilingKey = tilingKey;
         uint64_t wsSize = BASE_COUNT * FLOAT_BYTES;
-        tilingDataPtr->workspacePerCore = wsSize;
-        tilingDataPtr->tempSize = firstDimSize * secondDimSize * FLOAT_BYTES;
+        tilingDataPtr.workspacePerCore = wsSize;
+        tilingDataPtr.tempSize = firstDimSize * secondDimSize * FLOAT_BYTES;
     }
 
     template <typename TilingData>
     void FusedAddTopkDivTiling<TilingData>::GetTiling(TilingData *tilingDataPtr)
     {
-        GetTilingKey(tilingDataPtr);
+        GetTilingKey(*tilingDataPtr);
         GetUsedCore();
         SplitUb();
-        FillTilingData(tilingDataPtr);
+        FillTilingData(*tilingDataPtr);
     }
  
     template <typename TilingData>
     void GetFusedAddTopkDivTiling(TilingData *tilingDataPtr, uint32_t coreNum, uint32_t ubSize)
     {
-        class FusedAddTopkDivTiling<TilingData> tilingObj(tilingDataPtr, coreNum, ubSize);
+        class FusedAddTopkDivTiling<TilingData> tilingObj(*tilingDataPtr, coreNum, ubSize);
         tilingObj.GetTiling(tilingDataPtr);
     }
 
-    static void PrintTilingData(const FusedAddTopkDivTilingData *tilingDataPtr)
+    static void PrintTilingData(const FusedAddTopkDivTilingData &tilingDataPtr)
     {
-        MKI_LOG(INFO) << "firstDimSize is: " << tilingDataPtr->firstDimSize << "\n"
-                      << "secondDimSize is: " << tilingDataPtr->secondDimSize << "\n"
-                      << "addNumDimSize is: " << tilingDataPtr->addNumDimSize << "\n"
-                      << "groupNum is: " << tilingDataPtr->groupNum << "\n"
-                      << "grouptopk is: " << tilingDataPtr->groupTopk << "\n"
-                      << "n is: " << tilingDataPtr->n << "\n"
-                      << "k is: " << tilingDataPtr->k << "\n"
-                      << "activateType is: " << tilingDataPtr->activateType << "\n"
-                      << "isNorm is: " << tilingDataPtr->isNorm << "\n"
-                      << "scale is: " << tilingDataPtr->scale << "\n"
-                      << "groupEles is: " << tilingDataPtr->groupEles << "\n"
-                      << "blockNum is: " << tilingDataPtr->blockNum << "\n"
-                      << "dtype is: " << tilingDataPtr->dtype << "\n"
-                      << "ubFactorElement is: " << tilingDataPtr->ubFactorElement << "\n"
-                      << "batchPerCore is: " << tilingDataPtr->batchPerCore << "\n"
-                      << "tailBatch is: " << tilingDataPtr->tailBatch << "\n"
-                      << "tilingKey is: " << tilingDataPtr->tilingKey << "\n"
-                      << "tempSize is: " << tilingDataPtr->tempSize << "\n"
-                      << "enableExpertMapping is: " << tilingDataPtr->enableExpertMapping << "\n"
-                      << "expertNum is: " << tilingDataPtr->expertNum << "\n"
-                      << "tableDim is: " << tilingDataPtr->tableDim << "\n"
-                      << "workspacePerCore is: " << tilingDataPtr->workspacePerCore;
+        MKI_LOG(INFO) << "firstDimSize is: " << tilingDataPtr.firstDimSize << "\n"
+                      << "secondDimSize is: " << tilingDataPtr.secondDimSize << "\n"
+                      << "addNumDimSize is: " << tilingDataPtr.addNumDimSize << "\n"
+                      << "groupNum is: " << tilingDataPtr.groupNum << "\n"
+                      << "grouptopk is: " << tilingDataPtr.groupTopk << "\n"
+                      << "n is: " << tilingDataPtr.n << "\n"
+                      << "k is: " << tilingDataPtr.k << "\n"
+                      << "activateType is: " << tilingDataPtr.activateType << "\n"
+                      << "isNorm is: " << tilingDataPtr.isNorm << "\n"
+                      << "scale is: " << tilingDataPtr.scale << "\n"
+                      << "groupEles is: " << tilingDataPtr.groupEles << "\n"
+                      << "blockNum is: " << tilingDataPtr.blockNum << "\n"
+                      << "dtype is: " << tilingDataPtr.dtype << "\n"
+                      << "ubFactorElement is: " << tilingDataPtr.ubFactorElement << "\n"
+                      << "batchPerCore is: " << tilingDataPtr.batchPerCore << "\n"
+                      << "tailBatch is: " << tilingDataPtr.tailBatch << "\n"
+                      << "tilingKey is: " << tilingDataPtr.tilingKey << "\n"
+                      << "tempSize is: " << tilingDataPtr.tempSize << "\n"
+                      << "enableExpertMapping is: " << tilingDataPtr.enableExpertMapping << "\n"
+                      << "expertNum is: " << tilingDataPtr.expertNum << "\n"
+                      << "tableDim is: " << tilingDataPtr.tableDim << "\n"
+                      << "workspacePerCore is: " << tilingDataPtr.workspacePerCore;
     }
     template <typename T1, typename T2>
     Status CeilAlign(T1 a, T2 b)
@@ -209,30 +209,30 @@ namespace AtbOps {
         return b == 0 ? a : (a + b - 1) / b * b;
     }
  
-    Status GetInputInfo(const LaunchParam &launchParam, FusedAddTopkDivTilingData *tilingDataPtr)
+    Status GetInputInfo(const LaunchParam &launchParam, FusedAddTopkDivTilingData &tilingDataPtr)
     {
         auto inTensor0 = launchParam.GetInTensor(X_INPUT_INDEX).desc;
         auto inTensor1 = launchParam.GetInTensor(ADD_NUM_INPUT_INDEX).desc;
-        tilingDataPtr->firstDimSize = static_cast<uint32_t>(inTensor0.dims[DIM_INDEX0]);
-        tilingDataPtr->secondDimSize = static_cast<uint32_t>(inTensor0.dims[DIM_INDEX1]);
-        tilingDataPtr->addNumDimSize = static_cast<uint32_t>(inTensor1.dims[DIM_INDEX0]);
+        tilingDataPtr.firstDimSize = static_cast<uint32_t>(inTensor0.dims[DIM_INDEX0]);
+        tilingDataPtr.secondDimSize = static_cast<uint32_t>(inTensor0.dims[DIM_INDEX1]);
+        tilingDataPtr.addNumDimSize = static_cast<uint32_t>(inTensor1.dims[DIM_INDEX0]);
 
         auto param = AnyCast<OpParam::FusedAddTopkDiv>(launchParam.GetParam());
-        tilingDataPtr->groupNum = static_cast<uint32_t>(param.groupNum);
-        tilingDataPtr->groupTopk = static_cast<uint32_t>(param.groupTopk);
-        tilingDataPtr->n = static_cast<uint32_t>(param.n);
-        tilingDataPtr->k = static_cast<uint32_t>(param.k);
-        tilingDataPtr->activateType = static_cast<uint32_t>(param.activateType);
-        tilingDataPtr->isNorm = static_cast<uint32_t>(param.isNorm);
-        tilingDataPtr->enableExpertMapping = static_cast<uint32_t>(param.enableExpertMapping);
-        tilingDataPtr->groupEles = tilingDataPtr->groupNum == 0 ? tilingDataPtr->secondDimSize :
-                                   tilingDataPtr->secondDimSize / tilingDataPtr->groupNum;
-        tilingDataPtr->scale = param.scale;
-        bool enableExpertMapping = static_cast<bool>(tilingDataPtr->enableExpertMapping);
+        tilingDataPtr.groupNum = static_cast<uint32_t>(param.groupNum);
+        tilingDataPtr.groupTopk = static_cast<uint32_t>(param.groupTopk);
+        tilingDataPtr.n = static_cast<uint32_t>(param.n);
+        tilingDataPtr.k = static_cast<uint32_t>(param.k);
+        tilingDataPtr.activateType = static_cast<uint32_t>(param.activateType);
+        tilingDataPtr.isNorm = static_cast<uint32_t>(param.isNorm);
+        tilingDataPtr.enableExpertMapping = static_cast<uint32_t>(param.enableExpertMapping);
+        tilingDataPtr.groupEles = tilingDataPtr.groupNum == 0 ? tilingDataPtr.secondDimSize :
+                                   tilingDataPtr.secondDimSize / tilingDataPtr.groupNum;
+        tilingDataPtr.scale = param.scale;
+        bool enableExpertMapping = static_cast<bool>(tilingDataPtr.enableExpertMapping);
         if (enableExpertMapping) {
             const Tensor &inTensor3 = launchParam.GetInTensor(MAPPING_TABLE_INPUT_INDEX);
-            tilingDataPtr->expertNum = inTensor3.desc.dims[DIM_INDEX0];
-            tilingDataPtr->tableDim = inTensor3.desc.dims[DIM_INDEX1];
+            tilingDataPtr.expertNum = inTensor3.desc.dims[DIM_INDEX0];
+            tilingDataPtr.tableDim = inTensor3.desc.dims[DIM_INDEX1];
         }
         return Status::OkStatus();
     }
@@ -292,7 +292,7 @@ namespace AtbOps {
         auto inputDatatype = launchParam.GetInTensor(X_INPUT_INDEX).desc.dtype;
         tilingDataPtr->dtype = static_cast<uint32_t>(g_dtypeMap[inputDatatype]);
 
-        auto checkInputInfo = GetInputInfo(launchParam, tilingDataPtr);
+        auto checkInputInfo = GetInputInfo(launchParam, *tilingDataPtr);
         if (!checkInputInfo.Ok()) {
             return Status::FailStatus(ERROR_INVALID_VALUE);
         }
@@ -304,7 +304,7 @@ namespace AtbOps {
         kernelInfo.SetTilingId(tilingKey);
         uint32_t syncWorkspaceSize = sysWorkspaceSize + blockNum * tilingDataPtr->workspacePerCore;
         kernelInfo.GetScratchSizes() = {syncWorkspaceSize};
-        PrintTilingData(tilingDataPtr);
+        PrintTilingData(*tilingDataPtr);
         return Status::OkStatus();
     }
 } // namespace AtbOps
