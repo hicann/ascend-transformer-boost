@@ -2,6 +2,7 @@ set(NAMESPACE "AtbOps")
 
 if (IS_STANDALONE_BUILD)
     option(USE_MSSANITIZER "USE_MSSANITIZER" OFF)
+    option(USE_MSDEBUG "USE_MSDEBUG" OFF)
     option(USE_ASCENDC_DUMP "USE_ASCENDC_DUMP" OFF)
     set(MKI_SCRIPT_DIR "${MKI_SOURCE_DIR}/scripts")
     include(${MKI_SOURCE_DIR}/cmake/host_config.cmake)
