@@ -26,7 +26,7 @@
         ```
     - 因为RmsNormBackwardOperation为反向算子，链接时需要额外链接训练库`atb_train`，默认已添加。
 ## 额外说明
-示例中生成的数据不代表实际场景，如需数据生成参考请查看python用例目录：
+示例中生成的数据不代表实际场景，如需数据生成参考请查看根目录下的python用例目录：
 tests/apitest/opstest/python/operations/rms_norm_backward/
 
 ## 产品支持情况

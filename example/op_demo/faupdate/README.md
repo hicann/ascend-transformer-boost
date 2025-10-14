@@ -27,7 +27,7 @@
     - 提供的build脚本仅用于编译和运行faupdate_demo，如需编译其他demo，需要替换“faupdate_demo”为对应的cpp文件名
 
 ## 额外说明
-示例中生成的数据不代表实际场景，如需数据生成参考请查看python用例目录：
+示例中生成的数据不代表实际场景，如需数据生成参考请查看根目录下的python用例目录：
 `tests/apitest/opstest/python/operations/faupdate/`
 
 ## 产品支持情况
