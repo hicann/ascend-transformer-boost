@@ -26,7 +26,7 @@
     - 提供的build脚本仅用于编译和运行mlapa_demo.cpp，如需编译其他demo，需要替换“mlapa_demo”为对应的cpp文件名
 
 ## 额外说明
-示例中生成的数据不代表实际场景，如需数据生成参考请查看python用例目录：
+示例中生成的数据不代表实际场景，如需数据生成参考请查看根目录下的python用例目录：
 tests/apitest/opstest/python/operations/multi_latent_attention/
 
 ## 场景说明
@@ -39,7 +39,7 @@ tests/apitest/opstest/python/operations/multi_latent_attention/
     | 成员名称   | 取值                  |
     | :-------- | :-------------------- |
     | headNum   | 128                   |
-    | qkScale   | 1/sqrt(576)*          |
+    | qkScale   | 1/sqrt(576)          |
     | kvHeadNum | 1                     |
     | maskType  | `UNDEFINED`           |
     | calcType  | `CALC_TYPE_UNDEFINED` |

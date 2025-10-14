@@ -50,7 +50,6 @@ ascend-transformer-boost
 │   ├── atb
 │   ├── kernels
 │   │   ├── configs     //支持的配置说明
-│   │   ├── document    //文档目录
 │   │   ├── include     //存放各算子的头文件
 │   │   ├── kernels     //单算子存放目录
 │   │   ├── lcal        //通信算子存放目录

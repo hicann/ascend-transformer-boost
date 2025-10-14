@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!--   Copyright (c) Huawei Technologies Co., Ltd. 2024. All rights reserved.
+<!--   Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
        This file is a part of the CANN Open Software.
        Licensed under CANN Open Software License Agreement Version 2.0 (the "License").
        Please refer to the License for details. You may not use this file except in compliance with the License.
@@ -59,7 +59,7 @@
         <licensematcherlist>
             <licensematcher name="cann License" desc="If the scanning result is InvalidLicense, you can define matching rules here. Note that quotation marks must be escaped.">
                 <licensetext name="
-                    Copyright (c) 2024 Huawei Technologies Co., Ltd.
+                    Copyright (c) 2025 Huawei Technologies Co., Ltd.
                     This file is a part of the CANN Open Software.
                     Licensed under CANN Open Software License Agreement Version 2.0 (the &quot;License&quot;).
                     Please refer to the License for details. You may not use this file except in compliance with the License.

@@ -31,7 +31,7 @@
     - 提供的build脚本仅用于编译和运行self_attention_encoder_demo.cpp，如需编译其他demo，需要替换“self_attention_encoder_demo”为对应的cpp文件名
 
 ## 额外说明
-示例中生成的数据不代表实际场景，如需数据生成参考请查看python用例目录：
+示例中生成的数据不代表实际场景，如需数据生成参考请查看根目录下的python用例目录：
 tests/apitest/opstest/python/operations/self_attention/
 
 ## 产品支持情况
@@ -62,8 +62,8 @@ SelfAttention在Atlas A2/A3系列仅支持部分场景，且Encoder场景在Atla
 | `query`         | float16  | nd       | [160,2048]          | npu     |
 | `key`           | float16  | nd       | [160,2048]          | npu     |
 | `value`         | float16  | nd       | [160,2048]          | npu     |
-| `cacheK`        | float16  | nd       | [1, 10, 1024, 2048] | npu     |
-| `cacheV`        | float16  | nd       | [1, 10, 1024, 2048] | npu     |
+| `cacheK`        | float16  | nz       | [1, 10, 1024, 2048] | npu     |
+| `cacheV`        | float16  | nz       | [1, 10, 1024, 2048] | npu     |
 | `attentionMask` | float16  | nd       | [10, 1024, 1024]    | npu     |
 | `tokenOffset`   | int32    | nd       | [10]                | cpu     |
 | `seqLen`        | int32    | nd       | [10]                | cpu     |
@@ -71,7 +71,7 @@ SelfAttention在Atlas A2/A3系列仅支持部分场景，且Encoder场景在Atla
 | **Output**      |
 | `output`        | float16  | nd       | [160, 2048]         | npu     |
 + q，k，v第一维度为总词元长度，即`sum(seqlen)`
-+ q，k，v第二维度headNum，headSize合轴，实际为headHum(32) $\times$ headSize(128)
++ q，k，v第二维度headNum，headSize合轴，实际为headNum(32) $\times$ headSize(128)
 
 #### self_attention_encoder_inference_demo.cpp
 + 场景：fa encoder基础场景在Atlas推理系列上的实现，分开传入key，CacheK，value和CacheV
@@ -93,8 +93,8 @@ SelfAttention在Atlas A2/A3系列仅支持部分场景，且Encoder场景在Atla
 | `query`       | float16  | nd       | [16, 256]           | npu     |
 | `key`         | float16  | nd       | [16, 256]           | npu     |
 | `value`       | float16  | nd       | [16, 256]           | npu     |
-| `cacheK`      | float16  | nd       | [1, 1, 16, 256, 16] | npu     |
-| `cacheV`      | float16  | nd       | [1, 1, 16, 256, 16] | npu     |
+| `cacheK`      | float16  | nz       | [1, 1, 16, 256, 16] | npu     |
+| `cacheV`      | float16  | nz       | [1, 1, 16, 256, 16] | npu     |
 | `tokenOffset` | int32    | nd       | [1]                 | cpu     |
 | `seqLen`      | int32    | nd       | [1]                 | cpu     |
 | `layerId`     | int32    | nd       | [1]                 | npu     |
@@ -103,7 +103,7 @@ SelfAttention在Atlas A2/A3系列仅支持部分场景，且Encoder场景在Atla
 
 #### self_attention_pa_encoder_demo.cpp
 + 场景：FA使用PA Encoder的场景，使用FA输入，只需传入key，value
-  + 传入不同的headNum，kvHeadNum且headNum可以被kvHeadNum时开启GQA（Grouped Query Attention）。
+  + 传入不同的headNum，kvHeadNum且headNum可以被kvHeadNum整除时开启GQA（Grouped Query Attention）。
 + 该demo仅支持在Atlas A2/A3系列上运行
 + demo中使用全量的上三角mask演示
 

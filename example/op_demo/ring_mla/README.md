@@ -1,6 +1,6 @@
-# 加速库RingMla C++ Demo
+# 加速库RingMLA C++ Demo
 ## 介绍
-该目录下为加速库RingMla C++调用示例。
+该目录下为加速库RingMLA C++调用示例。
 
 ## 使用说明
 - 首先source 对应的CANN和nnal包的安装路径
@@ -30,21 +30,21 @@
         ```
 
 ## 额外说明
-示例中生成的数据不代表实际场景，如需数据生成参考请查看python用例目录：
+示例中生成的数据不代表实际场景，如需数据生成参考请查看根目录下的python用例目录：
 tests/apitest/opstest/python/operations/ring_mla/
 
 ## 产品支持情况
-RingMla仅Atlas A2/A3系列
+RingMLA仅Atlas A2/A3系列
 
 ### 场景说明
-1. RingMla：
+1. RingMLA：
     + 基础场景，对于query，key分别传入带与不带rope转置的矩阵
     + 传入固定shape，512x512的上三角mask
     + 默认编译脚本可编译运行
     + 该demo仅支持在Atlas A2/A3系列上运行
 
 #### Demo分段参数/tensor规格设置
-因为ringMLA和其他的算子较为不同，第一次运算时不带前次生成的prevOut和prevLse，但是从第二次起使用时需要带上，这里分俩段描述：
+因为RingMLA和其他的算子较为不同，第一次运算时不带前次生成的prevOut和prevLse，但是从第二次起使用时需要带上，这里分两段描述：
 1. 第一轮
 
 **参数设置**：
@@ -67,7 +67,7 @@ RingMla仅Atlas A2/A3系列
 | `keyRope`    | bf16     | nd       | [828, 8, 64]    | npu     |
 | `value`      | bf16     | nd       | [828, 8, 128]   | npu     |
 | `mask`       | bf16     | nd       | [512, 512]      | npu     |
-| `seqLen`     | bf16     | nd       | [2, 3]          | cpu     |
+| `seqLen`     | int32    | nd       | [2, 3]          | cpu     |
 | **Output**   |
 | `output`     | bf16     | nd       | [1228, 16, 128] | npu     |
 | `softmaxLse` | float    | nd       | [16, 1228]      | npu     |
