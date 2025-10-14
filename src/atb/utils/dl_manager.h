@@ -18,7 +18,7 @@ class DlManager {
 public:
     DlManager(std::string path);
     ~DlManager();
-    Status getSymbol(const std::string &symbol, void **symbolPtr) const;
+    Status getSymbol(const std::string &symbol, void *&symbolPtr) const;
 
 private:
     std::string path_;
