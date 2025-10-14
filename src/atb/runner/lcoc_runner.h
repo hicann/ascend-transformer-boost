@@ -10,17 +10,17 @@
 #ifndef ATB_LCOC_RUNNER_H
 #define ATB_LCOC_RUNNER_H
 
-#include <lcal.h>
 #include <memory>
+#include "lccl.h"
+#include "lcoc.h"
 #include "atb/runner/runner.h"
 #include "atb/runner/lcal_runner.h"
-#include "atb/runner/runner_type.h"
 #include "atb/infer_op_params.h"
 
 namespace atb {
 class LcocRunner : public LcalRunner {
 public:
-    explicit LcocRunner(const std::string &name, RunnerType runnerType, int32_t rank, int32_t rankSize,
+    explicit LcocRunner(const std::string &name, int32_t rank, int32_t rankSize,
                         const infer::CommMode commMode, Context &context, const std::string &commDomain = "");
     ~LcocRunner() override;
 

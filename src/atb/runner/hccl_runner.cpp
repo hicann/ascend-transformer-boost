@@ -18,30 +18,33 @@
 #include "atb/utils/config.h"
 #include "atb/utils/common_utils.h"
 #include "atb/utils/singleton.h"
+#include "atb/utils/operation_register.h"
 
 namespace atb {
-HcclRunner::HcclRunner(const std::string &name, RunnerType runnerType, int rank, int rankSize, int rankRoot,
+HcclRunner::HcclRunner(const std::string &name, int rank, int rankSize, int rankRoot,
                        const std::string &commDomain)
-    : Runner(name), runnerType_(runnerType), rank_(rank), rankSize_(rankSize), rankRoot_(rankRoot),
+    : Runner(name), rank_(rank), rankSize_(rankSize), rankRoot_(rankRoot),
       commDomain_(commDomain)
 {
+    runnerTypeIdx_ = RunnerTypeRegister::GetRunnerTypeIdx(name);
     ATB_LOG(INFO) << GetLogPrefix() << "construct, use rank:" << rank << ", rankSize:" << rankSize
                   << ", rankRoot:" << rankRoot << ", commDomain_:" << commDomain_;
     Init();
 }
 
-HcclRunner::HcclRunner(const std::string &name, RunnerType runnerType, int rank, const std::string &rankTableFile,
+HcclRunner::HcclRunner(const std::string &name, int rank, const std::string &rankTableFile,
                        const std::string &commDomain)
-    : Runner(name), runnerType_(runnerType), rank_(rank), rankTableFile_(rankTableFile), commDomain_(commDomain)
+    : Runner(name), rank_(rank), rankTableFile_(rankTableFile), commDomain_(commDomain)
 {
     useRankTableFile_ = true;
+    runnerTypeIdx_ = RunnerTypeRegister::GetRunnerTypeIdx(name);
     ATB_LOG(INFO) << GetLogPrefix() << "construct by rankTableFile, use rank:" << rank
                   << ", rankTableFile_:" << rankTableFile << ", commDomain_:" << commDomain_;
     Init();
 }
 
-HcclRunner::HcclRunner(const std::string &name, HcclComm hcclComm, RunnerType runnerType)
-    : Runner(name), runnerType_(runnerType)
+HcclRunner::HcclRunner(const std::string &name, HcclComm hcclComm)
+    : Runner(name)
 {
     if (!hcclComm) {
         ATB_LOG(ERROR) << GetLogPrefix() << "construct fail, hcclComm is null";
@@ -55,6 +58,7 @@ HcclRunner::HcclRunner(const std::string &name, HcclComm hcclComm, RunnerType ru
 #endif
     hcclComm_ = HcclCommSharedPtr(
         hcclComm, [](const void *hcclComm) { (void)hcclComm; }); // hcclComm由外部传入时，Runner不负责释放
+    runnerTypeIdx_ = RunnerTypeRegister::GetRunnerTypeIdx(name);
 }
 
 HcclRunner::~HcclRunner()

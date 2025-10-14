@@ -28,7 +28,7 @@ protected:
     Status BuildAclnnVariantPack(const RunnerVariantPack &runnerVariantPack) override;
     aclnnStatus SetAclNNWorkspaceExecutor() override;
     Status LaunchAclnnKernel() override;
-
+    bool useCache() override;
 
 private:
     HcclRunner hcclRunner_;

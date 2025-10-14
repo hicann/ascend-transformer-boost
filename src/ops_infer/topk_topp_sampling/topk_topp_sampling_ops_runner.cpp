@@ -12,6 +12,8 @@
 #include <asdops/params/params.h>
 #include "atb/utils/tensor_util.h"
 #include "atb/utils/log.h"
+#include "atb/utils/operation_register.h"
+#include "atb/utils/param_compare.h"
 
 namespace atb {
 static const uint64_t INTERNAL_TENSOR_COUNT = 5;
@@ -27,7 +29,7 @@ static const uint64_t LOGPROBS_MULTINOMIAL_OUT_TENSOR_COUNT = 3;
 static const uint64_t LOGPROBS_MULTINOMIAL_NODE_COUNT = 9;
 
 TopkToppSamplingOpsRunner::TopkToppSamplingOpsRunner(const infer::TopkToppSamplingParam &param)
-    : OpsRunner("TopkToppSamplingOpsRunner", RUNNER_TYPE_TOPP), param_(param)
+    : OpsRunner("TopkToppSamplingOpsRunner"), param_(param)
 {
 }
 
@@ -607,4 +609,8 @@ void TopkToppSamplingOpsRunner::SetParam(const Mki::Any &param)
 
 
 TopkToppSamplingOpsRunner::~TopkToppSamplingOpsRunner() {}
+
+REG_RUNNER_TYPE(TopkToppSamplingOpsRunner);
+REG_OP_PARAM(AtbOps::OpParam::Toppsample);
+REG_OP_PARAM(AsdOps::OpParam::LogprobsSample);
 } // namespace atb

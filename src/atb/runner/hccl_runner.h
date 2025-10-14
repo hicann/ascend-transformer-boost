@@ -11,7 +11,6 @@
 #define ATB_HCCL_RUNNER_H
 #include <hccl/hccl_types.h>
 #include <mki/utils/share_memory/share_memory.h>
-#include "atb/runner/runner_type.h"
 #include "atb/runner/runner.h"
 #include "atb/infer_op_params.h"
 
@@ -26,11 +25,11 @@ using HcclCommSharedPtr = std::shared_ptr<void>;
 
 class HcclRunner : public Runner {
 public:
-    explicit HcclRunner(const std::string &name, RunnerType runnerType = RUNNER_TYPE_UNDEFINED, int rank = 0,
+    explicit HcclRunner(const std::string &name, int rank = 0,
                         int rankSize = 0, int rankRoot = 0, const std::string &commDomain = "");
-    explicit HcclRunner(const std::string &name, RunnerType runnerType = RUNNER_TYPE_UNDEFINED, int rank = 0,
+    explicit HcclRunner(const std::string &name, int rank = 0,
                         const std::string &rankTableFile = "", const std::string &commDomain = "");
-    HcclRunner(const std::string &name, HcclComm hcclComm, RunnerType runnerType = RUNNER_TYPE_UNDEFINED);
+    HcclRunner(const std::string &name, HcclComm hcclComm);
     ~HcclRunner() override;
     HcclCommSharedPtr GetHcclCommSharedPtr() const;
 
@@ -38,7 +37,7 @@ protected:
     Status ExecuteImpl(RunnerVariantPack &runnerVariantPack) override;
 
 protected:
-    RunnerType runnerType_ = RUNNER_TYPE_UNDEFINED;
+    int64_t runnerTypeIdx_ = -1;
     int rank_ = 0;
     int rankSize_ = 0;
     int rankRoot_ = 0;

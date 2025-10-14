@@ -14,12 +14,13 @@
 #include <asdops/params/params.h>
 #include "atb/utils.h"
 #include "atb/utils/common_utils.h"
+#include "atb/utils/operation_register.h"
 
 namespace atb {
 ReduceScatterHcclRunner::ReduceScatterHcclRunner(const infer::ReduceScatterParam &param, bool useRankTableFile)
-    : HcclRunner(!useRankTableFile ? HcclRunner("ReduceScatterHcclRunner", RUNNER_TYPE_REDUCE_SCATTER, param.rank,
+    : HcclRunner(!useRankTableFile ? HcclRunner("ReduceScatterHcclRunner", param.rank,
                                                 param.rankSize, param.rankRoot, param.commDomain) :
-                                     HcclRunner("ReduceScatterHcclRunner", RUNNER_TYPE_REDUCE_SCATTER, param.rank,
+                                     HcclRunner("ReduceScatterHcclRunner", param.rank,
                                                 param.rankTableFile, param.commDomain)),
       param_(param)
 {
@@ -27,7 +28,7 @@ ReduceScatterHcclRunner::ReduceScatterHcclRunner(const infer::ReduceScatterParam
 }
 
 ReduceScatterHcclRunner::ReduceScatterHcclRunner(const infer::ReduceScatterParam &param, HcclComm hcclComm)
-    : HcclRunner("ReduceScatterHcclRunner", hcclComm, RUNNER_TYPE_REDUCE_SCATTER),
+    : HcclRunner("ReduceScatterHcclRunner", hcclComm),
       param_(param)
 {
     ATB_LOG(INFO) << "ReduceScatterHcclRunner::ReduceScatterHcclRunner ext called";
@@ -56,4 +57,6 @@ Status ReduceScatterHcclRunner::ExecuteImpl(RunnerVariantPack &runnerVariantPack
 }
 
 ReduceScatterHcclRunner::~ReduceScatterHcclRunner() {}
+
+REG_RUNNER_TYPE(ReduceScatterHcclRunner);
 } // namespace atb

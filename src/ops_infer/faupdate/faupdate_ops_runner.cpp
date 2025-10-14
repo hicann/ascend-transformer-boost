@@ -10,10 +10,12 @@
 #include "faupdate_ops_runner.h"
 #include <asdops/params/params.h>
 #include <atb/utils/log.h>
+#include "atb/utils/operation_register.h"
+#include "atb/utils/param_compare.h"
 
 namespace atb {
 FaUpdateOpsRunner::FaUpdateOpsRunner(const infer::FaUpdateParam &param)
-    : OpsRunner("FaUpdateOpsRunner", RUNNER_TYPE_FAUPDATE), param_(param)
+    : OpsRunner("FaUpdateOpsRunner"), param_(param)
 {
     ATB_LOG(INFO) << "FaUpdateOpsRunner::FaUpdateOpsRunner";
 }
@@ -62,4 +64,7 @@ Status FaUpdateOpsRunner::SetupKernelGraphDecodeUpdate()
 
     return NO_ERROR;
 }
+
+REG_RUNNER_TYPE(FaUpdateOpsRunner);
+REG_OP_PARAM(AsdOps::OpParam::FaUpdate);
 } // namespace atb

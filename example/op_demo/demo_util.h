@@ -19,10 +19,23 @@
 #include "atb/operation.h"
 #include "atb/types.h"
 
+const int MIN_ACL_ERROR_CODE = 100000;
+const int MAX_ACL_ERROR_CODE = 999999;
+
+constexpr std::string_view ACL_ERROR_DOC =
+    "https://www.hiascend.com/document/detail/zh/canncommercial/82RC1/API/appdevgapi/aclcppdevg_03_1345.html";
+constexpr std::string_view ATB_ERROR_DOC =
+    "https://www.hiascend.com/document/detail/zh/canncommercial/82RC1/API/ascendtbapi/ascendtb_01_0008.html";
+
 #define CHECK_STATUS(status)                                                                                           \
     do {                                                                                                               \
         if ((status) != 0) {                                                                                           \
-            std::cout << __FILE__ << ":" << __LINE__ << " [error]: " << (status) << std::endl;                         \
+            std::cout << __FILE__ << ":" << __LINE__ << " [ErrorCode]: " << (status) << std::endl;                     \
+            if ((MIN_ACL_ERROR_CODE) <= (status) && (status) <= (MAX_ACL_ERROR_CODE)) {                                \
+                std::cout << "For error code details, visit: " << ACL_ERROR_DOC << std::endl;                          \
+            } else {                                                                                                   \
+                std::cout << "For error code details, visit: " << ATB_ERROR_DOC << std::endl;                          \
+            }                                                                                                          \
             return status;                                                                                             \
         }                                                                                                              \
     } while (0)
@@ -30,8 +43,13 @@
 #define CHECK_STATUS_EXPR(status, expr)                                                                                \
     do {                                                                                                               \
         if ((status) != 0) {                                                                                           \
-            std::cout << __FILE__ << ":" << __LINE__ << " [error]: " << (status) << std::endl;                         \
-            expr;                                                                                                      \
+            std::cout << __FILE__ << ":" << __LINE__ << " [ErrorCode]: " << (status) << std::endl;                     \
+            if ((MIN_ACL_ERROR_CODE) <= (status) && (status) <= (MAX_ACL_ERROR_CODE)) {                                \
+                std::cout << "For error code details, visit: " << ACL_ERROR_DOC << std::endl;                          \
+            } else {                                                                                                   \
+                std::cout << "For error code details, visit: " << ATB_ERROR_DOC << std::endl;                          \
+            }                                                                                                          \
+            (expr);                                                                                                      \
         }                                                                                                              \
     } while (0)
 

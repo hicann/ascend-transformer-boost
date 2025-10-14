@@ -10,6 +10,8 @@
 #include "multi_latent_attention_ops_runner_prefill.h"
 #include <atb/utils/log.h>
 #include <atbops/params/params.h>
+#include "atb/utils/operation_register.h"
+#include "atb/utils/param_compare.h"
 
 namespace {
 static const uint32_t IN_TENSOR_NUM_BASE = 13;
@@ -21,7 +23,7 @@ static const uint32_t QSEQLEN_INDEX = 5;
 namespace atb {
 MultiLatentAttentionOpsRunnerPrefill::MultiLatentAttentionOpsRunnerPrefill(
     const infer::MultiLatentAttentionParam &param)
-    : OpsRunner("MultiLatentAttentionOpsRunner", RUNNER_TYPE_MULTILATENTATTENTION), param_(param)
+    : OpsRunner("MultiLatentAttentionOpsRunner"), param_(param)
 {
     ATB_LOG(INFO) << "MultiLatentAttentionOpsRunnerPrefill::MultiLatentAttentionOpsRunnerPrefill called";
     needKernelGraphModify_ = true;
@@ -66,7 +68,7 @@ Status MultiLatentAttentionOpsRunnerPrefill::SetupKernelGraph(const OpsTensorPac
     asdParam.tor = param_.qkScale;
     asdParam.kvHead = param_.kvHeadNum;
     asdParam.isRing = 0;
-    asdParam.windowSize = param_.windowSize;
+    asdParam.windowSize = static_cast<int32_t>(param_.windowSize);
     if (param_.maskType == infer::MultiLatentAttentionParam::MaskType::MASK_TYPE_MASK_FREE) {
         asdParam.maskType = AtbOps::OpParam::MLA::MaskType::MASK_TYPE_MASK_FREE;
     } else if (param_.maskType == infer::MultiLatentAttentionParam::MaskType::MASK_TYPE_CAUSAL_MASK) {
@@ -105,7 +107,7 @@ Status MultiLatentAttentionOpsRunnerPrefill::ModifyKernelGraph(const OpsTensorPa
     asdParam.kvSeqLen = newParam_.contextLens;
     asdParam.qSeqLen = newParam_.qSeqlen;
     asdParam.isRing = 0;
-    asdParam.windowSize = param_.windowSize;
+    asdParam.windowSize = static_cast<int32_t>(param_.windowSize);
     if (param_.maskType == infer::MultiLatentAttentionParam::MaskType::MASK_TYPE_MASK_FREE) {
         asdParam.maskType = AtbOps::OpParam::MLA::MaskType::MASK_TYPE_MASK_FREE;
     } else if (param_.maskType == infer::MultiLatentAttentionParam::MaskType::MASK_TYPE_CAUSAL_MASK) {
@@ -118,4 +120,7 @@ Status MultiLatentAttentionOpsRunnerPrefill::ModifyKernelGraph(const OpsTensorPa
     mlaNode.opDesc = {0, "MLAOperation", asdParam};
     return NO_ERROR;
 }
+
+REG_RUNNER_TYPE(MultiLatentAttentionOpsRunner);
+REG_OP_PARAM(AtbOps::OpParam::MLA);
 } // namespace atb

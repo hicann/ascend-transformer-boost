@@ -12,16 +12,12 @@
 #include <hccl/hccl.h>
 #include "atb/utils/dl_manager.h"
 #include "atb/utils/aclnn_util.h"
-
+#include "atb/utils/operation_register.h"
 
 namespace atb {
 
 static const uint32_t LINEAR_REDUCE_SCATTER_IN_TENSOR_NUM = 6;
 static const uint32_t LINEAR_REDUCE_SCATTER_OUT_TENSOR_NUM = 2;
-
-
-static const uint32_t BIAS_TENSOR_INDEX = 2;
-
 
 aclnnStatus (*LinearParallelAclnnRunner::aclnnMatmulReduceScatterV2GetWorkspaceSizeFunc_)(
     const aclTensor *, const aclTensor *, const aclTensor *, const aclTensor *, const aclTensor *, const aclTensor *,
@@ -32,10 +28,10 @@ aclnnStatus (*LinearParallelAclnnRunner::aclnnMatmulReduceScatterV2Func_)(void *
                                                                           aclrtStream) = nullptr;
 
 LinearParallelAclnnRunner::LinearParallelAclnnRunner(const infer::LinearParallelParam &param, bool useRankTableFile)
-    : AclnnRunner("LinearParallelAclnnRunner", RUNNER_TYPE_LINEAR_PARALLEL),
-      hcclRunner_(!useRankTableFile ? HcclRunner("LinearParallelAclnnRunner", RUNNER_TYPE_LINEAR_PARALLEL, param.rank,
+    : AclnnRunner("LinearParallelAclnnRunner"),
+      hcclRunner_(!useRankTableFile ? HcclRunner("LinearParallelAclnnRunner", param.rank,
                                                  param.rankSize, param.rankRoot, param.commDomain) :
-                                      HcclRunner("LinearParallelAclnnRunner", RUNNER_TYPE_LINEAR_PARALLEL, param.rank,
+                                      HcclRunner("LinearParallelAclnnRunner", param.rank,
                                                  param.rankTableFile, param.commDomain)),
       param_(param)
 {
@@ -43,8 +39,8 @@ LinearParallelAclnnRunner::LinearParallelAclnnRunner(const infer::LinearParallel
 }
 
 LinearParallelAclnnRunner::LinearParallelAclnnRunner(const infer::LinearParallelParam &param, HcclComm hcclComm)
-    : AclnnRunner("LinearParallelAclnnRunner", RUNNER_TYPE_LINEAR_PARALLEL),
-      hcclRunner_("LinearParallelAclnnRunner", hcclComm, RUNNER_TYPE_LINEAR_PARALLEL), param_(param)
+    : AclnnRunner("LinearParallelAclnnRunner"),
+      hcclRunner_("LinearParallelAclnnRunner", hcclComm), param_(param)
 {
     ATB_LOG(INFO) << "LinearParallelAclnnRunner::LinearParallelAclnnRunner ext called";
 }
@@ -60,20 +56,26 @@ Status LinearParallelAclnnRunner::BuildAclnnVariantPack(const RunnerVariantPack 
     this->aclnnVariantPack_.aclInTensors.resize(LINEAR_REDUCE_SCATTER_IN_TENSOR_NUM);
     for (size_t i = 0; i < this->aclnnVariantPack_.aclInTensors.size(); ++i) {
         std::shared_ptr<AclNNTensor> aclnnTensorPtr = std::make_shared<AclNNTensor>();
-        if (i >= 3 || (!param_.hasResidual && i == BIAS_TENSOR_INDEX)) {
+        if (i > 1) {
             this->aclnnVariantPack_.aclInTensors[i] = aclnnTensorPtr;
             continue;
         }
         atb::Tensor atbTensor = runnerVariantPack.inTensors.at(i);
         aclnnTensorPtr->atbTensor = atbTensor;
-        aclnnTensorPtr->strides = (i == 1 && param_.transWeight) ? GetTransposeTensorStride(atbTensor.desc.shape) :
-                                                                   GetCopyTensorStride(atbTensor.desc.shape);
-        ret = CallAclCreateTensor(atbTensor.desc.shape, atbTensor.desc.shape, atbTensor, aclnnTensorPtr);
+        atb::Dims viewDims = atbTensor.desc.shape;
+        if (i == 1 && param_.transWeight) {
+            aclnnTensorPtr->strides = GetTransposeTensorStride(viewDims);
+            viewDims.dims[0] = atbTensor.desc.shape.dims[1];
+            viewDims.dims[1] = atbTensor.desc.shape.dims[0];
+        } else {
+            aclnnTensorPtr->strides = GetCopyTensorStride(viewDims);
+        }
+        ret = CallAclCreateTensor(viewDims, atbTensor.desc.shape, atbTensor, aclnnTensorPtr);
         if (ret != NO_ERROR) {
             ATB_LOG(ERROR) << GetLogPrefix() << "create aclTensor by aclCreateTensor failed!";
             return ret;
         }
-        aclnnTensorPtr->tensorIdx = i;
+        aclnnTensorPtr->tensorIdx = static_cast<int>(i);
         aclnnTensorPtr->needUpdateTensorDataPtr = true;
         this->aclnnVariantPack_.aclInTensors[i] = aclnnTensorPtr;
     }
@@ -94,7 +96,7 @@ Status LinearParallelAclnnRunner::BuildAclnnVariantPack(const RunnerVariantPack 
             ATB_LOG(ERROR) << GetLogPrefix() << "create aclTensor by aclCreateTensor failed!";
             return ret;
         }
-        aclnnTensorPtr->tensorIdx = i;
+        aclnnTensorPtr->tensorIdx = static_cast<int>(i);
         aclnnTensorPtr->needUpdateTensorDataPtr = true;
         this->aclnnVariantPack_.aclOutTensors[i] = aclnnTensorPtr;
     }
@@ -183,6 +185,11 @@ Status LinearParallelAclnnRunner::LaunchAclnnKernel()
     return NO_ERROR;
 }
 
+bool LinearParallelAclnnRunner::useCache()
+{
+    return false;
+}
+
 Status LinearParallelAclnnRunner::LoadMethodMatmulReduceScatter()
 {
     ATB_LOG(INFO) << "LinearParallelAclnnRunner LoadMethod";
@@ -208,4 +215,5 @@ Status LinearParallelAclnnRunner::LoadMethodMatmulReduceScatter()
     return NO_ERROR;
 }
 
+REG_RUNNER_TYPE(LinearParallelAclnnRunner);
 } // namespace atb

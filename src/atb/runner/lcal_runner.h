@@ -10,17 +10,17 @@
 #ifndef ATB_LCAL_RUNNER_H
 #define ATB_LCAL_RUNNER_H
 
-#include <lcal.h>
 #include <memory>
 #include <utility>
+#include "lccl.h"
+#include "lcoc.h"
 #include "atb/runner/runner.h"
-#include "atb/runner/runner_type.h"
 #include "atb/infer_op_params.h"
 
 namespace atb {
 class LcalRunner : public Runner {
 public:
-    explicit LcalRunner(const std::string &name, RunnerType runnerType, int32_t rank, int32_t rankSize,
+    explicit LcalRunner(const std::string &name, int32_t rank, int32_t rankSize,
                         const infer::CommMode commMode, const std::string &commDomain, Context &context);
     ~LcalRunner() override;
 
@@ -29,7 +29,7 @@ protected:
     Status SetupImpl(RunnerVariantPack &runnerVariantPack) override;
 
 protected:
-    RunnerType runnerType_ = RUNNER_TYPE_UNDEFINED;
+    int64_t runnerTypeIdx_ = -1;
     int32_t rank_ = 0;
     int32_t rankSize_ = 0;
     infer::CommMode commMode_ = infer::CommMode::COMM_MULTI_PROCESS;

@@ -12,13 +12,14 @@
 #include "atb/utils/log.h"
 #include "atb/utils/operation_util.h"
 #include "atb/utils/common_utils.h"
+#include "atb/utils/operation_register.h"
 
 namespace atb {
 static constexpr size_t DIM_2 = 2;
 static constexpr size_t DIM_3 = 3;
 
 LinearParallelLcocRunner::LinearParallelLcocRunner(const infer::LinearParallelParam &param, Context &context)
-    : LcocRunner("LinearParallelLcocRunner", RUNNER_TYPE_LINEAR_PARALLEL, param.rank, param.rankSize, param.commMode,
+    : LcocRunner("LinearParallelLcocRunner", param.rank, param.rankSize, param.commMode,
                  context, param.commDomain),
       param_(param)
 {
@@ -71,13 +72,13 @@ static Lcal::CoCDataTypeDesc GetCoCDataTypeDesc(const TensorDesc &input, const T
         if (weight.dtype == ACL_FLOAT16) {
             return Lcal::CoCDataTypeDesc::FP16FP16_FP32_FP16;
         } else if (weight.dtype == ACL_INT8) {
-            return Lcal::CoCDataTypeDesc::FP16INT8_INT32_FP16;
+            return Lcal::CoCDataTypeDesc::FP16INT8_FP32_FP16;
         }
     } else if (input.dtype == ACL_BF16) {
         if (weight.dtype == ACL_BF16) {
             return Lcal::CoCDataTypeDesc::BF16BF16_FP32_BF16;
         } else if (weight.dtype == ACL_INT8) {
-            return Lcal::CoCDataTypeDesc::BF16INT8_INT32_BF16;
+            return Lcal::CoCDataTypeDesc::BF16INT8_FP32_BF16;
         }
     } else if (input.dtype == ACL_INT8 && weight.dtype == ACL_INT8) {
         return output.dtype == ACL_BF16 ? Lcal::CoCDataTypeDesc::INT8INT8_INT32_BF16 :
@@ -261,4 +262,5 @@ Status LinearParallelLcocRunner::ExecuteImpl(RunnerVariantPack &runnerVariantPac
     }
     return NO_ERROR;
 }
+REG_RUNNER_TYPE(LinearParallelLcocRunner);
 } // namespace atb

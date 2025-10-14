@@ -9,8 +9,5 @@
  */
 #ifndef LCAL_H
 #define LCAL_H
-#include "lcal_types.h"
-#include "lcal_comm.h"
-#include "lccl.h"
-#include "lcoc.h"
+
 #endif // LCAL_H

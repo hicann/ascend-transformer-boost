@@ -43,5 +43,4 @@ struct Activation {
 };
 } // namespace OpParam
 } // namespace AsdOps
-
 #endif

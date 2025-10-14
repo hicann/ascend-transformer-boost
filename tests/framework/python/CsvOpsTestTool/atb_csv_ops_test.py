@@ -247,6 +247,10 @@ class CsvOpsTest():
             json_data = json.loads(self.op_param_str)
             transpose_a = json_data["transposeA"] if "transposeA" in json_data else False
             self.compute_num = shapes[0][-2] if transpose_a else shapes[0][-1]
+        if self.operation_name == "LinearParallelOperation":
+            json_data = json.loads(self.op_param_str)
+            transpose_a = json_data["transposeA"] if "transposeA" in json_data else False
+            self.compute_num = shapes[0][-2] * 2 if transpose_a else shapes[0][-1] * 2
 
     def generate_output_tensors(self, infershape_result):
         output_num = 0

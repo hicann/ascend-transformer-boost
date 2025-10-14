@@ -13,6 +13,7 @@
 #include "atb/utils/runner_util.h"
 #include "atb/utils/tensor_util.h"
 #include "atb/utils/singleton.h"
+#include "atb/utils/operation_register.h"
 
 static constexpr size_t DIM_3 = 3;
 static constexpr size_t SIZE_2 = 2;
@@ -21,7 +22,7 @@ static constexpr int64_t INT8_ALIGN = 32;
 
 namespace atb {
 LinearSparseOpsRunner::LinearSparseOpsRunner(const infer::LinearSparseParam &param)
-    : OpsRunner("LinearSparseOpsRunner", RUNNER_TYPE_LINEAR_SPARSE), param_(param)
+    : OpsRunner("LinearSparseOpsRunner"), param_(param)
 {
     ATB_LOG(INFO) << GetLogPrefix() << "LinearSparseOpsRunner::LinearSparseOpsRunner called";
 }
@@ -123,4 +124,6 @@ Status LinearSparseOpsRunner::SetupKernelGraph310p()
 
     return NO_ERROR;
 }
+
+REG_RUNNER_TYPE(LinearSparseOpsRunner);
 } // namespace atb

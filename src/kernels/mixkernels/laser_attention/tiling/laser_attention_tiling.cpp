@@ -162,11 +162,11 @@ void SetWorkspace(KernelInfo &kernelInfo, const int32_t colSize, const int32_t c
 
     auto cube2WorkspaceSize = tilingData.batchSize * tilingData.headNum * tilingData.qSeqLength * 128 * FLOAT_SIZE;
 
-    uint64_t sysWorkspaceSize = static_cast<uint64_t>(coreGroupNum) *
-                                    static_cast<uint64_t>(colSize + BASE_BLOCK_SIDE_LEN) *
-                                    static_cast<uint64_t>(BASE_BLOCK_SIDE_LEN * DOUBLE_BUFFER * FLOAT_SIZE) +
-                                static_cast<uint64_t>(CONST_ONES_SIZE + rowSumSize + RESERVE_SIZE) +
-                                static_cast<uint64_t>(qSize + kSize + vSize + cube2WorkspaceSize);
+    uint64_t sysWorkspaceSize =
+        static_cast<uint64_t>(coreGroupNum) * static_cast<uint64_t>(colSize + BASE_BLOCK_SIDE_LEN) *
+            static_cast<uint64_t>(BASE_BLOCK_SIDE_LEN * DOUBLE_BUFFER * FLOAT_SIZE) +
+        static_cast<uint64_t>(CONST_ONES_SIZE + rowSumSize + RESERVE_SIZE) +
+        static_cast<uint64_t>(qSize + kSize + vSize + static_cast<uint64_t>(cube2WorkspaceSize));
     kernelInfo.GetScratchSizes().push_back(sysWorkspaceSize);
 }
 
