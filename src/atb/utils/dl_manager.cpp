@@ -33,15 +33,15 @@ DlManager::~DlManager()
     }
 }
 
-Status DlManager::getSymbol(const std::string &symbol, void **symbolPtr) const
+Status DlManager::getSymbol(const std::string &symbol, void *&symbolPtr) const
 {
     if (handle_ == nullptr) {
         ATB_LOG(ERROR) << "Dynamic library handle is null, please check the path: " << path_;
         return ERROR_CANN_ERROR;
     }
-    *symbolPtr = dlsym(handle_, symbol.c_str());
+    symbolPtr = dlsym(handle_, symbol.c_str());
     char *errorInfo = dlerror();
-    if (*symbolPtr == nullptr || errorInfo != nullptr) {
+    if (symbolPtr == nullptr || errorInfo != nullptr) {
         ATB_LOG(ERROR) << "Failed to find symbol " << symbol << " from path: " << path_ << ", error: " << errorInfo;
         return ERROR_CANN_ERROR;
     }
