@@ -61,6 +61,9 @@ Status AclnnRunner::SetupImpl(RunnerVariantPack &runnerVariantPack)
     ATB_LOG(INFO) << GetLogPrefix() << "getWorkspace success, workspace addr: "
                   << reinterpret_cast<void *>(this->atbVariantPack_.workspaceBuffer)
                   << ", workspaceSize: " << this->atbVariantPack_.workspaceBufferSize;
+    if (!useCache()) {
+        return ret;
+    }
     aclnnRet = aclSetAclOpExecutorRepeatable(this->aclnnExecutor_.get());
     if (aclnnRet != 0) {
         // 设置算子可复用失败，标记cache中executor不可复用
@@ -151,6 +154,11 @@ void AclnnRunner::UpdateWorkspace(const RunnerVariantPack &runnerVariantPack)
 {
     this->atbVariantPack_.workspaceBufferSize = runnerVariantPack.workspaceBufferSize;
     this->atbVariantPack_.workspaceBuffer = runnerVariantPack.workspaceBuffer;
+}
+
+bool AclnnRunner::useCache()
+{
+    return true;
 }
 
 Status AclnnRunner::ExecuteImpl(RunnerVariantPack &runnerVariantPack)
