@@ -13,7 +13,73 @@
 #include "mki/utils/dl/dl.h"
 #include "mki/utils/env/env.h"
 #include "mki/utils/log/log.h"
+#include "mki/types.h"
 #include "platform_infos_impl.h"
+
+namespace {
+using AclrtGetResInCurrentThreadFunc = int(*)(int, uint32_t*);
+
+int GetResInCurrentThread(int type, uint32_t &resource)
+{
+    static std::once_flag onceFlag;
+    static std::atomic<int> initFlag{Mki::ERROR_FUNC_NOT_INITIALIZED};  
+    static std::unique_ptr<Mki::Dl> mkiDl; // 持久保存，避免库被卸载
+    static AclrtGetResInCurrentThreadFunc aclFn = nullptr;
+
+    std::call_once(onceFlag, []() {
+        std::string p;
+        const char *c = Mki::GetEnv("ASCEND_HOME_PATH");
+        if (c) {
+            p = std::string(c) + "/runtime/lib64/libascendcl.so";
+        } else {
+            p = "libascendcl.so";
+        }
+        auto dl = std::make_unique<Mki::Dl>(p, false);
+        if (!dl->IsValid()) {
+            MKI_LOG(ERROR) << "Try load libascendcl.so failed: " << p;
+            initFlag.store(Mki::ERROR_FUNC_NOT_FOUND, std::memory_order_release);
+            return;
+        }
+        auto sym = dl->GetSymbol("aclrtGetResInCurrentThread");
+        if (sym == nullptr) {
+            MKI_LOG(WARN) << "Symbol aclrtGetResInCurrentThread not found in: " << p;
+            initFlag.store(Mki::ERROR_FUNC_NOT_FOUND, std::memory_order_release);
+            return;
+        }
+        mkiDl = std::move(dl); // 保留句柄，防止卸载
+        aclFn = reinterpret_cast<AclrtGetResInCurrentThreadFunc>(sym);
+        initFlag.store(Mki::NO_ERROR, std::memory_order_release);
+        MKI_LOG(INFO) << "Loaded libascendcl.so and resolved aclrtGetResInCurrentThread from: " << p;
+    });
+
+    // 初始化结果判定
+    int rc = initFlag.load(std::memory_order_acquire);
+    if (rc != Mki::NO_ERROR) {
+        return rc;
+    }
+
+    if (type != 0 && type != 1) {
+        MKI_LOG(ERROR) << "aclrtGetResInCurrentThread not support resource type: " << type;
+        return Mki::ERROR_INVALID_VALUE;
+    }
+
+    // 调用前检查函数指针有效性
+    if (aclFn == nullptr) {
+        MKI_LOG(ERROR) << "aclrtGetResInCurrentThread function pointer is null.";
+        return Mki::ERROR_FUNC_NOT_FOUND;
+    }
+
+    // 调用底层函数
+    const int ret = aclFn(type, &resource);
+    if (ret != 0) {
+        MKI_LOG(ERROR) << "aclrtGetResInCurrentThread failed. type: " << type << " err: " << ret;
+        return Mki::ERROR_RUN_TIME_ERROR;
+    }
+
+    MKI_LOG(INFO) << "Got resource in current thread. type: " << type << " resource: " << resource;
+    return Mki::NO_ERROR;
+}
+}
 
 namespace fe {
 constexpr uint32_t MAX_CORE_NUM = 128;
@@ -102,31 +168,21 @@ void PlatFormInfos::SetFixPipeDtypeMap(const std::map<std::string, std::vector<s
     platform_infos_impl_->SetFixPipeDtypeMap(fixpipeDtypeMap);
 }
 
-using AclrtGetResInCurrentThreadFunc = int(*)(int, uint32_t*);
-
 void PlatFormInfos::SetCoreNumByCoreType(const std::string &core_type)
 {
     uint32_t coreNum = 0;
-    Mki::Dl dl = Mki::Dl(std::string(Mki::GetEnv("ASCEND_HOME_PATH")) + "/runtime/lib64/libascendcl.so", false);
-    AclrtGetResInCurrentThreadFunc aclrtGetResInCurrentThread =
-        (AclrtGetResInCurrentThreadFunc)dl.GetSymbol("aclrtGetResInCurrentThread");
-    if (aclrtGetResInCurrentThread != nullptr) {
-        int8_t resType = core_type == "VectorCore" ? 1 : 0;
-        int getResRet = aclrtGetResInCurrentThread(resType, &coreNum);
-        if (getResRet == 0) {
-            core_num_ = coreNum;
-            MKI_LOG(DEBUG) << "Get ThreadResource::core_num_ to " << core_type << ": " << coreNum;
-            if (core_num_ == 0 || core_num_ > MAX_CORE_NUM) {
-                MKI_LOG(ERROR) << "core_num is out of range : " << core_num_;
-                core_num_ = 1;
-            }
-            return;
-        } else {
-            MKI_LOG(WARN) << "Failed to get thread core num!";
+    int8_t resType = core_type == "VectorCore" ? 1 : 0;
+    int getResRet = GetResInCurrentThread(resType, coreNum);
+
+    if (getResRet == Mki::NO_ERROR) {
+        core_num_ = coreNum;
+        if (core_num_ == 0 || core_num_ > MAX_CORE_NUM) {
+            MKI_LOG(ERROR) << "core_num is out of range : " << core_num_;
+            core_num_ = 1;
         }
-    } else {
-        MKI_LOG(WARN) << "Failed to acl function!";
+        return;
     }
+
     std::string coreNumStr = "";
     std::string coreTypeStr = "";
     if (core_type == "VectorCore") {
@@ -152,24 +208,17 @@ void PlatFormInfos::SetCoreNumByCoreType(const std::string &core_type)
 uint32_t PlatFormInfos::GetCoreNumByType(const std::string &core_type)
 {
     uint32_t coreNum = 0;
-    Mki::Dl dl = Mki::Dl(std::string(Mki::GetEnv("ASCEND_HOME_PATH")) + "/runtime/lib64/libascendcl.so", false);
-    AclrtGetResInCurrentThreadFunc aclrtGetResInCurrentThread = (AclrtGetResInCurrentThreadFunc)dl.GetSymbol("aclrtGetResInCurrentThread");
-    if (aclrtGetResInCurrentThread != nullptr) {
-        int resType = core_type == "VectorCore" ? 1 : 0;
-        int getResRet = aclrtGetResInCurrentThread(resType, &coreNum);
-        if (getResRet == 0) {
-            MKI_LOG(DEBUG) << "Get ThreadResource::core_num_ to " << core_type << ": " << coreNum;
-            if (coreNum > MAX_CORE_NUM) {
-                MKI_LOG(ERROR) << "core_num is out of range : " << coreNum;
-                return 1;
-            }
-            return coreNum;
-        } else {
-            MKI_LOG(WARN) << "Failed to get thread resource! ";
+    int8_t resType = core_type == "VectorCore" ? 1 : 0;
+    int getResRet = GetResInCurrentThread(resType, coreNum);
+    
+    if (getResRet == Mki::NO_ERROR) {
+        if (coreNum > MAX_CORE_NUM) {
+            MKI_LOG(ERROR) << "core_num is out of range : " << coreNum;
+            return 1;
         }
-    } else {
-        MKI_LOG(WARN) << "Failed to load acl Function!";
+        return coreNum;
     }
+
     std::string coreNumStr = "";
     std::string coreTypeStr = core_type == "VectorCore" ? "vector_core_cnt" : "ai_core_cnt";
     std::lock_guard<std::mutex> lockGuard(g_asdopsFePlatMutex);
