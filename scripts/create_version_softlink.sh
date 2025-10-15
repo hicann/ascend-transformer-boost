@@ -1,3 +1,4 @@
+#!/bin/bash
 #
 # Copyright (c) 2025 Huawei Technologies Co., Ltd.
 # This file is a part of the CANN Open Software.
@@ -8,11 +9,21 @@
 # See LICENSE in the root of the software repository for the full text of the License.
 #
 
-set -euo pipefail
+set -e
 script_dir=""
 install_dir=""
 version_dir=""
 torch_atb_flag=""
+LOG_PATH=LOG_PATH_PLACEHOLDER
+LOG_NAME=LOG_NAME_PLACEHOLDER
+MAX_LOG_SIZE=$((1024*1024*50))
+
+if [ "$UID" = "0" ]; then
+    log_file=${LOG_PATH}${LOG_NAME}
+else
+    LOG_PATH="${HOME}${LOG_PATH}"
+    log_file=${LOG_PATH}${LOG_NAME}
+fi
 
 # 获取上n层目录
 function updir()
