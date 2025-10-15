@@ -266,6 +266,9 @@ inline __attribute__((always_inline)) Status PpMatmulTilingCheck(const PpTilingD
     MKI_CHECK(tilingData.opShape.m0 > 0, "m0 is invalid", return Status::FailStatus(ERROR_INVALID_VALUE));
     MKI_CHECK(tilingData.opShape.k0 > 0, "k0 is invalid", return Status::FailStatus(ERROR_INVALID_VALUE));
     MKI_CHECK(tilingData.opShape.n0 > 0, "n0 is invalid", return Status::FailStatus(ERROR_INVALID_VALUE));
+    MKI_CHECK(static_cast<uint64_t>(tilingData.opShape.batchSize) * tilingData.mLoop * tilingData.nLoop <= UINT32_MAX,
+              "numeric overflow for too large input size",
+              return Status::FailStatus(ERROR_INVALID_VALUE)); // 溢出检查
     MKI_CHECK(tilingData.mLoop > 0, "mLoop is invalid", return Status::FailStatus(ERROR_INVALID_VALUE));
     MKI_CHECK(tilingData.kLoop > 0, "kLoop is invalid", return Status::FailStatus(ERROR_INVALID_VALUE));
     MKI_CHECK(tilingData.nLoop > 0, "nLoop is invalid", return Status::FailStatus(ERROR_INVALID_VALUE));
