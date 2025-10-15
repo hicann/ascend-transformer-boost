@@ -36,16 +36,13 @@ inline __aicore__ void InitTilingData(const __gm__ uint8_t *p_tilingdata, AtbOps
     AscendC::PipeBarrier<PIPE_ALL>();
 }
 
-#define GET_TILING_DATA(tiling_data, tiling_arg, pipe)                                                                 \
-    AtbOps::RopeTilingData tiling_data;                                                                                \
-    InitTilingData(tiling_arg, &(tiling_data), &(pipe))
-
 extern "C" __global__ __aicore__ void rotary_pos_emb(GM_ADDR q, GM_ADDR k, GM_ADDR cos, GM_ADDR sin,
                                                      GM_ADDR seqLen, GM_ADDR outQ, GM_ADDR outK,
                                                      GM_ADDR workspace, GM_ADDR sync, GM_ADDR tiling)
 {
     AscendC::TPipe pipe;
-    GET_TILING_DATA(tiling_data, tiling, pipe);
+    AtbOps::RopeTilingData tiling_data;
+    InitTilingData(tiling, &(tiling_data), &(pipe));
     if (TILING_KEY_IS(30)) {
         RopeFp16<half, half, true> ropeFp16(&tiling_data, &pipe);
         ropeFp16.RopeInitGm(q, k, cos, sin, seqLen, outQ, outK);

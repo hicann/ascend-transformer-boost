@@ -363,13 +363,10 @@ inline __aicore__ void InitTilingData(const __gm__ uint8_t *p_tilingdata, AsdOps
 #endif
 }
 
-#define GET_TILING_DATA(tilingData, tilingArg)                                                                       \
-    AsdOps::RmsNormCommonTilingData tilingData;                                                                       \
-    InitTilingData(tilingArg, &(tilingData))
-
 extern "C" __global__ __aicore__ void rms_norm(GM_ADDR x, GM_ADDR g, GM_ADDR y, GM_ADDR tiling)
 {
-    GET_TILING_DATA(tilingData, tiling);
+    AsdOps::RmsNormCommonTilingData tilingData;
+    InitTilingData(tiling, &(tilingData));
     if (TILING_KEY_IS(11100)) {  // fp16,gemmamode = 1,precisionmode = 0
         RmsNormShort<half, GEMMA_ON, PRE_ON> kernel(x, g, y, tilingData);
         kernel.Launch();

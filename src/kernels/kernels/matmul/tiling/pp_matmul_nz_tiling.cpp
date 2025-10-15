@@ -55,7 +55,7 @@ void PpTilingDataNz::SetTilingKey(const MatMulInfoNz &mmInfo, uint32_t isSwizlDi
     tilingKey = (tilingKey << 1) + static_cast<uint32_t>(mmInfo.isInt8);
     tilingKey = (tilingKey << 1) + static_cast<uint32_t>(mmInfo.biasFlag);
     tilingKey = (tilingKey << 1) + isSplitk;
-    tilingKey = (tilingKey << 1) + static_cast<bool>(enPreload);
+    tilingKey = (tilingKey << 1) + static_cast<uint32_t>(enPreload);
 }
 
 uint32_t PpTilingDataNz::End()

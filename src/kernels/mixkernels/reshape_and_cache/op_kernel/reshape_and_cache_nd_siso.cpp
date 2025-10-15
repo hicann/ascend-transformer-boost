@@ -82,25 +82,29 @@ extern "C" __global__ __aicore__ void reshape_and_cache_siso(
 {
     AscendC::TPipe pipe;
     if (TILING_KEY_IS(140000000)) {
-        GET_TILING_DATA(tilingData, tiling);
+        ReshapeAndCacheTilingData tilingData;
+        InitTilingData(tiling, &(tilingData));
         ReshapeAndCacheNdSiso<int8_t> op;
         op.Init(&pipe, &tilingData);
         op.ProcessKeyIncrement(keyIn, keyCacheIn, slotMapping, keyCacheOut);
     }
     if (TILING_KEY_IS(142000000)) {
-        GET_TILING_DATA(tilingData, tiling);
+        ReshapeAndCacheTilingData tilingData;
+        InitTilingData(tiling, &(tilingData));
         ReshapeAndCacheNdSiso<int8_t> op;
         op.Init(&pipe, &tilingData);
         op.ProcessKey(keyIn, keyCacheIn, slotMapping, keyCacheOut);
     }
     if (TILING_KEY_IS(240000000)) {
-        GET_TILING_DATA(tilingData, tiling);
+        ReshapeAndCacheTilingData tilingData;
+        InitTilingData(tiling, &(tilingData));
         ReshapeAndCacheNdSiso<half> op;
         op.Init(&pipe, &tilingData);
         op.ProcessKeyIncrement(keyIn, keyCacheIn, slotMapping, keyCacheOut);
     }
     if (TILING_KEY_IS(242000000)) {
-        GET_TILING_DATA(tilingData, tiling);
+        ReshapeAndCacheTilingData tilingData;
+        InitTilingData(tiling, &(tilingData));
         ReshapeAndCacheNdSiso<half> op;
         op.Init(&pipe, &tilingData);
         op.ProcessKey(keyIn, keyCacheIn, slotMapping, keyCacheOut);

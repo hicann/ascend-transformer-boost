@@ -221,13 +221,9 @@ inline __aicore__ void InitTilingData(const __gm__ uint8_t *p_tilingdata, AsdOps
 #endif
 }
 
-
-#define GET_TILING_DATA(tiling_data, tiling_arg)    \
-    AsdOps::MultinomialTilingData tiling_data;      \
-    InitTilingData((tiling_arg), &(tiling_data))
-
 extern "C" __global__ __aicore__ void multinomial(GM_ADDR x, GM_ADDR z, GM_ADDR workspace, GM_ADDR tiling) {
-    GET_TILING_DATA(tiling_data, tiling);
+    AsdOps::MultinomialTilingData tiling_data;
+    InitTilingData(tiling, &(tiling_data));
     KernelMultinomial op;
     op.Init(x, z, tiling_data.realLastDim,
             tiling_data.expandLastDim,

@@ -15,7 +15,6 @@
 #include "atb/utils/tensor_util.h"
 #include "atb/utils/statistic.h"
 #include "atb/utils/store_util.h"
-#include "atb/utils/singleton.h"
 #include "atb/utils/probe.h"
 
 namespace atb {

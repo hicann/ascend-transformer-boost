@@ -186,13 +186,10 @@ inline __aicore__ void InitTilingData(const __gm__ uint8_t *p_tilingdata, AsdOps
 #endif
 }
 
-#define GET_TILING_DATA(tiling_data, tiling_arg)                                                                       \
-    AsdOps::QuantF16TilingData tiling_data;                                                                            \
-    InitTilingData(tiling_arg, &(tiling_data))
-
 extern "C" __global__ __aicore__ void quant(GM_ADDR x, GM_ADDR z, GM_ADDR tiling)
 {
-    GET_TILING_DATA(tiling_data, tiling);
+    AsdOps::QuantF16TilingData tiling_data;
+    InitTilingData(tiling, &(tiling_data));
     KernelQuantization op;
     op.Init(x, z, tiling_data.numCore, tiling_data.numLastDim, tiling_data.numFirstDim,
             tiling_data.nlFirstdimPerCore, tiling_data.lFirstdimPerCore, tiling_data.firstDimPerTimes,

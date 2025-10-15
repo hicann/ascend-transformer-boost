@@ -44,8 +44,4 @@ inline __aicore__ void InitTilingData(const __gm__ uint8_t *p_tilingdata, AsdOps
 #endif
 }
 
-#define GET_TILING_DATA(tiling_data, tiling_arg)                                                                       \
-    AsdOps::PostRmsNormTilingData tiling_data;                                                                         \
-    InitTilingData(tiling_arg, &(tiling_data))
-
 #endif

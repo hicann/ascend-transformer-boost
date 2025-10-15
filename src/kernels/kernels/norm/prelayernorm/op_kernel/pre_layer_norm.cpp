@@ -111,7 +111,8 @@ private:
 extern "C" __global__ __aicore__ void pre_layer_norm(GM_ADDR x, GM_ADDR res_in, GM_ADDR gamma, GM_ADDR beta,
                                                       GM_ADDR z, GM_ADDR res_out, GM_ADDR tiling)
 {
-    GET_TILING_DATA(tiling_data, tiling);
+    AsdOps::PostLayerNormTilingData tiling_data;
+    InitTilingData(tiling, &(tiling_data));
     if (TILING_KEY_IS(0)) { // 00
         PreLayerNorm<half, true> op;
         op.Init(x, res_in, gamma, beta, z, res_out, tiling_data);

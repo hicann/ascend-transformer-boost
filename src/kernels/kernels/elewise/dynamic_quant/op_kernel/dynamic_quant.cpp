@@ -55,13 +55,10 @@ inline __aicore__ void InitTilingData(const __gm__ uint8_t *p_tilingdata,
 #endif
 }
 
-#define GET_TILING_DATA(tiling_data, tiling_arg)                                                        \
-    AsdOps::DynamicQuantTilingData tiling_data;                                                      \
-    InitTilingData(tiling_arg, &(tiling_data))
-
 extern "C" __global__ __aicore__ void dynamic_quant(GM_ADDR x, GM_ADDR z, GM_ADDR scale, GM_ADDR offset,
     GM_ADDR tiling) {
-    GET_TILING_DATA(tilingData, tiling);
+    AsdOps::DynamicQuantTilingData tilingData;
+    InitTilingData(tiling, &(tilingData));
     if ((TILING_KEY_IS(10100))) {   // FP16, align
         DynamicQuantAlign<half> op;
         op.InitParams(&tilingData);

@@ -11,7 +11,8 @@
 #include "atb/utils/dl_manager.h"
 #include <mki/utils/strings/str_checker.h>
 #include <dlfcn.h>
-
+#include <unistd.h>
+#include <climits>
 namespace atb {
 DlManager::DlManager(std::string path) : path_(path)
 {
@@ -19,7 +20,11 @@ DlManager::DlManager(std::string path) : path_(path)
         ATB_LOG(ERROR) << "Dynamic library path is invalid, please check the path: " << path_;
     }
     // 在构造函数中加载动态库
-    handle_ = dlopen(path.c_str(), RTLD_NOW | RTLD_GLOBAL);
+    char resolvedPath[PATH_MAX] = {0};
+    if (realpath(path.c_str(), resolvedPath) == nullptr) {
+        ATB_LOG(ERROR) << "Dynamic library path resolve fail, please check the path: " << path_;
+    }
+    handle_ = dlopen(resolvedPath, RTLD_NOW | RTLD_GLOBAL);
     if (handle_ == nullptr) {
         ATB_LOG(ERROR) << "Dynamic library handle is null, please check the path: " << path_;
     }

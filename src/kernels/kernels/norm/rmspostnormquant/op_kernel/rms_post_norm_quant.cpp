@@ -312,15 +312,12 @@ inline __aicore__ void InitTilingData(const __gm__ uint8_t *pTilingdata,
 #endif
 }
 
-#define GET_TILING_DATA(tilingData, tilingArg)                                                                       \
-    AsdOps::RmsNormQuantCommonTilingData tilingData;                                                                  \
-    InitTilingData((tilingArg), &(tilingData))
-
 extern "C" __global__ __aicore__ void rms_post_norm_quant(GM_ADDR x, GM_ADDR r, GM_ADDR g, GM_ADDR scale,
                                                           GM_ADDR offset, GM_ADDR y, GM_ADDR res, GM_ADDR tiling)
 {
     AscendC::TPipe pipe;
-    GET_TILING_DATA(tilingData, tiling);
+    AsdOps::RmsNormQuantCommonTilingData tilingData;
+    InitTilingData(tiling, &(tilingData));
     if (TILING_KEY_IS(100)) { // fp16, scale, offset, no slice
         RmsPostNormQuant<half, true> kernel(&pipe, x, r, g, scale, offset, y, res, tilingData);
         kernel.Launch();

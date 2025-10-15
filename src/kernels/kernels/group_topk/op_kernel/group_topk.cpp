@@ -558,10 +558,6 @@ __aicore__ inline void InitTilingData(const __gm__ uint8_t *tiling, AsdOps::Grou
     tilingData->tailTokenNum = (*(const __gm__ uint32_t *)(tiling + 28));
 }
 
-#define GET_TILING_DATA(tiling, tilingData)                                                                            \
-    AsdOps::GroupTopkTilingData tilingData;                                                                            \
-    InitTilingData(tiling, &(tilingData))
-
 template <typename T, GroupMultiFlag GROUP_FLAG>
 __aicore__ inline void group_topk_impl(GM_ADDR topKInput, GM_ADDR idxArr, AsdOps::GroupTopkTilingData &tilingData)
 {
@@ -583,7 +579,8 @@ __aicore__ inline void single_value_group_topk_impl(GM_ADDR topKInput, GM_ADDR i
 
 extern "C" __global__ __aicore__ void group_topk(GM_ADDR topKInput, GM_ADDR idxArr, GM_ADDR topKOutput, GM_ADDR tiling)
 {
-    GET_TILING_DATA(tiling, tilingData);
+    AsdOps::GroupTopkTilingData tilingData;
+    InitTilingData(tiling, &(tilingData));
     if (TILING_KEY_IS(20000000000)) {
         group_topk_impl<half, GroupMultiFlag::UNDEFINED>(topKInput, idxArr, tilingData);
     } else if (TILING_KEY_IS(20000000010)) {

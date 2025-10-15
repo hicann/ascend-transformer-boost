@@ -44,15 +44,12 @@ inline __aicore__ void InitTilingData(const __gm__ uint8_t *p_tilingdata,
 #endif
 }
 
-#define GET_TILING_DATA(tiling_data, tiling_arg)           \
-    AsdOps::RmsNormForwardTilingData tiling_data;          \
-    InitTilingData(tiling_arg, &(tiling_data))
-
 extern "C" __global__ __aicore__ void rms_norm_forward(GM_ADDR x, GM_ADDR gamma,
                                                        GM_ADDR y,
                                                        GM_ADDR rstd, GM_ADDR tiling)
 {
-    GET_TILING_DATA(tilingData, tiling);
+    AsdOps::RmsNormForwardTilingData tilingData;
+    InitTilingData(tiling, &(tilingData));
     if (TILING_KEY_IS(10)) { // 进入half分支
         KernelRmsNorm<half> op;
         op.Init(x, gamma, y, rstd, tilingData.numRow, tilingData.numCol, tilingData.blockFactor,

@@ -103,7 +103,7 @@ atb::Status aclTensorToAtbTensorHost(const aclTensor *aclTensorSrc, atb::Tensor 
         ATB_LOG(ERROR) << "The size of a tensor * dataTypeSize should be no more than 256GB, but got tensor size: "
                        << tensorSize;
     }
-    atbTensorDst->dataSize = tensorSize * dataTypeSize;
+    atbTensorDst->dataSize = static_cast<uint64_t>(tensorSize) * static_cast<uint64_t>(dataTypeSize);
     delete[] dims;
     return atb::NO_ERROR;
 }

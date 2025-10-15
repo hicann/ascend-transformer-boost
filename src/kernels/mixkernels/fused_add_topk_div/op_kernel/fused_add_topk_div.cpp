@@ -45,10 +45,6 @@ inline __aicore__ void InitTilingData(const __gm__ uint8_t *p_tilingdata, AtbOps
     AscendC::PipeBarrier<PIPE_ALL>();
 }
 
-#define GET_TILING_DATA(tilingData, tiling_arg, pipe)                                                      \
-    AtbOps::FusedAddTopkDivTilingData tilingData;                                                          \
-    InitTilingData(tiling_arg, &(tilingData), &(pipe))
-
 extern "C" __global__ __aicore__ void fused_add_topk_div(GM_ADDR x, GM_ADDR addNum,
                                                          GM_ADDR mappingNum, GM_ADDR mappingTable, GM_ADDR y,
                                                          GM_ADDR indices, GM_ADDR workspace, GM_ADDR tiling)
@@ -58,7 +54,8 @@ extern "C" __global__ __aicore__ void fused_add_topk_div(GM_ADDR x, GM_ADDR addN
         return;
     }
     TPipe pipe;
-    GET_TILING_DATA(tilingData, tiling, pipe);
+    AtbOps::FusedAddTopkDivTilingData tilingData;
+    InitTilingData(tiling, &(tilingData), &(pipe));
     KERNEL_TASK_TYPE_DEFAULT(KERNEL_TYPE_AIV_ONLY);
     if (TILING_KEY_IS(0)) {
         FusedAddTopkDiv<float, float, 0> op;

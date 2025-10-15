@@ -273,7 +273,8 @@ public:
         auto blockDim = PlatformInfo::Instance().GetCoreNum(CoreType::CORE_TYPE_CUBE);
         MKI_CHECK(batch > 0 && batch <= ND_BATCH_LIMIT, "batch is invalid", return 0);
         auto shareBlockTiling =
-            ((static_cast<int64_t>(batch) * kvHead + blockDim - 1) / blockDim + 1) * RELAY_BLOCK_TILING;
+            ((static_cast<int64_t>(batch) * kvHead + blockDim - 1) / static_cast<int64_t>(blockDim) + 1) *
+            RELAY_BLOCK_TILING;
         uint64_t bufferSize =
             Utils::RoundUp(launchBufferSize_ + (shareBlockTiling * blockDim +
                            TILING_PARA_SIZE * (batch - 1)) * sizeof(uint32_t), TILINGMIN);
