@@ -345,7 +345,7 @@ Status InitInfo(MLAInfo &mmInfo, OpParam::MLA &param)
     SVector<int64_t> kcacheShape;
     SVector<int64_t> vcacheShape;
     kcacheShape = mmInfo.tensors.kCache.desc.dims;
-    int64_t queryDim = mmInfo.tensors.query.desc.dims.size();
+    int64_t queryDim = static_cast<int64_t>(mmInfo.tensors.query.desc.dims.size());
     int32_t embed = 0; // headdim
     if (queryDim == DIM_3) {
         embed = (mmInfo.tensors.query.desc.dims).at(2) +
@@ -374,7 +374,7 @@ Status GenMlaPrefillTilingKey(MLAInfo &mmInfo, KernelInfo &kernelInfo, OpParam::
 {
     // currently only support fp16/bf16 maskfree prefill or bf16 prefill kernel
     uint32_t dataType = static_cast<uint32_t>(mmInfo.type);
-    uint32_t tilingKey = dataType + (static_cast<bool>(mmInfo.maskType) << NUM1);
+    uint32_t tilingKey = dataType + (static_cast<uint32_t>(mmInfo.maskType) << NUM1);
     kernelInfo.SetTilingId(tilingKey);
     MKI_LOG(INFO) << "MLA Prefill TILING KEY IS = " << tilingKey;
     return Status::OkStatus();

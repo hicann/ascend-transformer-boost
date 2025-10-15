@@ -42,14 +42,10 @@ inline __aicore__ void InitTilingData(const __gm__ uint8_t *p_tilingdata, SwiGlu
 #endif
 }
 
-#define GET_TILING_DATA(tiling_data, tiling_arg)                                                                       \
-    SwiGluBackwardTilingData tiling_data;                                                                              \
-    InitTilingData(tiling_arg, &(tiling_data))
-
 extern "C" __global__ __aicore__ void swiglu_backward(GM_ADDR gradout_gm, GM_ADDR input_gm, GM_ADDR output_gm,
                                                       GM_ADDR tiling) {
-    GET_TILING_DATA(tiling_data, tiling);
-
+    SwiGluBackwardTilingData tiling_data;
+    InitTilingData(tiling, &(tiling_data));
     if (TILING_KEY_IS(1)) { // 1代表fp16 type
         SwigluBackward<half, half> op;
         op.Init(gradout_gm, input_gm, output_gm, tiling_data);

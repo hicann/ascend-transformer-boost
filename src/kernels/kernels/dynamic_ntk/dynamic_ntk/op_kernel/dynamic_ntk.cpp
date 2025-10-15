@@ -49,12 +49,6 @@ inline __aicore__ void InitTilingData(const __gm__ uint8_t *p_tilingdata, AsdOps
 #endif
 }
 
-
-#define GET_TILING_DATA(tiling_data, tiling_arg)    \
-    AsdOps::DynamicNTKTilingData tiling_data;      \
-    InitTilingData((tiling_arg), &(tiling_data))
-
-
 extern "C" __global__ __aicore__ void dynamic_ntk(GM_ADDR positionIds,
                                                   GM_ADDR invFreqs,
                                                   GM_ADDR seqLens,
@@ -63,7 +57,8 @@ extern "C" __global__ __aicore__ void dynamic_ntk(GM_ADDR positionIds,
                                                   GM_ADDR workspace,
                                                   GM_ADDR tiling)
 {
-    GET_TILING_DATA(tilingDataIn, tiling);
+    AsdOps::DynamicNTKTilingData tilingDataIn;
+    InitTilingData(tiling, &(tilingDataIn));
     const AsdOps::DynamicNTKTilingData *__restrict tilingData = &tilingDataIn;
 
     TPipe tPipe;

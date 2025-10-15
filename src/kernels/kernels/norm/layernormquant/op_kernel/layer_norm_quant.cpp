@@ -505,14 +505,11 @@ inline __aicore__ void InitTilingData(const __gm__ uint8_t *p_tilingdata, AsdOps
 #endif
 }
 
-#define GET_TILING_DATA(tilingArg, tilingData)                                                                         \
-    AsdOps::LayerNormQuantTilingData tilingData;                                                                       \
-    InitTilingData(tilingArg, &(tilingData))
-
 extern "C" __global__ __aicore__ void layer_norm_quant(GM_ADDR x, GM_ADDR gamma, GM_ADDR beta, GM_ADDR scale,
                                                        GM_ADDR offset, GM_ADDR z, GM_ADDR tiling)
 {
-    GET_TILING_DATA(tiling, tilingData);
+    AsdOps::LayerNormQuantTilingData tilingData;
+    InitTilingData(tiling, &(tilingData));
     if (TILING_KEY_IS(2000000000)) { // half & SliceCompute
         KernelLayerNormQuant<half, false> op;
         op.Init(x, gamma, beta, scale, offset, z, tilingData);
