@@ -491,14 +491,11 @@ inline __aicore__ void InitTilingData(const __gm__ uint8_t *p_tilingdata, AsdOps
 #endif
 }
 
-#define GET_TILING_DATA(tilingArg, tilingData)                                                                        \
-    AsdOps::LayerNormStrideTilingData tilingData;                                                                     \
-    InitTilingData(tilingArg, &(tilingData))
-
 extern "C" __global__ __aicore__ void layer_norm_stride(GM_ADDR x, GM_ADDR gamma, GM_ADDR beta,
                                                         GM_ADDR z, GM_ADDR tiling)
 {
-    GET_TILING_DATA(tiling, tilingData);
+    AsdOps::LayerNormStrideTilingData tilingData;
+    InitTilingData(tiling, &(tilingData));
     if (TILING_KEY_IS(2000000000)) { // half & SliceCompute
         KernelLayerNormStride<half, false> op;
         op.Init(x, gamma, beta, z, tilingData);

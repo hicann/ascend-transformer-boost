@@ -38,4 +38,41 @@
 #include "asdops/params/logprobs.h"
 #include "asdops/params/faUpdate.h"
 #include "asdops/params/moe_gate_corr.h"
+
+namespace AsdOps {
+namespace OpParam {
+class AllParams {
+    AsdOps::OpParam::Activation activation;
+    AsdOps::OpParam::AsStrided asStrided;
+    AsdOps::OpParam::Concat concat;
+    AsdOps::OpParam::Copy copy;
+    AsdOps::OpParam::Cumsum cumsum;
+    AsdOps::OpParam::Elewise elewise;
+    AsdOps::OpParam::Expand expand;
+    AsdOps::OpParam::Fill fill;
+    AsdOps::OpParam::Gather gather;
+    AsdOps::OpParam::Index index;
+    AsdOps::OpParam::MatMul matMul;
+    AsdOps::OpParam::Multinomial multinomial;
+    AsdOps::OpParam::Norm norm;
+    AsdOps::OpParam::Onehot onehot;
+    AsdOps::OpParam::Reduce reduce;
+    AsdOps::OpParam::Reverse reverse;
+    AsdOps::OpParam::Slice slice;
+    AsdOps::OpParam::Sort sort;
+    AsdOps::OpParam::Split split;
+    AsdOps::OpParam::Softmax softmax;
+    AsdOps::OpParam::Transdata transdata;
+    AsdOps::OpParam::Transpose transpose;
+    AsdOps::OpParam::DynamicNTK dynamicNTK;
+    AsdOps::OpParam::GroupTopk groupTopk;
+    AsdOps::OpParam::ZerosLike zerosLike;
+    AsdOps::OpParam::ScatterElementsV2 scatterElementsV2;
+    AsdOps::OpParam::LogprobsSample logprobsSample;
+    AsdOps::OpParam::FaUpdate faUpdate;
+    AsdOps::OpParam::MoeGateCorr moeGateCorr;
+};
+} // namespace OpParam
+} // namespace AsdOps
+
 #endif

@@ -45,17 +45,13 @@ inline __aicore__ void InitTilingData(const __gm__ uint8_t *p_tilingdata,
 #endif
 }
 
-#define GET_TILING_DATA(tiling_data, tiling_arg)        \
-    AsdOps::RmsNormGradTilingData tiling_data;          \
-    InitTilingData(tiling_arg, &(tiling_data))
-
 extern "C" __global__ __aicore__ void rms_norm_backward(GM_ADDR dy, GM_ADDR x,
                                                         GM_ADDR rstd, GM_ADDR gamma,
                                                         GM_ADDR dx,
                                                         GM_ADDR dgamma, GM_ADDR workspace, GM_ADDR tiling)
 {
-    GET_TILING_DATA(tilingData, tiling);
-
+    AsdOps::RmsNormGradTilingData tilingData;
+    InitTilingData(tiling, &(tilingData));
     if (TILING_KEY_IS(121)) { // 进入FLOAT_SPLITN 分支
         RmsNormGradSplitN<float> rms_norm_grad_split_n;
         rms_norm_grad_split_n.Init(dy, x, rstd, gamma, dx, dgamma, workspace, &tilingData);

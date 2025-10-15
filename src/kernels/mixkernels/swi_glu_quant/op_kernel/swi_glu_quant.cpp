@@ -32,17 +32,14 @@ inline __aicore__ void InitTilingData(const __gm__ uint8_t *p_tilingdata, AtbOps
     AscendC::PipeBarrier<PIPE_ALL>();
 }
 
-#define GET_TILING_DATA(tiling_data, tiling_arg, pipe)                                                                 \
-    AtbOps::SwiGluQuantTilingData tiling_data;                                                                         \
-    InitTilingData(tiling_arg, &(tiling_data), &(pipe))
-
 extern "C" __global__ __aicore__ void swi_glu_quant(GM_ADDR x, GM_ADDR y, GM_ADDR scale, GM_ADDR tiling)
 {
 #if defined(__CCE_KT_TEST__) || (__CCE_AICORE__ == 220)
     PRELOAD(3);
 #endif
     AscendC::TPipe pipe;
-    GET_TILING_DATA(tiling_data, tiling, pipe);
+    AtbOps::SwiGluQuantTilingData tiling_data;
+    InitTilingData(tiling, &(tiling_data), &(pipe));
     if (TILING_KEY_IS(106)) {
         SwiGluQuant<half, int8_t> op(&pipe);
         op.Init(x, y, scale, &tiling_data);

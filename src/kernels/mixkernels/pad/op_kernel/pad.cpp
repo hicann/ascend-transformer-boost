@@ -129,16 +129,13 @@ inline __aicore__ void InitTilingData(const __gm__ uint8_t *p_tilingdata, AtbOps
 #endif
 }
 
-#define GET_TILING_DATA(tiling_data, tiling_arg)    \
-    AtbOps::PadTilingData tiling_data;      \
-    InitTilingData(tiling_arg, &(tiling_data))
-
 extern "C" __global__ __aicore__ void pad(GM_ADDR tmpOut,
                                           GM_ADDR paddingOffset, GM_ADDR seqLen,
                                           GM_ADDR inputIds, GM_ADDR out,
                                           GM_ADDR workspace, GM_ADDR tiling)
 {
-    GET_TILING_DATA(tilingData, tiling);
+    AtbOps::PadTilingData tilingData;
+    InitTilingData(tiling, &(tilingData));
     KernelPad op;
     op.Init(tmpOut, paddingOffset, seqLen, inputIds,
             out, tilingData.padLength, tilingData.batch, tilingData.hiddenDim);

@@ -172,7 +172,8 @@ extern "C" __global__ __aicore__ void reshape_and_cache_omni_compress(
     GM_ADDR winsIn, GM_ADDR seqLenIn, GM_ADDR offsetIdx, GM_ADDR keyCacheOut, GM_ADDR valueCacheOut, GM_ADDR tiling)
 {
     AscendC::TPipe pipe;
-    GET_TILING_DATA(tilingData, tiling);
+    ReshapeAndCacheTilingData tilingData;
+    InitTilingData(tiling, &(tilingData));
     if (TILING_KEY_IS(350000000)) {
         ReshapeAndCacheOmniCompress<bfloat16_t> op;
         op.Init(&pipe, &tilingData);

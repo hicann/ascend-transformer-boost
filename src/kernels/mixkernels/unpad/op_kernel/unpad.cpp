@@ -207,15 +207,12 @@ inline __aicore__ void InitTilingData(const __gm__ uint8_t *p_tilingdata, AtbOps
 #endif
 }
 
-#define GET_TILING_DATA(tiling_data, tiling_arg) \
-    AtbOps::UnpadTilingData tiling_data;         \
-    InitTilingData(tiling_arg, &(tiling_data))
-
 extern "C" __global__ __aicore__ void unpad(GM_ADDR input_ids,
     GM_ADDR cum_offsets_now, GM_ADDR token_num, GM_ADDR seq_len, GM_ADDR x_remove_padding,
     GM_ADDR cum_offsets_out, GM_ADDR padding_offset, GM_ADDR workspace, GM_ADDR tiling)
 {
-    GET_TILING_DATA(tilingData, tiling);
+    AtbOps::UnpadTilingData tilingData;
+    InitTilingData(tiling, &(tilingData));
     KernelUnpad op;
     op.Init(input_ids, cum_offsets_now, token_num, seq_len,
             x_remove_padding, cum_offsets_out, padding_offset, tilingData.padLength, tilingData.batch);

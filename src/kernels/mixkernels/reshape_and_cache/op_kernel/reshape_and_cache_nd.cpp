@@ -149,37 +149,43 @@ extern "C" __global__ __aicore__ void reshape_and_cache(
 {
     AscendC::TPipe pipe;
     if (TILING_KEY_IS(100000000)) {
-        GET_TILING_DATA(tilingData, tiling);
+        ReshapeAndCacheTilingData tilingData;
+        InitTilingData(tiling, &(tilingData));
         ReshapeAndCacheNd<int8_t> op;
         op.Init(&pipe, &tilingData);
         op.ProcessKVEqual(keyIn, valueIn, keyCacheIn, valueCacheIn, slotMapping, keyCacheOut, valueCacheOut);
     }
     if (TILING_KEY_IS(101000000)) {
-        GET_TILING_DATA(tilingData, tiling);
+        ReshapeAndCacheTilingData tilingData;
+        InitTilingData(tiling, &(tilingData));
         ReshapeAndCacheNd<int8_t> op;
         op.Init(&pipe, &tilingData);
         op.ProcessKVUnequalIncrement(keyIn, valueIn, keyCacheIn, valueCacheIn, slotMapping, keyCacheOut, valueCacheOut);
     }
     if (TILING_KEY_IS(102000000)) {
-        GET_TILING_DATA(tilingData, tiling);
+        ReshapeAndCacheTilingData tilingData;
+        InitTilingData(tiling, &(tilingData));
         ReshapeAndCacheNd<int8_t> op;
         op.Init(&pipe, &tilingData);
         op.ProcessKVUnequal(keyIn, valueIn, keyCacheIn, valueCacheIn, slotMapping, keyCacheOut, valueCacheOut);
     }
     if (TILING_KEY_IS(200000000)) {
-        GET_TILING_DATA(tilingData, tiling);
+        ReshapeAndCacheTilingData tilingData;
+        InitTilingData(tiling, &(tilingData));
         ReshapeAndCacheNd<half> op;
         op.Init(&pipe, &tilingData);
         op.ProcessKVEqual(keyIn, valueIn, keyCacheIn, valueCacheIn, slotMapping, keyCacheOut, valueCacheOut);
     }
     if (TILING_KEY_IS(201000000)) {
-        GET_TILING_DATA(tilingData, tiling);
+        ReshapeAndCacheTilingData tilingData;
+        InitTilingData(tiling, &(tilingData));
         ReshapeAndCacheNd<half> op;
         op.Init(&pipe, &tilingData);
         op.ProcessKVUnequalIncrement(keyIn, valueIn, keyCacheIn, valueCacheIn, slotMapping, keyCacheOut, valueCacheOut);
     }
     if (TILING_KEY_IS(202000000)) {
-        GET_TILING_DATA(tilingData, tiling);
+        ReshapeAndCacheTilingData tilingData;
+        InitTilingData(tiling, &(tilingData));
         ReshapeAndCacheNd<half> op;
         op.Init(&pipe, &tilingData);
         op.ProcessKVUnequal(keyIn, valueIn, keyCacheIn, valueCacheIn, slotMapping, keyCacheOut, valueCacheOut);

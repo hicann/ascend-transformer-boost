@@ -429,10 +429,6 @@ inline __aicore__ void InitTilingData(const __gm__ uint8_t *pTilingdata, AsdOps:
 #endif
 }
 
-#define GET_TILING_DATA(tilingData, tilingArg)                                                                       \
-    AsdOps::GatherPreRmsNormTilingData tilingData;                                                                  \
-    InitTilingData((tilingArg), &(tilingData))
-
 extern "C" __global__ __aicore__ void gather_pre_rms_norm(GM_ADDR x, GM_ADDR rIn, GM_ADDR indices, GM_ADDR g,
     GM_ADDR y, GM_ADDR rOut, GM_ADDR tiling)
 {
@@ -440,7 +436,8 @@ extern "C" __global__ __aicore__ void gather_pre_rms_norm(GM_ADDR x, GM_ADDR rIn
     PRELOAD(3);  // icache预取, 减少icache miss
 #endif
     AscendC::TPipe pipe;
-    GET_TILING_DATA(tilingData, tiling);
+    AsdOps::GatherPreRmsNormTilingData tilingData;
+    InitTilingData(tiling, &(tilingData));
     if (TILING_KEY_IS(100)) { // fp16, no slice, small indices
         GatherPreRmsnormSmallIndices<half> kernel(&pipe, x, rIn, indices, g, y, rOut, tilingData);
         kernel.Launch();

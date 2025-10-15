@@ -10,8 +10,6 @@
  * See the Mulan PSL v2 for more details.
  */
 #include "zeroslike_tiling.h"
-
-#include "asdops/params/zeroslike.h"
 #include "mki/types.h"
 #include "mki/utils/SVector/SVector.h"
 #include "mki/utils/assert/assert.h"

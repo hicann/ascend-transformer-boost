@@ -118,13 +118,15 @@ extern "C" __global__ __aicore__ void post_layer_norm_quant(GM_ADDR x, GM_ADDR g
 {
     if (TILING_KEY_IS(0)) {
         PostLayerNormQuant<true> op;
-        GET_TILING_DATA(tiling_data, tiling);
+        AsdOps::PostLayerNormTilingData tiling_data;
+        InitTilingData(tiling, &(tiling_data));
         op.Init(x, gamma, beta, res_in, scale, offset, z, res, tiling_data);
         op.Process();
     }
     if (TILING_KEY_IS(1)) {
         PostLayerNormQuant<false> op;
-        GET_TILING_DATA(tiling_data, tiling);
+        AsdOps::PostLayerNormTilingData tiling_data;
+        InitTilingData(tiling, &(tiling_data));
         op.Init(x, gamma, beta, res_in, scale, offset, z, res, tiling_data);
         op.Process();
     }
