@@ -113,27 +113,25 @@ inline __aicore__ LcalWorkspaceInfo GetLcalWorkspaceInfo(GM_ADDR gmWorkSpace, in
 
     if (hasAAlign) {
         lcalWorkspaceInfo.gm_a_align = workspaceOffset;
-        workspaceOffset +=
-            static_cast<uint64_t>(batchSize) * (transa ? k * mAlign : m * kAlign) * static_cast<uint32_t>(mmadSize);
+        workspaceOffset += static_cast<int64_t>(batchSize) * (transa ? k * mAlign : m * kAlign) * mmadSize;
     }
 
     if (hasBAlign) {
         lcalWorkspaceInfo.gm_b_align = workspaceOffset;
-        workspaceOffset += static_cast<uint64_t>(batchSize) * (transb ? n * kAlign : k * nAlign) *
-                           static_cast<uint32_t>(mmadSize) *
-                           static_cast<uint32_t>(expertPerRank <= 0 ? 1 : expertPerRank);
+        workspaceOffset += static_cast<int64_t>(batchSize) * (transb ? n * kAlign : k * nAlign) * mmadSize *
+                           (expertPerRank <= 0 ? 1 : expertPerRank);
     }
 
-    if (isMoe) {
+    if (static_cast<bool>(isMoe)) {
         GetLcalMoeWorkspaceInfo(lcalWorkspaceInfo, workspaceOffset, m, hasDequantParam, is_alltoallvc, EP,
                                 expertPerRank, outputSize);
     }
 
-    if (!isMoe && hasDequantParam) {
+    if (!static_cast<bool>(isMoe) && hasDequantParam) {
         lcalWorkspaceInfo.gm_dequant_param = workspaceOffset;
         workspaceOffset += sizeof(int32_t) * AlignUp(n, ALIGN8);
     }
-    
+
     if (hasFormatDequantScale) {
         lcalWorkspaceInfo.gm_formate_dequant_scale = workspaceOffset;
         workspaceOffset += sizeof(float) * AlignUp(n, ALIGN8);
@@ -141,7 +139,7 @@ inline __aicore__ LcalWorkspaceInfo GetLcalWorkspaceInfo(GM_ADDR gmWorkSpace, in
 
     if (hasAccum) {
         lcalWorkspaceInfo.gm_accum = workspaceOffset;
-        workspaceOffset += dequantWorkSpaceSize;
+        workspaceOffset += static_cast<int64_t>(dequantWorkSpaceSize);
     }
     lcalWorkspaceInfo.workspaceSize = workspaceOffset;
     return lcalWorkspaceInfo;

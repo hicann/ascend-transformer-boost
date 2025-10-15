@@ -260,15 +260,12 @@ inline __aicore__ void InitTilingData(const __gm__ uint8_t *p_tilingdata, AsdOps
     tilingdata->valueSize = (*(const __gm__ uint32_t *)(p_tilingdata + 8));
 }
 
-#define GET_TILING_DATA(tiling_arg, tiling_data)                                                            \
-    AsdOps::IndexAddValidTilingData tiling_data;                                                            \
-    InitTilingData(tiling_arg, &(tiling_data))
-
 // 核函数
 extern "C" __global__ __aicore__ void index_add_valid(GM_ADDR var, GM_ADDR indices, GM_ADDR updates,
                                                  GM_ADDR validIndicesNum, GM_ADDR var_out, GM_ADDR workspace,
                                                  GM_ADDR tiling) {
-    GET_TILING_DATA(tiling, tiling_data);
+    AsdOps::IndexAddValidTilingData tiling_data;
+    InitTilingData(tiling, &(tiling_data));
 #if defined(__CCE_KT_TEST__) || (__CCE_AICORE__ == 220)
     if (TILING_KEY_IS(2000000000)) { // half
                 IndexAddValid<half> op;

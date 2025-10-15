@@ -283,7 +283,8 @@ private:
 extern "C" __global__ __aicore__ void quant_per_channel(
     GM_ADDR x, GM_ADDR scale, GM_ADDR offset, GM_ADDR y, GM_ADDR tiling)
 {
-    GET_TILING_DATA(tilingData, tiling);
+    BroadcastTilingData tilingData;
+    InitTilingData(tiling, &(tilingData));
     if (TILING_KEY_IS(2000000000)) {
         // per tensor, no offset, -128, fp16
         QuantPerTensorKernel<half, false, false> op;

@@ -57,7 +57,8 @@ private:
 extern "C" __global__ __aicore__ void layer_norm_dynamic_quant(GM_ADDR x, GM_ADDR g, GM_ADDR b,
     GM_ADDR y, GM_ADDR scale, GM_ADDR offset, GM_ADDR tiling)
 {
-    GET_TILING_DATA(tilingData, tiling);
+    AsdOps::NormDynamicQuantTilingData tilingData;
+    InitTilingData((tiling), &(tilingData));
     if (TILING_KEY_IS(2000000000)) {
         LayerNormDynamicQuant<true> op;
         op.Init(x, g, b, y, scale, offset, tilingData);

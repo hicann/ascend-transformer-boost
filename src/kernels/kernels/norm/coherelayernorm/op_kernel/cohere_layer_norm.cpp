@@ -392,13 +392,10 @@ inline __aicore__ void InitTilingData(const __gm__ uint8_t *p_tilingdata, AsdOps
 #endif
 }
 
-#define GET_TILING_DATA(tilingArg, tilingData)                                                                         \
-    AsdOps::CohereLayerNormTilingData tilingData;                                                                      \
-    InitTilingData(tilingArg, &(tilingData))
- 
 extern "C" __global__ __aicore__ void cohere_layer_norm(GM_ADDR x, GM_ADDR gamma, GM_ADDR y, GM_ADDR tiling)
 {
-    GET_TILING_DATA(tiling, tilingData);
+    AsdOps::CohereLayerNormTilingData tilingData;
+    InitTilingData(tiling, &(tilingData));
     if (TILING_KEY_IS(2000000000)) { // half & multiple row move
         CohereLayerNorm<half, g_multipleRowMove> op(x, gamma, y, tilingData);
         op.Launch();

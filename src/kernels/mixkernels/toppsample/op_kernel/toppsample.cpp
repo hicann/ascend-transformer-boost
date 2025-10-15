@@ -398,14 +398,11 @@ inline __aicore__ void InitTilingData(const __gm__ uint8_t *p_tilingdata, AtbOps
 #endif
 }
 
-#define GET_TILING_DATA(tiling_data, tiling_arg)                                                                       \
-    AtbOps::ToppsampleTilingData tiling_data;                                                                          \
-    InitTilingData((tiling_arg), &(tiling_data))
-
 extern "C" __global__ __aicore__ void toppsample(GM_ADDR cumsumed_probs, GM_ADDR topp, GM_ADDR select_index,
                                                  GM_ADDR select_range, GM_ADDR workspace, GM_ADDR tiling)
 {
-    GET_TILING_DATA(tiling_data, tiling);
+    AtbOps::ToppsampleTilingData tiling_data;
+    InitTilingData((tiling), &(tiling_data));
     if (TILING_KEY_IS(1)) {
         KernelToppsample<false, half> op;
         op.Init(cumsumed_probs, topp, select_index, select_range, tiling_data);

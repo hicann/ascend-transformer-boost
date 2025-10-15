@@ -348,7 +348,4 @@ inline __aicore__ void InitTilingData(const __gm__ uint8_t *p_tilingdata, T *til
 #endif
 }
 
-#define GET_TILING_DATA(tilingData, tilingArg)    \
-    ReshapeAndCacheTilingData tilingData;               \
-    InitTilingData(tilingArg, &(tilingData))
 #endif

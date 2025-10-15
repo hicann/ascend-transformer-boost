@@ -35,17 +35,14 @@ inline __aicore__ void InitTilingData(const __gm__ uint8_t *p_tilingdata, AtbOps
 
     AscendC::PipeBarrier<PIPE_ALL>();
 }
- 
-#define GET_TILING_DATA(tiling_data, tiling_arg, pipe)    \
-    AtbOps::RopeQConcatTilingData tiling_data; \
-    InitTilingData(tiling_arg, &(tiling_data), &(pipe))
 
 extern "C" __global__ __aicore__ void rope_q_concat(GM_ADDR q, GM_ADDR cos, GM_ADDR sin, GM_ADDR concatInput,
                                                     GM_ADDR ropeQConcat, GM_ADDR tiling)
 {
     PRELOAD(2);
     AscendC::TPipe pipe;
-    GET_TILING_DATA(tiling_data, tiling, pipe);
+    AtbOps::RopeQConcatTilingData tiling_data;
+    InitTilingData(tiling, &(tiling_data), &(pipe));
     if (TILING_KEY_IS(20)) {
         RopeFp16<half, half, false> ropeFp16(&tiling_data, &pipe);
         ropeFp16.RopeInitGm(q, cos, sin, concatInput, ropeQConcat);

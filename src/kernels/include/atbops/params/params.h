@@ -45,4 +45,48 @@
 #include "atbops/params/ring_mla.h"
 #include "atbops/params/gmm_deq_swiglu_quant_gmm_deq.h"
 #include "atbops/params/mm_deq_swiglu_quant_mm_deq.h"
+
+namespace AtbOps {
+namespace OpParam {
+class AllParams {
+    size_t dim_0 = DIM_0;
+    AtbOps::OpParam::FastSoftMax fastSoftMax;
+    AtbOps::OpParam::FastSoftMaxGrad fastSoftMaxGrad;
+    AtbOps::OpParam::FFN ffn;
+    AtbOps::OpParam::FusedAddTopkDiv fusedAddTopkDiv;
+    AtbOps::OpParam::Gating gating;
+    AtbOps::OpParam::GenAttentionMask genAttentionMask;
+    AtbOps::OpParam::KVCache kvCache;
+    AtbOps::OpParam::LaserAttention laserAttention;
+    AtbOps::OpParam::LaserAttentionGrad laserAttentionGrad;
+    AtbOps::OpParam::Pad pad;
+    AtbOps::OpParam::PadWithHiddenState padWithHiddenState;
+    AtbOps::OpParam::PagedAttention pagedAttention;
+    AtbOps::OpParam::ReshapeAndCache reshapeAndCache;
+    AtbOps::OpParam::PagedCacheLoad pagedCacheLoad;
+    AtbOps::OpParam::RopeGrad ropeGrad;
+    AtbOps::OpParam::Rope rope;
+    AtbOps::OpParam::StridedBatchMatmul stridedBatchMatmul;
+    AtbOps::OpParam::Toppsample toppsample;
+    AtbOps::OpParam::ToppsampleRand toppsampleRand;
+    AtbOps::OpParam::UnpadFlashAttentionNz unpadFlashAttentionNz;
+    AtbOps::OpParam::UnpadFlashAttention unpadFlashAttention;
+    AtbOps::OpParam::UnpadWithHiddenState unpadWithHiddenState;
+    AtbOps::OpParam::Unpad unpad;
+    AtbOps::OpParam::BlockCopy blockCopy;
+    AtbOps::OpParam::MoeGmm moeGmm;
+    AtbOps::OpParam::GmmAdd gmmAdd;
+    AtbOps::OpParam::RopeQConcat ropeQConcat;
+    AtbOps::OpParam::SwigluQuant swigluQuant;
+    AtbOps::OpParam::RmsNormAndRopeAndReshapeAndCache rmsNormAndRopeAndReshapeAndCache;
+    AtbOps::OpParam::MlaPreprocess mlaPreprocess;
+    AtbOps::OpParam::MLA mla;
+    AtbOps::OpParam::Fusion fusion;
+    AtbOps::OpParam::RINGMLA ringmla;
+    AtbOps::OpParam::GmmDeqSwigluQuantGmmDeq gmmDeqSwigluQuantGmmDeq;
+    AtbOps::OpParam::MmDeqSwigluQuantMmDeq mmDeqSwigluQuantMmDeq;
+};
+} // namespace OpParam
+} // namespace AtbOps
+
 #endif

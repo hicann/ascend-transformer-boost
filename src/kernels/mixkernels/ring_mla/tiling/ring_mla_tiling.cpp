@@ -266,7 +266,7 @@ void MLAPrefillFillInfo(RINGMLAInfo &mmInfo, OpParam::RINGMLA &param, size_t bat
     mmInfo.isTriuMask = param.isTriuMask;
     mmInfo.kTensorList = param.kTensorList;
     mmInfo.vTensorList = param.vTensorList;
-    mmInfo.maskType = static_cast<uint32_t>(param.maskType);
+    mmInfo.maskType = static_cast<int32_t>(param.maskType);
     mmInfo.quantType = static_cast<uint32_t>(param.quantType);
     mmInfo.isRing = static_cast<uint32_t>(param.isRing);
 }

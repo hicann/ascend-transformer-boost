@@ -10,6 +10,8 @@
 #include <cstring>
 #include <climits>
 #include <fstream>
+#include <unistd.h>
+#include <climits>
 #include <sys/stat.h>
 #include <mki/base/operation_base.h>
 #include <mki/types.h>
@@ -58,11 +60,15 @@ public:
         if (Mki::CheckNameValid(path, 256)) { // 256: 最大路径路径长度
             MKI_LOG(ERROR) << "path is invalid, please check the path: " << path;
         }
-        if (IsSoftLink(path.c_str())) {
-            MKI_LOG(ERROR) << "MatMulAddFusion CPP SHOULD NOT be a symbolic link ";
+        char resolvedPath[PATH_MAX] = {0};
+        if (realpath(path.c_str(), resolvedPath) == nullptr) {
+            MKI_LOG(ERROR) << "path resolve fail, please check the path: " << path;
+        }
+        if (IsSoftLink(resolvedPath)) {
+            MKI_LOG(ERROR) << "MatMulSigmoidFusion CPP SHOULD NOT be a symbolic link ";
             return;
         }
-        std::ifstream cpp(path.c_str());
+        std::ifstream cpp(resolvedPath);
         std::string line;
         uint32_t counter = 0;
         while (std::getline(cpp, line)) {
@@ -101,11 +107,15 @@ public:
         if (Mki::CheckNameValid(path, 256)) { // 256: 最大路径路径长度
             MKI_LOG(ERROR) << "path is invalid, please check the path: " << path;
         }
-        if (IsSoftLink(path.c_str())) {
-            MKI_LOG(ERROR) << "MatMulGeluFusion CPP SHOULD NOT be a symbolic link ";
+        char resolvedPath[PATH_MAX] = {0};
+        if (realpath(path.c_str(), resolvedPath) == nullptr) {
+            MKI_LOG(ERROR) << "path resolve fail, please check the path: " << path;
+        }
+        if (IsSoftLink(resolvedPath)) {
+            MKI_LOG(ERROR) << "MatMulSigmoidFusion CPP SHOULD NOT be a symbolic link ";
             return;
         }
-        std::ifstream cpp(path.c_str());
+        std::ifstream cpp(resolvedPath);
         std::string line;
         uint32_t counter = 0;
         while (std::getline(cpp, line)) {
@@ -144,11 +154,15 @@ public:
         if (Mki::CheckNameValid(path, 256)) { // 256: 最大路径路径长度
             MKI_LOG(ERROR) << "path is invalid, please check the path: " << path;
         }
-        if (IsSoftLink(path.c_str())) {
+        char resolvedPath[PATH_MAX] = {0};
+        if (realpath(path.c_str(), resolvedPath) == nullptr) {
+            MKI_LOG(ERROR) << "path resolve fail, please check the path: " << path;
+        }
+        if (IsSoftLink(resolvedPath)) {
             MKI_LOG(ERROR) << "MatMulSigmoidFusion CPP SHOULD NOT be a symbolic link ";
             return;
         }
-        std::ifstream cpp(path.c_str());
+        std::ifstream cpp(resolvedPath);
         std::string line;
         uint32_t counter = 0;
         while (std::getline(cpp, line)) {
@@ -187,11 +201,15 @@ public:
         if (Mki::CheckNameValid(path, 256)) { // 256: 最大路径路径长度
             MKI_LOG(ERROR) << "path is invalid, please check the path: " << path;
         }
-        if (IsSoftLink(path.c_str())) {
-            MKI_LOG(ERROR) << "MatMulSwigluFusion CPP SHOULD NOT be a symbolic link ";
+        char resolvedPath[PATH_MAX] = {0};
+        if (realpath(path.c_str(), resolvedPath) == nullptr) {
+            MKI_LOG(ERROR) << "path resolve fail, please check the path: " << path;
+        }
+        if (IsSoftLink(resolvedPath)) {
+            MKI_LOG(ERROR) << "MatMulSigmoidFusion CPP SHOULD NOT be a symbolic link ";
             return;
         }
-        std::ifstream cpp(path.c_str());
+        std::ifstream cpp(resolvedPath);
         std::string line;
         uint32_t counter = 0;
         while (std::getline(cpp, line)) {
