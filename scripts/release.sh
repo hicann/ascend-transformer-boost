@@ -247,6 +247,12 @@ function fn_build_tbe_dependency()
         echo "Failed to find api"
         exit 1
     fi
+    if [ ! -d "$API_DIR/lib" ];then
+        echo "Failed to find $API_DIR/lib"
+        exit 1
+    fi
+    rm -rf $API_DIR/tiling
+    cp -r $API_DIR/lib $API_DIR/tiling
     if [ ! -d "$CANN_OPS_DIR" ];then
         echo "Failed to find cann-ops-adv"
         exit 1
