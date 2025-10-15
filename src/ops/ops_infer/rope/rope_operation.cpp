@@ -25,6 +25,7 @@ static const int32_t OUT_TENSOR_NUM = 2;
 static const int32_t ROTARY_COEFF_TWO = 2;
 static const int32_t ROTARY_COEFF_FOUR = 4;
 static const int32_t PARAM_COS = 2;
+static const int32_t PARAM_SIN = 3;
 
 template <> Status CreateOperation(const infer::RopeParam &opParam, Operation **operation)
 {
@@ -98,7 +99,12 @@ Status RopeOperation::ParamCheck(const SVector<TensorDesc> &inTensorDescs) const
         ATB_LOG(ERROR) << GetLogPrefix() << "Wrong rotaryCoeff: " << param_.rotaryCoeff;
         return ERROR_INVALID_PARAM;
     }
-
+    if (inTensorDescs.at(PARAM_COS).shape.dims[1] % param_.rotaryCoeff != 0 || inTensorDescs.at(PARAM_SIN).shape.dims[1] % param_.rotaryCoeff != 0) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "rotaryCoeff:(" << param_.rotaryCoeff << ") is not divisible by COS dim[1](" <<
+        inTensorDescs.at(PARAM_COS).shape.dims[1] << ") or SIN dim[1](" <<
+        inTensorDescs.at(PARAM_SIN).shape.dims[1] << ")";
+        return ERROR_INVALID_PARAM;
+    }
     if (param_.cosFormat != 0 && param_.cosFormat != 1) {
         ATB_LOG(ERROR) << GetLogPrefix() << "Wrong Param, cosFormat: " << param_.cosFormat;
         return ERROR_INVALID_PARAM;
