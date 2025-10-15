@@ -972,6 +972,7 @@ public:
                             8,                             // src0RepeatStride
                             qk_round_n / FLOAT_BLOCK_SIZE  // src1RepeatStride
                         );
+                        PIPE_BARRIER(V);
                     }
                     if (qk_n % FLOAT_VECTOR_SIZE > 0) {
                         SetMask(qk_n % FLOAT_VECTOR_SIZE);
