@@ -6,13 +6,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        需求已确认，现需落地执行。请按以下模板填写，方便排期、估时与追踪。
-  - type: input
-    attributes:
-      label: 关联需求
-      description: 粘贴对应 Requirement issue 编号（如 #1234），便于回溯
-    validations:
-      required: true
+        需求已确认，现需落地执行，请按以下模板填写。
   - type: dropdown
     attributes:
       label: 任务类型
