@@ -219,25 +219,6 @@ function fn_build_pybind11()
     git clone --branch v2.10.3 --depth 1 https://github.com/pybind/pybind11.git
 }
 
-function fn_build_secodefuzz()
-{
-    FUZZ_DEST_PATH=$THIRD_PARTY_DIR/secodefuzz
-    if [ -d "$FUZZ_DEST_PATH/lib/" ]; then
-        return 0
-    fi
-    cd $CACHE_DIR
-    rm -rf secodefuzz
-    git clone -b v2.4.5 --depth=1 https://szv-open.codehub.huawei.com/innersource/Fuzz/secodefuzz.git
-    cd secodefuzz
-    mkdir build && cd build
-    cmake .. -DCMAKE_BUILD_TYPE=Release
-    cmake --build . --target Secodefuzz --parallel $(nproc)
-    mkdir -p $FUZZ_DEST_PATH/include
-    mkdir -p $FUZZ_DEST_PATH/lib
-    mv ../Secodefuzz/secodeFuzz.h $FUZZ_DEST_PATH/include
-    mv libSecodefuzz.a $FUZZ_DEST_PATH/lib
-}
-
 function fn_build_cann_dependency()
 {
     [[ -d "$THIRD_PARTY_DIR/compiler" ]] && rm -rf $THIRD_PARTY_DIR/compiler
@@ -854,7 +835,6 @@ function fn_main()
             TEST_TIME=30
             python3 $CODE_ROOT/tests/apitest/fuzztest/generate_operation_fuzz_test.py $CODE_ROOT $RANDOM_SEED $TEST_TIME
             fn_build_3rdparty_for_test
-            fn_build_secodefuzz
             fn_build
             fn_build_coverage
             ;;
