@@ -178,11 +178,11 @@ struct UbufAlloc<BlockStack::ONE_FLOW>
     static constexpr uint32_t ls32_ubuf_offset = 0;
     static constexpr uint32_t ls32_quant_ubuf_offset = 2 * UB_UINT8_BLOCK_SIZE_MLA;
     static constexpr uint32_t lp_ubuf_offset = 2 * UB_UINT8_BLOCK_SIZE_MLA;
-    static constexpr uint32_t mask32_ubuf_offset = 2 * UB_UINT8_BLOCK_SIZE_MLA;
     static constexpr uint32_t lp32_ubuf_offset = 2 * UB_UINT8_BLOCK_SIZE_MLA;
-    static constexpr uint32_t mask_ubuf_offset = 3 * UB_UINT8_BLOCK_SIZE_MLA;
+    static constexpr uint32_t mask_ubuf_offset = 2 * UB_UINT8_BLOCK_SIZE_MLA;
     static constexpr uint32_t lo_ubuf_ping_offset = 4 * UB_UINT8_BLOCK_SIZE_MLA;
     static constexpr uint32_t lo_ubuf_offset = 4 * UB_UINT8_BLOCK_SIZE_MLA;
+    static constexpr uint32_t mask32_ubuf_offset = 4 * UB_UINT8_BLOCK_SIZE_MLA;
     static constexpr uint32_t ls16_ubuf_offset = 4 * UB_UINT8_BLOCK_SIZE_MLA;
     static constexpr uint32_t lm32_ubuf_offset = 6 * UB_UINT8_BLOCK_SIZE_MLA;
     static constexpr uint32_t hm32_ubuf_offset = 6 * UB_UINT8_BLOCK_SIZE_MLA + 1 * UB_UINT8_LINE_SIZE;
@@ -2110,6 +2110,7 @@ private:
             AscendC::Cast<int8_t, half, false>(dst.template ReinterpretCast<int8_t>()[row_idx * HALF_VECTOR_SIZE],
                                                dst.template ReinterpretCast<half>()[row_idx * HALF_VECTOR_SIZE], AscendC::RoundMode::CAST_RINT,
                                                (uint64_t)0, sub_m, {1, 1, (uint8_t)((qk_round_n) / BLOCK_SIZE), (uint8_t)(qk_round_n / BLOCK_SIZE)});
+            PIPE_BARRIER(V);
         }
         if (qk_n % HALF_VECTOR_SIZE > 0) {
             __set_mask(qk_n % HALF_VECTOR_SIZE);
