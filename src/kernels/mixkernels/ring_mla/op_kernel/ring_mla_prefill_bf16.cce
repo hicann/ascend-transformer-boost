@@ -1788,6 +1788,7 @@ public:
             AscendC::Cast<int8_t, half, false>(lp_ubuf_tensor.ReinterpretCast<int8_t>()[row_idx * VectorSize<half>()],
                                                lp_ubuf_tensor.ReinterpretCast<half>()[row_idx * VectorSize<half>()], AscendC::RoundMode::CAST_RINT,
                                                (uint64_t)0, sub_m, {1, 1, (uint8_t)(qk_round_n / BlockSize<half>()), (uint8_t)(qk_round_n / BlockSize<half>())});
+            PIPE_BARRIER(V);
         }
         if (qk_n % VectorSize<half>() > 0) {
             __set_mask(qk_n % VectorSize<half>());
