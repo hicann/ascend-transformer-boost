@@ -67,19 +67,19 @@ def gen_seq_len(batch, max_seq, variate_seq=False):
         seqlen = seqlen_aligned - sp_list
         seqlen = seqlen[-batch:]
         seqlen_aligned = seqlen_aligned[-batch:]
-        print(seqlen)
+        logging.info(seqlen)
     else:
         max_seq_aligned = (max_seq + 15) // 16 * 16
         sp_list = np.ones((batch,)) * (max_seq_aligned - max_seq)
         sp_list = sp_list.astype(np.int32)
         seqlen = np.ones((batch,)) * max_seq
         seqlen = seqlen.astype(np.int32)
-        print(seqlen)
+        logging.info(seqlen)
         seqlen_aligned = np.ones((batch,)) * max_seq_aligned
         seqlen_aligned = seqlen_aligned.astype(np.int32)
 
     ntokens = seqlen.sum()
-    print("ntokens:", ntokens)
+    logging.info("ntokens:", ntokens)
     return seqlen, seqlen_aligned, ntokens
 
 def group_matmul(heads, group_num, A, B):
@@ -92,7 +92,7 @@ def group_matmul(heads, group_num, A, B):
             score = group_score
         else:
             score = np.concatenate((score, group_score), 0)
-    print(score.shape)
+    logging.info(score.shape)
     return score
 
 def gen_swa_cmp(window_size, embeddim):
@@ -138,8 +138,8 @@ class TestFlashAttention(operation_test.OperationTest):
         self.max_seq = max_seq
         src_type = 'float16'
         fp32 = True
-        print(f"group_num: {group_num}")
-        print("q_seq is:")
+        logging.info(f"group_num: {group_num}")
+        logging.info("q_seq is:")
         if is_decoder:
             q_seqlen, q_seqlen_aligned, q_ntokens = gen_seq_len(batch, 1, variate_seq)
             kv_seqlen, kv_seqlen_aligned, kv_ntokens = gen_seq_len(batch, seqlen, variate_seq)
@@ -148,7 +148,7 @@ class TestFlashAttention(operation_test.OperationTest):
             kv_seqlen, kv_seqlen_aligned, kv_ntokens = q_seqlen, q_seqlen_aligned, q_ntokens   # crossattention时，q_seqlen != k_seqlen
         
         self.q_seqlen, self.q_seqlen_aligned, self.q_ntokens, self.kv_seqLen = q_seqlen, q_seqlen_aligned, q_ntokens, kv_seqlen
-        print("qseqlen is ", self.q_seqlen)
+        logging.info("qseqlen is ", self.q_seqlen)
         self.kv_seqlen_aligned, self.kv_ntokens = kv_seqlen_aligned, kv_ntokens
         max_s = np.max(q_seqlen)
         ntokens2 = (q_seqlen * kv_seqlen).sum()
@@ -228,7 +228,7 @@ class TestFlashAttention(operation_test.OperationTest):
             k_offset += kv_s
             v_offset += kv_s
 
-        print("==> data generate finished!")
+        logging.info("==> data generate finished!")
 
         q = q.astype(src_type).reshape(-1, heads, embed)
         k = k.astype(src_type).reshape(-1, group_num, embed)
@@ -308,7 +308,7 @@ class TestFlashAttention(operation_test.OperationTest):
             self.layer_id = torch.from_numpy(np.array([1], dtype=np.int32)).to(torch.int32)
         else:
             self.layer_id = torch.from_numpy(np.array([0], dtype=np.int32)).to(torch.int32)
-        print("here is ", self.q_seqlen)
+        logging.info("here is ", self.q_seqlen)
         self.q_max_seq = np.max(self.q_seqlen)
         self.kv_max_seq = np.max(self.kv_seqlen)
         q = torch.from_numpy(np.random.uniform(-5.0, 5.0, size=(self.q_ntokens, heads * self.embeddim)))
@@ -361,12 +361,12 @@ class TestFlashAttention(operation_test.OperationTest):
             self.v_int8 = torch.from_numpy(np.random.uniform(-5.0, 5.0, size=(self.layer_id[0] + 1, batch, self.max_seq, kv_head * self.embeddimv))).to(torch.int8)
         
         self.gen_mask(batch, heads, data_type, mask_type, window_size, is_compress, cache_type)
-        print("**********data gen shape***********")
-        print(f"q shape: {self.q.shape}")
-        print(f"k shape: {self.k.shape}")
-        print(f"v shape: {self.v.shape}")
-        print(f"layer_id shape: {self.layer_id.shape}")
-        print(f"mask shape: {self.mask.shape}")
+        logging.info("**********data gen shape***********")
+        logging.info(f"q shape: {self.q.shape}")
+        logging.info(f"k shape: {self.k.shape}")
+        logging.info(f"v shape: {self.v.shape}")
+        logging.info(f"layer_id shape: {self.layer_id.shape}")
+        logging.info(f"mask shape: {self.mask.shape}")
 
     def quant_per_head(self, data, heads, embeddim, shape):
         temp = data.view(-1, heads, self.embeddim).to(torch.float32)
@@ -441,9 +441,9 @@ class TestFlashAttention(operation_test.OperationTest):
                 self.get_interleave(2 * closest_power_of_2)[0::2][:n - closest_power_of_2]
 
     def gen_swa_cmp(self, max_seq, window_size):
-        print("self.pre_mask_coff", self.pre_mask_coff)
+        logging.info("self.pre_mask_coff", self.pre_mask_coff)
         swa_mask = np.ones(shape=(1, 512, 512)) * self.pre_mask_coff
-        print("gen_swa_cmp ", swa_mask.shape)
+        logging.info("gen_swa_cmp ", swa_mask.shape)
         pp_n = 128 if self.embeddim <= 128 else 64
         pp_n = 128 if self.embeddim != self.embeddimv else pp_n
         if window_size <= pp_n * 3:
@@ -454,11 +454,11 @@ class TestFlashAttention(operation_test.OperationTest):
             true_size = pp_n * 2 + window_size % pp_n
         triu_mask = np.triu(swa_mask, 1)
         tril_mask = np.tril(swa_mask, -true_size)
-        print("gen_swa_cmp ", swa_mask.shape)
-        print("gen_swa_cmp ", tril_mask.shape)
+        logging.info("gen_swa_cmp ", swa_mask.shape)
+        logging.info("gen_swa_cmp ", tril_mask.shape)
         swa_mask = triu_mask + tril_mask
         swa_mask = torch.from_numpy(swa_mask).to(torch.float32)
-        print("gen_swa_cmp ", swa_mask.shape)
+        logging.info("gen_swa_cmp ", swa_mask.shape)
         return swa_mask
 
     def gen_razor_fusion_mask(self, razorLen, tileQ, tileKv, textQLen, textKvLen, preTokens, nextTokens, baseM):
@@ -877,7 +877,7 @@ class TestFlashAttention(operation_test.OperationTest):
             k_offset += max_seq
             v_offset += max_seq
         # golden data
-        print("now is: ", q_ntokens, heads, embedv)
+        logging.info("now is: ", q_ntokens, heads, embedv)
 
         if self.is_int8_flag:
             ans_concat = ans_concat.view(q_ntokens, heads * embedv)
@@ -1233,10 +1233,10 @@ class TestFlashAttention(operation_test.OperationTest):
         return [golden_out]
 
     def golden_compare(self, out_tensors, golden_tensors):
-        print("max(golden_out): ", torch.max(golden_tensors[0].clone().detach().half().npu()).item(),)
-        print("min(golden_out): ", torch.min(golden_tensors[0].clone().detach().half().npu()).item(),)
-        print("max(actual out): ", torch.max(out_tensors[0].clone().detach().half().npu()).item(),)
-        print("min(actual out): ", torch.min(out_tensors[0].clone().detach().half().npu()).item(),)
+        logging.info("max(golden_out): ", torch.max(golden_tensors[0].clone().detach().half().npu()).item(),)
+        logging.info("min(golden_out): ", torch.min(golden_tensors[0].clone().detach().half().npu()).item(),)
+        logging.info("max(actual out): ", torch.max(out_tensors[0].clone().detach().half().npu()).item(),)
+        logging.info("min(actual out): ", torch.min(out_tensors[0].clone().detach().half().npu()).item(),)
         # nan/inf
         result_single = self.compare_output_data(out_tensors[0].clone().detach().half().npu(),
                                                  golden_tensors[0].clone().detach().half().npu(),
@@ -1346,7 +1346,7 @@ class TestFlashAttention(operation_test.OperationTest):
         
         OP_NAME = "SelfAttentionOperation"
         OP_PARAM = {"type": 1}
-        print(f" self.q_ntokens 1  {self.q_ntokens}")
+        logging.info(f" self.q_ntokens 1  {self.q_ntokens}")
         self.set_data_params(cache_type=self.cache_type, is_decoder=self.is_decoder, batch=batch, kv_head=kv_head,
                              heads=self.heads, embeddim=self.embeddim, max_seq=self.max_seq, kv_seqLen=kv_seqLen,
                              data_type=data_type, long_seq = False, op_type=OP_PARAM["type"], mask_type = MASK_TYPE_SWA,
@@ -1755,7 +1755,7 @@ class TestFlashAttention(operation_test.OperationTest):
                              is_clamp = is_clamp, clamp_max = clamp_max, clamp_min = clamp_min,
                              data_type = data_type, is_alibi = True,
                              op_type = 2001, mask_type = MASK_TYPE_ALIBI_WITH_BATCH, no_cache = True)
-        print("embeddimv: ", self.embeddimv)
+        logging.info("embeddimv: ", self.embeddimv)
         self.gen_out_tensor()
         param_seqlen = self.kv_seqLen
         self.alibi_slopes *= -1
@@ -1763,14 +1763,14 @@ class TestFlashAttention(operation_test.OperationTest):
         mask = np.triu(mask, 1)
         self.mask = self.bias[:256, :256] * -1 + mask
         self.mask = self.mask.to(torch.float16)
-        print(f"===============self.mask {self.mask.shape}")
-        print(f"===============self.mask {torch.max(self.mask)} {torch.min(self.mask)}")
-        print(self.alibi_slopes)
+        logging.info(f"===============self.mask {self.mask.shape}")
+        logging.info(f"===============self.mask {torch.max(self.mask)} {torch.min(self.mask)}")
+        logging.info(self.alibi_slopes)
         OP_NAME = "SelfAttentionOperation"
         PARAM = json.dumps({"headNum": 12, "qkScale": 1, "kvHeadNum": 1,
                                 "calcType": 3, "maskType": 4, "isTriuMask": 1, "kernelType": 1})
         RUN_PARAM = json.dumps({"seqLen": param_seqlen})
-        print(self.q.npu().contiguous().shape, self.k.npu().contiguous().shape, self.v.npu().contiguous().shape, self.mask.npu().contiguous().shape, torch.from_numpy(np.array(self.kv_seqLen).astype(np.int32)).npu().contiguous().shape, self.alibi_slopes.npu().contiguous().shape, param_seqlen)
+        logging.info(self.q.npu().contiguous().shape, self.k.npu().contiguous().shape, self.v.npu().contiguous().shape, self.mask.npu().contiguous().shape, torch.from_numpy(np.array(self.kv_seqLen).astype(np.int32)).npu().contiguous().shape, self.alibi_slopes.npu().contiguous().shape, param_seqlen)
         self.execute_with_param(OP_NAME, PARAM, RUN_PARAM, [
             self.q.npu().contiguous(), self.k.npu().contiguous(), self.v.npu().contiguous(), self.mask.npu().contiguous(), torch.from_numpy(np.array(self.kv_seqLen).astype(np.int32)).npu().contiguous(), self.alibi_slopes.npu().contiguous()
         ])
@@ -1808,7 +1808,7 @@ class TestFlashAttention(operation_test.OperationTest):
                     "maskType": MASK_TYPE_CAUSAL_MASK, "kvHead": kv_head,
                     "isTriuMask": 1, "alibiLeftAlign": 0, "isAlibiMaskSqrt": 0}
         data_type = random.choice([torch.bfloat16, torch.float16])
-        print(
+        logging.info(
             f"---batch:{batch}---kv_head:{kv_head}---q_seqlens:{q_seqlens}---kv_seqLen:{kv_seqLen}---kv_head:{kv_head}---heads:{heads}---data_type:{data_type}---")
         self.set_data_params(dynamic_batch=dynamic_batch,
                              is_decoder=isdecoder, batch=batch, kv_head=kv_head, heads=heads,
@@ -1848,7 +1848,7 @@ class TestFlashAttention(operation_test.OperationTest):
         clamp_max = 0
         dynamic_batch = False
         data_type = torch.bfloat16
-        print(f"--batch:{batch}--kv_head:{kv_head}--heads:{heads}--embeddim:{embeddim}--max_seq:{max_seq}")
+        logging.info(f"--batch:{batch}--kv_head:{kv_head}--heads:{heads}--embeddim:{embeddim}--max_seq:{max_seq}")
 
         self.set_data_params(dynamic_batch=dynamic_batch,
                              is_decoder=isdecoder, batch=batch, kv_head=kv_head, heads=heads,
@@ -1886,17 +1886,17 @@ class TestFlashAttention(operation_test.OperationTest):
             param_seqlen = data[4].tolist()
             in_tensors = [torch.from_numpy(tensor) for tensor in data]
             in_tensors = [tensor.npu() for tensor in in_tensors]
-            a = [print(tensor.dtype, tensor.device) for tensor in in_tensors]
+            a = [logging.info(tensor.dtype, tensor.device) for tensor in in_tensors]
 
             OP_NAME = "SelfAttentionOperation"
-            print("now qseqlen is ", self.q_seqlen)
+            logging.info("now qseqlen is ", self.q_seqlen)
             self.set_data_params(kv_head=kv_head, mask_type=mask_type, heads=self.heads, embeddim=self.embeddim, embeddimv=self.embeddimv, kv_seqLen=self.kv_seqLen, batch=2, window_size=window_size,
                                  no_cache=True)
             self.gen_out_tensor()
             PARAM = json.dumps({"headNum": kv_head, "qkScale": (1 / float(math.sqrt(128))), "kvHeadNum": kv_head, \
                 "maskType": mask_type, "calcType": 3, "windowSize": 32, "cacheType": 1})
             RUN_PARAM = json.dumps({"seqLen": param_seqlen})
-            print(PARAM, RUN_PARAM)
+            logging.info(PARAM, RUN_PARAM)
         if not operation_test.get_soc_version() == 'Ascend910B':
             print("this testcase only supports Ascend910B")
             return
@@ -1914,11 +1914,11 @@ class TestFlashAttention(operation_test.OperationTest):
             print("this testcase only supports Ascend910B")
             return
         for i in range(1):
-            batch = random.randint(1, 10)
-            kv_head = random.randint(1, 10)       # kv_head num
+            batch = 6
+            kv_head = 3       # kv_head num
             isdecoder = 0       # prefill or decoder
-            heads = kv_head * 2      # llama7b  hidden_size 4096
-            embeddim = random.randint(1, 85)
+            heads = kv_head * 2     # llama7b  hidden_size 4096
+            embeddim = 64
             tor = 1.0 / math.sqrt(1.0 * embeddim)
             dynamic_batch = False
             q_seqLen = [33] * batch
@@ -1928,7 +1928,7 @@ class TestFlashAttention(operation_test.OperationTest):
 
             clamp_min = 0
             clamp_max = 0
-            print(
+            logging.info(
                 f"--i-is--{i}, "
                 f"batch is {batch}, "
                 f"q_seqLen[0] is {q_seqLen[0]}, "
@@ -1954,10 +1954,10 @@ class TestFlashAttention(operation_test.OperationTest):
             self.gen_out_tensor_bnsd()
             self.mask = np.reshape(self.mask, (max_seq, max_seq))
 
-            param_seqlen = self.q_seqlen
-            seqlen = torch.from_numpy(np.array(self.q_seqlen)).to(torch.int32)
-            PARAM = json.dumps({"headNum": heads, "kvHeadNum":kv_head, "qkScale": 1.0 / math.sqrt(1.0 * embeddim),
-                                "maskType": 0, "inputLayout":1, "calcType":3, "clampType": is_clamp, "clampMin": clamp_min, "clampMax":clamp_max})
+            param_seqlen = np.concatenate((self.q_seqlen, self.kv_seqlen), axis=0).tolist()
+            seqlen = torch.stack([torch.from_numpy(np.array(self.q_seqlen)).to(torch.int32), torch.from_numpy(np.array(self.kv_seqlen)).to(torch.int32)])
+            PARAM = json.dumps({"headNum": self.heads, "kvHeadNum":self.kv_head, "qkScale": self.tor,"qSeqLen": self.q_seqlen, "kvSeqLen": self.kv_seqLen,
+                                "maskType": 0, "inputLayout":1, "calcType":3, "clampType": self.is_clamp, "clampMin": self.clamp_min, "clampMax":self.clamp_max})
             RUN_PARAM = json.dumps({"seqLen": param_seqlen, "maskType": 0})
             self.execute_with_param(OP_NAME, PARAM, RUN_PARAM, [
                     self.qbnsd.npu(), self.kbnsd[0].npu(), self.vbnsd[0].npu(), seqlen.npu()
