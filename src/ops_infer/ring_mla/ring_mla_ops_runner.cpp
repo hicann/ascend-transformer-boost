@@ -65,8 +65,6 @@ RingMLAOpsRunner::RingMLAOpsRunner(const infer::RingMLAParam &param)
 
     ringMLANode.opDesc = {0, "RINGMLAOperation", ringMLAParam};
 
-    // flashAttentionEncoderNode.inTensors = {&query_split1, query_split2, &key_split1, key_split2, value,
-    // mask, slopes, qkDescale, qkOffset, vpvDescale, vpvOffset, pScale, logN, prevOut, prevLse};
     ringMLANode.inTensors = {query_split1, query_split2, key_split1,   key_split2,   value,
                              mask,         &nullTensor_, &nullTensor_, &nullTensor_, &nullTensor_,
                              &nullTensor_, &nullTensor_, &nullTensor_, prevOut,      prevLse};
