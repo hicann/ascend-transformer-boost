@@ -191,10 +191,10 @@ __aicore__ inline void PagedCacheLoadNd<T>::Process()
                 if (taskID++ % coreNum == vecIdx) {
                     uint16_t copyLen = realUbBaseK_ * sizeof(T) / 32;
                     AscendC::DataCopyParams copyParams = {1, copyLen, 0, 0};
-                    DataCopy(tmpTensor, inKeyCacheGM[blockID * blockSize * tokenSizeK + blkKOffset], copyParams);
+                    DataCopy(tmpTensor, inKeyCacheGM[static_cast<uint64_t>(blockID) * blockSize * tokenSizeK + blkKOffset], copyParams);
                     SET_FLAG(MTE2, MTE3, EVENT_ID1);
                     WAIT_FLAG(MTE2, MTE3, EVENT_ID1);
-                    DataCopy(outKeyGM[(tokenStart + tableID * blockSize) * tokenSizeK + blkKOffset], tmpTensor, copyParams);
+                    DataCopy(outKeyGM[(static_cast<uint64_t>(tokenStart) + tableID * blockSize) * tokenSizeK + blkKOffset], tmpTensor, copyParams);
                     SET_FLAG(MTE3, MTE2, EVENT_ID1);
                     WAIT_FLAG(MTE3, MTE2, EVENT_ID1);
                 }
@@ -209,10 +209,10 @@ __aicore__ inline void PagedCacheLoadNd<T>::Process()
                 if (taskID++ % coreNum == vecIdx) {
                     uint16_t copyLen = realUbBaseV_ * sizeof(T) / 32;
                     AscendC::DataCopyParams copyParams = {1, copyLen, 0, 0};
-                    DataCopy(tmpTensor, inValueCacheGM[blockID * blockSize * tokenSizeV + blkVOffset], copyParams);
+                    DataCopy(tmpTensor, inValueCacheGM[static_cast<uint64_t>(blockID) * blockSize * tokenSizeV + blkVOffset], copyParams);
                     SET_FLAG(MTE2, MTE3, EVENT_ID1);
                     WAIT_FLAG(MTE2, MTE3, EVENT_ID1);
-                    DataCopy(outValueGM[(tokenStart + tableID * blockSize) * tokenSizeV + blkVOffset], tmpTensor, copyParams);
+                    DataCopy(outValueGM[(static_cast<uint64_t>(tokenStart) + tableID * blockSize) * tokenSizeV + blkVOffset], tmpTensor, copyParams);
                     SET_FLAG(MTE3, MTE2, EVENT_ID1);
                     WAIT_FLAG(MTE3, MTE2, EVENT_ID1);
                 }
