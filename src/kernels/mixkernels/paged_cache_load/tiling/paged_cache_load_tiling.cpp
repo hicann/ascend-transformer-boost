@@ -50,18 +50,21 @@ bool CommonPagedCacheLoadTiling(const LaunchParam &launchParam, KernelInfo &kern
     int32_t numTokens = static_cast<int32_t>(blockTablesShape.at(DIM_0)); // block tables row
     int32_t numblkTabCol = static_cast<int32_t>(blockTablesShape.at(DIM_1)); // block tables column
 
-    TensorDType inDtype = launchParam.GetInTensor(DIM_0).desc.dtype;
-    uint32_t typeByte = static_cast<uint32_t>(GetTensorElementSize(inDtype));
+    TensorDType inDtypeK = launchParam.GetInTensor(DIM_0).desc.dtype;
+    TensorDType inDtypeV = launchParam.GetInTensor(DIM_1).desc.dtype;
+    uint32_t typeByteK = static_cast<uint32_t>(GetTensorElementSize(inDtypeK));
+    uint32_t typeByteV = static_cast<uint32_t>(GetTensorElementSize(inDtypeV));
 
     MKI_CHECK(blockSize > 0 && blockSize <= INT_MAX, "blockSize is invalid", return false);
     MKI_CHECK(numTokens > 0 && numTokens <= INT_MAX, "numTokens is invalid", return false);
     MKI_CHECK(numblkTabCol > 0 && numblkTabCol <= INT_MAX, "numblkTabCol is invalid", return false);
     MKI_CHECK(tokenSizeK > 0 && tokenSizeK <= INT_MAX, "tokenSizeK is invalid", return false);
     MKI_CHECK(tokenSizeV > 0 && tokenSizeV <= INT_MAX, "tokenSizeV is invalid", return false);
-    MKI_CHECK(typeByte > 0 && typeByte <= INT_MAX, "typeByte is invalid", return false);
-    MKI_CHECK(tokenSizeK <= INT_MAX / blockSize / static_cast<int32_t>(typeByte),
+    MKI_CHECK(typeByteK > 0 && typeByteK <= INT_MAX, "typeByteK is invalid", return false);
+    MKI_CHECK(typeByteV > 0 && typeByteV <= INT_MAX, "typeByteV is invalid", return false);
+    MKI_CHECK(tokenSizeK <= INT_MAX / blockSize / static_cast<int32_t>(typeByteK),
         "tokenSizeK * blockSize is too large", return false);
-    MKI_CHECK(tokenSizeV <= INT_MAX / blockSize / static_cast<int32_t>(typeByte),
+    MKI_CHECK(tokenSizeV <= INT_MAX / blockSize / static_cast<int32_t>(typeByteV),
         "tokenSizeV * blockSize is too large", return false);
 
     PagedCacheLoadTilingData *tilingDataPtr =
@@ -72,14 +75,15 @@ bool CommonPagedCacheLoadTiling(const LaunchParam &launchParam, KernelInfo &kern
     tilingDataPtr->numblkTabCol = numblkTabCol;
     tilingDataPtr->tokenSizeK = tokenSizeK;
     tilingDataPtr->tokenSizeV = tokenSizeV;
-    tilingDataPtr->typeByte = static_cast<int32_t>(typeByte);
+    tilingDataPtr->typeByteK = static_cast<int32_t>(typeByteK);
     tilingDataPtr->hasSeqStarts = param.hasSeqStarts;
     tilingDataPtr->cuSeqLens = param.cuSeqLens;
+    tilingDataPtr->typeByteV = static_cast<int32_t>(typeByteV);
 
     MKI_LOG(INFO) << "blockSize: " << tilingDataPtr->blockSize << ", numTokens: " <<
         tilingDataPtr->numTokens << ", numblkTabCol: " << tilingDataPtr->numblkTabCol <<
         ", tokenSizeK: " << tilingDataPtr->tokenSizeK << ", tokenSizeV: " <<
-        tilingDataPtr->tokenSizeV << ", typeByte: " << tilingDataPtr->typeByte;
+        tilingDataPtr->tokenSizeV << ", typeByteK: " << tilingDataPtr->typeByteK << ", typeByteV: " << tilingDataPtr->typeByteV;
 
     return true;
 }
