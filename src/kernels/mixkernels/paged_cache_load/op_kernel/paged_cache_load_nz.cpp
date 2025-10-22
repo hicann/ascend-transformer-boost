@@ -64,9 +64,10 @@ private:
     int32_t numblkTabCol = 0;
     int32_t tokenSizeK = 0;
     int32_t tokenSizeV = 0;
-    int32_t typeByte = 0;
+    int32_t typeByteK = 0;
     int32_t hasSeqStarts = 0;
     int32_t cuSeqLens = 0;
+    int32_t typeByteV = 0;
 
     uint32_t maxNumTokens = 0;
     uint32_t eleNumPerBlk = 0;
@@ -109,7 +110,7 @@ __aicore__ inline void PagedCacheLoadNz<T>::Init(
     this->contextLenTensor = locateInfoTensor[0];
     this->blockTableTensor = locateInfoTensor[maxNumTokensRnd];
     this->tmpTensor = tmpBuf.Get<T>();
-    this->eleNumPerBlk = BLOCK_SIZE / this->typeByte; // fp16, bf16, int8
+
 }
 
 
@@ -129,11 +130,13 @@ __aicore__ inline void PagedCacheLoadNz<T>::ParseTilingData(__gm__ uint8_t * __r
     locId++;
     this->tokenSizeV = (*(__gm__ int32_t *)((__gm__ uint8_t *)tilingBuf + locId * sizeof(int32_t)));
     locId++;
-    this->typeByte = (*(__gm__ int32_t *)((__gm__ uint8_t *)tilingBuf + locId * sizeof(int32_t)));
+    this->typeByteK = (*(__gm__ int32_t *)((__gm__ uint8_t *)tilingBuf + locId * sizeof(int32_t)));
     locId++;
     this->hasSeqStarts = (*(__gm__ int32_t *)((__gm__ uint8_t *)tilingBuf + locId * sizeof(int32_t)));
     locId++;
     this->cuSeqLens = (*(__gm__ int32_t *)((__gm__ uint8_t *)tilingBuf + locId * sizeof(int32_t)));
+    locId++;
+    this->typeByteV = (*(__gm__ int32_t *)((__gm__ uint8_t *)tilingBuf + locId * sizeof(int32_t)));
 }
 
 
@@ -170,15 +173,19 @@ __aicore__ inline void PagedCacheLoadNz<T>::RestoreDataFromCache(
     AscendC::GlobalTensor<T> inCacheGM = this->inKeyCacheGM;
     AscendC::GlobalTensor<T> outGM = this->outKeyGM;
     uint64_t tokenSize = this->tokenSizeK; // improve precision to avoid out of gm addr limit
+    uint64_t typeByte = this->typeByteK;
+
     if (!isKeyValue) {
         inCacheGM = this->inValueCacheGM;
         outGM = this->outValueGM;
         tokenSize = this->tokenSizeV;
-    }
+        typeByte = this->typeByteV;
 
-    uint64_t start = (numRsltProc + ctxtId) * tokenSize * this->typeByte / sizeof(int8_t); // use int8 as T commonly
+    }
+    this->eleNumPerBlk = BLOCK_SIZE / typeByte;
+    uint64_t start = (numRsltProc + ctxtId) * tokenSize * typeByte / sizeof(int8_t); // use int8 as T commonly
     uint64_t cacheStart = (blkTabValue * this->blockSize * tokenSize + blockOffset
-                        * this->eleNumPerBlk) * this->typeByte / sizeof(int8_t); // use int8 as T commonly
+                        * this->eleNumPerBlk) * typeByte / sizeof(int8_t); // use int8 as T commonly
 
     uint16_t inBlkCnt = tokenSize / this->eleNumPerBlk; // max number is 4095
     uint16_t inBlkLen = 1;
@@ -203,7 +210,7 @@ __aicore__ inline void PagedCacheLoadNz<T>::RestoreDataFromCache(
     }
     AscendC::PipeBarrier<PIPE_ALL>();
 
-    uint16_t outBlkLen = tokenSize * this->typeByte / BLOCK_SIZE; // fp16, bf16, int8
+    uint16_t outBlkLen = tokenSize * typeByte / BLOCK_SIZE; // fp16, bf16, int8
     AscendC::DataCopyParams copyOutParams = {1, outBlkLen, 0, 0};
 
     DataCopy(outGM[start], this->tmpTensor, copyOutParams);

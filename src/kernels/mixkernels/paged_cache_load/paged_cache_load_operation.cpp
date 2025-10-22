@@ -83,9 +83,6 @@ public:
         MKI_CHECK(!CheckEmptyTensor(key), "5rd inTensor should not be null tensor ", return false);
         MKI_CHECK(!CheckEmptyTensor(value), "6rd inTensor should not be null tensor ", return false);
 
-        auto inDtype = keyCache.desc.dtype;
-        MKI_CHECK(valueCache.desc.dtype == inDtype, "KCache&VCache's dtype must be same", return false);
-
         MKI_CHECK(blockTables.desc.dtype == TENSOR_DTYPE_INT32, "blockTables should be int32", return false);
         MKI_CHECK(contextLens.desc.dtype == TENSOR_DTYPE_INT32, "contextLens should be int32", return false);
 
@@ -168,8 +165,12 @@ public:
         auto &key = launchParam.GetOutTensor(DIM_0);
         auto &value = launchParam.GetOutTensor(DIM_1);
 
-        auto inDtype = keyCache.desc.dtype;
-        MKI_CHECK((inDtype == TENSOR_DTYPE_FLOAT16 || inDtype == TENSOR_DTYPE_BF16 || inDtype == TENSOR_DTYPE_INT8),
+        auto inDtypeK = keyCache.desc.dtype;
+        auto inDtypeV = valueCache.desc.dtype;
+        MKI_CHECK((inDtypeK == TENSOR_DTYPE_FLOAT16 || inDtypeK == TENSOR_DTYPE_BF16 || inDtypeK == TENSOR_DTYPE_INT8),
+            "K&V&KCache&VCache should be either int8 OR float16 OR bfloat16",
+            return Status::FailStatus(ERROR_INFERSHAPE_ERROR));
+        MKI_CHECK((inDtypeV == TENSOR_DTYPE_FLOAT16 || inDtypeV == TENSOR_DTYPE_BF16 || inDtypeV == TENSOR_DTYPE_INT8),
             "K&V&KCache&VCache should be either int8 OR float16 OR bfloat16",
             return Status::FailStatus(ERROR_INFERSHAPE_ERROR));
 
@@ -182,18 +183,16 @@ public:
 
         MKI_CHECK(key.desc.dims.size() == DIM_2 && value.desc.dims.size() == DIM_2,
             "K&V's dim num should be " << DIM_2, return Status::FailStatus(ERROR_INFERSHAPE_ERROR));
-        MKI_CHECK(key.desc.dtype == inDtype && value.desc.dtype == inDtype,
+        MKI_CHECK(key.desc.dtype == inDtypeK && value.desc.dtype == inDtypeV,
             "K&V's dtype must be same as KCache&VCache", return Status::FailStatus(ERROR_INFERSHAPE_ERROR));
         MKI_CHECK(key.desc.dims[DIM_0] == value.desc.dims[DIM_0],
             "K&V's dim_0 must be same", return Status::FailStatus(ERROR_INFERSHAPE_ERROR));
 
-        uint32_t eleNumAligned = 32; // int8
-        if (inDtype == TENSOR_DTYPE_FLOAT16 || inDtype == TENSOR_DTYPE_BF16) {
-            eleNumAligned = 16; // fp16, bf16
-        }
-        MKI_CHECK(keyCache.desc.dims[DIM_3] == eleNumAligned && valueCache.desc.dims[DIM_3] == eleNumAligned
-            && key.desc.dims[DIM_1] == keyCache.desc.dims[DIM_1] * eleNumAligned
-            && value.desc.dims[DIM_1] == valueCache.desc.dims[DIM_1] * eleNumAligned,
+        uint32_t eleNumAlignedK = (inDtypeK == TENSOR_DTYPE_FLOAT16 || inDtypeK == TENSOR_DTYPE_BF16) ? 16 : 32;
+        uint32_t eleNumAlignedV = (inDtypeV == TENSOR_DTYPE_FLOAT16 || inDtypeV == TENSOR_DTYPE_BF16) ? 16 : 32;
+        MKI_CHECK(keyCache.desc.dims[DIM_3] == eleNumAlignedK && valueCache.desc.dims[DIM_3] == eleNumAlignedV
+            && key.desc.dims[DIM_1] == keyCache.desc.dims[DIM_1] * eleNumAlignedK
+            && value.desc.dims[DIM_1] == valueCache.desc.dims[DIM_1] * eleNumAlignedV,
             "NZ format tensor dim should be aligned to eleNumAligned",
             return Status::FailStatus(ERROR_INFERSHAPE_ERROR));
 
