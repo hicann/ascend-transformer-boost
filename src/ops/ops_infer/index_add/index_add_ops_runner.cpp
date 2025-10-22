@@ -10,10 +10,12 @@
 #include "index_add_ops_runner.h"
 #include <asdops/params/params.h>
 #include <atb/utils/log.h>
+#include "atb/utils/operation_register.h"
+#include "atb/utils/param_compare.h"
 
 namespace atb {
 IndexAddOpsRunner::IndexAddOpsRunner(const infer::IndexAddParam &param)
-    : OpsRunner("IndexAddOpsRunner", RUNNER_TYPE_INDEXADD), param_(param)
+    : OpsRunner("IndexAddOpsRunner"), param_(param)
 {
     ATB_LOG(INFO) << "IndexAddOpsRunner::IndexAddOpsRunner";
 }
@@ -93,4 +95,7 @@ Status IndexAddOpsRunner::SetupKernelGraphIndexAddValid()
 
     return NO_ERROR;
 }
+
+REG_RUNNER_TYPE(IndexAddOpsRunner);
+REG_OP_PARAM(AsdOps::OpParam::Index);
 } // namespace atb

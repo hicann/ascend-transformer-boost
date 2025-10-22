@@ -11,12 +11,13 @@
 #include "unpad_with_hidden_state_ops_runner.h"
 #include <atbops/params/params.h>
 #include "atb/utils/log.h"
-
+#include "atb/utils/operation_register.h"
+#include "atb/utils/param_compare.h"
 
 namespace atb {
 
 UnpadWithHiddenStateOpsRunner::UnpadWithHiddenStateOpsRunner(const train::UnpadWithHiddenStateParam &param)
-    : OpsRunner("UnpadWithHiddenStateOpsRunner", RUNNER_TYPE_UNPAD_WITH_HIDDEN_STATE), param_(param)
+    : OpsRunner("UnpadWithHiddenStateOpsRunner"), param_(param)
 {
 }
 UnpadWithHiddenStateOpsRunner::~UnpadWithHiddenStateOpsRunner() {}
@@ -53,4 +54,7 @@ void UnpadWithHiddenStateOpsRunner::SetParam(const Mki::Any &param)
         isParamUpdated_ = true;
     }
 }
+
+REG_RUNNER_TYPE(UnpadWithHiddenStateOpsRunner);
+REG_OP_PARAM(AtbOps::OpParam::UnpadWithHiddenState);
 } // namespace atb

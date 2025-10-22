@@ -11,9 +11,11 @@
 #include <asdops/params/params.h>
 #include "atb/utils/log.h"
 #include "atb/utils/tensor_util.h"
+#include "atb/utils/operation_register.h"
+
 namespace atb {
 FillOpsRunner::FillOpsRunner(const infer::FillParam &param)
-    : OpsRunner("FillOpsRunner", RUNNER_TYPE_FILL), param_(param)
+    : OpsRunner("FillOpsRunner"), param_(param)
 {
     ATB_LOG(INFO) << "FillOpsRunner::FillOpsRunner called";
     kernelGraph_.outTensors.resize(1);
@@ -59,4 +61,5 @@ void FillOpsRunner::SetMaskedFillGraph()
 
 FillOpsRunner::~FillOpsRunner() {}
 
+REG_RUNNER_TYPE(FillOpsRunner);
 } // namespace atb

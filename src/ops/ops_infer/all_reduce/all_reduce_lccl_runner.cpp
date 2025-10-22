@@ -13,10 +13,11 @@
 #include <asdops/params/params.h>
 #include "atb/utils.h"
 #include "atb/utils/common_utils.h"
+#include "atb/utils/operation_register.h"
 
 namespace atb {
 AllReduceLcclRunner::AllReduceLcclRunner(const infer::AllReduceParam &param, Context &context)
-    : LcclRunner("AllReduceLcclRunner", RUNNER_TYPE_ALL_REDUCE, param.rank, param.rankSize, param.commMode,
+    : LcclRunner("AllReduceLcclRunner", param.rank, param.rankSize, param.commMode,
                  context, param.commDomain),
       param_(param)
 {
@@ -60,4 +61,5 @@ Status AllReduceLcclRunner::ExecuteImpl(RunnerVariantPack &runnerVariantPack)
     }
     return NO_ERROR;
 }
+REG_RUNNER_TYPE(AllReduceLcclRunner);
 } // namespace atb

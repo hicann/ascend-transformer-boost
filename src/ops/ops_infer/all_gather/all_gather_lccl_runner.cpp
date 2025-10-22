@@ -13,10 +13,11 @@
 #include <asdops/params/params.h>
 #include "atb/utils.h"
 #include "atb/utils/common_utils.h"
+#include "atb/utils/operation_register.h"
 
 namespace atb {
 AllGatherLcclRunner::AllGatherLcclRunner(const infer::AllGatherParam &param, Context &context)
-    : LcclRunner("AllGatherLcclRunner", RUNNER_TYPE_ALL_GATHER, param.rank, param.rankSize, param.commMode,
+    : LcclRunner("AllGatherLcclRunner", param.rank, param.rankSize, param.commMode,
                  context, param.commDomain),
       param_(param)
 {
@@ -45,4 +46,5 @@ Status AllGatherLcclRunner::ExecuteImpl(RunnerVariantPack &runnerVariantPack)
     }
     return NO_ERROR;
 }
+REG_RUNNER_TYPE(AllGatherLcclRunner);
 } // namespace atb

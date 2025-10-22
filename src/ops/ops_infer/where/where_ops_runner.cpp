@@ -11,10 +11,11 @@
 #include <asdops/params/params.h>
 #include "atb/utils/tensor_util.h"
 #include "atb/utils/log.h"
+#include "atb/utils/operation_register.h"
 
 namespace atb {
 WhereOpsRunner::WhereOpsRunner(const infer::WhereParam &param)
-    : OpsRunner("WhereOpsRunner", RUNNER_TYPE_WHERE), param_(param)
+    : OpsRunner("WhereOpsRunner"), param_(param)
 {
     static const uint32_t DIM_3 = 3;
     static const uint32_t DIM_4 = 4;
@@ -67,4 +68,6 @@ WhereOpsRunner::WhereOpsRunner(const infer::WhereParam &param)
 }
 
 WhereOpsRunner::~WhereOpsRunner() {}
+
+REG_RUNNER_TYPE(WhereOpsRunner);
 } // namespace atb

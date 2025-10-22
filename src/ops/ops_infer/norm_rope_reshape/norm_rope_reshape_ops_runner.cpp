@@ -9,7 +9,9 @@
 */
 #include "norm_rope_reshape_ops_runner.h"
 #include "atb/utils/log.h"
- 
+#include "atb/utils/operation_register.h"
+#include "atb/utils/param_compare.h"
+
 namespace atb {
 static const uint64_t IN_TENSOR_COUNT_SEVEN = 7;
  
@@ -22,8 +24,8 @@ void NormRopeReshapeOpsRunner::SetNormRopeReshapeParam(
     asdopsParam.rotaryCoeff = inferParam.rotaryCoeff;
 }
  
-void NormRopeReshapeOpsRunner::BuildNormRopeReshapeGraph(
-    const AtbOps::OpParam::RmsNormAndRopeAndReshapeAndCache &normRopeReshapeParam)
+void NormRopeReshapeOpsRunner::BuildNormRopeReshapeGraph
+(const AtbOps::OpParam::RmsNormAndRopeAndReshapeAndCache &normRopeReshapeParam)
 {
     kernelGraph_.inTensors.resize(IN_TENSOR_COUNT_SEVEN);
     size_t inId = 0;
@@ -47,8 +49,9 @@ void NormRopeReshapeOpsRunner::BuildNormRopeReshapeGraph(
     normRopeReshapeNode.outTensors = {&keycacheOutTensor};
 }
  
-NormRopeReshapeOpsRunner::NormRopeReshapeOpsRunner(const infer::NormRopeReshapeParam &param)
-    : OpsRunner("NormRopeReshapeOpsRunner", RUNNER_TYPE_NORM_ROPE_RESHAPE), param_(param)
+NormRopeReshapeOpsRunner::NormRopeReshapeOpsRunner
+(const infer::NormRopeReshapeParam &param)
+    : OpsRunner("NormRopeReshapeOpsRunner"), param_(param)
 {
     AtbOps::OpParam::RmsNormAndRopeAndReshapeAndCache rmsNormAndRopeAndReshapeAndCacheParam;
     SetNormRopeReshapeParam(param_, rmsNormAndRopeAndReshapeAndCacheParam);
@@ -60,4 +63,7 @@ NormRopeReshapeOpsRunner::NormRopeReshapeOpsRunner(const infer::NormRopeReshapeP
 }
  
 NormRopeReshapeOpsRunner::~NormRopeReshapeOpsRunner() {}
+
+REG_RUNNER_TYPE(NormRopeReshapeOpsRunner);
+REG_OP_PARAM(AtbOps::OpParam::RmsNormAndRopeAndReshapeAndCache);
 } // namespace atb

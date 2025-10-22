@@ -10,6 +10,7 @@
 #include "stridedbatchmatmul_ops_runner.h"
 #include <atb/utils/log.h>
 #include <atbops/params/params.h>
+#include "atb/utils/operation_register.h"
 #include "atb/utils/param_compare.h"
 
 
@@ -18,7 +19,7 @@ static const uint64_t IN_TENSOR_COUNT = 2;
 static const uint64_t OUT_TENSOR_COUNT = 1;
 
 StridedBatchMatmulOpsRunner::StridedBatchMatmulOpsRunner(const train::StridedBatchMatmulParam &param)
-    : OpsRunner("StridedBatchMatmulOpsRunner", RUNNER_TYPE_STRIDEDBATCHMATMUL), param_(param)
+    : OpsRunner("StridedBatchMatmulOpsRunner"), param_(param)
 {
 }
 StridedBatchMatmulOpsRunner::~StridedBatchMatmulOpsRunner() {}
@@ -68,4 +69,7 @@ void StridedBatchMatmulOpsRunner::SetParam(const Mki::Any &param)
         isParamUpdated_ = true;
     }
 }
+
+REG_RUNNER_TYPE(StridedBatchMatmulOpsRunner);
+REG_OP_PARAM(AtbOps::OpParam::StridedBatchMatmul);
 } // namespace atb

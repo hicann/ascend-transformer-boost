@@ -11,11 +11,13 @@
 #include <atbops/params/params.h>
 #include "atb/utils/runner_util.h"
 #include "atb/utils/log.h"
+#include "atb/utils/operation_register.h"
+#include "atb/utils/param_compare.h"
 
 namespace atb {
 static const uint32_t IN_TENSOR_NUM = 4;
 static const uint32_t OUT_TENSOR_NUM = 1;
-PadOpsRunner::PadOpsRunner(const infer::PadParam &param) : OpsRunner("PadOpsRunner", RUNNER_TYPE_PAD), param_(param)
+PadOpsRunner::PadOpsRunner(const infer::PadParam &param) : OpsRunner("PadOpsRunner"), param_(param)
 {
     ATB_LOG(INFO) << "PadOpsRunner::PadOpsRunner called:";
     kernelGraph_.inTensors.resize(IN_TENSOR_NUM);
@@ -38,4 +40,7 @@ PadOpsRunner::PadOpsRunner(const infer::PadParam &param) : OpsRunner("PadOpsRunn
 }
 
 PadOpsRunner::~PadOpsRunner() {}
+
+REG_RUNNER_TYPE(PadOpsRunner);
+REG_OP_PARAM(AtbOps::OpParam::Pad);
 } // namespace atb

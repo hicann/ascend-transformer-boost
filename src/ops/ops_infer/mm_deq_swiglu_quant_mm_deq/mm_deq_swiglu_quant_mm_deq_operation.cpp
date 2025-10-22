@@ -16,6 +16,7 @@
 #include "atb/utils.h"
 #include "atb/operation/atb_operation_ir_cfg.h"
 #include "atb/utils/singleton.h"
+#include "atb/utils/operation_register.h"
 
 #include "mm_deq_swiglu_quant_mm_deq_ops_runner.h"
 #include "mm_deq_swiglu_quant_mm_deq_operation.h"
@@ -299,7 +300,8 @@ std::shared_ptr<Runner> MmDeqSwigluQuantMmDeqOperation::CreateRunner(Context &co
         ATB_LOG(ERROR) << "context cast to contextBase failed!";
         return nullptr;
     }
-    RunnerPool &pool = contextBase->GetRunnerPool(RUNNER_TYPE_MM_DEQ_SWIGLU_QUANT_MM_DEQ);
+    int64_t runnerTypeIdx = RunnerTypeRegister::GetRunnerTypeIdx("MmDeqSwigluQuantMmDeqOpsRunner");
+    RunnerPool &pool = contextBase->GetRunnerPool(runnerTypeIdx);
     Runner *runner = pool.MallocRunner<MmDeqSwigluQuantMmDeqOpsRunner, infer::MmDeqSwigluQuantMmDeqParam>(param_);
     if (!runner) {
         ATB_LOG(WARN) << "MallocRunner from pool failed!";

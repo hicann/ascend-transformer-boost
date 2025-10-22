@@ -12,10 +12,11 @@
 #include <atbops/params/params.h>
 #include "atb/utils/log.h"
 #include "atb/utils/config.h"
+#include "atb/utils/operation_register.h"
 
 namespace atb {
 ReshapeAndCacheOpsRunner310P::ReshapeAndCacheOpsRunner310P(const infer::ReshapeAndCacheParam &param)
-    : OpsRunner("ReshapeAndCacheOpsRunner310P", RUNNER_TYPE_RESHAPE_AND_CACHE), param_(param)
+    : OpsRunner("ReshapeAndCacheOpsRunner310P"), param_(param)
 {
     const std::size_t intensorSize = 5;
     const std::size_t outtensorSize = 2;
@@ -54,4 +55,6 @@ ReshapeAndCacheOpsRunner310P::ReshapeAndCacheOpsRunner310P(const infer::ReshapeA
 }
 
 ReshapeAndCacheOpsRunner310P::~ReshapeAndCacheOpsRunner310P() {}
+
+REG_RUNNER_TYPE(ReshapeAndCacheOpsRunner310P);
 } // namespace atb

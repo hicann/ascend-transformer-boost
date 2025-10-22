@@ -11,10 +11,12 @@
 #include "reshape_and_cache_ops_runner.h"
 #include <atbops/params/params.h>
 #include "atb/utils/log.h"
+#include "atb/utils/operation_register.h"
+#include "atb/utils/param_compare.h"
 
 namespace atb {
 ReshapeAndCacheOpsRunner::ReshapeAndCacheOpsRunner(const infer::ReshapeAndCacheParam &param)
-    : OpsRunner("ReshapeAndCacheOpsRunner", RUNNER_TYPE_RESHAPE_AND_CACHE), param_(param)
+    : OpsRunner("ReshapeAndCacheOpsRunner"), param_(param)
 {
     ATB_LOG(INFO) << "ReshapeAndCacheOpsRunner::ReshapeAndCacheOpsRunner called";
     const std::size_t intensorSize =
@@ -76,4 +78,7 @@ ReshapeAndCacheOpsRunner::ReshapeAndCacheOpsRunner(const infer::ReshapeAndCacheP
 }
 
 ReshapeAndCacheOpsRunner::~ReshapeAndCacheOpsRunner() {}
+
+REG_RUNNER_TYPE(ReshapeAndCacheOpsRunner);
+REG_OP_PARAM(AtbOps::OpParam::ReshapeAndCache);
 } // namespace atb

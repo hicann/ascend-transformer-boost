@@ -16,6 +16,7 @@
 #include "atb/operation/atb_operation_ir_cfg.h"
 #include "atb/operation/op_param_funcs.h"
 #include "atb/utils/singleton.h"
+#include "atb/utils/operation_register.h"
 
 namespace {
 bool ParamCheck(const atb::train::StridedBatchMatmulParam &opParam)
@@ -99,7 +100,8 @@ std::shared_ptr<Runner> StridedBatchMatmulOperation::CreateRunner(Context &conte
         ATB_LOG(DEBUG) << "context cast to contextBase failed!";
         return nullptr;
     }
-    RunnerPool &pool = contextBase->GetRunnerPool(RUNNER_TYPE_STRIDEDBATCHMATMUL);
+    int64_t runnerTypeIdx = RunnerTypeRegister::GetRunnerTypeIdx("StridedBatchMatmulOpsRunner");
+    RunnerPool &pool = contextBase->GetRunnerPool(runnerTypeIdx);
     Runner *runner = pool.MallocRunner<StridedBatchMatmulOpsRunner, train::StridedBatchMatmulParam>(param_);
     if (!runner) {
         ATB_LOG(DEBUG) << "MallocRunner from pool failed!";

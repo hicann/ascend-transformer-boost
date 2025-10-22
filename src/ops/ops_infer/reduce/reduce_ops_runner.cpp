@@ -10,10 +10,12 @@
 #include "reduce_ops_runner.h"
 #include "atb/utils/log.h"
 #include "atb/utils/tensor_util.h"
+#include "atb/utils/operation_register.h"
+#include "atb/utils/param_compare.h"
 
 namespace atb {
 ReduceOpsRunner::ReduceOpsRunner(const infer::ReduceParam &param)
-    : OpsRunner("ReduceOpsRunner", RUNNER_TYPE_REDUCE), param_(param)
+    : OpsRunner("ReduceOpsRunner"), param_(param)
 {
     ATB_LOG(INFO) << "ReduceOpsRunner::ReduceOpsRunner called";
     kernelGraph_.inTensors.resize(1);
@@ -47,4 +49,7 @@ void ReduceOpsRunner::BuildOpParam(AsdOps::OpParam::Reduce &opParam)
     TensorUtil::AtbSVector2OpsSVector(param_.axis, axis);
     opParam.axis = axis;
 }
+
+REG_RUNNER_TYPE(ReduceOpsRunner);
+REG_OP_PARAM(AsdOps::OpParam::Reduce);
 } // namespace atb

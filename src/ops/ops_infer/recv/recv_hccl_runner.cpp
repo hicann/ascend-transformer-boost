@@ -14,20 +14,21 @@
 #include <asdops/params/params.h>
 #include "atb/utils.h"
 #include "atb/utils/common_utils.h"
+#include "atb/utils/operation_register.h"
 
 namespace atb {
 RecvHcclRunner::RecvHcclRunner(const infer::RecvParam &param, bool useRankTableFile)
     : HcclRunner(!useRankTableFile ?
-                     HcclRunner("RecvHcclRunner", RUNNER_TYPE_RECV, param.rank, param.rankSize, param.rankRoot,
+                     HcclRunner("RecvHcclRunner", param.rank, param.rankSize, param.rankRoot,
                                 param.commDomain) :
-                     HcclRunner("RecvHcclRunner", RUNNER_TYPE_RECV, param.rank, param.rankTableFile, param.commDomain)),
+                     HcclRunner("RecvHcclRunner", param.rank, param.rankTableFile, param.commDomain)),
       param_(param)
 {
     ATB_LOG(INFO) << "RecvHcclRunner::RecvHcclRunner called";
 }
 
 RecvHcclRunner::RecvHcclRunner(const infer::RecvParam &param, HcclComm hcclComm)
-    : HcclRunner("RecvHcclRunner", hcclComm, RUNNER_TYPE_RECV), param_(param)
+    : HcclRunner("RecvHcclRunner", hcclComm), param_(param)
 {
     ATB_LOG(INFO) << "RecvHcclRunner::RecvHcclRunner ext called";
 }
@@ -55,4 +56,6 @@ Status RecvHcclRunner::ExecuteImpl(RunnerVariantPack &runnerVariantPack)
 }
 
 RecvHcclRunner::~RecvHcclRunner() {}
+
+REG_RUNNER_TYPE(RecvHcclRunner);
 } // namespace atb

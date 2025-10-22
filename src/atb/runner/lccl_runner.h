@@ -14,13 +14,12 @@
 #include <memory>
 #include "atb/runner/runner.h"
 #include "atb/runner/lcal_runner.h"
-#include "atb/runner/runner_type.h"
 #include "atb/infer_op_params.h"
 
 namespace atb {
 class LcclRunner : public LcalRunner {
 public:
-    explicit LcclRunner(const std::string &name, RunnerType runnerType, int32_t rank, int32_t rankSize,
+    explicit LcclRunner(const std::string &name, int32_t rank, int32_t rankSize,
                         const infer::CommMode commMode, Context &context, const std::string &commDomain = "");
     ~LcclRunner() override;
 

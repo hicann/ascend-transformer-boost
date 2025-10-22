@@ -13,10 +13,11 @@
 #include <asdops/params/params.h>
 #include "atb/utils.h"
 #include "atb/utils/common_utils.h"
+#include "atb/utils/operation_register.h"
 
 namespace atb {
 ReduceScatterLcclRunner::ReduceScatterLcclRunner(const infer::ReduceScatterParam &param, Context &context)
-    : LcclRunner("ReduceScatterLcclRunner", RUNNER_TYPE_REDUCE_SCATTER, param.rank, param.rankSize, param.commMode,
+    : LcclRunner("ReduceScatterLcclRunner", param.rank, param.rankSize, param.commMode,
                  context, param.commDomain),
       param_(param)
 {
@@ -46,4 +47,6 @@ Status ReduceScatterLcclRunner::ExecuteImpl(RunnerVariantPack &runnerVariantPack
     }
     return NO_ERROR;
 }
+
+REG_RUNNER_TYPE(ReduceScatterLcclRunner);
 } // namespace atb
