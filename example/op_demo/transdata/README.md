@@ -1,6 +1,6 @@
-# 加速库RmsNormOperation C++ Demo
+# 加速库TransdataOperation C++ Demo
 ## 介绍
-该目录下为加速库RmsNormOperation C++调用示例。
+该目录下为加速库TransdataOperation C++调用示例。
 
 ## 使用说明
 - 首先source 对应的CANN和nnal包的安装路径
@@ -26,5 +26,5 @@
         ```
 
 ## 额外说明
-示例中生成的数据不代表实际场景，如需数据生成参考请查看根目录下的python用例目录：
-tests/apitest/opstest/python/operations/rms_norm_backward/
+示例中生成的数据不代表实际场景，如需数据生成参考请查看根目录下的用例目录：
+tests/unittest/ops/transdata/test_transdata.cpp

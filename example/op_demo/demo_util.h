@@ -22,9 +22,9 @@
 const int MIN_ACL_ERROR_CODE = 100000;
 const int MAX_ACL_ERROR_CODE = 999999;
 
-constexpr std::string_view ACL_ERROR_DOC =
+const char *const ACL_ERROR_DOC =
     "https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/83RC1alpha002/API/appdevgapi/aclcppdevg_03_1345.html";
-constexpr std::string_view ATB_ERROR_DOC =
+const char *const ATB_ERROR_DOC =
     "https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/83RC1alpha002/API/ascendtbapi/ascendtb_01_0008.html";
 
 #define CHECK_STATUS(status)                                                                                           \
