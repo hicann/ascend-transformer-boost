@@ -27,4 +27,4 @@
 
 ## 额外说明
 示例中生成的数据不代表实际场景，如需数据生成参考请查看根目录下的用例目录：
-tests/unittest/ops/transdata/test_transdata.cpp
+tests/unittest/ops/transdata
