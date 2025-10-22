@@ -12,10 +12,11 @@
 #include "atb/utils/log.h"
 #include "atb/utils/runner_util.h"
 #include "atb/utils/tensor_util.h"
+#include "atb/utils/operation_register.h"
 
 namespace atb {
 TransdataOpsRunner::TransdataOpsRunner(const infer::TransdataParam &param)
-    : OpsRunner("TransdataOpsRunner", RUNNER_TYPE_TRANSDATA), param_(param)
+    : OpsRunner("TransdataOpsRunner"), param_(param)
 {
     ATB_LOG(INFO) << "TransdataOpsRunner::TransdataOpsRunner called, param_.transdataType:" << param_.transdataType;
     kernelGraph_.inTensors.resize(1);
@@ -64,4 +65,6 @@ void TransdataOpsRunner::InTensorViewFunc(const Mki::SVector<int64_t> &oldDims, 
 }
 
 TransdataOpsRunner::~TransdataOpsRunner() {}
+
+REG_RUNNER_TYPE(TransdataOpsRunner);
 } // namespace atb

@@ -13,6 +13,8 @@
 #include "atb/utils/runner_util.h"
 #include "atb/utils/singleton.h"
 #include "atb/utils/utils_internal.h"
+#include "atb/utils/operation_register.h"
+#include "atb/utils/param_compare.h"
 
 static constexpr size_t SIZE_2 = 2;
 static constexpr size_t SIZE_3 = 3;
@@ -26,7 +28,7 @@ static constexpr int64_t MATMUL_TRANSPOSE_THRESHOLD = 65535;
 
 namespace atb {
 LinearOpsRunner::LinearOpsRunner(const infer::LinearParam &param)
-    : OpsRunner("LinearOpsRunner", RUNNER_TYPE_LINEAR), param_(param)
+    : OpsRunner("LinearOpsRunner"), param_(param)
 {
     ATB_LOG(INFO) << GetLogPrefix() << "LinearOpsRunner::LinearOpsRunner";
 
@@ -840,4 +842,8 @@ void LinearOpsRunner::SetupNeedMergeAxis(const Mki::Tensor &xTensor, const Mki::
     }
 }
 
+REG_RUNNER_TYPE(LinearOpsRunner);
+REG_OP_PARAM(AsdOps::OpParam::Transdata);
+REG_OP_PARAM(AsdOps::OpParam::MatMul);
+REG_OP_PARAM(AsdOps::OpParam::MoeGateCorr);
 } // namespace atb

@@ -11,13 +11,14 @@
 #include "reshape_and_cache_with_stride_ops_runner_SISO.h"
 #include <atbops/params/params.h>
 #include "atb/utils/log.h"
+#include "atb/utils/operation_register.h"
 
 namespace atb {
 static const uint32_t IN_TENSOR_COUNT_THREE = 3;
 static const uint32_t IN_TENSOR_COUNT_FOUR = 4;
 ReshapeAndCacheWithStrideOpsRunnerSISO::ReshapeAndCacheWithStrideOpsRunnerSISO(
     const infer::ReshapeAndCacheWithStrideParam &param)
-    : OpsRunner("ReshapeAndCacheWithStrideOpsRunnerSISO", RUNNER_TYPE_RESHAPE_AND_CACHE_WITH_STRIDE_SISO), param_(param)
+    : OpsRunner("ReshapeAndCacheWithStrideOpsRunnerSISO"), param_(param)
 {
     ATB_LOG(INFO) << "ReshapeAndCacheWithStrideOpsRunnerSISO::ReshapeAndCacheWithStrideOpsRunnerSISO called";
     const size_t intensorSize = 5;
@@ -67,4 +68,6 @@ Status ReshapeAndCacheWithStrideOpsRunnerSISO::SetupKernelGraph(const OpsTensorP
 }
 
 ReshapeAndCacheWithStrideOpsRunnerSISO::~ReshapeAndCacheWithStrideOpsRunnerSISO() {}
+
+REG_RUNNER_TYPE(ReshapeAndCacheWithStrideOpsRunnerSISO);
 } // namespace atb

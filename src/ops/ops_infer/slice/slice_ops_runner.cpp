@@ -12,10 +12,12 @@
 #include <atb/utils/log.h>
 #include <asdops/params/params.h>
 #include "atb/utils/tensor_util.h"
+#include "atb/utils/operation_register.h"
+#include "atb/utils/param_compare.h"
 
 namespace atb {
 SliceOpsRunner::SliceOpsRunner(const infer::SliceParam &param)
-    : OpsRunner("SliceOpsRunner", RUNNER_TYPE_SLICE), param_(param)
+    : OpsRunner("SliceOpsRunner"), param_(param)
 {
     ATB_LOG(INFO) << "SliceOpsRunner::SliceOpsRunner called";
     kernelGraph_.inTensors.resize(1);
@@ -39,4 +41,7 @@ SliceOpsRunner::SliceOpsRunner(const infer::SliceParam &param)
 }
 
 SliceOpsRunner::~SliceOpsRunner() {}
+
+REG_RUNNER_TYPE(SliceOpsRunner);
+REG_OP_PARAM(AsdOps::OpParam::Slice);
 } // namespace atb

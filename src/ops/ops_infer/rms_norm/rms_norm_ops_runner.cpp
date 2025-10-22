@@ -9,6 +9,7 @@
  */
 #include "rms_norm_ops_runner.h"
 #include "atb/utils/log.h"
+#include "atb/utils/operation_register.h"
 
 namespace atb {
 static const uint64_t IN_TENSOR_COUNT_TWO = 2;
@@ -254,7 +255,7 @@ void RmsNormOpsRunner::BuildPostRmsNormGraph(const AsdOps::OpParam::Norm &rmsNor
 }
 
 RmsNormOpsRunner::RmsNormOpsRunner(const infer::RmsNormParam &param)
-    : OpsRunner("RmsNormOpsRunner", RUNNER_TYPE_RMS_NORM), param_(param)
+    : OpsRunner("RmsNormOpsRunner"), param_(param)
 {
     AsdOps::OpParam::Norm rmsNormParam = {AsdOps::OpParam::Norm::RMS_NORM};
     if (param_.layerType == infer::RmsNormParam::RMS_NORM_NORM) {
@@ -300,4 +301,6 @@ RmsNormOpsRunner::RmsNormOpsRunner(const infer::RmsNormParam &param)
 }
 
 RmsNormOpsRunner::~RmsNormOpsRunner() {}
+
+REG_RUNNER_TYPE(RmsNormOpsRunner);
 } // namespace atb

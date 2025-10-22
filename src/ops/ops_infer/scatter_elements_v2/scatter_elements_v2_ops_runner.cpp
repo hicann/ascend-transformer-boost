@@ -11,11 +11,12 @@
 #include <asdops/params/params.h>
 #include "atb/utils/log.h"
 #include "atb/utils/tensor_util.h"
-
+#include "atb/utils/operation_register.h"
+#include "atb/utils/param_compare.h"
  
 namespace atb {
 ScatterElementsV2OpsRunner::ScatterElementsV2OpsRunner(const infer::ScatterElementsV2Param &param)
-    : OpsRunner("ScatterElementsV2OpsRunner", RUNNER_TYPE_GATHER), param_(param)
+    : OpsRunner("ScatterElementsV2OpsRunner"), param_(param)
 {
     ATB_LOG(INFO) << "ScatterElementsV2OpsRunner::ScatterElementsV2OpsRunner called";
     kernelGraph_.inTensors.resize(3); // intersorNum:3
@@ -48,5 +49,7 @@ ScatterElementsV2OpsRunner::ScatterElementsV2OpsRunner(const infer::ScatterEleme
 }
  
 ScatterElementsV2OpsRunner::~ScatterElementsV2OpsRunner() {}
- 
+
+REG_RUNNER_TYPE(ScatterElementsV2OpsRunner);
+REG_OP_PARAM(AsdOps::OpParam::ScatterElementsV2);
 } // namespace atb

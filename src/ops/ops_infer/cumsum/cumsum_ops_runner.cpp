@@ -11,10 +11,12 @@
 #include <asdops/params/params.h>
 #include "atb/utils/log.h"
 #include "atb/utils/tensor_util.h"
+#include "atb/utils/operation_register.h"
+#include "atb/utils/param_compare.h"
 
 namespace atb {
 CumsumOpsRunner::CumsumOpsRunner(const infer::CumsumParam &param)
-    : OpsRunner("CumsumOpsRunner", RUNNER_TYPE_CUMSUM), param_(param)
+    : OpsRunner("CumsumOpsRunner"), param_(param)
 {
     ATB_LOG(INFO) << "CumsumOpsRunner::CumsumOpsRunner called";
     kernelGraph_.inTensors.resize(1);
@@ -47,4 +49,7 @@ CumsumOpsRunner::CumsumOpsRunner(const infer::CumsumParam &param)
 }
 
 CumsumOpsRunner::~CumsumOpsRunner() {}
+REG_RUNNER_TYPE(CumsumOpsRunner);
+REG_OP_PARAM(AsdOps::OpParam::Fill);
+REG_OP_PARAM(AsdOps::OpParam::Cumsum);
 } // namespace atb

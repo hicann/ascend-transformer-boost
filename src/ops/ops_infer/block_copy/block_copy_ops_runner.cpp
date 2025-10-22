@@ -7,13 +7,16 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
+#include "block_copy_ops_runner.h"
 #include <atbops/params/params.h>
 #include "atb/utils/log.h"
 #include "atb/utils/tensor_util.h"
-#include "block_copy_ops_runner.h"
+#include "atb/utils/operation_register.h"
+#include "atb/utils/param_compare.h"
+
 namespace atb {
 BlockCopyOpsRunner::BlockCopyOpsRunner(const infer::BlockCopyParam &param)
-    : OpsRunner("BlockCopyOpsRunner", RUNNER_TYPE_BLOCK_COPY), param_(param)
+    : OpsRunner("BlockCopyOpsRunner"), param_(param)
 {
     ATB_LOG(INFO) << "BlockCopyOpsRunner::BlockCopyOpsRunner called";
     kernelGraph_.inTensors.resize(5); // dim:5
@@ -35,5 +38,6 @@ BlockCopyOpsRunner::BlockCopyOpsRunner(const infer::BlockCopyParam &param)
 }
 
 BlockCopyOpsRunner::~BlockCopyOpsRunner() {}
-
+REG_RUNNER_TYPE(BlockCopyOpsRunner);
+REG_OP_PARAM(AtbOps::OpParam::BlockCopy);
 } // namespace atb

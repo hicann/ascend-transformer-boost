@@ -10,11 +10,13 @@
 #include "razor_fusion_attention_ops_runner.h"
 #include <atbops/params/params.h>
 #include "atb/utils/log.h"
+#include "atb/utils/operation_register.h"
+#include "atb/utils/param_compare.h"
 
 namespace atb {
 
 RazorFusionAttentionOpsRunner::RazorFusionAttentionOpsRunner(const infer::RazorFusionAttentionParam &param)
-    : OpsRunner("RazorFusionAttentionOpsRunner", RUNNER_TYPE_RAZOR_FUSION_ATTENTION), param_(param)
+    : OpsRunner("RazorFusionAttentionOpsRunner"), param_(param)
 {
     needKernelGraphModify_ = true;
     skipSetUpKernelGraphWhenCacheHit_ = false;
@@ -71,4 +73,7 @@ void RazorFusionAttentionOpsRunner::SetRFAParam(AtbOps::OpParam::UnpadFlashAtten
 }
 
 RazorFusionAttentionOpsRunner::~RazorFusionAttentionOpsRunner() {}
+
+REG_RUNNER_TYPE(RazorFusionAttentionOpsRunner);
+REG_OP_PARAM(AtbOps::OpParam::UnpadFlashAttention);
 } // namespace atb

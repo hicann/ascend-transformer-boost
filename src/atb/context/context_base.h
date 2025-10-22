@@ -14,7 +14,6 @@
 #include "atb/svector.h"
 #include "atb/context/allocator/allocator.h"
 #include "atb/context/tiling_buffer_pool/tiling_buffer_pool.h"
-#include "atb/runner/runner_type.h"
 #include "atb/context/runner_pool.h"
 
 namespace atb {
@@ -39,7 +38,7 @@ public:
     uint8_t *GetHostTilingBuffer();
     uint8_t *GetDeviceTilingBuffer();
     uint64_t GetTilingBufferBlockSize() const;
-    RunnerPool &GetRunnerPool(RunnerType runnerType);
+    RunnerPool &GetRunnerPool(int64_t runnerTypeIdx);
     const Tensor &GetOverflowKernelOutTensor();
     Status SetExecuteType(ExecuteType type) override;
     ExecuteType GetExecuteType() override;

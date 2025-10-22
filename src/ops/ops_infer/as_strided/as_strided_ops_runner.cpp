@@ -12,10 +12,12 @@
 #include <asdops/params/params.h>
 #include "atb/utils/log.h"
 #include "atb/utils/tensor_util.h"
+#include "atb/utils/operation_register.h"
+#include "atb/utils/param_compare.h"
 
 namespace atb {
 AsStridedOpsRunner::AsStridedOpsRunner(const infer::AsStridedParam &param)
-    : OpsRunner("AsStridedOpsRunner", RUNNER_TYPE_ASSTRIDED), param_(param)
+    : OpsRunner("AsStridedOpsRunner"), param_(param)
 {
     ATB_LOG(INFO) << "AsStridedOpsRunner::AsStridedOpsRunner called";
     kernelGraph_.inTensors.resize(1);
@@ -39,4 +41,6 @@ AsStridedOpsRunner::AsStridedOpsRunner(const infer::AsStridedParam &param)
 }
 
 AsStridedOpsRunner::~AsStridedOpsRunner() {}
+REG_RUNNER_TYPE(AsStridedOpsRunner);
+REG_OP_PARAM(AsdOps::OpParam::AsStrided);
 } // namespace atb

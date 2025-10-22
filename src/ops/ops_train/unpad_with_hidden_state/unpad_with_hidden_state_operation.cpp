@@ -15,6 +15,7 @@
 #include "atb/operation/op_param_funcs.h"
 #include "atb/utils/operation_util.h"
 #include "atb/utils/singleton.h"
+#include "atb/utils/operation_register.h"
 
 namespace {
 constexpr int32_t DIM_2 = 2;
@@ -143,7 +144,8 @@ std::shared_ptr<Runner> UnpadWithHiddenStateOperation::CreateRunner(Context &con
         ATB_LOG(DEBUG) << "context cast to contextBase failed!";
         return nullptr;
     }
-    RunnerPool &pool = contextBase->GetRunnerPool(RUNNER_TYPE_UNPAD_WITH_HIDDEN_STATE);
+    int64_t runnerTypeIdx = RunnerTypeRegister::GetRunnerTypeIdx("UnpadWithHiddenStateOpsRunner");
+    RunnerPool &pool = contextBase->GetRunnerPool(runnerTypeIdx);
     Runner *runner = pool.MallocRunner<UnpadWithHiddenStateOpsRunner, train::UnpadWithHiddenStateParam>(param_);
     if (!runner) {
         ATB_LOG(DEBUG) << "MallocRunner from pool failed!";

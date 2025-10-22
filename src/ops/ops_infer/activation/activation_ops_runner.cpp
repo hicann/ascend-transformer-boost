@@ -11,6 +11,8 @@
 #include <asdops/params/params.h>
 #include "atb/utils/log.h"
 #include "atb/utils/runner_util.h"
+#include "atb/utils/operation_register.h"
+#include "atb/utils/param_compare.h"
 
 static const uint32_t IN_TENSOR_NUM = 1;
 static const uint32_t SWIGLU_BACKWARD_IN_TENSOR_NUM = 2;
@@ -18,7 +20,7 @@ static const uint32_t OUT_TENSOR_NUM = 1;
 
 namespace atb {
 ActivationOpsRunner::ActivationOpsRunner(const infer::ActivationParam &param)
-    : OpsRunner("ActivationOpsRunner", RUNNER_TYPE_ACTIVATION), param_(param)
+    : OpsRunner("ActivationOpsRunner"), param_(param)
 {
     ATB_LOG(INFO) << "ActivationOpsRunner::ActivationOpsRunner called, param_.activationType:" << param_.activationType;
     kernelGraph_.nodes.resize(1);
@@ -44,4 +46,7 @@ ActivationOpsRunner::ActivationOpsRunner(const infer::ActivationParam &param)
 }
 
 ActivationOpsRunner::~ActivationOpsRunner() {}
+
+REG_RUNNER_TYPE(ActivationOpsRunner);
+REG_OP_PARAM(AsdOps::OpParam::Activation);
 } // namespace atb

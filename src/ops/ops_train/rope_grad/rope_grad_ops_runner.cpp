@@ -13,14 +13,15 @@
 #include <atb/utils/log.h>
 #include <atb/utils/tensor_util.h>
 #include <atbops/params/params.h>
-
+#include "atb/utils/operation_register.h"
+#include "atb/utils/param_compare.h"
 
 namespace atb {
 static const uint64_t IN_TENSOR_COUNT = 4;
 static const uint64_t OUT_TENSOR_COUNT = 2;
 
 RopeGradOpsRunner::RopeGradOpsRunner(const train::RopeGradParam &param)
-    : OpsRunner("RopeGradOpsRunner", RUNNER_TYPE_ROPE_GRAD), param_(param)
+    : OpsRunner("RopeGradOpsRunner"), param_(param)
 {
 }
 RopeGradOpsRunner::~RopeGradOpsRunner() {}
@@ -62,4 +63,7 @@ void RopeGradOpsRunner::SetParam(const Mki::Any &param)
         isParamUpdated_ = true;
     }
 }
+
+REG_RUNNER_TYPE(RopeGradOpsRunner);
+REG_OP_PARAM(AtbOps::OpParam::RopeGrad);
 } // namespace atb

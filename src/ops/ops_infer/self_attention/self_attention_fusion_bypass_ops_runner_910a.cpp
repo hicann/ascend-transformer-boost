@@ -15,6 +15,7 @@
 #include "param.h"
 #include "atb/utils/runner_util.h"
 #include "self_attention_runner_utils.h"
+#include "atb/utils/operation_register.h"
 
 namespace atb {
 void TransQViewFuncBypass910a(const Mki::SVector<int64_t> &oldDims, Mki::SVector<int64_t> &newDims)
@@ -51,7 +52,7 @@ void FlashAttentionInferShapePreFuncBypass910a(Mki::LaunchParam &launchParam)
 }
 
 SelfAttentionFusionBypassOpsRunner910A::SelfAttentionFusionBypassOpsRunner910A(const infer::SelfAttentionParam &param)
-    : OpsRunner("SelfAttentionFusionBypassOpsRunner910A", RUNNER_TYPE_SELF_ATTENTION_KV_BYPASS), param_(param)
+    : OpsRunner("SelfAttentionFusionBypassOpsRunner910A"), param_(param)
 {
     needKernelGraphModify_ = true;
     ATB_LOG(INFO) << "SelfAttentionFusionBypassOpsRunner910A::SelfAttentionFusionBypassOpsRunner910A called";
@@ -344,4 +345,6 @@ void SelfAttentionFusionBypassOpsRunner910A::SetParam(const Mki::Any &param)
 }
 
 SelfAttentionFusionBypassOpsRunner910A::~SelfAttentionFusionBypassOpsRunner910A() {}
+
+REG_RUNNER_TYPE(SelfAttentionFusionBypassOpsRunner910A);
 } // namespace atb

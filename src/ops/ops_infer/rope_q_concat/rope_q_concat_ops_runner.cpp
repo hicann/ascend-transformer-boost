@@ -12,13 +12,15 @@
 #include <atbops/params/params.h>
 #include "atb/utils/log.h"
 #include "atb/utils/tensor_util.h"
+#include "atb/utils/operation_register.h"
+#include "atb/utils/param_compare.h"
 
 namespace atb {
 static const uint64_t IN_TENSOR_COUNT = 4;
 static const uint64_t OUT_TENSOR_COUNT = 1;
 
 RopeQConcatOpsRunner::RopeQConcatOpsRunner(const infer::RopeQConcatParam &param)
-    : OpsRunner("RopeQConcatOpsRunner", RUNNER_TYPE_ROPE_Q_CONCAT), param_(param)
+    : OpsRunner("RopeQConcatOpsRunner"), param_(param)
 {
 }
 
@@ -59,4 +61,7 @@ void RopeQConcatOpsRunner::SetParam(const Mki::Any &param)
         isParamUpdated_ = true;
     }
 }
+
+REG_RUNNER_TYPE(RopeQConcatOpsRunner);
+REG_OP_PARAM(AtbOps::OpParam::RopeQConcat);
 } // namespace atb
