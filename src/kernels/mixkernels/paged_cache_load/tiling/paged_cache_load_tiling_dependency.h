@@ -20,9 +20,10 @@ struct PagedCacheLoadTilingData {
     int32_t numblkTabCol;
     int32_t tokenSizeK;
     int32_t tokenSizeV;
-    int32_t typeByte;
+    int32_t typeByteK;
     int32_t hasSeqStarts;
     int32_t cuSeqLens;
+    int32_t typeByteV;
 };
 }
 
