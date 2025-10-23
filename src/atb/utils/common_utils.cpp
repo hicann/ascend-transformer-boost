@@ -11,7 +11,7 @@
 #include "atb/utils/common_utils.h"
 #include <sstream>
 #include <atb/utils/log.h>
-
+#include <unordered_map>
 namespace atb {
 std::string GenerateOperationName(const std::string &opType, const std::vector<int64_t> &ids)
 {
@@ -66,4 +66,20 @@ HcclReduceOp GetAllReduceType(const std::string &allReduceType)
         return HCCL_REDUCE_RESERVED;
     }
 }
+
+const std::unordered_map<HcclResult, atb::Status> hcclResultToStatusMap = {
+    {HcclResult::HCCL_SUCCESS, atb::NO_ERROR},
+    {HcclResult::HCCL_E_PARA, atb::ERROR_INVALID_PARAM},
+    {HcclResult::HCCL_E_MEMORY, atb::ERROR_OUT_OF_DEVICE_MEMORY},
+};
+
+atb::Status ConvertHcclResultToStatus(const HcclResult hcclResult)
+{
+    auto it = hcclResultToStatusMap.find(hcclResult);
+    if (it != hcclResultToStatusMap.end()) {
+        return it->second;
+    }
+    return atb::ERROR_HCCL_FAIL;
+}
+
 } // namespace atb

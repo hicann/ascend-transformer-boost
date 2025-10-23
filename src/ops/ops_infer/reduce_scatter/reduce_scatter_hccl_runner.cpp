@@ -51,7 +51,7 @@ Status ReduceScatterHcclRunner::ExecuteImpl(RunnerVariantPack &runnerVariantPack
         GetAllReduceType(param_.reduceType), hcclComm_.get(), GetExecuteStream(runnerVariantPack.context));
     if (ret != HCCL_SUCCESS) {
         ATB_LOG(ERROR) << "ReduceScatter hccl Execute failed, ret: " << ret;
-        return ERROR_CANN_ERROR;
+        return ConvertHcclResultToStatus(ret);
     }
     return NO_ERROR;
 }
