@@ -7426,6 +7426,7 @@ class PagedCacheLoadOperation(DataGen):
     @staticmethod
     def customize(shapes, i, datatype, format, data_gen_ranges, op_params):
         if i != 0:
+            PagedCacheLoadOperation.in_tensors[i] = torch_npu.npu_dtype_cast(PagedCacheLoadOperation.in_tensors[i].npu(), dtype_dict[datatype])
             return torch_npu.npu_format_cast(PagedCacheLoadOperation.in_tensors[i], format_dict[format])
         datatype_dict = {"float16": "float16", "bf16": "float32", "int8": "int8"}
         dtype = datatype_dict[datatype]
@@ -7492,15 +7493,16 @@ class PagedCacheLoadOperation(DataGen):
         block_size = shapes[0][2]
         num_blocks = shapes[0][0]
         num_blocksv = shapes[1][0]
-        elenum_aligned = shapes[0][3]
+        elenum_alignedk = shapes[0][3]
+        elenum_alignedv = shapes[1][3]
         num_heads_sizek = shapes[0][1]
         num_heads_sizev = shapes[1][1]
         num_heads_sizek16 = shapes[4][1]
         num_heads_sizev16 = shapes[5][1]
         sumcontext = shapes[4][0]
-        key_cache = np.random.randint(1, 11, size=(num_blocks, num_heads_sizek, block_size, elenum_aligned)).astype(
+        key_cache = np.random.randint(1, 11, size=(num_blocks, num_heads_sizek, block_size, elenum_alignedk)).astype(
             dtype)
-        value_cache = np.random.randint(1, 11, size=(num_blocksv, num_heads_sizev, block_size, elenum_aligned)).astype(
+        value_cache = np.random.randint(1, 11, size=(num_blocksv, num_heads_sizev, block_size, elenum_alignedv)).astype(
             dtype)
 
         max_num_blocks_per_req = (max_context_len + block_size - 1) // block_size
@@ -7600,10 +7602,10 @@ class PagedCacheLoadOperation(DataGen):
         sum_context_lens = sum(context_lens)
         max_context_len = max(context_lens)
         num_tokens = len(context_lens)
-        num_blocks, num_heads_sizek_aligend, block_size, elenum_aligned = in_tensors[0].shape
-        num_blocks, num_heads_sizev_aligend, block_size, elenum_aligned = in_tensors[1].shape
-        num_heads_sizek = num_heads_sizek_aligend * elenum_aligned
-        num_heads_sizev = num_heads_sizev_aligend * elenum_aligned
+        num_blocks, num_heads_sizek_aligend, block_size, elenum_alignedk = in_tensors[0].shape
+        num_blocks, num_heads_sizev_aligend, block_size, elenum_alignedv = in_tensors[1].shape
+        num_heads_sizek = num_heads_sizek_aligend * elenum_alignedk
+        num_heads_sizev = num_heads_sizev_aligend * elenum_alignedv
         data_type = in_tensors[0].dtype
         datatype_dictkv = {"torch.float16": "float16", "torch.bfloat16": "float32", "torch.int8": "int8"}
         dtypekv = datatype_dictkv[str(data_type)]
@@ -7611,7 +7613,10 @@ class PagedCacheLoadOperation(DataGen):
         value_expect = np.zeros((sum_context_lens, num_heads_sizev)).astype(dtypekv)
 
         key_cache = in_tensors[0].numpy()
-        value_cache = in_tensors[1].numpy()
+        if in_tensors[1].dtype == torch.bfloat16:
+            value_cache = in_tensors[1].to(torch.float32).numpy()
+        else:
+            value_cache = in_tensors[1].numpy()
         block_tables = in_tensors[2].numpy()  # [num_tokens, max_num_blocks_per_seq]
         kv_rslt_id = 0
         for i in range(num_tokens):
@@ -7628,12 +7633,12 @@ class PagedCacheLoadOperation(DataGen):
                 temp_k = np.zeros((num_heads_sizek))
                 temp_v = np.zeros((num_heads_sizev))
 
-                for k in range(num_heads_sizek // elenum_aligned):
-                    temp_k[k * elenum_aligned: k * elenum_aligned + elenum_aligned] = key_cache[block_id][k][
+                for k in range(num_heads_sizek // elenum_alignedk):
+                    temp_k[k * elenum_alignedk: k * elenum_alignedk + elenum_alignedk] = key_cache[block_id][k][
                                                                                           block_offset][:]
 
-                for k in range(num_heads_sizev // elenum_aligned):
-                    temp_v[k * elenum_aligned: k * elenum_aligned + elenum_aligned] = value_cache[block_id][k][
+                for k in range(num_heads_sizev // elenum_alignedv):
+                    temp_v[k * elenum_alignedv: k * elenum_alignedv + elenum_alignedv] = value_cache[block_id][k][
                                                                                           block_offset][:]
 
                 key_expect[kv_rslt_id] = temp_k
