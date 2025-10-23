@@ -1207,5 +1207,135 @@ class TestMLAPrefill(operation_test.OperationTest):
                 torch.tensor(kv_seqLen, dtype=torch.int32).npu()
             ])
 
+    def test_flash_attention_mla_swa_fp16_case1(self):
+        """
+            mla + swa norm mask, datatype = torch.float16
+            embeddim = 192, embeddimV = 128
+            qseqlen = kv_seqLen
+            maskType = MASK_TYPE_SWA_NORM
+        """
+        if not operation_test.get_soc_version() == 'Ascend910B':
+            print("this testcase only supports Ascend910B")
+            return
+        batch = 16
+        kv_head = 1      # kv_head num
+        isdecoder = 0    # prefill or decoder
+        heads = 1        # llama7b  hidden_size 4096
+        embeddim = 192
+        embeddimV = 128
+        tor = 1.0 / math.sqrt(1.0 * embeddim)
+        dynamic_batch = False
+        kv_seqLen = [2048] * batch
+        max_seq = max(kv_seqLen)
+        q_seqLen = kv_seqLen
+        is_clamp = 0
+        clamp_min = 0
+        clamp_max = 0
+        window_size = 128 * 7 + 58
+        
+        OP_NAME = "MultiLatentAttentionOperation"
+        OP_PARAM = {
+            "headNum": heads,
+            "qkScale": tor,
+            "kvHeadNum": kv_head,
+            "maskType": 4,
+            "calcType": 4,
+            "cacheMode": 1,
+            "windowSize": window_size
+        }
+        RUN_PARAM = json.dumps({"qSeqlen": q_seqLen, "contextLens": kv_seqLen})
+        data_type = torch.bfloat16
+        self.set_data_params(dynamic_batch = dynamic_batch, window_size=window_size,
+                             is_decoder = isdecoder, batch = batch, kv_head = kv_head, heads = heads,
+                             embeddim = embeddim,embeddimv = embeddimV, max_seq = max_seq, kv_seqLen = kv_seqLen,
+                             is_clamp = is_clamp, clamp_max = clamp_max, clamp_min = clamp_min,
+                             data_type = data_type, is_alibi = False, is_triu_mask = False,
+                             op_type = 1, mask_type = MASK_TYPE_NO_BATCH, tor = tor, long_seq = False)
+        self.gen_out_tensor()
+
+        logging.debug("**********input shape***********")
+        logging.info(f"q shape: {self.q.shape}")
+        logging.info(f"k shape: {self.k.shape}")
+        logging.info(f"v shape: {self.v.shape}")
+        logging.info(f"layer_id shape: {self.layer_id.shape}")
+        logging.info(f"mask shape: {self.mask.shape}")
+        logging.info(f"golden shape: {self.golden_out.shape}")
+
+        self.execute_with_param(OP_NAME, OP_PARAM, RUN_PARAM, [
+            self.q_split1.npu(),
+            self.q_split2.npu(),
+            self.k_split1[0].npu(),
+            self.k_split2[0].npu(),
+            self.v[0].npu(),
+            torch.tensor(q_seqLen, dtype=torch.int32).npu(),
+            torch.tensor(kv_seqLen, dtype=torch.int32).npu(),
+            self.mask.reshape(max_seq, max_seq).to(data_type).npu()
+        ])
+
+    def test_flash_attention_mla_swa_bf16_case1(self):
+        """
+            mla + swa norm mask, datatype = torch.bfloat16
+            embeddim = 192, embeddimV = 128
+            qseqlen = kv_seqLen
+            maskType = MASK_TYPE_SWA_NORM
+        """
+        if not operation_test.get_soc_version() == 'Ascend910B':
+            print("this testcase only supports Ascend910B")
+            return
+        batch = 16
+        kv_head = 1      # kv_head num
+        isdecoder = 0    # prefill or decoder
+        heads = 1        # llama7b  hidden_size 4096
+        embeddim = 192
+        embeddimV = 128
+        tor = 1.0 / math.sqrt(1.0 * embeddim)
+        dynamic_batch = False
+        kv_seqLen = [2048] * batch
+        max_seq = max(kv_seqLen)
+        q_seqLen = kv_seqLen
+        is_clamp = 0
+        clamp_min = 0
+        clamp_max = 0
+        window_size = 128 * 7 + 58
+        
+        OP_NAME = "MultiLatentAttentionOperation"
+        OP_PARAM = {
+            "headNum": heads,
+            "qkScale": tor,
+            "kvHeadNum": kv_head,
+            "maskType": 4,
+            "calcType": 4,
+            "cacheMode": 1,
+            "windowSize": window_size
+        }
+        RUN_PARAM = json.dumps({"qSeqlen": q_seqLen, "contextLens": kv_seqLen})
+        data_type = torch.bfloat16
+        self.set_data_params(dynamic_batch = dynamic_batch, window_size=window_size,
+                             is_decoder = isdecoder, batch = batch, kv_head = kv_head, heads = heads,
+                             embeddim = embeddim,embeddimv = embeddimV, max_seq = max_seq, kv_seqLen = kv_seqLen,
+                             is_clamp = is_clamp, clamp_max = clamp_max, clamp_min = clamp_min,
+                             data_type = data_type, is_alibi = False, is_triu_mask = False,
+                             op_type = 1, mask_type = MASK_TYPE_NO_BATCH, tor = tor, long_seq = False)
+        self.gen_out_tensor()
+
+        logging.debug("**********input shape***********")
+        logging.info(f"q shape: {self.q.shape}")
+        logging.info(f"k shape: {self.k.shape}")
+        logging.info(f"v shape: {self.v.shape}")
+        logging.info(f"layer_id shape: {self.layer_id.shape}")
+        logging.info(f"mask shape: {self.mask.shape}")
+        logging.info(f"golden shape: {self.golden_out.shape}")
+
+        self.execute_with_param(OP_NAME, OP_PARAM, RUN_PARAM, [
+            self.q_split1.npu(),
+            self.q_split2.npu(),
+            self.k_split1[0].npu(),
+            self.k_split2[0].npu(),
+            self.v[0].npu(),
+            torch.tensor(q_seqLen, dtype=torch.int32).npu(),
+            torch.tensor(kv_seqLen, dtype=torch.int32).npu(),
+            self.mask.reshape(max_seq, max_seq).to(data_type).npu()
+        ])
+
 if __name__ == '__main__':
     unittest.main()
