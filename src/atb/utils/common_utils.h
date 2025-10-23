@@ -29,7 +29,7 @@
 #include <vector>
 #include <string>
 #include "atb/svector.h"
-
+#include "atb/types.h"
 namespace atb {
 template <typename T> std::vector<T> SVectorToVector(const SVector<T> &svector)
 {
@@ -44,5 +44,6 @@ template <typename T> std::vector<T> SVectorToVector(const SVector<T> &svector)
 std::string GenerateOperationName(const std::string &opType, const std::vector<int64_t> &ids);
 HcclDataType GetHcclDtype(const aclDataType dtype);
 HcclReduceOp GetAllReduceType(const std::string &allReduceType);
+atb::Status ConvertHcclResultToStatus(const HcclResult hcclResult);
 } // namespace atb
 #endif
