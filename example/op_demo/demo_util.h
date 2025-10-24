@@ -49,7 +49,7 @@ const char *const ATB_ERROR_DOC =
             } else {                                                                                                   \
                 std::cout << "For error code details, visit: " << ATB_ERROR_DOC << std::endl;                          \
             }                                                                                                          \
-            (expr);                                                                                                      \
+            {expr};                                                                                                    \
         }                                                                                                              \
     } while (0)
 
