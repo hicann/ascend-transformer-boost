@@ -51,29 +51,29 @@ int RunAllReduceOp(Args &args)
 {
     int rankId = args.rankId;
     auto aclRet = aclrtSetDevice(rankId);
-    CHECK_STATUS_EXPR(aclRet, std::cout << "aclrtSetDevice failed" << std::endl; return aclRet);
+    CHECK_STATUS_EXPR(aclRet, std::cout << "aclrtSetDevice failed" << std::endl; return aclRet;);
     atb::VariantPack variantPack = PrepareVariantPack(args);
     atb::Operation *allReduceOp = nullptr;
     atb::Status st = atb::CreateOperation(args.param, &allReduceOp);
     CHECK_STATUS_EXPR((st != atb::ErrorType::NO_ERROR || !allReduceOp),
                       std::cout << "atb create operation failed" << std::endl;
-                      return st);
+                      return st;);
     uint64_t workspaceSize = 0;
     // ATB Operation 第一阶段接口调用：对输入输出进行检查，并根据需要计算workspace大小
     st = allReduceOp->Setup(variantPack, workspaceSize, args.context);
-    CHECK_STATUS_EXPR(st, std::cout << "operation setup failed" << std::endl; return st);
+    CHECK_STATUS_EXPR(st, std::cout << "operation setup failed" << std::endl; return st;);
     // 根据第一阶段接口计算出的workspaceSize申请device内存
     uint8_t *workspacePtr = nullptr;
     if (workspaceSize > 0) {
         aclRet = aclrtMalloc((void **)(&workspacePtr), workspaceSize, ACL_MEM_MALLOC_HUGE_FIRST);
-        CHECK_STATUS_EXPR(aclRet, std::cout << "aclrtMalloc failed" << std::endl; return aclRet);
+        CHECK_STATUS_EXPR(aclRet, std::cout << "aclrtMalloc failed" << std::endl; return aclRet;);
     }
     // ATB Operation 第二阶段接口调用：执行算子
     st = allReduceOp->Execute(variantPack, workspacePtr, workspaceSize, args.context);
-    CHECK_STATUS_EXPR(st, std::cout << "operation execute failed" << std::endl; return aclRet);
+    CHECK_STATUS_EXPR(st, std::cout << "operation execute failed" << std::endl; return aclRet;);
     // 同步等待
     aclRet = aclrtSynchronizeStream(args.stream);
-    CHECK_STATUS_EXPR(aclRet, std::cout << "aclrtSynchronizeStreame failed" << std::endl; return aclRet);
+    CHECK_STATUS_EXPR(aclRet, std::cout << "aclrtSynchronizeStreame failed" << std::endl; return aclRet;);
     // 资源释放
     for (atb::Tensor &tensor : variantPack.inTensors) {
         if (tensor.deviceData) {
@@ -89,13 +89,13 @@ int RunAllReduceOp(Args &args)
         aclrtFree(workspacePtr);
     }
     st = atb::DestroyOperation(allReduceOp);
-    CHECK_STATUS_EXPR(st, std::cout << "destroy operation failed" << std::endl; return st);
+    CHECK_STATUS_EXPR(st, std::cout << "destroy operation failed" << std::endl; return st;);
     aclRet = aclrtDestroyStream(args.stream);
-    CHECK_STATUS_EXPR(aclRet, std::cout << "aclrtDestroyStream failed" << std::endl; return aclRet);
+    CHECK_STATUS_EXPR(aclRet, std::cout << "aclrtDestroyStream failed" << std::endl; return aclRet;);
     st = atb::DestroyContext(args.context);
-    CHECK_STATUS_EXPR(st, std::cout << "destroy context failed" << std::endl; return st);
+    CHECK_STATUS_EXPR(st, std::cout << "destroy context failed" << std::endl; return st;);
     aclRet = aclrtResetDevice(args.rankId);
-    CHECK_STATUS_EXPR(aclRet, std::cout << "aclrtResetDevice failed" << std::endl; return aclRet);
+    CHECK_STATUS_EXPR(aclRet, std::cout << "aclrtResetDevice failed" << std::endl; return aclRet;);
     return 0;
 }
 
@@ -134,7 +134,7 @@ int main(int argc, char **argv)
     }
     for (int rankId = 0; rankId < DEV_NUM; rankId++) {
         int aclRet = threads[rankId].get();
-        CHECK_STATUS_EXPR(aclRet, std::cout << "multithread task " << rankId << " failed" << std::endl);
+        CHECK_STATUS_EXPR(aclRet, std::cout << "multithread task " << rankId << " failed" << std::endl;);
     }
     CHECK_STATUS(aclFinalize());
     std::cout << "AllReduce demo finished!" << std::endl;
