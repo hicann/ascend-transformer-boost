@@ -17,7 +17,7 @@
  * @param stream stream
  * @return atb::Status 错误码
  */
-atb::Status RunSwigluDemo(atb::Context *context, void *stream)
+atb::Status RunConcatDemo(atb::Context *context, void *stream)
 {
     // 配置Op参数
     atb::infer::ConcatParam opParam;
@@ -79,7 +79,7 @@ int main(int argc, char **argv)
     void *stream = nullptr;
     CHECK_STATUS(aclrtCreateStream(&stream));
     context->SetExecuteStream(stream);
-    CHECK_STATUS(RunSwigluDemo(context, stream));
+    CHECK_STATUS(RunConcatDemo(context, stream));
     CHECK_STATUS(aclrtDestroyStream(stream));
     CHECK_STATUS(atb::DestroyContext(context));
     CHECK_STATUS(aclFinalize());
