@@ -101,7 +101,11 @@ pip3 install attrs cython 'numpy>=1.19.2,<=1.24.0' decorator sympy cffi pyyaml p
     source output/atb/set_env.sh
     ```
     注意：该编译过程涉及①拉取算子库/MKI并编译②加速库的编译两个过程。更多命令介绍可查看ATB仓`scripts/build.sh`文件。
-
+ - 如果出现缺少某些so文件的问题时，您可参考[常见问题与回答](docs/常见问题与回答.md)安装nnal软件包以获取对应so文件，安装后需要设置环境变量：
+    ```sh
+    source {install path}/nnal/atb/set_env.sh
+    export ATB_BUILD_DEPENDENCY_PATH=${ATB_HOME_PATH}
+    ```
  - 更多编译命令说明请参考[编译与构建](docs/编译与构建.md)
 ### 调用示例说明
 本节示例代码分别展示了如何通过Python和C++调用算子。
