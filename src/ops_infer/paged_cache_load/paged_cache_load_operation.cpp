@@ -235,16 +235,18 @@ Status PagedCacheLoadOperation::KVCacheDimCheck910BNZ(const SVector<TensorDesc> 
         }
         if (inTensorDescs.at(IN_TENSOR_0_KEYCACHE).shape.dims[1] * THIRTYTWO > MAX_k ||
                 inTensorDescs.at(IN_TENSOR_1_VALUECACHE).shape.dims[1] * THIRTYTWO > MAX_v) {
-            ATB_LOG(ERROR) << GetLogPrefix() << "The scend dimension of blocktables must be less than 147456";
+            ATB_LOG(ERROR) << GetLogPrefix() <<
+                "numheads * headsize of keycache and valuecache must be less than 147456";
             return ERROR_INVALID_TENSOR_DIM;
         }
     } else  if (inTensorDescs.at(IN_TENSOR_0_KEYCACHE).shape.dims[OUT_DIM] != SIXTEEN ||
                 inTensorDescs.at(IN_TENSOR_1_VALUECACHE).shape.dims[OUT_DIM] != SIXTEEN) { // 1: valueCache
             ATB_LOG(ERROR) << GetLogPrefix() << "The last dimension of keycache and valuecache must be 16";
             return ERROR_INVALID_TENSOR_DIM;
-    } else if (inTensorDescs.at(IN_TENSOR_0_KEYCACHE).shape.dims[1] * SIXTEEN > MAX_k ||
-                inTensorDescs.at(IN_TENSOR_1_VALUECACHE).shape.dims[1] * SIXTEEN > MAX_v) {
-            ATB_LOG(ERROR) << GetLogPrefix() << "The scend dimension of blocktables must be less than 147456";
+    } else if (inTensorDescs.at(IN_TENSOR_0_KEYCACHE).shape.dims[1] * THIRTYTWO > MAX_k ||
+                inTensorDescs.at(IN_TENSOR_1_VALUECACHE).shape.dims[1] * THIRTYTWO > MAX_v) {
+            ATB_LOG(ERROR) << GetLogPrefix() <<
+                "numheads * headsize of keycache and valuecache must be less than 147456";
             return ERROR_INVALID_TENSOR_DIM;
     }
     return NO_ERROR;
