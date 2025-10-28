@@ -86,6 +86,9 @@ public:
     {
         DumpLcclLogInfo(LogId::PROCESS, Op::COPYONLY);
         int count = rankSize / RING_NUM * CeilDiv<int64_t, int64_t>(dataSizePerCore, blockSize);
+        if (count == 0) {
+            count = 1;
+        }
         if (stage == STAGE::HCCS_RING) {
             ProcessHccsRing(count);
         } else if (stage == STAGE::HCCS_TO_OUT) {
