@@ -10,7 +10,7 @@
 
 #include "linear_parallel_aclnn_runner.h"
 #include <hccl/hccl.h>
-#include "atb/utils/dl_manager.h"
+#include <aclnn/opdev/op_errno.h>
 #include "atb/utils/aclnn_util.h"
 #include "atb/utils/operation_register.h"
 
@@ -106,10 +106,9 @@ Status LinearParallelAclnnRunner::BuildAclnnVariantPack(const RunnerVariantPack 
 aclnnStatus LinearParallelAclnnRunner::SetAclNNWorkspaceExecutor()
 {
     ATB_LOG(INFO) << GetLogPrefix() << "SetAclNNWorkspaceExecutor called";
-    Status status = LinearParallelAclnnRunner::LoadMethodMatmulReduceScatter();
-    if (status != NO_ERROR) {
-        ATB_LOG(ERROR) << GetLogPrefix() << "load getWorkspace function from aclnn failed! Consider upgrade CANN first";
-        return 561003; // ACLNN_ERR_INNER_FIND_KERNEL_ERROR
+    if (!aclnnMatmulReduceScatterV2GetWorkspaceSizeFunc_) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "Aclnn GetWorkspaceSizeFunc is null!";
+        return ACLNN_ERR_INNER_FIND_KERNEL_ERROR;
     }
     ATB_LOG(INFO) << GetLogPrefix() << "aclInTensors size: " << this->aclnnVariantPack_.aclInTensors.size()
                   << ", aclOutTensors size: " << this->aclnnVariantPack_.aclOutTensors.size();
@@ -166,13 +165,11 @@ aclnnStatus LinearParallelAclnnRunner::SetAclNNWorkspaceExecutor()
 Status LinearParallelAclnnRunner::LaunchAclnnKernel()
 {
     ATB_LOG(INFO) << GetLogPrefix() << "LaunchAclnnKernel called";
-    Status status = NO_ERROR;
     aclnnStatus ret = 0;
     void *executeStream = GetExecuteStream(this->atbVariantPack_.context);
-    status = LinearParallelAclnnRunner::LoadMethodMatmulReduceScatter();
-    if (status != NO_ERROR) {
-        ATB_LOG(ERROR) << GetLogPrefix() << "load getWorkspace function from aclnn failed! Consider upgrade CANN first";
-        return status;
+    if (!aclnnMatmulReduceScatterV2Func_) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "Aclnn ExecuteFunc is null!";
+        return ERROR_INVALID_PARAM;
     }
     ATB_LOG(INFO) << GetLogPrefix() << "aclnnMatmulReduceScatterV2 execute start.";
     ret = LinearParallelAclnnRunner::aclnnMatmulReduceScatterV2Func_(this->atbVariantPack_.workspaceBuffer,
@@ -197,22 +194,10 @@ Status LinearParallelAclnnRunner::LoadMethodMatmulReduceScatter()
         LinearParallelAclnnRunner::aclnnMatmulReduceScatterV2Func_ != nullptr) {
         return NO_ERROR;
     }
-    static DlManager dlManager = DlManager(std::string(std::getenv("ASCEND_HOME_PATH")) + "/lib64/libopapi.so");
-    Status ret =
-        dlManager.getSymbol("aclnnMatmulReduceScatterV2GetWorkspaceSize",
-                            (void *&)LinearParallelAclnnRunner::aclnnMatmulReduceScatterV2GetWorkspaceSizeFunc_);
-    if (ret != NO_ERROR) {
-        ATB_LOG(ERROR) << "load aclnnMatmulReduceScatterV2GetWorkspaceSize failed! Consider upgrade the CANN first!";
-        return ret;
-    }
-    ret = dlManager.getSymbol("aclnnMatmulReduceScatterV2",
-                              (void *&)LinearParallelAclnnRunner::aclnnMatmulReduceScatterV2Func_);
-    if (ret != NO_ERROR) {
-        ATB_LOG(ERROR) << "load aclnnMatmulReduceScatterV2 failed! Consider upgrade the CANN first!";
-        return ret;
-    }
-    ATB_LOG(INFO) << "load aclnnMatmulReduceScatterV2 two-staged method success!";
-    return NO_ERROR;
+    Status status = LoadFromSharedObjectFile("aclnnMatmulReduceScatterV2GetWorkspaceSize", "aclnnMatmulReduceScatterV2",
+                                             LinearParallelAclnnRunner::aclnnMatmulReduceScatterV2GetWorkspaceSizeFunc_,
+                                             LinearParallelAclnnRunner::aclnnMatmulReduceScatterV2Func_);
+    return status;
 }
 
 REG_RUNNER_TYPE(LinearParallelAclnnRunner);

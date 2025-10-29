@@ -16,6 +16,10 @@
 
 #ifndef ATB_ACLNN_UTILS_H
 #define ATB_ACLNN_UTILS_H
+
+#include <mki/utils/dl/dl.h>
+#include <mki/utils/env/env.h>
+
 #include "atb/types.h"
 #include "atb/utils/runner_variant_pack.h"
 
@@ -86,5 +90,67 @@ bool IsAclnnRunnerVariankPackEqual(const AclNNVariantPack &aclnnVariantPack,
 std::shared_ptr<AclNNTensor> CreateTensor(atb::Tensor atbTensor, int tensorIdx);
 
 int ConvertTensorToSeqLengths(atb::Tensor &tensor, aclIntArray *&actualSeqLengths);
+
+/// Load GetWorkSpaceSize and Execute func from aclnn .so file.
+///
+/// \param workSpaceSizeFuncName The name of first symbol to load.
+/// \param executeFuncName The name of second symbol to load.
+/// \param workSpaceSizefunc Reference to a pointer that receives the address of the first symbol.
+/// \param executeFunc Reference to a pointer that receives the address of the second symbol.
+/// \return Status
+///         - `NO_ERROR` Successfully loaded and resolved both symbols.
+///         - `ERROR_INVALID_PARAM` loaded failed.
+template <typename GetWorkspaceSizeFunc, typename ExecuteFunc>
+Status LoadFromSharedObjectFile(const char *workSpaceSizeFuncName, const char *executeFuncName,
+                                GetWorkspaceSizeFunc *&workSpaceSizeFunc, ExecuteFunc *&executeFunc)
+{
+    ATB_LOG(INFO) << "Loading func " << workSpaceSizeFuncName << " and " << executeFuncName;
+    static std::once_flag onceFlag;
+    static std::unique_ptr<Mki::Dl> mkiDl;
+    static std::atomic<Status> initFlag{ERROR_INVALID_PARAM};
+
+    std::call_once(onceFlag, []() {
+        std::string soPath;
+        const char *ascendHomePath = Mki::GetEnv("ASCEND_HOME_PATH");
+        if (!ascendHomePath || !*ascendHomePath) {
+            ATB_LOG(ERROR) << "ASCEND_HOME_PATH is null.";
+            initFlag.store(ERROR_INVALID_PARAM, std::memory_order_release);
+            return;
+        }
+        soPath = std::string(ascendHomePath) + "/lib64/libopapi.so";
+        ATB_LOG(INFO) << "Loading path: " << soPath;
+
+        auto dl = std::make_unique<Mki::Dl>(soPath, false);
+        if (!dl || !dl->IsValid()) {
+            ATB_LOG(ERROR) << "Load so file failed. Please check soPath: " << soPath;
+            initFlag.store(ERROR_INVALID_PARAM, std::memory_order_release);
+            return;
+        }
+        mkiDl = std::move(dl);
+        ATB_LOG(INFO) << "Dlopen " << soPath << " successfully.";
+        initFlag.store(NO_ERROR, std::memory_order_release);
+    });
+
+    Status st = initFlag.load(std::memory_order_acquire);
+    if (st != NO_ERROR)
+        return st;
+    if (!mkiDl) {
+        ATB_LOG(ERROR) << "mkiDl is null, check if it was reset.";
+        return ERROR_INVALID_PARAM;
+    }
+    void *sym1 = mkiDl->GetSymbol(workSpaceSizeFuncName);
+    if (!sym1) {
+        ATB_LOG(ERROR) << "Symbol " << workSpaceSizeFuncName << " not found.";
+        return ERROR_INVALID_PARAM;
+    }
+    void *sym2 = mkiDl->GetSymbol(executeFuncName);
+    if (!sym2) {
+        ATB_LOG(ERROR) << "Symbol " << executeFuncName << " not found.";
+        return ERROR_INVALID_PARAM;
+    }
+    workSpaceSizeFunc = reinterpret_cast<GetWorkspaceSizeFunc *>(sym1);
+    executeFunc = reinterpret_cast<ExecuteFunc *>(sym2);
+    return st;
+}
 } // namespace atb
 #endif

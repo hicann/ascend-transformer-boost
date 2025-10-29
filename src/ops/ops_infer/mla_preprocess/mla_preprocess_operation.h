@@ -15,7 +15,7 @@
 namespace atb {
 class MlaPreprocessOperation : public OperationBase {
 public:
-    explicit MlaPreprocessOperation(const infer::MlaPreprocessParam &param);
+    explicit MlaPreprocessOperation(const infer::MlaPreprocessParam &param, bool isAclnnFuncLoaded);
     ~MlaPreprocessOperation() override;
     uint32_t GetInputNum() const override;
     uint32_t GetOutputNum() const override;
@@ -43,6 +43,7 @@ private:
     infer::MlaPreprocessParam param_;
     mutable bool useAclnnKernel_ = false;
     mutable bool doRmsNorm_ = true;
+    bool isAclnnFuncLoaded_ = false;
 };
 } // namespace atb
 #endif

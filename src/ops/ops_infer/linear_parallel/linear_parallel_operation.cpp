@@ -167,6 +167,11 @@ template <> Status CreateOperation(const infer::LinearParallelParam &opParam, Op
             return isOk;
         }
     }
+    Status status = LinearParallelAclnnRunner::LoadMethodMatmulReduceScatter();
+    if (status != NO_ERROR) {
+        ATB_LOG(ERROR) << "Load Aclnn functions failed!";
+        return ERROR_INVALID_PARAM;
+    }
     *operation = new (std::nothrow) LinearParallelOperation(opParam);
     if (*operation == nullptr) {
         ATB_LOG(ERROR) << "failed to new operation";
