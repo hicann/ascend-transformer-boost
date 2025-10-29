@@ -31,7 +31,7 @@ private:
     infer::MlaPreprocessParam param_;
     bool doRmsNorm_ = true;
 
-    // 对应aclnnop/aclnn_mla_preprocess.h中的俩段式接口
+    // 对应aclnnop/aclnn_mla_preprocess.h中的两段式接口
     static aclnnStatus (*aclnnGetWorkspaceSizeFunc_)(
         const aclTensor *, const aclTensor *, const aclTensor *, const aclTensor *, const aclTensor *,
         const aclTensor *, const aclTensor *, const aclTensor *, const aclTensor *, const aclTensor *,

@@ -71,7 +71,14 @@ template <> Status CreateOperation(const infer::MlaPreprocessParam &opParam, Ope
         return ERROR_INVALID_PARAM;
     }
     OP_PARAM_RSV_CHECK(opParam);
-    *operation = new (std::nothrow) MlaPreprocessOperation(opParam);
+    Status status = MlaPreprocessAclnnRunner::LoadMethod();
+    bool isAclnnFuncLoaded = false;
+    if (status != NO_ERROR) {
+        ATB_LOG(WARN) << "Load Aclnn functions failed, Generalized hiddenSize and skip rmsNormQuant are not supported!";
+    } else {
+        isAclnnFuncLoaded = true;
+    }
+    *operation = new (std::nothrow) MlaPreprocessOperation(opParam, isAclnnFuncLoaded);
     if (*operation == nullptr) {
         ATB_LOG(ERROR) << "failed to new MlaPreprocessOperation";
         return ERROR_OUT_OF_HOST_MEMORY;
@@ -79,8 +86,8 @@ template <> Status CreateOperation(const infer::MlaPreprocessParam &opParam, Ope
     return NO_ERROR;
 }
 
-MlaPreprocessOperation::MlaPreprocessOperation(const infer::MlaPreprocessParam &param)
-    : OperationBase("MlaPreprocessOperation"), param_(param)
+MlaPreprocessOperation::MlaPreprocessOperation(const infer::MlaPreprocessParam &param, bool isAclnnFuncLoaded)
+    : OperationBase("MlaPreprocessOperation"), param_(param), isAclnnFuncLoaded_(isAclnnFuncLoaded)
 {
     std::string opIrKeyStr;
     opIrKeyStr += "MlaPreprocessOperation";
@@ -434,9 +441,7 @@ Status MlaPreprocessOperation::CheckAclnnKernel(const SVector<TensorDesc> &inTen
                       << param_.quantMode;
         return ERROR_INVALID_PARAM;
     }
-    Status ret = MlaPreprocessAclnnRunner::LoadMethod();
-    ATB_LOG(INFO) << GetLogPrefix() << "MlaPreprocessAclnnRunner::LoadMethod() ret: " << ret;
-    if (ret != NO_ERROR) {
+    if (!isAclnnFuncLoaded_) {
         if (generalizedHiddenSize) {
             ATB_LOG(INFO) << GetLogPrefix()
                           << "Need to use aclnn kernel for generalized hiddenSize but load methods failed! Consider "
@@ -447,7 +452,7 @@ Status MlaPreprocessOperation::CheckAclnnKernel(const SVector<TensorDesc> &inTen
         if (!doRmsNorm_) {
             ATB_LOG(INFO) << GetLogPrefix()
                           << "Need to use aclnn kernel while skipping rmsNormQuant for input but load methods failed!";
-            return ret;
+            return ERROR_INVALID_TENSOR_DTYPE;
         }
     }
     ATB_LOG(INFO) << GetLogPrefix()

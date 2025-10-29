@@ -8,7 +8,9 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 #include "mla_preprocess_aclnn_runner.h"
-#include "atb/utils/dl_manager.h"
+
+#include <aclnn/opdev/op_errno.h>
+
 #include "atb/utils/aclnn_util.h"
 #include "atb/utils/log.h"
 #include "atbops/params/params.h"
@@ -128,11 +130,9 @@ Status MlaPreprocessAclnnRunner::BuildAclnnVariantPack(const RunnerVariantPack &
 aclnnStatus MlaPreprocessAclnnRunner::SetAclNNWorkspaceExecutor()
 {
     ATB_LOG(INFO) << GetLogPrefix() << "aclnn mlaPreprocess setup start.";
-    Status status = MlaPreprocessAclnnRunner::LoadMethod();
-    if (status != NO_ERROR) {
-        ATB_LOG(ERROR) << GetLogPrefix()
-                       << "load getWorkspace function from aclnn failed! Consider upgrade CANN first!";
-        return 561003; // ACLNN_ERR_INNER_FIND_KERNEL_ERROR
+    if (!aclnnGetWorkspaceSizeFunc_) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "Aclnn GetWorkspaceSizeFunc is null!";
+        return ACLNN_ERR_INNER_FIND_KERNEL_ERROR;
     }
     size_t inTensorStart = 0;
     bool isRopeCache = param_.cacheMode != infer::MlaPreprocessParam::CacheMode::KVCACHE;
@@ -199,11 +199,9 @@ aclnnStatus MlaPreprocessAclnnRunner::SetAclNNWorkspaceExecutor()
 Status MlaPreprocessAclnnRunner::LaunchAclnnKernel()
 {
     ATB_LOG(INFO) << GetLogPrefix() << "LaunchAclnnKernel execute start.";
-    Status status = MlaPreprocessAclnnRunner::LoadMethod();
-    if (status != NO_ERROR) {
-        ATB_LOG(ERROR) << GetLogPrefix()
-                       << "load getWorkspace function from aclnn failed! Consider upgrade CANN first!";
-        return status;
+    if (!aclnnExecuteFunc_) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "Aclnn ExecuteFunc is null!";
+        return ERROR_INVALID_PARAM;
     }
     void *executeStream = GetExecuteStream(this->atbVariantPack_.context);
     aclnnStatus ret = MlaPreprocessAclnnRunner::aclnnExecuteFunc_(this->atbVariantPack_.workspaceBuffer,
@@ -224,20 +222,10 @@ Status MlaPreprocessAclnnRunner::LoadMethod()
         MlaPreprocessAclnnRunner::aclnnExecuteFunc_ != nullptr) {
         return NO_ERROR;
     }
-    static DlManager dlManager = DlManager(std::string(std::getenv("ASCEND_HOME_PATH")) + "/lib64/libopapi.so");
-    Status ret = dlManager.getSymbol("aclnnMlaPreprocessGetWorkspaceSize",
-                                     (void *&)MlaPreprocessAclnnRunner::aclnnGetWorkspaceSizeFunc_);
-    if (ret != NO_ERROR) {
-        ATB_LOG(ERROR) << "load aclnnMlaPreprocessGetWorkspaceSize failed! Consider upgrade the CANN first!";
-        return ret;
-    }
-    ret = dlManager.getSymbol("aclnnMlaPreprocess", (void *&)MlaPreprocessAclnnRunner::aclnnExecuteFunc_);
-    if (ret != NO_ERROR) {
-        ATB_LOG(ERROR) << "load aclnnMlaPreprocess failed! Consider upgrade the CANN first!";
-        return ret;
-    }
-    ATB_LOG(INFO) << "load aclnnMlaPreprocess two-staged method success!";
-    return NO_ERROR;
+    Status status = LoadFromSharedObjectFile("aclnnMlaPreprocessGetWorkspaceSize", "aclnnMlaPreprocess",
+                                             MlaPreprocessAclnnRunner::aclnnGetWorkspaceSizeFunc_,
+                                             MlaPreprocessAclnnRunner::aclnnExecuteFunc_);
+    return status;
 }
 
 REG_RUNNER_TYPE(MlaPreprocessAclnnRunner);
