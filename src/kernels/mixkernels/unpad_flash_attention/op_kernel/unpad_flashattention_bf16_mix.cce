@@ -405,6 +405,7 @@ public:
                                     0,                                                 // dstfracGapIn
                                     0)                                                 // addrModeIn
                             );
+                            PIPE_BARRIER(MTE1);
                         }
                     } else {
                         for (uint32_t l0b_load_idx = 0; l0b_load_idx < sv_round_n / BLOCK_SIZE; ++l0b_load_idx) {
