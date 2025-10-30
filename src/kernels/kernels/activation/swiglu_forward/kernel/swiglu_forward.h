@@ -152,11 +152,12 @@ public:
                         colLenPerCore - basicColLen;
                 } else {
                     splitCopyinParams = {basicRowLen, basicColLen * sizeof(inType) / BLOCK_SIZE, 0, 0};
-                    splitCopyinOffset = coreIdx * rowLenPerCore * SPLIT_NUM * colLen +
-                        ridx * basicRowLen * SPLIT_NUM * colLen + cidx * basicColLen;
+                    splitCopyinOffset = static_cast<uint64_t>(coreIdx) * rowLenPerCore * SPLIT_NUM * colLen +
+                        static_cast<uint64_t>(ridx) * basicRowLen * SPLIT_NUM * colLen + static_cast<uint64_t>(cidx) * basicColLen;
                     splitCopyoutParams = {basicRowLen, basicColLen * sizeof(outType) / BLOCK_SIZE, 0, 0};
-                    splitCopyoutOffset = coreIdx * rowLenPerCore * colLen + ridx * basicRowLen * colLen +
-                        cidx * basicColLen;
+                    splitCopyoutOffset = static_cast<uint64_t>(coreIdx) * static_cast<uint64_t>(rowLenPerCore) * static_cast<uint64_t>(colLen) +
+                        static_cast<uint64_t>(ridx) * static_cast<uint64_t>(basicRowLen) * static_cast<uint64_t>(colLen) +
+                        static_cast<uint64_t>(cidx) * static_cast<uint64_t>(basicColLen);
                 }
                 CopyIn(splitCopyinOffset, splitCopyinParams);
                 Compute(basicRowLen * basicColLen);
@@ -197,7 +198,8 @@ public:
             ridx * basicRowLen * SPLIT_NUM * colLen;
         splitCopyoutParams = {basicRowLenCal, basicColLen * sizeof(outType) / BLOCK_SIZE, 0,
             (colLenPerCore - basicColLen) * sizeof(outType) / BLOCK_SIZE};
-        splitCopyoutOffset = coreIdx * rowLenPerCore * colLen + ridx * basicRowLen * colLen;
+        splitCopyoutOffset = static_cast<uint64_t>(coreIdx) * static_cast<uint64_t>(rowLenPerCore) * static_cast<uint64_t>(colLen) +
+            static_cast<uint64_t>(ridx) * static_cast<uint64_t>(basicRowLen) * static_cast<uint64_t>(colLen);
         CopyIn(splitCopyinOffset, splitCopyinParams);
         Compute(basicRowLen * basicColLen);
         CopyOut(splitCopyoutOffset, splitCopyoutParams);
@@ -213,24 +215,27 @@ public:
         // 先处理一个basicblock
         splitCopyinParams = {basicRowLenCal, basicColLen * sizeof(inType),
                              (SPLIT_NUM * colLen - basicColLen) * sizeof(inType), 0, 0};
-        splitCopyinOffset = coreIdx * rowLenPerCore * SPLIT_NUM * colLen +
-            ridx * basicRowLen * SPLIT_NUM * colLen;
+        splitCopyinOffset = static_cast<uint64_t>(coreIdx) * static_cast<uint64_t>(rowLenPerCore) * static_cast<uint64_t>(SPLIT_NUM) * static_cast<uint64_t>(colLen) +
+            static_cast<uint64_t>(ridx) * static_cast<uint64_t>(basicRowLen) * static_cast<uint64_t>(SPLIT_NUM) * static_cast<uint64_t>(colLen);
         padParams = {false, 0, 0, 0};
         splitCopyoutParams = {basicRowLenCal, (basicColLen * sizeof(outType)), 0,
                               (colLenPerCore - basicColLen) * sizeof(outType), 0};
-        splitCopyoutOffset = coreIdx * rowLenPerCore * colLen + ridx * basicRowLen * colLen;
+        splitCopyoutOffset = static_cast<uint64_t>(coreIdx) * static_cast<uint64_t>(rowLenPerCore) * static_cast<uint64_t>(colLen) +
+            static_cast<uint64_t>(ridx) * static_cast<uint64_t>(basicRowLen) * static_cast<uint64_t>(colLen);
         CopyInPad(splitCopyinOffset, splitCopyinParams, padParams);
         Compute(basicRowLen * basicColLen);
         CopyOutPad(splitCopyoutOffset, splitCopyoutParams);
         // 再处理最后一个(列32B)的block
         splitCopyinParams = {basicRowLenCal, (colLenPerCore - basicColLen) * sizeof(inType),
             (SPLIT_NUM * colLen - (colLenPerCore - basicColLen)) * sizeof(inType), 0, 0};
-        splitCopyinOffset = coreIdx * rowLenPerCore * SPLIT_NUM * colLen +
-            ridx * basicRowLen * SPLIT_NUM * colLen + basicColLen;
+        splitCopyinOffset = static_cast<uint64_t>(coreIdx) * static_cast<uint64_t>(rowLenPerCore) * static_cast<uint64_t>(SPLIT_NUM) * static_cast<uint64_t>(colLen) +
+            static_cast<uint64_t>(ridx) * static_cast<uint64_t>(basicRowLen) * static_cast<uint64_t>(SPLIT_NUM) * static_cast<uint64_t>(colLen) +
+            static_cast<uint64_t>(basicColLen);
         padParams = {false, 0, 0, 0};
         splitCopyoutParams = {basicRowLenCal, (colLenPerCore - basicColLen) * sizeof(outType), 0,
             (colLen - (colLenPerCore - basicColLen)) * sizeof(outType), 0};
-        splitCopyoutOffset = coreIdx * rowLenPerCore * colLen + ridx * basicRowLen * colLen + basicColLen;
+        splitCopyoutOffset = static_cast<uint64_t>(coreIdx) * static_cast<uint64_t>(rowLenPerCore) * static_cast<uint64_t>(colLen) + 
+            static_cast<uint64_t>(ridx) * static_cast<uint64_t>(basicRowLen) * static_cast<uint64_t>(colLen) + static_cast<uint64_t>(basicColLen);
         CopyInPad(splitCopyinOffset, splitCopyinParams, padParams);
         Compute(basicRowLen * basicColLen);
         CopyOutPad(splitCopyoutOffset, splitCopyoutParams);
