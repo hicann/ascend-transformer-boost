@@ -46,7 +46,7 @@ OpParamRegister::OpParamRegister(size_t typeHashCode, ParamCompareFunc func) noe
     auto &opParamCompareMap = GetOpParamCompareMap();
     auto res = opParamCompareMap.emplace(typeHashCode, std::move(func));
     if (!res.second) {
-        ATB_LOG(WARN) << "Op param hash code: " << typeHashCode << " has been registered";
+        ATB_LOG(ERROR) << "Op param hash code: " << typeHashCode << " has been registered";
     }
 }
 
