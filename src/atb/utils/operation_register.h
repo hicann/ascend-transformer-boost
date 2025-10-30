@@ -22,7 +22,8 @@ public:
         auto &runnerTypeMap = GetRunnerTypeMap();
         auto res = runnerTypeMap.emplace(runnerType, GetRunnerIdx()++);
         if (!res.second) {
-            ATB_LOG(WARN) << "RunnerType: " << runnerType << " has been registered";
+            ATB_LOG(ERROR) << "RunnerType: " << runnerType << " has been registered";
+            GetRunnerIdx()--;
         }
     }
 
@@ -41,13 +42,13 @@ public:
     static int64_t GetRunnerTypeIdx(const std::string &runnerType)
     {
         if (runnerType.empty()) {
-            ATB_LOG(WARN) << "Invalid runnerType provided";
+            ATB_LOG(ERROR) << "Invalid runnerType provided";
             return -1;
         }
         auto &runnerTYpeMap = GetRunnerTypeMap();
         auto it = runnerTYpeMap.find(runnerType);
         if (it == runnerTYpeMap.end()) {
-            ATB_LOG(WARN) << "Can not find the runnerTypeIdx by runner name: " << runnerType;
+            ATB_LOG(ERROR) << "Can not find the runnerTypeIdx by runner name: " << runnerType;
             return -1;
         }
         return it->second;
