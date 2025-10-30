@@ -2523,7 +2523,8 @@ private:
         const uint32_t pm_flag_scalar,
         uint32_t cur_q_seqlen,
         uint32_t cur_kv_seqlen,
-        bool need_mask
+        bool need_mask,
+        uint32_t n_loop
     )
     {
         uint32_t sub_m_d128 = (sub_m + 127) / 128;  // up aligned to 128
@@ -2640,6 +2641,9 @@ private:
                         mask32_ubuf_tensor,
                         cur_q_seqlen * qk_round_n
                     );
+                }
+                if (mask_type == 3 && (n_idx != 0 || n_idx == n_loop - 1)) {
+                    SET_FLAG(V, MTE2, EVENT_ID5);
                 }
                 PIPE_BARRIER(V);
             }
@@ -2986,6 +2990,11 @@ private:
         uint32_t round_sub_m = (sub_m + 15) / 16 * 16;
         WAIT_FLAG(V, MTE2, EVENT_ID0);
         if (n_idx != 0) {
+            if (mask_type == 3) {
+                if (n_idx != n_loop - 1 && head_loop_idx == 0) {
+                    WAIT_FLAG(V, MTE2, EVENT_ID5);
+                }
+            }
             gm_to_ub<ArchType::ASCEND_V220, mm2CopyType>(
                 lo_ubuf_tensor.template ReinterpretCast<mm2CopyType>(),
                 o_tmp_gm_tensor,
@@ -3127,7 +3136,9 @@ private:
                     );
                 PIPE_BARRIER(V);
             }
-
+            if (mask_type == 3 && head_loop_idx == 0) {
+                WAIT_FLAG(V, MTE2, EVENT_ID5);
+            }
             gm_to_ub<ArchType::ASCEND_V220, mm2CopyType>(
                 go32_ubuf_tensor.template ReinterpretCast<mm2CopyType>(),
                 o_tmp_gm_tensor,
@@ -3749,7 +3760,7 @@ private:
                                 (int64_t)sub_block_idx * cur_head_num * cur_q_seqlen / 2 * qk_round_n + (uint64_t)(n_idx % 2) * TMP_SIZE_DECODER / 2],
                             mask_gm_tensor[mask_start_offset],
                             dm32_ubuf_tensor, ll_ubuf_tensor, pm32_ubuf_tensor,
-                            n_idx, qk_n, qk_round_n, sub_m, 0, sub_n_loop, cur_batch, start_kv, real_n_loop, head_idx, pm_flag_scalar1, cur_q_seqlen, cur_kv_seqlen, need_mask
+                            n_idx, qk_n, qk_round_n, sub_m, 0, sub_n_loop, cur_batch, start_kv, real_n_loop, head_idx, pm_flag_scalar1, cur_q_seqlen, cur_kv_seqlen, need_mask, n_loop
                         );
                     } else {
                         SoftmaxStage1(
@@ -3764,7 +3775,7 @@ private:
                                 TMP_SIZE_DECODER / 2],
                             mask_gm_tensor[mask_start_offset],
                             dm32_stage2_ubuf_tensor, ll_stage2_ubuf_tensor, pm32_ubuf_stage2_tensor,
-                            n_idx, qk_n, qk_round_n, sub_m, 0, sub_n_loop, cur_batch, start_kv, real_n_loop, head_idx, pm_flag_scalar2, cur_q_seqlen, cur_kv_seqlen, need_mask
+                            n_idx, qk_n, qk_round_n, sub_m, 0, sub_n_loop, cur_batch, start_kv, real_n_loop, head_idx, pm_flag_scalar2, cur_q_seqlen, cur_kv_seqlen, need_mask, n_loop
                         );
                     }
                 }
