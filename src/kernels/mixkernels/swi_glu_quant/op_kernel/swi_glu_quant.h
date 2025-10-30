@@ -156,7 +156,7 @@ private:
 
         LocalTensor<float> scaleLocal = scaleQueue.DeQue<float>();
         DataCopyParams copyParams1{1, (uint16_t)(basicRowLenCal * sizeof(float)), 0, 0};
-        uint32_t oooo = baseRow + basicRowLen * ridx;
+        uint64_t oooo = static_cast<uint64_t>(baseRow) + static_cast<uint64_t>(basicRowLen) * static_cast<uint64_t>(ridx);
         DataCopyPad(scale_Gm[oooo], scaleLocal, copyParams1);
         scaleQueue.FreeTensor(scaleLocal);
     }
