@@ -8,7 +8,7 @@
 * See LICENSE in the root of the software repository for the full text of the License.
 */
 
-#include "fastsoftmax_tiling.h"
+#include <limits>
 #include <mki/utils/assert/assert.h>
 #include <mki/utils/log/log.h>
 #include <mki/utils/math/math.h>
@@ -16,6 +16,7 @@
 #include "atbops/params/params.h"
 #include "tiling/softmax/softmax_tiling.h"
 #include "tiling_data.h"
+#include "fastsoftmax_tiling.h"
 
 namespace AtbOps {
 
@@ -93,6 +94,8 @@ Status FastSoftMaxTiling(const LaunchParam &launchParam, KernelInfo &kernelInfo)
         auto sampleTilingDataPointer = reinterpret_cast<FastSoftMaxSampleTilingData *>(tiling);
         tiling += sizeof(FastSoftMaxSampleTilingData);
         SetSampleTilingData(sampleTilingDataPointer, ubSize, coreNum, headNum, sampleSeqLenOrigin);
+        MKI_CHECK(headNum < std::numeric_limits<uint32_t>::max() / sampleSeqLenOrigin / sampleSeqLenOrigin, "headNum is invalid",
+            return Status::FailStatus(ERROR_INVALID_VALUE));
         uint32_t dataLength = headNum * sampleSeqLenOrigin * sampleSeqLenOrigin;
         sampleTilingDataPointer->dataLength = dataLength;
         sampleTilingDataPointer->dataOffset = dataOffset;
