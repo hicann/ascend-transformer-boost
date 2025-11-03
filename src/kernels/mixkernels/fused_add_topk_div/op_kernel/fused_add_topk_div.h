@@ -11,7 +11,6 @@
 #ifndef FUSED_ADD_TOPK_DIV_H_
 #define FUSED_ADD_TOPK_DIV_H_
 
-#include "fused_add_topk_div_assist.h"
 #include "mixkernels/fused_add_topk_div/tiling/tiling_data.h"
 #include "kernels/utils/kernel/common.h"
 #include "kernel_operator.h"
@@ -111,7 +110,6 @@ private:
     GlobalTensor<float> mGmY_;
     GlobalTensor<int32_t> mGmIndices_;
     GlobalTensor<float> mGmWorkspace_;
-    GlobalTensor<uint32_t> mGmAssist_;
 
     GlobalTensor<int32_t> mappingNumGm_;
     GlobalTensor<int32_t> mappingTableGm_;
@@ -156,7 +154,6 @@ __aicore__ inline void FusedAddTopkDiv<inputT, calT, enableExpertMapping>::InitT
     mGmY_.SetGlobalBuffer((__gm__ float *)y);
     mGmIndices_.SetGlobalBuffer((__gm__ int32_t *)indices);
     mGmWorkspace_.SetGlobalBuffer((__gm__ float *)workspace);
-    mGmAssist_.SetGlobalBuffer((__gm__ uint32_t *)assistGm);
     mappingNumGm_.SetGlobalBuffer((__gm__ int32_t *)mappingNum);
     mappingTableGm_.SetGlobalBuffer((__gm__ int32_t *)mappingTable);
 
