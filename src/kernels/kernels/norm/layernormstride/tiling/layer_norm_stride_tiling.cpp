@@ -106,7 +106,7 @@ Status LayerNormStrideTiling(const LaunchParam &launchParam, KernelInfo &kernelI
                   "totalMemNeed is invalid!", return Status::FailStatus(ERROR_INVALID_VALUE));
         uint32_t totalMemNeed = static_cast<uint32_t>(FP16_DATA_USED) * layerNormPtrCon.nlFirstdimPerCoreNum *
                                 layerNormPtrCon.numCol;
-        MKI_CHECK(layerNormPtrCon.numCol <= (UINT_MAX / FP16_OTHER_USED),
+        MKI_CHECK(layerNormPtrCon.numCol <= ((UINT_MAX - NUM_TEMP_BUF - SCALAR_USED) / FP16_OTHER_USED),
                   "sumData is invalid!", return Status::FailStatus(ERROR_INVALID_VALUE, "sumData is invalid!"));
         MKI_CHECK(layerNormPtrCon.maxEleFp16 > NUM_TEMP_BUF +
                   static_cast<uint32_t>(FP16_OTHER_USED) * layerNormPtrCon.numCol +
