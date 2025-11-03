@@ -28,7 +28,11 @@ template <> Status CreateOperation(const infer::AsStridedParam &opParam, Operati
         return ERROR_INVALID_PARAM;
     }
     OP_PARAM_RSV_CHECK(opParam);
-    *operation = new AsStridedOperation(opParam);
+    *operation = new (std::nothrow) AsStridedOperation(opParam);
+    if (*operation == nullptr) {
+        ATB_LOG(ERROR) << "failed to new operation";
+        return ERROR_OUT_OF_HOST_MEMORY;
+    }
     return NO_ERROR;
 }
 
