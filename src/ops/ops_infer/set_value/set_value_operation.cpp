@@ -27,6 +27,10 @@ template <> Status CreateOperation(const infer::SetValueParam &opParam, Operatio
     }
     OP_PARAM_RSV_CHECK(opParam);
     *operation = new SetValueOperation(opParam);
+    if (*operation == nullptr) {
+        ATB_LOG(ERROR) << "failed to new operation";
+        return ERROR_OUT_OF_HOST_MEMORY;
+    }
     return NO_ERROR;
 }
 
