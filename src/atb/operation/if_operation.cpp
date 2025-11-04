@@ -50,6 +50,10 @@ static Status ParamCheck(const common::IfCondParam &param)
         ATB_LOG(ERROR) << "Handle is null, please check the param";
         return ERROR_INVALID_PARAM;
     }
+    if (!param.opA || !param.opB) {
+        ATB_LOG(ERROR) << "op is null, Please checkout opA and opB in param";
+        return ERROR_INVALID_PARAM;
+    }
     if (param.opA->GetInputNum() != param.opB->GetInputNum()) {
         ATB_LOG(ERROR) << "Input num of opA and opB are not equal, please check the param";
         return ERROR_INVALID_PARAM;
