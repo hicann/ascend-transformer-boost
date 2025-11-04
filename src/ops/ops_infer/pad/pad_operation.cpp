@@ -26,7 +26,11 @@ template <> Status CreateOperation(const infer::PadParam &opParam, Operation **o
         return ERROR_INVALID_PARAM;
     }
     OP_PARAM_RSV_CHECK(opParam);
-    *operation = new PadOperation(opParam);
+    *operation = new (std::nothrow) PadOperation(opParam);
+    if (*operation == nullptr) {
+        ATB_LOG(ERROR) << "failed to new operation";
+        return ERROR_OUT_OF_HOST_MEMORY;
+    }
     return NO_ERROR;
 }
 
