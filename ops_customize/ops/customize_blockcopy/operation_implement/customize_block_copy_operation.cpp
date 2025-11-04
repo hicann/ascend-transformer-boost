@@ -42,7 +42,11 @@ template <> Status CreateOperation(const customize::BlockCopyParam &opParam, Ope
         ATB_LOG(ERROR) << "only support Atlas 800I A2 inference product";
         return ERROR_INVALID_PARAM;
     }
-    *operation = new CustomizeBlockCopyOperation(opParam);
+    *operation = new (std::nothrow) CustomizeBlockCopyOperation(opParam);
+    if (*operation == nullptr) {
+        ATB_LOG(ERROR) << "failed to new operation";
+        return ERROR_OUT_OF_HOST_MEMORY;
+    }
     return NO_ERROR;
 }
 
