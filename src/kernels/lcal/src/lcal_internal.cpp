@@ -130,6 +130,11 @@ int RegistCCLOp1Kernel(const int* cclBinPtr, const int* nextPtr)
 
 int RegistCCLKernel(const int32_t opGroup)
 {
+    constexpr int32_t maxOpGroup = 2;
+    if (opGroup > maxOpGroup) {
+        MKI_LOG(ERROR) << "RegistCCLKernel not support opGroup:" << opGroup;
+        return LCAL_ERROR_INTERNAL;
+    }
     const int* cclBinStr = LCAL_CCE_BIN_STR;
     auto cclBinEndPtr = cclBinStr + LCAL_1OP_BIN_SIZE / sizeof(int);
     const int* cclBinPtr = cclBinStr + 1;
