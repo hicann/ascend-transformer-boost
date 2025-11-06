@@ -568,9 +568,9 @@ public:
     uint32_t batchSize_{0}; // batch向上取整
     uint32_t rotateStride_{0}; // headdim / 旋转系数
     uint64_t offsetExtraGm_{0}; // 使用workspace需要的offset
-    uint64_t offsetCosExtraGm_{0}; // 不对齐时, Cos需要的offset
-    uint64_t offsetSinExtraGm_{0}; // 不对齐时, Sin需要的offset
-    uint64_t offsetQKExtraGm_{0}; // 不对齐时, QK需要的offset
+    uint64_t offsetCosExtraGm_{0}; // 不对齐时，Cos需要的offset
+    uint64_t offsetSinExtraGm_{0}; // 不对齐时，Sin需要的offset
+    uint64_t offsetQKExtraGm_{0}; // 不对齐时，QK需要的offset
     uint32_t dynamicRound_{0}; // 每个核做几轮
     uint32_t alignHalfHeadDim_{0}; // headDim / 旋转系数 * 2 是否对齐
     uint32_t rotaryStrideOffset{0}; // 每次旋转长度

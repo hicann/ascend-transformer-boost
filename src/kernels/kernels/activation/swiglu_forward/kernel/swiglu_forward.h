@@ -126,7 +126,7 @@ public:
         }
     }
 
-    __aicore__ inline void ProcessCoreMultiUbSingle() // 一核处理多行, ub空间可容纳1行内数据
+    __aicore__ inline void ProcessCoreMultiUbSingle() // 一核处理多行，ub空间可容纳1行内数据
     {
         uint64_t coreIdx = static_cast<uint64_t>(AscendC::GetBlockIdx());
         uint32_t rowLenPerCoreCal = coreIdx == AscendC::GetBlockNum() - 1 ?
@@ -166,7 +166,7 @@ public:
         }
     }
 
-    __aicore__ inline void ProcessCoreMultiUbMulti() // 一核处理多行, ub空间可容纳多行
+    __aicore__ inline void ProcessCoreMultiUbMulti() // 一核处理多行，ub空间可容纳多行
     {
         uint64_t coreIdx = static_cast<uint64_t>(AscendC::GetBlockIdx());
         uint32_t rowLenPerCoreCal = coreIdx == AscendC::GetBlockNum() - 1 ?

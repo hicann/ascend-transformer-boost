@@ -234,7 +234,7 @@
 //! 当开启量化或注意力使用logN缩放特性或inputLayout为TYPE_BNSD时，或是在Atlas 推理系列产品上运行时，head_size = head_size_v, 范围为（0，256]，Atlas 800I A2推理产品上head_size可以不等于head_size_v，二者的范围为（0，576]<br>
 //! 在Atlas 推理系列产品或Atlas 训练系列产品上运行，此时head_size必须为16的倍数<br>
 //! Atlas 推理系列产品上的mask大小必须使用真实的max_seq_len<br>
-//! 当maskType为MASK_TYPE_ALIBI_COMPRESS, MASK_TYPE_ALIBI_COMPRESS_SQRT或MASK_TYPE_ALIBI_COMPRESS_LEFT_ALIGN时, query, key, value的head_size需要都小于等于128
+//! 当maskType为MASK_TYPE_ALIBI_COMPRESS, MASK_TYPE_ALIBI_COMPRESS_SQRT或MASK_TYPE_ALIBI_COMPRESS_LEFT_ALIGN时，query, key, value的head_size需要都小于等于128
 //! Atlas 推理系列产品上的q_seq_len必须等于kv_seq_len<br>
 //! 关于tensor维度中的nTokens：Atlas 800I A2推理产品上为各batch上seq_len之和；Atlas 推理系列产品上：PA_ENCODER下为所有batch的seq_len之和向上对齐到16的整数倍，其余情况下为所有batch上的seq_len先向上对齐到16的整数倍，再求和<br>
 //! 开启压缩mask功能,maskType为MASK_TYPE_ALIBI_COMPRESS，MASK_TYPE_ALIBI_COMPRESS_SQRT时，mask的维度：在Atlas 800I A2推理产品上为[head_num, seqlen, 128]或[256, 256]；Atlas 推理系列产品上为[head_num,128//16,maxSeqlen,16]或[1,256//16,256,16]<br>
@@ -864,7 +864,7 @@
 //! <caption id="RMS_NORM_NORM">函数输入输出描述(RMS_NORM_NORM)</caption>
 //! <tr><th class="ch">参数               <th class="ch">维度                                                  <th class="ch">数据类型                    <th class="ch">格式    <th class="ch">描述 
 //! <tr><td class="cc">x                 <td class="cc">[d_0,…,d_n-1,d_n]                  <td class="cc">float16/float/bf16               <td class="cc">ND     <td class="cc">float数据类型仅在rstd为true时支持，且rstd为true时只能使用float数据类型。所有Tensor最后一维的d_n大小需保持一致，其他维度的大小没有约束。 
-//! <tr><td class="cc">gamma                 <td class="cc">[1,d_n] / [d_i,...,d_n] (0 <= i <= n)                                <td class="cc">float16/float/bf16           <td class="cc">ND      <td class="cc">最后一维的大小需进行32字节对齐。rstd为true时，维度数需要大于0，并小于x的维度数，gamma的维度从最后一维向前，每一维都需要和x保持一致。rstd为false时,维度为[1,d_n]   
+//! <tr><td class="cc">gamma                 <td class="cc">[1,d_n] / [d_i,...,d_n] (0 <= i <= n)                                <td class="cc">float16/float/bf16           <td class="cc">ND      <td class="cc">最后一维的大小需进行32字节对齐。rstd为true时，维度数需要大于0，并小于x的维度数，gamma的维度从最后一维向前，每一维都需要和x保持一致。rstd为false时，维度为[1,d_n]   
 //! <tr><td class="cc">beta                 <td class="cc">[1,d_n]                               <td class="cc">float16/float/bf16               <td class="cc">ND     <td class="cc">quantType = INT8时输入。最后一维的大小要32字节对齐。
 //! <tr><td class="cc">scale                 <td class="cc">[1]                                              <td class="cc">float16/bf16               <td class="cc">ND      <td class="cc">quantType = QUANT_INT8时才输入。  
 //! <tr><td class="cc">offset                 <td class="cc">[1]                                              <td class="cc">int8                         <td class="cc">ND      <td class="cc">quantType = QUANT_INT8时才输入。

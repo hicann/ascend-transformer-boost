@@ -1918,7 +1918,7 @@ struct PagedAttentionParam {
     //!
     //! 压缩方式
     //! 为COMPRESS_TYPE_KVHEAD时，不支持quanttype为2和3。
-    //! 为COMPRESS_TYPE_KVHEAD_ROPE时, maskType需传0。不支持quanttype为2和3。
+    //! 为COMPRESS_TYPE_KVHEAD_ROPE时，maskType需传0。不支持quanttype为2和3。
     CompressType compressType = COMPRESS_TYPE_UNDEFINED;
     //!
     //! \enum CalcType

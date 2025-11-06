@@ -33,8 +33,8 @@ constexpr uint32_t TILING_ID_MIN_NEG_127 = 10;
 
 
 struct BroadcastInfo {
-    size_t broadcastBytesPerElem; // UB中，计算一个元素，broadcast buffer占用的字节(包括输入输出，以及中间缓存)
-    size_t normalBytesPerElem; // normal  buffer占用的字节(包括输入输出，以及中间缓存)
+    size_t broadcastBytesPerElem; // UB中，计算一个元素，broadcast buffer占用的字节（包括输入输出，以及中间缓存）
+    size_t normalBytesPerElem; // normal  buffer占用的字节（包括输入输出，以及中间缓存）
 };
 
 Status SimplyBroadcastTiling(BroadcastInfo &broadcastInfo, const LaunchParam &launchParam, KernelInfo &kernelInfo);

@@ -130,7 +130,7 @@ SelfAttention在Atlas A2/A3系列仅支持部分场景，且Encoder场景在Atla
 
 ####  self_attention_pa_encoder_qwen_demo.cpp
 + 场景：FA使用PA Encoder的场景，使用FA输入，只需传入key，value
-  + 传入不同的headNum，kvHeadNum且headNum可以被kvHeadNum时开启GQA（Grouped Query Attention）。
+  + 传入不同的headNum，kvHeadNum且headNum可以被kvHeadNum整除时，开启GQA（Grouped Query Attention）。
 + 该demo仅支持在Atlas A2/A3系列上运行
 + demo中为了应对长序列的情况，使用压缩上三角mask演示
 
