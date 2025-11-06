@@ -236,7 +236,7 @@ Status PagedCacheLoadOperation::KVCacheDimCheck910BNZ(const SVector<TensorDesc> 
         if (inTensorDescs.at(IN_TENSOR_0_KEYCACHE).shape.dims[1] * THIRTYTWO > MAX_k ||
                 inTensorDescs.at(IN_TENSOR_1_VALUECACHE).shape.dims[1] * THIRTYTWO > MAX_v) {
             ATB_LOG(ERROR) << GetLogPrefix() <<
-                "numheads * headsize of keycache and valuecache must be less than 147456";
+                "numheads * headsize of keycache and valuecache must be less than 147456 Bytes!";
             return ERROR_INVALID_TENSOR_DIM;
         }
     } else  if (inTensorDescs.at(IN_TENSOR_0_KEYCACHE).shape.dims[OUT_DIM] != SIXTEEN ||
@@ -246,7 +246,7 @@ Status PagedCacheLoadOperation::KVCacheDimCheck910BNZ(const SVector<TensorDesc> 
     } else if (inTensorDescs.at(IN_TENSOR_0_KEYCACHE).shape.dims[1] * THIRTYTWO > MAX_k ||
                 inTensorDescs.at(IN_TENSOR_1_VALUECACHE).shape.dims[1] * THIRTYTWO > MAX_v) {
             ATB_LOG(ERROR) << GetLogPrefix() <<
-                "numheads * headsize of keycache and valuecache must be less than 147456";
+                "numheads * headsize of keycache and valuecache must be less than 147456 Bytes!";
             return ERROR_INVALID_TENSOR_DIM;
     }
     return NO_ERROR;

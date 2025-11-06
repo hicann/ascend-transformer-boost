@@ -3343,6 +3343,12 @@ class RopeOperation(DataGen):
     @staticmethod
     def golden(in_tensors, op_params):
         json_data = json.loads(op_params)
+        dtype = in_tensors[0].dtype
+        if dtype == torch.bfloat16:
+            in_tensors[0] = in_tensors[0].to(torch.float32)
+            in_tensors[1] = in_tensors[1].to(torch.float32)
+            in_tensors[2] = in_tensors[2].to(torch.float32)
+            in_tensors[3] = in_tensors[3].to(torch.float32)
         if json_data['rotaryCoeff'] == 4:
             if in_tensors[4].size()[0] == 3:
                 ntoken = in_tensors[0].size()[0]
@@ -3441,12 +3447,7 @@ class RopeOperation(DataGen):
             if batch == 0:
                 batch = 1
                 seqlen = ntoken
-            dtype = in_tensors[0].dtype
-            if dtype == torch.bfloat16:
-                in_tensors[0] = in_tensors[0].to(torch.float32)
-                in_tensors[1] = in_tensors[1].to(torch.float32)
-                in_tensors[2] = in_tensors[2].to(torch.float32)
-                in_tensors[3] = in_tensors[3].to(torch.float32)
+
             q = in_tensors[0]
             k = in_tensors[1]
             qshaped = q.reshape(batch, -1, q_head_num, rot_dim // 2, 2)
