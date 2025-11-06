@@ -57,7 +57,7 @@ atb::Status GetShape(const aclDataType tensorType, const std::vector<int64_t> &i
 
 ## Transdata使用说明
 注意：
-- 使用`TransdataOp`转换ND格式的tensor时,需要保证传入的tensor是ND格式，因此创建初始的tensor时，应当使用ND格式下的shape，而使用`TransdataOp`函数时传入最终想得到的NZ格式下tensor的shape；
+- 使用`TransdataOp`转换ND格式的tensor时，需要保证传入的tensor是ND格式，因此创建初始的tensor时，应当使用ND格式下的shape，而使用`TransdataOp`函数时传入最终想得到的NZ格式下tensor的shape；
 - 在`CreateTensorFromVector`中只传入了一种格式下的shape，因此需要使用GetShape函数得到ND和NZ两种数据格式下的shape
 
 使用`TransdataOp`进行ND格式tensor转NZ格式tensor的`CreateTensorFromVector`的内容如下：

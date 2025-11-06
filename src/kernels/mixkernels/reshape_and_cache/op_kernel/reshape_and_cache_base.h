@@ -285,7 +285,7 @@ public:
         consumSeqLen = static_cast<uint32_t>(csumSeqLenLocal_.GetValue(batchId));
         offsetPerLine = (numHeads_ - 1) * numBlocks_;  // 每一个token间隔(num_heads-1)*tokenSize 此处单位为32B
         offsetIdx = offsetLocal_.GetValue(startTaskOffset);
-        offsetIdx = (offsetIdx == -1 || headWin == 0) ? seqLen : offsetIdx; // 当等于-1时, 跳过当前头压缩
+        offsetIdx = (offsetIdx == -1 || headWin == 0) ? seqLen : offsetIdx; // 当等于-1时，跳过当前头压缩
     }
 
 protected:

@@ -403,7 +403,7 @@ public:
                                                         0                            // src1RepeatStride
                     );
                 }
-                // m_repeat_count为0时, 等同于repeat计算m_round轮
+                // m_repeat_count为0时，等同于repeat计算m_round轮
                 mul_v<ArchType::ASCEND_V200, float>(ub_c_fp32[i * m_round * 16 + m_repeat_count * 255 * 16],
                                                     ub_c_fp32[i * m_round * 16 + m_repeat_count * 255 * 16],
                                                     ub_scale[i * 16], m_repeat_remainder, 1, 1, 1, 2, 2, 0);

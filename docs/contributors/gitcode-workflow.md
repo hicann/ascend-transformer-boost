@@ -16,7 +16,7 @@
 
 #### 2.2 把fork分支克隆到本地
 
-请按照以下的复制过程将repository内的代码下载到您的在计算机上。
+请按照以下的复制过程将repository内的代码下载到您的计算机上。
 
 1）**创建本地工作目录**：
 
@@ -173,7 +173,7 @@ git push -f origin myfeature
 
   PR提交后，请输入“/compile”触发门禁检查，检查时间每个仓库有所不同，请关注检查状态，并及时修改问题。
 
-  当页面显示“CI任务执行 成功”，且右上角标签显示`ci-pipeline-passed`时，既表示门禁检查通过。
+  当页面显示“CI任务执行 成功”，且右上角标签显示`ci-pipeline-passed`时，即表示门禁检查通过。
 
   ![门禁状态](../images/access-control.png)
 
@@ -283,7 +283,7 @@ git push ${your_remote_name} myrevert
    git rebase -i HEAD~n
    ```
 
-   把需求压缩的日志前面的pick都改成s，s是squash的缩写。注意必须保留一个pick，如果将所有的pick都改成了s就没有合并的目标了，会发生错误。
+   把需要压缩的日志前面的pick都改成s，s是squash的缩写。注意必须保留一个pick，如果将所有的pick都改成了s就没有合并的目标了，会发生错误。
 
 3. 修改完成以后，按ESC键，再输入`:wq`，会跳出一个界面，问您是否进入编辑提交备注的页面，输入e以后，进入合并提交备注的页面。请把需要合并的备注都删掉，只保留合并目标的备注，再按ESC键，输入`:wq`保存退出即可。
 
