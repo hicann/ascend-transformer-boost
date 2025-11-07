@@ -14,7 +14,7 @@ import torch
 from collections import namedtuple
 import collections
 import numpy
-
+import numpy as np
 
 class CommType(Enum):
     PURE_MATMUL = 101
@@ -513,11 +513,11 @@ class MoeTestDate:
         if self.maxOutputSize > 0:
             self.cal_trunc(EP)
         if coc_dtype_desc in [CoCDataTypeDesc.FP16FP16_FP32_FP16, CoCDataTypeDesc.BF16BF16_FP32_BF16]:
-            matrix_c_out = torch.matmul(self.matrix_a.to(l0c_dtype), self.matrix_b.to(l0c_dtype))
-            # if coc_dtype_desc == CoCDataTypeDesc.BF16BF16_FP32_BF16:
-            #     matrix_c_out_low = torch.matmul(self.matrix_a, self.matrix_b)
-            # else:
-            #     matrix_c_out_low = matrix_c_out.to(l0c_dtype_low)
+            a_np = self.matrix_a.numpy().astype(np.float32)
+            b_np = self.matrix_b.numpy().astype(np.float32)
+            result_np = np.matmul(a_np, b_np)
+            matrix_c_out = torch.from_numpy(result_np).to(l0c_dtype)
+            # matrix_c_out = torch.matmul(self.matrix_a.to(l0c_dtype), self.matrix_b.to(l0c_dtype))
             tmp_offset = 0
             for rank in range(rank_size):
                 for ep_idx in range(EP):
@@ -528,11 +528,8 @@ class MoeTestDate:
                             l = tmp_offset + self.global_tokens_per_expert_matrix_temp[rank * self.expert_num + expert_id]
                             r = tmp_offset + self.num_local_tokens_per_expert[rank][expert_id]
                             matrix_c_out[:,l:r,:] = 0
-                            # matrix_c_out_low[:,l:r,:] = 0
                         tmp_offset += self.num_local_tokens_per_expert[rank][expert_id]
                 self.matrix_c_list.append(matrix_c_out)
-                # self.matrix_c_low_list.append(matrix_c_out_low)
-            # print("self.matrix_c:", self.matrix_c)
             
         elif coc_dtype_desc in [CoCDataTypeDesc.INT8INT8_INT32_FP16, CoCDataTypeDesc.INT8INT8_INT32_BF16]:
             assert quant_info.dequant_granularity in [QuantGranularity.PER_CHANNEL, QuantGranularity.PER_TENSOR,
@@ -556,7 +553,10 @@ class MoeTestDate:
                     self.quant_scale_list.append(quant_scale_alltoall[ep_idx])
                 broadcast_quant_scale = quant_info.broadcast_quant_args(quant_scale, [self.input_info[0], self.input_info[2]])
 
-            tmp_matrix_c = torch.matmul(self.matrix_a.to(torch.float32), self.matrix_b.to(torch.float32)).to(l0c_dtype)
+            a_np = self.matrix_a.numpy().astype(np.float32)
+            b_np = self.matrix_b.numpy().astype(np.float32)
+            result_np = np.matmul(a_np, b_np)
+            tmp_matrix_c = torch.from_numpy(result_np).to(l0c_dtype)
             matrix_c_out = ((tmp_matrix_c + broadcast_offset).to(torch.float32) * broadcast_scale).to(torch.float32)
 
             if quant_info.dequant_granularity is QuantGranularity.PER_TOKEN:
