@@ -191,9 +191,9 @@ Status GetNdMLATiling(const RINGMLAInfo &mmInfo, uint32_t &blockDim, uint32_t *t
         tilingParam[tilingOffset + 1] = static_cast<uint32_t>(kvSeqlen);
 
         GetAddrOffsetRINGMLA(tilingParam, addrOffsets, tilingOffset);
-        uint64_t addressQffset = static_cast<uint64_t>(mmInfo.numHeads * qSeqLen);
-        uint64_t addressOffset = static_cast<uint64_t>(mmInfo.numHeads * mmInfo.embeddingSize * qSeqLen);
-        uint64_t addressMaskOffset = static_cast<uint64_t>(qSeqLen * maxKVseqlen);
+        uint64_t addressQffset = static_cast<uint64_t>(mmInfo.numHeads) * qSeqLen;
+        uint64_t addressOffset = static_cast<uint64_t>(mmInfo.numHeads) * mmInfo.embeddingSize * qSeqLen;
+        uint64_t addressMaskOffset = static_cast<uint64_t>(qSeqLen) * maxKVseqlen;
         addrOffsets.addrQSeqOffset += addressQffset;
         addrOffsets.addrOSeqOffset += addressOffset;
         addrOffsets.addrMaskOffset += addressMaskOffset;
