@@ -251,6 +251,8 @@ Mki::Status GmmAddTiling::RunFusionKernelTiling(Mki::KernelInfo &kernelInfo)
     MKI_LOG_INFO << "End Run GMM Tiling";
     MKI_LOG_INFO << "copy result to kernel info";
     auto *gmmTilingData = reinterpret_cast<GmmTilingData *>(kernelInfo.GetTilingHostAddr());
+    MKI_CHECK(gmmTilingData != nullptr, "tiling should not be empty",
+              return Mki::Status::FailStatus(Mki::ERROR_INVALID_VALUE));
     gmmTilingData->gmmBaseParams.groupNum = tilingData.gmmBaseParams.groupNum;
     gmmTilingData->gmmBaseParams.coreNum = tilingData.gmmBaseParams.coreNum;
     gmmTilingData->gmmBaseParams.activeType = tilingData.gmmBaseParams.activeType;
