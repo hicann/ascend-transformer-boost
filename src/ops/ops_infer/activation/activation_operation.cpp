@@ -16,6 +16,7 @@
 #include "atb/utils/operation_util.h"
 #include "atb/utils/singleton.h"
 #include "atb/operation/op_param_funcs.h"
+#include "swiglu_forward_aclnn_runner.h"
 
 namespace {
 static const uint32_t IN_TENSOR_NUM = 1;
@@ -46,6 +47,14 @@ template <> Status CreateOperation(const infer::ActivationParam &opParam, Operat
         }
         return ERROR_INVALID_PARAM;
     }
+    if (opParam.activationType == atb::infer::ActivationType::ACTIVATION_SWIGLU_FORWARD) {
+        Status status = SwigluForwardAclnnRunner::LoadMethod();
+        if (status != NO_ERROR) {
+            ATB_LOG(WARN) << "Load Aclnn functions failed!";
+            return ERROR_CANN_ERROR;
+        }
+    }
+
     *operation = new (std::nothrow) ActivationOperation(opParam);
     if (*operation == nullptr) {
         ATB_LOG(ERROR) << "failed to new operation";
@@ -234,6 +243,10 @@ Status ActivationOperation::SetupCheckImpl(const SVector<Tensor> &inTensors, con
 std::shared_ptr<Runner> ActivationOperation::CreateRunner(Context &context) const
 {
     (void)context;
+    if (param_.activationType == atb::infer::ActivationType::ACTIVATION_SWIGLU_FORWARD) {
+        ATB_LOG(INFO) << GetLogPrefix() << "create SwigluForward AclnnRunner";
+        return std::make_shared<SwigluForwardAclnnRunner>(param_);
+    }
     return std::make_shared<ActivationOpsRunner>(param_);
 }
 
