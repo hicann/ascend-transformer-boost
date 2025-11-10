@@ -114,6 +114,8 @@ def get_soc_version():
     device_name = torch.npu.get_device_name()
     if (re.search("Ascend910B", device_name, re.I) and len(device_name) > 10) or re.search("Ascend910_93", device_name, re.I):
         soc_version = "Ascend910B"
+    elif re.search("Ascend910_95", device_name, re.I):
+        soc_version = "Ascend910_95"
     elif re.search("Ascend310P", device_name, re.I):
         soc_version = "Ascend310P"
     elif (re.search("Ascend910ProB", device_name, re.I) or re.search("Ascend910B", device_name, re.I) or
