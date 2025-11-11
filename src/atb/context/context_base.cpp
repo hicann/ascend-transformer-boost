@@ -76,7 +76,7 @@ Status ContextBase::Init(const std::function<void*(size_t)>& alloc, const std::f
     deviceTilingBufferPool_ = std::make_unique<DeviceTilingBufferPool>(GetSingleton<Config>().GetDeviceTilingBlockNum(),
                                                                        TILING_BUFFER_BLOCK_SIZE, allocateFunc_, deallocateFunc_);
     if (!deviceTilingBufferPool_) {
-        return ERROR_OUT_OF_HOST_MEMORY;
+        return ERROR_OUT_OF_DEVICE_MEMORY;
     }
     st = deviceTilingBufferPool_->Init();
     if (st != NO_ERROR) {
