@@ -28,3 +28,7 @@
 ## 额外说明
 示例中生成的数据不代表实际场景，如需数据生成参考请查看根目录下的python用例目录：
 tests/apitest/opstest/python/operations/all_reduce/
+
+## 产品支持情况
+本op在Atlas A2/A3系列和Atlas 推理系列产品上实现有所区别。  
+all_reduce_demo.cpp：该demo仅支持在Atlas A2/A3系列产品上运行。

@@ -31,7 +31,7 @@
 `tests/apitest/opstest/python/operations/faupdate/`
 
 ## 产品支持情况
-本op在Atlas A2/A3系列和Atlas 推理系列产品上实现有所区别
+faupdate仅支持Atlas A2/A3系列产品。
 
 ## 场景说明
 所给Demo的场景说明如下：  
