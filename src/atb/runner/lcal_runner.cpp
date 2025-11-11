@@ -56,7 +56,15 @@ std::pair<int32_t, int32_t> LcalRunner::ParseCommDomain(const std::string &commD
     if (commDomain.empty()) {
         return {0, defaultDomainSize};
     }
-
+    auto safeStoi = [](const std::string &str, int32_t defaultValue = -1) -> int32_t {
+        try {
+            return std::stoi(str);
+        } catch (const std::invalid_argument &) {
+            return defaultValue;
+        } catch (const std::out_of_range &) {
+            return defaultValue;
+        }
+    };
     size_t colonPos = commDomain.find(':');
     if (colonPos != std::string::npos) {
         std::string idStr = commDomain.substr(0, colonPos);
@@ -67,8 +75,8 @@ std::pair<int32_t, int32_t> LcalRunner::ParseCommDomain(const std::string &commD
             ATB_LOG(ERROR) << "commDomain must contain numeric id and size";
             return {-1, -1};
         }
-        int32_t id = std::stoi(idStr);
-        int32_t size = std::stoi(sizeStr);
+        int32_t id = safeStoi(idStr);
+        int32_t size = safeStoi(sizeStr);
         if (id < 0 || id > maxDomainId || size <= 0) {
             ATB_LOG(ERROR) << "Invalid range: id should be 0-65535 and size > 0";
             return {-1, -1};
@@ -82,7 +90,7 @@ std::pair<int32_t, int32_t> LcalRunner::ParseCommDomain(const std::string &commD
         return {-1, -1};
     }
 
-    int32_t id = std::stoi(commDomain);
+    int32_t id = safeStoi(commDomain);
     if (id < 0 || id > maxDomainId) {
         ATB_LOG(ERROR) << "commDomain id is not in 0-65535, commDomain: " << commDomain;
         return {-1, -1};
