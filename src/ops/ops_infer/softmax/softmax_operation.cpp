@@ -27,7 +27,7 @@ template <> Status CreateOperation(const infer::SoftmaxParam &opParam, Operation
         return ERROR_INVALID_PARAM;
     }
     OP_PARAM_RSV_CHECK(opParam);
-    *operation = new SoftmaxOperation(opParam);
+    *operation = new (std::nothrow) SoftmaxOperation(opParam);
     if (*operation == nullptr) {
         ATB_LOG(ERROR) << "failed to new operation";
         return ERROR_OUT_OF_HOST_MEMORY;

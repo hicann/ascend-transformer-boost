@@ -27,7 +27,11 @@ template <> Status CreateOperation(const infer::WhereParam &opParam, Operation *
         return ERROR_INVALID_PARAM;
     }
     OP_PARAM_RSV_CHECK(opParam);
-    *operation = new WhereOperation(opParam);
+    *operation = new (std::nothrow) WhereOperation(opParam);
+    if (*operation == nullptr) {
+        ATB_LOG(ERROR) << "failed to new operation";
+        return ERROR_OUT_OF_HOST_MEMORY;
+    }
     return NO_ERROR;
 }
 

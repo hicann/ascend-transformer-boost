@@ -33,7 +33,11 @@ template <> Status CreateOperation(const infer::TransdataParam &opParam, Operati
         return ERROR_INVALID_PARAM;
     }
     OP_PARAM_RSV_CHECK(opParam);
-    *operation = new TransdataOperation(opParam);
+    *operation = new (std::nothrow) TransdataOperation(opParam);
+    if (*operation == nullptr) {
+        ATB_LOG(ERROR) << "failed to new operation";
+        return ERROR_OUT_OF_HOST_MEMORY;
+    }
     return NO_ERROR;
 }
 

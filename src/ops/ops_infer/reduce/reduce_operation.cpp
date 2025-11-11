@@ -27,7 +27,11 @@ template <> Status CreateOperation(const infer::ReduceParam &opParam, Operation 
         return ERROR_INVALID_PARAM;
     }
     OP_PARAM_RSV_CHECK(opParam);
-    *operation = new ReduceOperation(opParam);
+    *operation = new (std::nothrow) ReduceOperation(opParam);
+    if (*operation == nullptr) {
+        ATB_LOG(ERROR) << "failed to new operation";
+        return ERROR_OUT_OF_HOST_MEMORY;
+    }
     return NO_ERROR;
 }
 
