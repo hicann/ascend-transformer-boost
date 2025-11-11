@@ -51,7 +51,7 @@ template <> Status CreateOperation(const infer::MultinomialParam &opParam, Opera
     if (!ParamCheck(opParam)) {
         return ERROR_INVALID_PARAM;
     }
-    *operation = new MultinomialOperation(opParam);
+    *operation = new (std::nothrow) MultinomialOperation(opParam);
     if (*operation == nullptr) {
         ATB_LOG(ERROR) << "failed to new multinomial operation";
         return ERROR_OUT_OF_HOST_MEMORY;
