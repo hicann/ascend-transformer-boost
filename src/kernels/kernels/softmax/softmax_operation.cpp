@@ -7,6 +7,7 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
+#include <limits>
 #include <mki/base/operation_base.h>
 #include <mki_loader/op_register.h>
 #include <mki/utils/log/log.h>
@@ -43,8 +44,8 @@ protected:
         MKI_CHECK(axes.size() != 0, "softmax: axes should be set.",
             return Status::FailStatus(ERROR_INVALID_VALUE, "no input axes."));
         for (size_t i = 1; i < axes.size(); i++) {
-            MKI_CHECK((axes[i] == axes[i - 1] + 1) && axes[i] != 0, "softmax: input axes should be consistent.",
-                return Status::FailStatus(ERROR_INVALID_VALUE, "input axes is not consistent."));
+            MKI_CHECK((axes[i - 1] < std::numeric_limits<int64_t>::max() -1 && axes[i] == axes[i - 1] + 1) && axes[i] != 0,
+                "softmax: input axes should be consistent.", return Status::FailStatus(ERROR_INVALID_VALUE, "input axes is not consistent."));
         }
         const auto &inTensorDesc0 = launchParam.GetInTensor(0).desc;
         const auto axesBound = static_cast<int64_t>(inTensorDesc0.dims.size());
