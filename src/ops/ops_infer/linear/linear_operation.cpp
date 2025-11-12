@@ -11,9 +11,11 @@
 #include <sstream>
 #include <cstring>
 #include <mki/utils/env/env.h>
+#include <mki/utils/platform/platform_info.h>
 #include "atb/operation/atb_operation_ir_cfg.h"
 #include "atb/utils/config.h"
 #include "atb/utils/param_to_json.h"
+#include "linear_aclnn_runner.h"
 #include "linear_ops_runner.h"
 #include "atb/utils/singleton.h"
 #include "atb/operation/op_param_funcs.h"
@@ -214,6 +216,12 @@ template <> Status CreateOperation(const infer::LinearParam &opParam, Operation 
         return ERROR_INVALID_PARAM;
     }
 
+    Status st = LinearAclnnRunner::LoadMethod();
+    if (st != NO_ERROR) {
+        ATB_LOG(WARN) << "Load Aclnn functions failed!";
+        return ERROR_CANN_ERROR;
+    }
+
     *operation = new (std::nothrow) LinearOperation(opParam);
     if (*operation == nullptr) {
         ATB_LOG(ERROR) << "failed to new operation";
@@ -253,6 +261,13 @@ LinearOperation::LinearOperation(const infer::LinearParam &param) : OperationBas
         }
     }
     operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr(opIrKey.str());
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+        if (param_.hasBias) {
+            operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("LinearOperationMatmulWithBiasAscend950");
+        } else {
+            operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("LinearOperationMatmulAscend950");
+        }
+    }
 }
 
 LinearOperation::~LinearOperation() {}
@@ -325,6 +340,9 @@ Status LinearOperation::SetupCheckImpl(const SVector<Tensor> &inTensors, const S
 std::shared_ptr<Runner> LinearOperation::CreateRunner(Context &context) const
 {
     (void)context;
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+        return std::make_shared<LinearAclnnRunner>(param_);
+    }
     return std::make_shared<LinearOpsRunner>(param_);
 }
 
