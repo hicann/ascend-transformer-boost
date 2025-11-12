@@ -26,15 +26,11 @@ function get_cxx_abi_option()
     }
     done
     if [[ "$cxx_abi" == "" ]]; then
-        res=$(python3 -c "import torch" &> /dev/null || echo "torch_not_exist")
-        if [[ "$res" == "torch_not_exist" ]]; then
+        python_path=$(python3 -c "import site; print(site.getsitepackages()[0])")
+        if [[ ! -d "$python_path/torch" ]]; then
             cxx_abi=1
         else
-            if [[ $(python3 -c 'import torch; print(torch.compiled_with_cxx11_abi())') == "True" ]]; then
-                cxx_abi=1
-            else
-                cxx_abi=0
-            fi
+            cxx_abi=$(grep -a -m1 -oP 'GLIBCXX_USE_CXX11_ABI=\K[01]' $python_path/torch/lib/libtorch_cpu.so)
         fi
     fi
 }
