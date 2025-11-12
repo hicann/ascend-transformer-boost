@@ -386,14 +386,18 @@ Status OpsRunner::UpdateDeviceRealAddr(const RunnerVariantPack &runnerVariantPac
         }
         if (runnerVariantPack.argsDeviceBuffer != nullptr) {
             node.impl->SetArgsDeviceBuffer(runnerVariantPack.argsDeviceBuffer + deviceArgsSizeOffset);
+#ifdef _DEBUG
             ATB_LOG(DEBUG) << GetLogPrefix() << "argsDeviceBuffer from workSpace is "
                            << reinterpret_cast<void *>(runnerVariantPack.argsDeviceBuffer + deviceArgsSizeOffset);
+#endif
             deviceArgsSizeOffset += node.impl->GetArgsSize();
         }
         if (runnerVariantPack.argsHostBuffer != nullptr) {
             node.impl->SetArgsHostBuffer(runnerVariantPack.argsHostBuffer + hostArgsSizeOffset);
+#ifdef _DEBUG
             ATB_LOG(DEBUG) << GetLogPrefix() << "argsHostBuffer from workSpace is "
                            << reinterpret_cast<void *>(runnerVariantPack.argsHostBuffer + hostArgsSizeOffset);
+#endif
             hostArgsSizeOffset += node.impl->GetArgsSize();
         }
     }
@@ -1421,9 +1425,9 @@ Status OpsRunner::UpdateWorkspaceBuffer(RunnerVariantPack &runnerVariantPack)
         if (needSetworkspace) {
 #ifdef _DEBUG
         ATB_LOG(INFO) << GetLogPrefix() << "node[" << nodeId << "] update kernel runinfo workspaceBuffer, and new workspaceBuffer is "
-                      << static_cast<void *>(runnerVariantPack.workspaceBuffer);
+                          << static_cast<void *>(runnerVariantPack.workspaceBuffer);
 #else
-        ATB_LOG(INFO) << GetLogPrefix() << "node[" << nodeId << "] update kernel runinfo workspaceBuffer";
+            ATB_LOG(INFO) << GetLogPrefix() << "node[" << nodeId << "] update kernel runinfo workspaceBuffer";
 #endif
             node.impl->SetWorkspaceDeviceAddr(runnerVariantPack.workspaceBuffer);
         }

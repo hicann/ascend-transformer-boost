@@ -871,8 +871,10 @@ void GraphRunner::UpdateVariantPackBuffer(RunnerVariantPack &runnerVariantPack)
             auto &node = runnerGraph_.nodes.at(nodeId);
             node.runnerVariantPack.argsDeviceBuffer = runnerVariantPack.argsDeviceBuffer + offset;
             offset += node.runner->GetArgsSize();
+#ifdef _DEBUG
             ATB_LOG(DEBUG) << GetLogPrefix() << "Graph node " << nodeId << " argsDeviceAddr is "
-                << reinterpret_cast<void *>(node.runnerVariantPack.argsDeviceBuffer);
+                           << reinterpret_cast<void *>(node.runnerVariantPack.argsDeviceBuffer);
+#endif
         }
     }
 
@@ -882,8 +884,10 @@ void GraphRunner::UpdateVariantPackBuffer(RunnerVariantPack &runnerVariantPack)
             auto &node = runnerGraph_.nodes.at(nodeId);
             node.runnerVariantPack.argsHostBuffer = runnerVariantPack.argsHostBuffer + offset;
             offset += node.runner->GetArgsSize();
+#ifdef _DEBUG
             ATB_LOG(DEBUG) << GetLogPrefix() << "Graph node " << nodeId << " argsHostAddr is "
-                << reinterpret_cast<void *>(node.runnerVariantPack.argsHostBuffer);
+                           << reinterpret_cast<void *>(node.runnerVariantPack.argsHostBuffer);
+#endif
         }
     }
     ATB_LOG(INFO) << GetLogPrefix() << " update runner variant pack's buffer end";
