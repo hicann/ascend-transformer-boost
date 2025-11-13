@@ -169,6 +169,9 @@ Mki::TensorDType ElewiseOpsRunner::GetOutTensorType(const aclDataType outType) c
         {aclDataType::ACL_INT32, Mki::TensorDType::TENSOR_DTYPE_INT32},
         {aclDataType::ACL_INT64, Mki::TensorDType::TENSOR_DTYPE_INT64},
         {aclDataType::ACL_BF16, Mki::TensorDType::TENSOR_DTYPE_BF16},
+        {aclDataType::ACL_HIFLOAT8, Mki::TensorDType::TENSOR_DTYPE_HIFLOAT8},
+        {aclDataType::ACL_FLOAT8_E4M3FN, Mki::TensorDType::TENSOR_DTYPE_FLOAT8_E4M3FN},
+        {aclDataType::ACL_FLOAT8_E5M2, Mki::TensorDType::TENSOR_DTYPE_FLOAT8_E5M2},
     };
     std::map<aclDataType, Mki::TensorDType>::const_iterator it = typeTable.find(outType);
     return it == typeTable.end() ? Mki::TensorDType::TENSOR_DTYPE_UNDEFINED : it->second;

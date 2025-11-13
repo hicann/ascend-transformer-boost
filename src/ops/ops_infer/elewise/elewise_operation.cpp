@@ -7,14 +7,17 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
-#include "elewise_operation.h"
-#include "elewise_ops_runner.h"
+ 
+#include <mki/utils/platform/platform_info.h>
 #include "atb/utils/tensor_check.h"
 #include "atb/utils/config.h"
 #include "atb/utils/param_to_json.h"
 #include "atb/operation/atb_operation_ir_cfg.h"
 #include "atb/utils/singleton.h"
 #include "atb/operation/op_param_funcs.h"
+#include "aclnn_dynamic_quant_runner.h"
+#include "elewise_ops_runner.h"
+#include "elewise_operation.h"
 
 namespace atb {
 const uint32_t TENSOR_NUM_ONE = 1;
@@ -256,7 +259,6 @@ Status ElewiseOperation::InferShapeImplDynamicQuant(const SVector<TensorDesc> &i
         if (param_.quantParam.asymmetric) {
             outTensorDescs.at(TENSOR_IDX_TWO) = outTensorDescs.at(TENSOR_IDX_ONE);
         }
-        return NO_ERROR;
     } else if (dtype == ACL_BF16) {
         if (GetSingleton<Config>().Is910B() && !InferShapeCheckDynamicQuant(inTensorDescs)) {
             ATB_LOG(ERROR) << "In Atlas 800I A2 inference product, ElewiseOperation InferShapeImplDynamicQuant:"
@@ -268,11 +270,16 @@ Status ElewiseOperation::InferShapeImplDynamicQuant(const SVector<TensorDesc> &i
         outTensorDescs.at(TENSOR_IDX_ONE) = inTensorDescs.at(TENSOR_IDX_ZERO);
         outTensorDescs.at(TENSOR_IDX_ONE).dtype = ACL_FLOAT;
         outTensorDescs.at(TENSOR_IDX_ONE).shape.dimNum--;
-        return NO_ERROR;
     } else {
         ATB_LOG(WARN) << "ElewiseOperation InferShapeImplDynamicQuant: inTensor only support FP16 and BF16 now.";
         return ERROR_INVALID_PARAM;
     }
+    if (param_.outTensorType == ACL_HIFLOAT8 ||
+        param_.outTensorType == ACL_FLOAT8_E5M2 ||
+        param_.outTensorType == ACL_FLOAT8_E4M3FN) {
+        outTensorDescs.at(TENSOR_IDX_ZERO).dtype = param_.outTensorType;
+    }
+    return NO_ERROR;
 }
 
 Status ElewiseOperation::InferShapeCommon(const SVector<TensorDesc> &inTensorDescs,
@@ -386,6 +393,10 @@ bool ElewiseOperation::InferShapeCheckDynamicQuant310P(const SVector<TensorDesc>
 std::shared_ptr<Runner> ElewiseOperation::CreateRunner(Context &context) const
 {
     (void)context;
+    if (param_.elewiseType == infer::ElewiseParam::ElewiseType::ELEWISE_DYNAMIC_QUANT
+        && Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+            return std::make_shared<AclnnDynamicQuantRunner>(param_);
+    }
     return std::make_shared<ElewiseOpsRunner>(param_);
 }
 
