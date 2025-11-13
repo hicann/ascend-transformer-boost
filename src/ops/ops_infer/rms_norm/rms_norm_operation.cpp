@@ -7,9 +7,10 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
-#include "rms_norm_operation.h"
+
+ 
 #include <cmath>
-#include "rms_norm_ops_runner.h"
+#include <mki/utils/platform/platform_info.h>
 #include "atb/utils/tensor_check.h"
 #include "atb/utils/param_to_json.h"
 #include "atb/utils/config.h"
@@ -17,6 +18,9 @@
 #include "atb/utils/operation_util.h"
 #include "atb/operation/atb_operation_ir_cfg.h"
 #include "atb/operation/op_param_funcs.h"
+#include "aclnn_add_rms_norm_runner.h"
+#include "rms_norm_ops_runner.h"
+#include "rms_norm_operation.h"
 
 namespace atb {
 static const uint32_t IN_TENSOR_COUNT_SIX = 6;
@@ -465,7 +469,12 @@ bool RmsNormOperation::CheckRstd() const
 
 std::shared_ptr<Runner> RmsNormOperation::CreateRunner(Context &context) const
 {
-    (void)context;
+    (void)context;    
+    if (param_.layerType == infer::RmsNormParam::RMS_NORM_PRENORM
+        && Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+        ATB_LOG(INFO) << GetLogPrefix() << "create AddRmsNorm AclnnRunner";
+        return std::make_shared<AclnnAddRmsNormRunner>(param_);
+    }
     return std::make_shared<RmsNormOpsRunner>(param_);
 }
 
