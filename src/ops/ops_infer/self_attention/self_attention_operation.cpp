@@ -21,6 +21,7 @@
 #include "atb/utils/tensor_check.h"
 #include "atb/utils/tensor_util.h"
 #include "atb/utils/operation_util.h"
+#include "self_attention_aclnn_runner.h"
 #include "self_attention_encoder_fusion_ops_runner.h"
 #include "self_attention_encoder_fusion_ops_runner_910a.h"
 #include "atb/utils/param_to_json.h"
@@ -28,6 +29,7 @@
 #include "atb/operation/atb_operation_ir_cfg.h"
 #include "atb/operation/op_param_funcs.h"
 #include "atb/utils/operation_register.h"
+#include "mki/utils/platform/platform_info.h"
 
 namespace atb {
 static constexpr uint32_t FUSION_IN_TENSOR_NUM = 8;
@@ -45,6 +47,8 @@ static const int SLOPES_BIT = 0x00002;
 static const int MASK_BIT = 0x00004;
 static const int BYPASS_BIT = 0x00008;
 static const int SCALE_BIT = 0x00010;
+
+bool ParamCheck91095(const infer::SelfAttentionParam &opParam);
 
 template <> Status CreateOperation(const infer::SelfAttentionParam &opParam, Operation **operation)
 {
@@ -64,6 +68,16 @@ template <> Status CreateOperation(const infer::SelfAttentionParam &opParam, Ope
     if (opParam.quantType == atb::infer::SelfAttentionParam::TYPE_DEQUANT_FUSION) {
         ATB_LOG(ERROR) << "quantType can not be TYPE_DEQUANT_FUSION";
         return ERROR_INVALID_PARAM;
+    }
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+        Status status = SelfAttentionAclnnRunner::LoadMethod();
+        if (status != NO_ERROR) {
+            ATB_LOG(WARN) << "Load Aclnn functions failed!";
+            return ERROR_CANN_ERROR;
+        }
+        if (!ParamCheck91095(opParam)) {
+            return ERROR_INVALID_PARAM;
+        }
     }
     bool needQKVQuant = (opParam.quantType == atb::infer::SelfAttentionParam::TYPE_QUANT_QKV_OFFLINE ||
                          opParam.quantType == atb::infer::SelfAttentionParam::TYPE_QUANT_QKV_ONLINE);
@@ -336,6 +350,61 @@ bool PrefixEncoderParamCheck(const infer::SelfAttentionParam &opParam)
     return true;
 }
 
+bool ParamCheck91095(const infer::SelfAttentionParam &opParam)
+{
+    if (opParam.quantType != infer::SelfAttentionParam::QuantType::TYPE_QUANT_UNQUANT) {
+        ATB_LOG(ERROR) << "91095 only supports unquant.";
+        return false;
+    }
+    if (opParam.outDataType != ACL_DT_UNDEFINED) {
+        ATB_LOG(INFO) << "91095 outDataType is not effective yet.";
+    }
+    if (opParam.batchRunStatusEnable) {
+        ATB_LOG(ERROR) << "91095 does not support batchRunStatusEnable.";
+        return false;
+    }
+    if (opParam.calcType != infer::SelfAttentionParam::CalcType::PA_ENCODER) {
+        ATB_LOG(ERROR) << "91095 only supports PAEncoder.";
+        return false;
+    }
+    if (opParam.clampType != infer::SelfAttentionParam::ClampType::CLAMP_TYPE_UNDEFINED) {
+        ATB_LOG(ERROR) << "91095 only supports CLAMP_TYPE_UNDEFINED.";
+        return false;
+    }
+    if (opParam.maskType != infer::SelfAttentionParam::MaskType::MASK_TYPE_UNDEFINED &&
+        opParam.maskType != infer::SelfAttentionParam::MaskType::MASK_TYPE_NORM &&
+        opParam.maskType != infer::SelfAttentionParam::MaskType::MASK_TYPE_NORM_COMPRESS) {
+        ATB_LOG(ERROR) << "91095 only supports undefined and norm mask.";
+        return false;
+    }
+    if (opParam.kvcacheCfg != infer::SelfAttentionParam::KvCacheCfg::K_CACHE_V_CACHE) {
+        ATB_LOG(ERROR) << "91095 only supports K_CACHE_V_CACHE.";
+        return false;
+    }
+    if (opParam.scaleType != infer::SelfAttentionParam::ScaleType::SCALE_TYPE_TOR) {
+        ATB_LOG(ERROR) << "91095 only supports SCALE_TYPE_TOR.";
+        return false;
+    }
+    if (opParam.windowSize != 0) {
+        ATB_LOG(ERROR) << "91095 does not support SWA.";
+        return false;
+    }
+    if (opParam.mlaVHeadSize != 0) {
+        ATB_LOG(ERROR) << "91095 MLA merge kvcache feature is not supported yet.";
+        return false;
+    }
+    if (opParam.inputLayout != atb::infer::InputLayout::TYPE_TND &&
+        opParam.inputLayout != atb::infer::InputLayout::TYPE_BSND) {
+        ATB_LOG(ERROR) << "91095 only supports BSND and TND.";
+        return false;
+    }
+    if (opParam.cacheType != infer::SelfAttentionParam::CacheType::CACHE_TYPE_NORM) {
+        ATB_LOG(ERROR) << "91095 only supports CACHE_TYPE_NORM.";
+        return false;
+    }
+    return true;
+}
+
 void SelfAttentionOperation::InitMlaFaOpIni()
 {
     std::stringstream opIrKeySs;
@@ -413,6 +482,13 @@ uint32_t SelfAttentionOperation::Bools2Int(bool hasScale, bool hasKV, bool hasMa
 
 void SelfAttentionOperation::InitPaEncoderOpIni()
 {
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+        operationIr_ = 
+            param_.maskType == infer::SelfAttentionParam::MASK_TYPE_UNDEFINED ?
+                GetSingleton<AtbOperationIrCfg>().GetOperationIr("SelfAttentionOperationPAEncoderTND950") :
+                GetSingleton<AtbOperationIrCfg>().GetOperationIr("SelfAttentionOperationPAEncodermaskTND950");
+        return;
+    }
     if (param_.scaleType == infer::SelfAttentionParam::SCALE_TYPE_LOGN) {
         operationIr_ =
             param_.maskType == infer::SelfAttentionParam::MASK_TYPE_UNDEFINED ?
@@ -627,7 +703,8 @@ Status SelfAttentionOperation::InferShapeImpl910B(const SVector<TensorDesc> &inT
 Status SelfAttentionOperation::InferShapeImpl(const SVector<TensorDesc> &inTensorDescs,
                                               SVector<TensorDesc> &outTensorDescs) const
 {
-    if (GetSingleton<Config>().Is910B()) {
+    if (GetSingleton<Config>().Is910B() || 
+        Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
         return InferShapeImpl910B(inTensorDescs, outTensorDescs);
     } else {
         if (param_.inputLayout == atb::infer::InputLayout::TYPE_BNSD) {
@@ -649,7 +726,8 @@ Status SelfAttentionOperation::InferShapeImpl(const SVector<TensorDesc> &inTenso
 Status SelfAttentionOperation::DtypeCheck(const SVector<TensorDesc> &inTensorDescs) const
 {
     aclFormat targetFormat = ACL_FORMAT_ND;
-    if (!GetSingleton<Config>().Is910B()) {
+    if (!GetSingleton<Config>().Is910B() &&
+        Mki::PlatformInfo::Instance().GetPlatformType() != Mki::PlatformType::ASCEND_910_95) {
         targetFormat = ACL_FORMAT_FRACTAL_NZ;
     }
     if (param_.calcType != infer::SelfAttentionParam::PA_ENCODER) {
@@ -694,8 +772,9 @@ Status SelfAttentionOperation::InferShapeCheckImpl(const SVector<TensorDesc> &in
             return st;
         }
     } else { // BSND
-        st =
-            GetSingleton<Config>().Is910B() ? HeadSizeDimCheck910B(inTensorDescs) : HeadSizeDimCheck310P(inTensorDescs);
+        st = (GetSingleton<Config>().Is910B() || 
+            Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) ?
+            HeadSizeDimCheck910B(inTensorDescs) : HeadSizeDimCheck310P(inTensorDescs);
         if (st != NO_ERROR) {
             return st;
         }
@@ -754,8 +833,9 @@ Status SelfAttentionOperation::SetupCheckImpl(const SVector<Tensor> &inTensors, 
         return st;
     }
     if (param_.inputLayout == atb::infer::InputLayout::TYPE_BSND) {
-        st =
-            GetSingleton<Config>().Is910B() ? HeadSizeDimCheck910B(inTensorDescs) : HeadSizeDimCheck310P(inTensorDescs);
+        st = (GetSingleton<Config>().Is910B() || 
+            Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) ?
+            HeadSizeDimCheck910B(inTensorDescs) : HeadSizeDimCheck310P(inTensorDescs);
         if (st != NO_ERROR) {
             return st;
         }
@@ -778,7 +858,8 @@ Status SelfAttentionOperation::SetupOutTensorCheck(const SVector<TensorDesc> &in
 {
     SVector<TensorDesc> outTensorDescs = {};
     OperationUtil::InTensorsToInTensorDescs(outTensors, outTensorDescs);
-    if (GetSingleton<Config>().Is910B()) {
+    if (GetSingleton<Config>().Is910B() ||
+        Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
         SVector<TensorDesc> targetOutTensorDescs = {};
         targetOutTensorDescs.reserve(1);
         targetOutTensorDescs.resize(1);
@@ -856,8 +937,9 @@ Status SelfAttentionOperation::InferShapeDimCheck(const SVector<TensorDesc> &inT
         }
     }
     // nd格式kvcache shape除最后一维外相同，nz格式kvcache shape相同
-    int64_t kvCacheRange =
-        GetSingleton<Config>().Is910B() ? inTensorDescs.at(kcacheId_).shape.dimNum - 1 : 5; // 5: nz kvcache dimNum
+    int64_t kvCacheRange = (GetSingleton<Config>().Is910B() ||
+    Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) ?
+    inTensorDescs.at(kcacheId_).shape.dimNum - 1 : 5; // 5: nz kvcache dimNum
     for (int64_t i = 0; i < kvCacheRange; i++) {
         if (inTensorDescs.at(kcacheId_).shape.dims[i] != inTensorDescs.at(kcacheId_ + 1).shape.dims[i]) {
             ATB_LOG(ERROR) << "invalid kvcache shape";
@@ -891,7 +973,9 @@ Status SelfAttentionOperation::InferShapePADimCheck(const SVector<TensorDesc> &i
         }
     }
     if (hasMask_) {
-        st = GetSingleton<Config>().Is910B() ? PAMaskDimCheck(inTensorDescs) : PAMaskDimCheckNz(inTensorDescs);
+        st = (GetSingleton<Config>().Is910B() ||
+        Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) ?
+        PAMaskDimCheck(inTensorDescs) : PAMaskDimCheckNz(inTensorDescs);
         if (st != NO_ERROR) {
             return st;
         }
@@ -1105,6 +1189,23 @@ Status SelfAttentionOperation::HeadSizeDimCheck910B(const SVector<TensorDesc> &i
             ATB_LOG(ERROR) << GetLogPrefix() << "param mlaVHeadSize(" << headSizeV
                            << ") should be no greater than headSizeK(" << headSizeK << ")";
             return ERROR_INVALID_TENSOR_DIM;
+        }
+    }
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+        int64_t headSize = inTensorDescs.at(0).shape.dims[inTensorDescs.at(0).shape.dimNum - 1]; // 0: q
+        if (headSize != headSizeK) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "The headSize does not match, please check.";
+            return ERROR_INVALID_TENSOR_DIM;
+        }
+        if (headSize != headSizeV) {
+            ATB_LOG(INFO) << GetLogPrefix() << "headSizes is different from headSizeV. The MLA function is enabled.";
+            if (headSize != 192 || headSizeV != 128) {
+                ATB_LOG(ERROR) << GetLogPrefix()
+                            << "When the MLA function is active, headSize should be 192, and headSizeV should be 128. "
+                            << "However, the actual headSize is " << headSize << ", and headSizeV is " << headSizeV
+                            << ".";
+                return ERROR_INVALID_TENSOR_DIM;
+            }
         }
     }
     return MaxHeadSizeCheck910B(headSizeK, headSizeV);
@@ -1330,7 +1431,8 @@ Status SelfAttentionOperation::InferShapeHiddenSizeCheck(const SVector<TensorDes
     } else {
         hiddenSizeV = inTensorDescs.at(2).shape.dims[1]; // 2: v 1: 1st dim
     }
-    if (GetSingleton<Config>().Is910B()) {
+    if (GetSingleton<Config>().Is910B() ||
+        Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
         uint64_t hiddenSizePos = inTensorDescs.at(3).shape.dimNum - 1;     // 3: kcache
         hiddenSizeKcacahe = inTensorDescs.at(3).shape.dims[hiddenSizePos]; // 3: kcache 3: khiddenSize
         hiddenSizeVcacahe = inTensorDescs.at(4).shape.dims[hiddenSizePos]; // 4: vcache 3: khiddenSize
@@ -1357,6 +1459,13 @@ Status SelfAttentionOperation::InferShapeHiddenSizeCheck(const SVector<TensorDes
 
 Status SelfAttentionOperation::InferShapeMaskDimNumCheck(const SVector<TensorDesc> &inTensorDescs) const
 {
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+        if (inTensorDescs.at(maskId_).shape.dimNum != 2 && // 2: 2 dims
+            inTensorDescs.at(maskId_).shape.dimNum != 3) { // 3: 3 dims
+            ATB_LOG(ERROR) << "invalid mask dimNum";
+            return ERROR_INVALID_TENSOR_SIZE;
+        }
+    }
     if (GetSingleton<Config>().Is910B()) {
         if (inTensorDescs.at(maskId_).shape.dimNum != 2 && // 5: attnMask 2: 2 dims
             inTensorDescs.at(maskId_).shape.dimNum != 3 && // 5: attnMask 3: 3 dims
@@ -1373,6 +1482,9 @@ Status SelfAttentionOperation::InferShapeDimNumCheck(const SVector<TensorDesc> &
     uint64_t kvcacheDimNum = param_.batchRunStatusEnable ? 3 : 4; // DimNum of kvcache 3: dynamic batch 4: normal case
     if (!GetSingleton<Config>().Is910B()) {
         kvcacheDimNum = 5; // 5: nz format kvcache dimNum
+    }
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+        kvcacheDimNum = 3; // 3: [nTokens, kvhead_num, head_size]
     }
     // check qkv
     if ((inTensorDescs.at(0).shape.dimNum != 2 &&  // 0: q 2: 2 dims
@@ -1613,6 +1725,10 @@ std::shared_ptr<Runner> SelfAttentionOperation::CreateRunner(Context &context) c
     if (!contextBase) {
         ATB_LOG(DEBUG) << "context cast to contextBase failed!";
         return nullptr;
+    }
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+        ATB_LOG(INFO) << GetLogPrefix() << "create SelfAttention AclnnRunner";
+        return std::make_shared<SelfAttentionAclnnRunner>(param_);
     }
     if (GetSingleton<Config>().Is910B()) {
         if (param_.calcType == infer::SelfAttentionParam::PA_ENCODER) {

@@ -38,7 +38,10 @@ namespace infer {
 //!
 enum InputLayout : int {
     TYPE_BSND = 0, //!< 默认值，表示数据排布为BSND
-    TYPE_BNSD      //!< 表示数据排布为BNSD
+    TYPE_BNSD,      //!< 表示数据排布为BNSD
+    TYPE_BSH,       //!< 表示数据排布为BSH
+    TYPE_TND,       //!< 表示数据排布为TND
+    TYPE_BNSD_BSND  //!< 表示输入为BNSD时，输出格式为BSND
 };
 
 //!
