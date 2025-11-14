@@ -140,8 +140,8 @@ def compare_cv(golden:torch.Tensor, gpu:torch.Tensor, actual:torch.Tensor):
 if __name__ == '__main__':
    logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
-   gloden = torch.rand((128,128), dtype=torch.float32)
-   actual = gloden.to(torch.float16)
+   golden = torch.rand((128,128), dtype=torch.float32)
+   actual = golden.to(torch.float16)
    gpu = actual
-   compare_cv(gloden, gpu, actual)
+   compare_cv(golden, gpu, actual)
    
