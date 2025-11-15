@@ -142,10 +142,10 @@ inline __attribute__((always_inline)) float CostFunc(const HardwareType &hwInfor
     uint32_t blockDim = std::min(coreNeed, hwInfor.coreNum);
     uint32_t mOnce = blockDim < nLoop ? shape.m0 : blockDim / nLoop * shape.m0;
     uint32_t nOnce = blockDim < nLoop ? hwInfor.coreNum * shape.n0 : shape.n;
-    if (mOnce * shape.k * FP16_SIZE > hwInfor.l2Size) {
+    if (static_cast<uint64_t>(mOnce) * shape.k * FP16_SIZE > static_cast<uint64_t>(hwInfor.l2Size)) {
         aCoef = bwCoef;
     }
-    if (nOnce * shape.k * FP16_SIZE > hwInfor.l2Size) {
+    if (static_cast<uint64_t>(nOnce) * shape.k * FP16_SIZE > static_cast<uint64_t>(hwInfor.l2Size)) {
         bCoef = bwCoef;
     }
     return 1 / (aCoef * static_cast<float>(shape.n0)) + 1 / (bCoef * static_cast<float>(shape.m0));
