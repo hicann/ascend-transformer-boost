@@ -8,16 +8,24 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
-#ifndef ATB_ACLNN_DYNAMIC_QUANT_RUNNER_H
-#define ATB_ACLNN_DYNAMIC_QUANT_RUNNER_H
+#ifndef ATB_ACLNN_ASCEND_QUANT_RUNNER_H
+#define ATB_ACLNN_ASCEND_QUANT_RUNNER_H
 #include "atb/infer_op_params.h"
 #include "atb/runner/aclnn_runner.h"
 
+
+using AclnnAscendQuantGetWorkspaceFunc = aclnnStatus(*)(
+    const aclTensor *, const aclTensor *, const aclTensor *, bool, char*,
+    int32_t, int32_t, const aclTensor *, uint64_t *, aclOpExecutor **);
+
+using AclnnAscendQuantExecuteFunc = aclnnStatus(*)(
+    void *, uint64_t, aclOpExecutor *, const aclrtStream);
+
 namespace atb {
-class AclnnDynamicQuantRunner : public AclnnRunner {
+class AclnnAscendQuantRunner : public AclnnRunner {
 public:
-    explicit AclnnDynamicQuantRunner(const infer::ElewiseParam &param);
-    ~AclnnDynamicQuantRunner() override;
+    explicit AclnnAscendQuantRunner(const infer::ElewiseParam &param);
+    ~AclnnAscendQuantRunner() override;
 
     static Status LoadMethod();
 
@@ -29,12 +37,9 @@ protected:
 private:
     infer::ElewiseParam param_;
 
-    // 对应aclnnop/aclnn_dynamic_quant.h中的两段式接口
-    static aclnnStatus (*aclnnGetWorkspaceSizeFunc_)(
-        const aclTensor *, const aclTensor *, const aclTensor *, const aclTensor *,
-        uint64_t *, aclOpExecutor **);
-    static aclnnStatus (*aclnnExecuteFunc_)(void *, uint64_t, aclOpExecutor *, const aclrtStream);
-
+    // 对应aclnnop/aclnn_ascend_quant.h中的两段式接口
+    static AclnnAscendQuantGetWorkspaceFunc aclnnGetWorkspaceSizeFunc_;
+    static AclnnAscendQuantExecuteFunc aclnnExecuteFunc_;
 };
 } // namespace atb
 #endif
