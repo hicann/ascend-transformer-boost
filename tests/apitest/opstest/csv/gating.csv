@@ -1,10 +1,7 @@
 CaseNum|CaseName|OpName|OpParam|InNum|InDType|InFormat|InShape|OutNum|OutDType|OutFormat|OutShape|DataGenType|DataGenRange|InTensorFile|OutTensorFile|TestType|TestLevel|FromModel|SocVersion|ExpectedError
 1|TPNoErrorCase0|GatingOperation|{"topkExpertNum":2,"cumSumNum":8,"deviceExpert":[]}|2|int32;int32|nd;nd|128;128|3|int32;int32;int32|nd;nd;nd|128;8;128|customize;customize|0,0;0,0|||||||NO_ERROR
-2|TPNoErrorCase1|GatingOperation|{"topkExpertNum":2,"cumSumNum":8,"deviceExpert":[]}|2|int32;int32|nd;nd|128;128|3|int32;int32;int32|nd;nd;nd|128;8;128|customize;customize|0,0;0,0|||||||NO_ERROR
 3|TPNoErrorCase2|GatingOperation|{"topkExpertNum":6,"cumSumNum":64,"deviceExpert":[]}|2|int32;int32|nd;nd|192;192|3|int32;int32;int32|nd;nd;nd|192;64;192|customize;customize|0,0;0,0|||||||NO_ERROR
-4|TPNoErrorCase3|GatingOperation|{"topkExpertNum":6,"cumSumNum":64,"deviceExpert":[]}|2|int32;int32|nd;nd|192;192|3|int32;int32;int32|nd;nd;nd|192;64;192|customize;customize|0,0;0,0|||||||NO_ERROR
 5|TPNoErrorCase4|GatingOperation|{"topkExpertNum":6,"cumSumNum":160,"deviceExpert":[]}|2|int32;int32|nd;nd|192;192|3|int32;int32;int32|nd;nd;nd|192;160;192|customize;customize|0,0;0,0|||||||NO_ERROR
-6|TPNoErrorCase5|GatingOperation|{"topkExpertNum":6,"cumSumNum":160,"deviceExpert":[]}|2|int32;int32|nd;nd|192;192|3|int32;int32;int32|nd;nd;nd|192;160;192|customize;customize|0,0;0,0|||||||NO_ERROR
 7|EPNoErrorCase0|GatingOperation|{"topkExpertNum":2,"cumSumNum":8,"deviceExpert":[0,1,2,3]}|2|int32;int32|nd;nd|128;128|4|int32;int32;int32;int32|nd;nd;nd;nd|128;4;128;1|customize;customize|0,0;0,0||||||Ascend910B|NO_ERROR
 8|EPNoErrorCase1|GatingOperation|{"topkExpertNum":2,"cumSumNum":8,"deviceExpert":[0,1,2,3,4,5,6,7]}|2|int32;int32|nd;nd|128;128|4|int32;int32;int32;int32|nd;nd;nd;nd|128;8;128;1|customize;customize|0,0;0,0||||||Ascend910B|NO_ERROR
 9|EPNoErrorCase2|GatingOperation|{"topkExpertNum":6,"cumSumNum":64,"deviceExpert":[0,1,2,3]}|2|int32;int32|nd;nd|192;192|4|int32;int32;int32;int32|nd;nd;nd;nd|192;4;192;1|customize;customize|0,0;0,0||||||Ascend910B|NO_ERROR
@@ -71,11 +68,8 @@ CaseNum|CaseName|OpName|OpParam|InNum|InDType|InFormat|InShape|OutNum|OutDType|O
 70|BoundaryCase0|GatingOperation|{"topkExpertNum":1,"cumSumNum":0,"deviceExpert":[]}|2|int32;int32|nd;nd|2;2|3|int32;int32;int32|nd;nd;nd|2;1;2|customize;customize|0,0;0,0|||||||NO_ERROR
 71|BoundaryCase2|GatingOperation|{"topkExpertNum":1,"cumSumNum":1,"deviceExpert":[]}|2|int32;int32|nd;nd|2;2|3|int32;int32;int32|nd;nd;nd|2;1;2|customize;customize|0,0;0,0|||||||NO_ERROR
 72|TPInt64Case0|GatingOperation|{"topkExpertNum":2,"cumSumNum":8,"deviceExpert":[],"cumSumInt64":true}|2|int32;int32|nd;nd|128;128|3|int32;int64;int32|nd;nd;nd|128;8;128|customize;customize|0,0;0,0|||||||NO_ERROR
-73|TPInt64Case1|GatingOperation|{"topkExpertNum":2,"cumSumNum":8,"deviceExpert":[],"cumSumInt64":true}|2|int32;int32|nd;nd|128;128|3|int32;int64;int32|nd;nd;nd|128;8;128|customize;customize|0,0;0,0|||||||NO_ERROR
 74|TPInt64Case2|GatingOperation|{"topkExpertNum":6,"cumSumNum":64,"deviceExpert":[],"cumSumInt64":true}|2|int32;int32|nd;nd|192;192|3|int32;int64;int32|nd;nd;nd|192;64;192|customize;customize|0,0;0,0|||||||NO_ERROR
-75|TPInt64Case3|GatingOperation|{"topkExpertNum":6,"cumSumNum":64,"deviceExpert":[],"cumSumInt64":true}|2|int32;int32|nd;nd|192;192|3|int32;int64;int32|nd;nd;nd|192;64;192|customize;customize|0,0;0,0|||||||NO_ERROR
 76|TPInt64Case4|GatingOperation|{"topkExpertNum":6,"cumSumNum":160,"deviceExpert":[],"cumSumInt64":true}|2|int32;int32|nd;nd|192;192|3|int32;int64;int32|nd;nd;nd|192;160;192|customize;customize|0,0;0,0|||||||NO_ERROR
-77|TPInt64Case5|GatingOperation|{"topkExpertNum":6,"cumSumNum":160,"deviceExpert":[],"cumSumInt64":true}|2|int32;int32|nd;nd|192;192|3|int32;int64;int32|nd;nd;nd|192;160;192|customize;customize|0,0;0,0|||||||NO_ERROR
 78|EPInt64Case0|GatingOperation|{"topkExpertNum":2,"cumSumNum":8,"deviceExpert":[0,1,2,3],"cumSumInt64":true}|2|int32;int32|nd;nd|128;128|4|int32;int64;int32;int32|nd;nd;nd;nd|128;4;128;1|customize;customize|0,0;0,0||||||Ascend910B|NO_ERROR
 79|EPInt64Case1|GatingOperation|{"topkExpertNum":2,"cumSumNum":8,"deviceExpert":[0,1,2,3,4,5,6,7],"cumSumInt64":true}|2|int32;int32|nd;nd|128;128|4|int32;int64;int32;int32|nd;nd;nd;nd|128;8;128;1|customize;customize|0,0;0,0||||||Ascend910B|NO_ERROR
 80|EPInt64Case2|GatingOperation|{"topkExpertNum":6,"cumSumNum":64,"deviceExpert":[0,1,2,3],"cumSumInt64":true}|2|int32;int32|nd;nd|192;192|4|int32;int64;int32;int32|nd;nd;nd;nd|192;4;192;1|customize;customize|0,0;0,0||||||Ascend910B|NO_ERROR

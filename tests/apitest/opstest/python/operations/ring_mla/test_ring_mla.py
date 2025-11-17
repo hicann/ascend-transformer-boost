@@ -23,7 +23,7 @@ import random
 sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
 
 import operation_test  # NOQA: E402
-from golden_compare_cv import compare_cv
+from precision_calcu import compare_cv
 
 torch.set_printoptions(profile="full")
 np.set_printoptions(threshold=np.inf)
