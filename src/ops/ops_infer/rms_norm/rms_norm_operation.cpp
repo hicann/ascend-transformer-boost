@@ -7,10 +7,8 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
-
- 
-#include <cmath>
 #include <mki/utils/platform/platform_info.h>
+#include <cmath>
 #include "atb/utils/tensor_check.h"
 #include "atb/utils/param_to_json.h"
 #include "atb/utils/config.h"
@@ -18,6 +16,7 @@
 #include "atb/utils/operation_util.h"
 #include "atb/operation/atb_operation_ir_cfg.h"
 #include "atb/operation/op_param_funcs.h"
+#include "rms_norm_aclnn_runner.h"
 #include "aclnn_add_rms_norm_runner.h"
 #include "rms_norm_ops_runner.h"
 #include "rms_norm_operation.h"
@@ -47,7 +46,7 @@ static const uint32_t QUANT_TENSOR_COUNT = 2;
 static const uint32_t GAMMA_DIM_ONE = 1;
 static const uint32_t GAMMA_DIM_TWO = 2;
 static const float THRESHOLD = 2e-38; // The non-negative minimum value of float type is 1.17549e-038.
-
+static bool needUseRmsNormAclnnRunner_ = false;
 bool EpsilonCheck(const infer::RmsNormParam &opParam)
 {
     if (std::fabs(opParam.normParam.epsilon) < THRESHOLD || std::fabs(opParam.preNormParam.epsilon) < THRESHOLD ||
@@ -147,6 +146,11 @@ template <> Status CreateOperation(const infer::RmsNormParam &opParam, Operation
         ATB_LOG(ERROR) << "dynamicQuantType not support DYNAMIC_QUANT_ASYMMETRIC";
         return ERROR_INVALID_PARAM;
     }
+    if (opParam.layerType == infer::RmsNormParam::RMS_NORM_NORM &&
+        opParam.normParam.quantType == infer::QUANT_UNQUANT &&
+        Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+            needUseRmsNormAclnnRunner_ = true;
+        }
     *operation = new (std::nothrow) RmsNormOperation(opParam);
     if (*operation == nullptr) {
         ATB_LOG(ERROR) << "failed to new operation";
@@ -469,7 +473,11 @@ bool RmsNormOperation::CheckRstd() const
 
 std::shared_ptr<Runner> RmsNormOperation::CreateRunner(Context &context) const
 {
-    (void)context;    
+    (void)context;
+    if (needUseRmsNormAclnnRunner_) {
+        ATB_LOG(INFO) << GetLogPrefix() << "create RmsNorm AclnnRunner";
+        return std::make_shared<RmsNormAclnnRunner>(param_);
+    }  
     if (param_.layerType == infer::RmsNormParam::RMS_NORM_PRENORM
         && Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
         ATB_LOG(INFO) << GetLogPrefix() << "create AddRmsNorm AclnnRunner";
