@@ -27,7 +27,7 @@ torch.set_printoptions(profile="full")
 np.set_printoptions(threshold=np.inf)
 sys.path.append("./tests/pythontest")
 save_path = "./"
-from golden_compare_cv import compare_cv
+from precision_calcu import compare_cv
 
 class ScaleType(Enum):
     SCALE_TOR = 0

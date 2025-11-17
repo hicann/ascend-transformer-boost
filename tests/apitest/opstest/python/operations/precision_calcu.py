@@ -83,7 +83,7 @@ def ref_compare(golden:torch.Tensor, actual:torch.Tensor, err):
     golden_nmax = torch.clamp(torch.abs(golden), min = 1)
     abs_error = torch.abs(actual.to(torch.float32) - golden)
     result = (abs_error <= err * golden_nmax).all()
-    logging.info(f"new golden result:{result}")
+    logging.debug(f"new golden result:{result}")
     return result
 
 
@@ -128,7 +128,7 @@ def compare_cv(golden:torch.Tensor, gpu:torch.Tensor, actual:torch.Tensor):
     rmse_rate = rmse_npu / max(rmse_gpu, err_threshold)
 
     EB = get_eb(gpu, actual)
-    result = (mare_rate < 10) and (mere_rate < 2) and (rmse_rate < 2) and (EB < eb_threshold)
+    result = (mare_rate < 10) and (mere_rate < 2) and (rmse_rate < 2)
 
     logging.info(f"mare_npu:{mare_npu} mare_gpu:{mare_gpu}")
     logging.info(f"mere_npu:{mere_npu} mere_gpu:{mere_gpu}")

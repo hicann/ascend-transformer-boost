@@ -18,7 +18,7 @@ import numpy as np
 sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
 import operation_test  # NOQA: E402
 import pdb
-import self_attention.golden_compare_cv as golden_compare_cv
+import precision_calcu as golden_compare_cv
 
 OP_NAME = "SelfAttentionOperation"
 

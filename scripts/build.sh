@@ -35,6 +35,7 @@ MKI_BUILD_MODE=Test
 VERSION="8.0.0"
 LOG_PATH="/var/log/cann_atb_log/"
 LOG_NAME="cann_atb_install.log"
+ENV_FLAG=0
 
 BUILD_OPTION_LIST="help default testframework unittest kernelunittest pythontest torchatbtest kernelpythontest csvopstest fuzztest infratest hitest alltest clean gendoc customizeops"
 BUILD_CONFIGURE_LIST=("--verbose" "--use_cxx11_abi=0" "--use_cxx11_abi=1"
@@ -331,8 +332,14 @@ function fn_build_3rdparty_for_doc()
 
 function export_atb_env()
 {
+    # only export once
+    if [ $ENV_FLAG -eq 1 ]; then
+        echo "skip export env beacuse already done"
+        return
+    fi
     export LD_LIBRARY_PATH=/usr/local/Ascend/driver/lib64/common:/usr/local/Ascend/driver/lib64/driver:${LD_LIBRARY_PATH}
     source $OUTPUT_DIR/atb/set_env.sh
+    ENV_FLAG=1
 }
 
 function export_atb_hitest_env()
@@ -586,11 +593,11 @@ function fn_build_coverage()
     mkdir $GCOV_DIR
 
     if [ "$COVERAGE_TYPE" == "ALLTEST" ];then
-        fn_run_csvopstest
         fn_run_unittest
+        fn_run_kernel_cinterfacetest
+        fn_run_csvopstest
         fn_run_pythontest
         fn_run_torchatbtest
-        fn_run_kernel_cinterfacetest
     fi
 
     cd $GCOV_DIR
@@ -626,11 +633,7 @@ function fn_run_pythontest()
     export_atb_env
     cd $CODE_ROOT/tests/apitest/opstest/python/
     rm -rf ./kernel_meta*
-    for i in $(ls -d operations/*/); do
-        if [[ $(find $i -name __init__.py) != "" ]];then
-            python3 -m unittest discover -s ./$i -p "*test*.py";
-        fi
-    done
+    python3 -m unittest discover -s operations -p "*test*.py" -t .
 }
 
 function fn_run_kernel_pythontest()

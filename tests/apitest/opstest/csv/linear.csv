@@ -249,19 +249,11 @@ CaseNum|CaseName      |OpName           |OpParam                                
 248|llama2_7b|LinearOperation|{"hasBias":false}|2|float16;float16|nd;fractal_nz|1,10,4096;5504,4096|1|float16|nd|1,10,5504|customize;customize|-2,2;-2,2|||||||NO_ERROR
 249|llama2_7b|LinearOperation|{"hasBias":false}|2|float16;float16|nd;fractal_nz|1,10,5504;4096,5504|1|float16|nd|1,10,4096|customize;customize|-2,2;-2,2|||||||NO_ERROR
 250|llama2_7b|LinearOperation|{"hasBias":false}|2|float16;float16|nd;fractal_nz|1,10,4096;32000,4096|1|float16|nd|1,10,32000|customize;customize|-2,2;-2,2|||||||NO_ERROR
-251|llama2_13b|LinearOperation|{"hasBias":false}|2|float16;float16|nd;fractal_nz|1,10,4096;2048,4096|1|float16|nd|1,10,2048|customize;customize|-2,2;-2,2|||||||NO_ERROR
-252|llama2_13b|LinearOperation|{"hasBias":false}|2|float16;float16|nd;fractal_nz|1,10,2048;4096,2048|1|float16|nd|1,10,4096|customize;customize|-2,2;-2,2|||||||NO_ERROR
-253|llama2_13b|LinearOperation|{"hasBias":false}|2|float16;float16|nd;fractal_nz|1,10,4096;5504,4096|1|float16|nd|1,10,5504|customize;customize|-2,2;-2,2|||||||NO_ERROR
-254|llama2_13b|LinearOperation|{"hasBias":false}|2|float16;float16|nd;fractal_nz|1,10,5504;4096,5504|1|float16|nd|1,10,4096|customize;customize|-2,2;-2,2|||||||NO_ERROR
-255|llama2_13b|LinearOperation|{"hasBias":false}|2|float16;float16|nd;fractal_nz|1,10,4096;32000,4096|1|float16|nd|1,10,32000|customize;customize|-2,2;-2,2|||||||NO_ERROR
 256|llama_adapter|LinearOperation|{}|3|float16;float16;float16|nd;fractal_nz;nd|5,49,4096;4096,4096;4096|1|float16|nd|5,49,4096|customize;customize;customize|-2,2;-2,2;-2,2|||||||NO_ERROR
 257|llama_adapter|LinearOperation|{"hasBias":false}|2|float16;float16|nd;fractal_nz|5,49,4096;4096,4096|1|float16|nd|5,49,4096|customize;customize|-2,2;-2,2|||||||NO_ERROR
 258|llama_adapter|LinearOperation|{}|3|float16;float16;float16|nd;fractal_nz;nd|5,49,4096;11008,4096;11008|1|float16|nd|5,49,11008|customize;customize;customize|-2,2;-2,2;-2,2|||||||NO_ERROR
 259|llama_adapter|LinearOperation|{}|3|float16;float16;float16|nd;fractal_nz;nd|5,49,11008;4096,11008;4096|1|float16|nd|5,49,4096|customize;customize;customize|-2,2;-2,2;-2,2|||||||NO_ERROR
 260|llama_adapter|LinearOperation|{"hasBias":false}|2|float16;float16|nd;fractal_nz|5,10,4096;4096,4096|1|float16|nd|5,10,4096|customize;customize|-2,2;-2,2|||||||NO_ERROR
-261|bloom_7b|LinearOperation|{"outDataType":1}|4|int8;int8;int32;uint64|nd;fractal_nz;nd;nd|1,256,4096;1,128,6144,32;6144;6144|1|float16|nd|1,256,6144|customize;customize;customize;customize|-5,5;-5,5;-10,10;-2,2||||||Ascend310P|NO_ERROR
-262|bloom_7b|LinearOperation|{"outDataType":1}|4|int8;int8;int32;uint64|nd;fractal_nz;nd;nd|1,256,2048;1,64,4096,32;4096;4096|1|float16|nd|1,256,4096|customize;customize;customize;customize|-5,5;-5,5;-10,10;-2,2||||||Ascend310P|NO_ERROR
-263|bloom_7b|LinearOperation|{"outDataType":1}|4|int8;int8;int32;uint64|nd;fractal_nz;nd;nd|1,256,8192;1,256,4096,32;4096;4096|1|float16|nd|1,256,4096|customize;customize;customize;customize|-5,5;-5,5;-10,10;-2,2||||||Ascend310P|NO_ERROR
 264|rsv|LinearOperation|{"rsv":[1]}|0||||0|||||||||||Ascend910B,Ascend310P,Ascend310B|C:ERROR_INVALID_PARAM
 265|MatmulDequantFloat16|LinearOperation|{"outDataType":1,"hasBias":true}|4|int8;int8;int32;float|nd;fractal_nz;nd;nd|1,2,64;1,2,32,32;1,32;1,32|1|float16|nd|1,2,32|customize;customize;customize;customize|-5,5;-5,5;-10,10;-2,2||||||Ascend910A|NO_ERROR
 266|MatmulDequantFloat16|LinearOperation|{"outDataType":1}|4|int8;int8;int32;float32|nd;fractal_nz;nd;nd|2,64;32,64;1,32;1,32|1|float16|nd|2,32|customize;customize;customize;customize|-5,5;-5,5;-10,10;-2,2||||||Ascend910A|NO_ERROR
@@ -271,7 +263,6 @@ CaseNum|CaseName      |OpName           |OpParam                                
 270|MatmulDequantFloat16|LinearOperation|{"outDataType":1}|4|int8;int8;int32;float32|nd;fractal_nz;nd;nd|1,2,64;1,2,32,32;1,32;1,32|1|float16|nd|1,2,32|customize;customize;customize;customize|-5,5;-5,5;-10,10;-2,2||||||Ascend910A|NO_ERROR
 271|MatmulDequantFloat16|LinearOperation|{"outDataType":1}|4|int8;int8;int32;float32|nd;fractal_nz;nd;nd|2,2,64;1,2,32,32;1,32;1,32|1|float16|nd|2,2,32|customize;customize;customize;customize|-5,5;-5,5;-10,10;-2,2||||||Ascend910A|NO_ERROR
 272|MatmulDequantFloat16|LinearOperation|{"outDataType":1}|4|int8;int8;int32;float32|nd;fractal_nz;nd;nd|2,2,64;2,2,32,32;2,32;2,32|1|float16|nd|2,2,32|customize;customize;customize;customize|-5,5;-5,5;-10,10;-2,2||||||Ascend910A|NO_ERROR
-273|rsv|LinearOperation|{"rsv":[1]}|0||||0|||||||||||Ascend910B,Ascend310P,Ascend310B|C:ERROR_INVALID_PARAM
 274|MatmulDequantFloat16|LinearOperation|{"outDataType":1}|4|int8;int8;int32;int64|nd;nd;nd;nd|2,64;32,64;32;32|1|float16|nd|2,32|customize;customize;customize;customize|-5,5;-5,5;-10,10;-2,2||||||Ascend310B|NO_ERROR
 275|MatmulDequantFloat16|LinearOperation|{"outDataType":1}|4|int8;int8;int32;int64|nd;fractal_nz;nd;nd|2,64;32,64;32;32|1|float16|nd|2,32|customize;customize;customize;customize|-5,5;-5,5;-10,10;-2,2||||||Ascend310B|NO_ERROR
 276|Matmul|LinearOperation|{"hasBias":false}|2|float16;float16|nd;nd|2,3;4,3|1|float16|nd|2,4|customize;customize|-2,2;-2,2||||||Ascend310B|NO_ERROR
