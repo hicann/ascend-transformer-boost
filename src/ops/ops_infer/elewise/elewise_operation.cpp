@@ -15,6 +15,7 @@
 #include "atb/operation/atb_operation_ir_cfg.h"
 #include "atb/utils/singleton.h"
 #include "atb/operation/op_param_funcs.h"
+#include "aclnn_ascend_quant_runner.h"
 #include "aclnn_dynamic_quant_runner.h"
 #include "elewise_ops_runner.h"
 #include "elewise_operation.h"
@@ -70,6 +71,7 @@ template <> Status CreateOperation(const infer::ElewiseParam &opParam, Operation
 ElewiseOperation::ElewiseOperation(const infer::ElewiseParam &param) : OperationBase("ElewiseOperation"), param_(param)
 {
     bool IS_310B = GetSingleton<Config>().Is310B();
+    bool IS_950 = Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95;
     static std::map<infer::ElewiseParam::ElewiseType, std::string> opIniTable = {
         {infer::ElewiseParam::ElewiseType::ELEWISE_CAST,
          IS_310B ? "ElewiseOperationCastAtlas200I500A2" : "ElewiseOperationCast"},
@@ -91,7 +93,8 @@ ElewiseOperation::ElewiseOperation(const infer::ElewiseParam &param) : Operation
         {infer::ElewiseParam::ElewiseType::ELEWISE_LESS, "ElewiseOperationLess"},
         {infer::ElewiseParam::ElewiseType::ELEWISE_GREATER, "ElewiseOperationGreater"},
         {infer::ElewiseParam::ElewiseType::ELEWISE_EQUAL, "ElewiseOperationEqual"},
-        {infer::ElewiseParam::ElewiseType::ELEWISE_QUANT_PER_CHANNEL, "ElewiseOperationQuantPerChannel"},
+        {infer::ElewiseParam::ElewiseType::ELEWISE_QUANT_PER_CHANNEL,
+         IS_950 ? "ElewiseOperationQuantPerChannel950":"ElewiseOperationQuantPerChannel"},
         {infer::ElewiseParam::ElewiseType::ELEWISE_DEQUANT_PER_CHANNEL, "ElewiseOperationDequantPerChannel"},
         {infer::ElewiseParam::ElewiseType::ELEWISE_DYNAMIC_QUANT, "ElewiseOperationDynamicQuant"},
         {infer::ElewiseParam::ElewiseType::ELEWISE_TANH, "ElewiseOperationTanh"},
@@ -324,12 +327,16 @@ Status ElewiseOperation::InferShapeCommon(const SVector<TensorDesc> &inTensorDes
 Status ElewiseOperation::InferShapeImplQuantChannel(const SVector<TensorDesc> &inTensorDescs,
                                                     SVector<TensorDesc> &outTensorDescs) const
 {
-    aclDataType dtype0 = inTensorDescs.at(TENSOR_IDX_ZERO).dtype;
-    aclDataType dtype1 = inTensorDescs.at(TENSOR_IDX_ONE).dtype;
-    aclDataType dtype2 = inTensorDescs.at(TENSOR_IDX_TWO).dtype;
+    aclDataType dtype0 = inTensorDescs.at(TENSOR_IDX_ZERO).dtype;   // x
+    aclDataType dtype1 = inTensorDescs.at(TENSOR_IDX_ONE).dtype;    // scale
+    aclDataType dtype2 = inTensorDescs.at(TENSOR_IDX_TWO).dtype;    // offset
     if ((((dtype0 == ACL_FLOAT16) && (dtype1 == ACL_FLOAT16)) || ((dtype0 == ACL_BF16) && (dtype1 == ACL_BF16))) &&
         (dtype2 == ACL_INT8)) {
         outTensorDescs.at(TENSOR_IDX_ZERO).dtype = ACL_INT8;
+        return NO_ERROR;
+    } else if (param_.outTensorType == ACL_HIFLOAT8 || param_.outTensorType == ACL_FLOAT8_E4M3FN
+        || param_.outTensorType == ACL_FLOAT8_E5M2) {
+        outTensorDescs.at(TENSOR_IDX_ZERO).dtype = param_.outTensorType;
         return NO_ERROR;
     } else {
         ATB_LOG(WARN) << "ElewiseOperation InferShapeImpl quant channel: no matched input desc.";
@@ -396,6 +403,9 @@ std::shared_ptr<Runner> ElewiseOperation::CreateRunner(Context &context) const
     if (param_.elewiseType == infer::ElewiseParam::ElewiseType::ELEWISE_DYNAMIC_QUANT
         && Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
             return std::make_shared<AclnnDynamicQuantRunner>(param_);
+    } else if (param_.elewiseType == infer::ElewiseParam::ElewiseType::ELEWISE_QUANT_PER_CHANNEL
+        && Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+            return std::make_shared<AclnnAscendQuantRunner>(param_);
     }
     return std::make_shared<ElewiseOpsRunner>(param_);
 }
