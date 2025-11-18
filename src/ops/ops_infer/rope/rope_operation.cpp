@@ -7,8 +7,8 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
-
 #include "rope_operation.h"
+#include <mki/utils/platform/platform_info.h>
 #include "atb/utils/config.h"
 #include "rope_ops_runner.h"
 #include "atb/utils/log.h"
@@ -19,6 +19,7 @@
 #include "atb/operation/atb_operation_ir_cfg.h"
 #include "atb/operation/op_param_funcs.h"
 #include "atb/utils/operation_register.h"
+#include "rope_aclnn_runner.h"
 
 namespace atb {
 static const int32_t IN_TENSOR_NUM = 5;
@@ -184,6 +185,9 @@ std::shared_ptr<Runner> RopeOperation::CreateRunner(Context &context) const
     if (!contextBase) {
         ATB_LOG(DEBUG) << "context cast to contextBase failed!";
         return nullptr;
+    }
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+        return std::make_shared<RopeAclnnRunner>(param_);
     }
     int64_t runnerTypeIdx = RunnerTypeRegister::GetRunnerTypeIdx("RopeOpsRunner");
     RunnerPool &pool = contextBase->GetRunnerPool(runnerTypeIdx);
