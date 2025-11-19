@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Technologies Co., Ltd.
+ * Copyright (c) 2025 Huawei Technologies Co., Ltd.
  * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
  * CANN Open Software License Agreement Version 2.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
@@ -11,15 +11,17 @@
 #include "layer_norm_operation.h"
 #include <cmath>
 #include <sstream>
-#include "layer_norm_ops_runner.h"
-#include "atb/utils/tensor_check.h"
-#include "atb/utils/tensor_util.h"
-#include "atb/utils/param_to_json.h"
-#include "atb/operation/atb_operation_ir_cfg.h"
 #include "atb/utils/config.h"
 #include "atb/utils/operation_util.h"
+#include "atb/utils/param_to_json.h"
 #include "atb/utils/singleton.h"
+#include "atb/utils/tensor_check.h"
+#include "atb/utils/tensor_util.h"
+#include "atb/operation/atb_operation_ir_cfg.h"
 #include "atb/operation/op_param_funcs.h"
+#include "layer_norm_aclnn_runner.h"
+#include "layer_norm_ops_runner.h"
+
 
 namespace atb {
 static const uint32_t IN_TENSOR_COUNT_THREE = 3;
@@ -60,6 +62,11 @@ Status NormParamCheck(infer::LayerNormParam::NormParam normParam)
     if (normParam.dynamicQuantType == infer::DYNAMIC_QUANT_ASYMMETRIC) {
         ATB_LOG(ERROR) << "dynamicQuantType not support DYNAMIC_QUANT_ASYMMETRIC";
         return ERROR_INVALID_PARAM;
+    }
+    Status status = LayerNormAclnnRunner::LoadMethod();
+    if (status != NO_ERROR && normParam.quantType == infer::QUANT_UNQUANT) {
+        ATB_LOG(ERROR) << "Load aclnn function failed, layerNorm with unQuant is not supported!";
+        return status;
     }
     return NO_ERROR;
 }
@@ -326,6 +333,10 @@ Status LayerNormOperation::ParamCheck(const TensorDesc &xTensorDesc, const Tenso
 std::shared_ptr<Runner> LayerNormOperation::CreateRunner(Context &context) const
 {
     (void)context;
+    if (param_.layerType == infer::LayerNormParam::LAYER_NORM_NORM &&
+        param_.normParam.quantType == infer::QUANT_UNQUANT) {
+        return std::make_shared<LayerNormAclnnRunner>(param_);
+    }
     return std::make_shared<LayerNormOpsRunner>(param_);
 }
 
@@ -396,12 +407,10 @@ Status LayerNormOperation::LastDimCheck(const SVector<TensorDesc> &inTensorDescs
 Status LayerNormOperation::InTensorsDimCheck(const SVector<TensorDesc> inTensorDescs) const
 {
     Status result = NO_ERROR;
-    if (param_.layerType == infer::LayerNormParam::LAYER_NORM_NORM &&
-        param_.normParam.quantType == infer::QUANT_INT8 &&
-        param_.normParam.dynamicQuantType == infer::DYNAMIC_QUANT_SYMMETRIC &&
-        inTensorDescs.at(0).shape.dimNum < 2) {
-            ATB_LOG(ERROR) << GetLogPrefix() << "dim numbers of inTensor[0] should be greater than one";
-            return ERROR_INVALID_TENSOR_DIM;
+    if (param_.layerType == infer::LayerNormParam::LAYER_NORM_NORM && param_.normParam.quantType == infer::QUANT_INT8 &&
+        param_.normParam.dynamicQuantType == infer::DYNAMIC_QUANT_SYMMETRIC && inTensorDescs.at(0).shape.dimNum < 2) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "dim numbers of inTensor[0] should be greater than one";
+        return ERROR_INVALID_TENSOR_DIM;
     }
     if (param_.layerType == infer::LayerNormParam::LAYER_NORM_PRENORM ||
         param_.layerType == infer::LayerNormParam::LAYER_NORM_POSTNORM) {
