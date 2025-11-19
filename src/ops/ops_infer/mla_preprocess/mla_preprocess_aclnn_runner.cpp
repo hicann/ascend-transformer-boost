@@ -220,6 +220,4 @@ Status MlaPreprocessAclnnRunner::LoadMethod()
                                              MlaPreprocessAclnnRunner::aclnnExecuteFunc_);
     return status;
 }
-
-REG_RUNNER_TYPE(MlaPreprocessAclnnRunner);
 } // namespace atb
