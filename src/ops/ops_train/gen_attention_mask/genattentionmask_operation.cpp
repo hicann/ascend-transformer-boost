@@ -104,7 +104,7 @@ Status GenAttentionMaskOperation::InferShapeImpl(const SVector<TensorDesc> &inTe
     for (std::size_t i = 0; i < size; i++) {
         outdims += headNum * param_.seqLen.at(i) * param_.seqLen.at(i);
         if (param_.seqLen.at(i) > maxseqlen) {
-            ATB_LOG(ERROR) << "seqLen shape should not be larger than maxseqlen";
+            ATB_LOG(ERROR) << "Each element of the seqLen should not be larger than maxseqlen.";
             return ERROR_INVALID_PARAM;
         }
     }
