@@ -1,5 +1,5 @@
-name: Requirement|需求建议
-description: 您需要反馈或实现一个新需求时，请使用此模板。
+name: Requirement|需求建议反馈
+description: 您需要反馈一个新需求或者改进建议时，请使用此模板，方便我们快速理解、评估并落地。
 title: "[Requirement|需求建议]: "
 labels: ["requirement"]
 body:
