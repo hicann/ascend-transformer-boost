@@ -9,6 +9,7 @@
  */
 #include "activation_operation.h"
 #include "atb/utils/param_to_json.h"
+#include "activation_aclnn_runner.h"
 #include "activation_ops_runner.h"
 #include "atb/utils/tensor_check.h"
 #include "atb/operation/atb_operation_ir_cfg.h"
@@ -44,6 +45,11 @@ template <> Status CreateOperation(const infer::ActivationParam &opParam, Operat
         } else {
             ATB_LOG(ERROR) << "activationType: " << opParam.activationType << " does not support splitting dim";
         }
+        return ERROR_INVALID_PARAM;
+    }
+    Status status = ActivationAclnnRunner::LoadAclnnFunctions();
+    if (status != NO_ERROR) {
+        ATB_LOG(ERROR) << "load aclnn funcs failed.";
         return ERROR_INVALID_PARAM;
     }
     *operation = new (std::nothrow) ActivationOperation(opParam);
@@ -234,7 +240,33 @@ Status ActivationOperation::SetupCheckImpl(const SVector<Tensor> &inTensors, con
 std::shared_ptr<Runner> ActivationOperation::CreateRunner(Context &context) const
 {
     (void)context;
-    return std::make_shared<ActivationOpsRunner>(param_);
+    switch (param_.activationType) {
+        case infer::ActivationType::ACTIVATION_RELU:
+            return std::make_shared<ActivationAclnnRunner>(param_);
+        case infer::ActivationType::ACTIVATION_GELU:
+            if (param_.geluMode == infer::ActivationParam::GeLUMode::TANH_MODE) {
+                return std::make_shared<ActivationOpsRunner>(param_);
+            } else {
+                return std::make_shared<ActivationAclnnRunner>(param_);
+            }
+        case infer::ActivationType::ACTIVATION_FAST_GELU:
+            return std::make_shared<ActivationAclnnRunner>(param_);
+        case infer::ActivationType::ACTIVATION_SWISH:
+            return std::make_shared<ActivationAclnnRunner>(param_);
+        case infer::ActivationType::ACTIVATION_LOG:
+            return std::make_shared<ActivationAclnnRunner>(param_);
+        case infer::ActivationType::ACTIVATION_SIGMOID:
+            return std::make_shared<ActivationAclnnRunner>(param_);
+        case infer::ActivationType::ACTIVATION_SWIGLU_FORWARD:
+            return std::make_shared<ActivationOpsRunner>(param_);
+        case infer::ActivationType::ACTIVATION_SWIGLU_BACKWARD:
+            return std::make_shared<ActivationOpsRunner>(param_);
+        case infer::ActivationType::ACTIVATION_FASTER_GELU_FORWARD:
+            return std::make_shared<ActivationOpsRunner>(param_);
+        default:
+            ATB_LOG(ERROR) << GetLogPrefix() << "Invalid activation type: " << param_.activationType;
+            return nullptr;
+    }
 }
 
 nlohmann::json ActivationOperation::GetParamJson() const

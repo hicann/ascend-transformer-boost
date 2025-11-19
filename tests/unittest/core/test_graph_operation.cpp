@@ -670,6 +670,8 @@ void TestGraphOperationReportOperationGraphStub(const std::string &opName, const
 
 TEST(TestGraphOperation, jsonTest)
 {
+    atb::Status status0 = aclInit(nullptr);
+    EXPECT_EQ(status0, 0);
     Stub stub;
     stub.set(ADDR(Probe, ReportOperationGraphEnable), TestGraphOperationReportOperationGraphEnableStub);
     stub.set(ADDR(Probe, ReportOperationGraph), TestGraphOperationReportOperationGraphStub);
@@ -735,4 +737,6 @@ TEST(TestGraphOperation, jsonTest)
     atb::Status status6 = opTest.Run(operation, inTensorDescs);
     DestroyOperation(operation);
     EXPECT_EQ(status6, 0);
+    atb::Status status7 = aclFinalize();
+    EXPECT_EQ(status7, 0);
 }
