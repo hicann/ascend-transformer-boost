@@ -8,8 +8,8 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 #include "cumsum_operation.h"
+#include "cumsum_aclnn_runner.h"
 #include "atb/utils/log.h"
-#include "cumsum_ops_runner.h"
 #include "atb/utils/tensor_check.h"
 #include "atb/utils/param_to_json.h"
 #include "atb/operation/atb_operation_ir_cfg.h"
@@ -34,6 +34,10 @@ template <> Status CreateOperation(const infer::CumsumParam &opParam, Operation 
     if (opParam.exclusive) {
         ATB_LOG(ERROR) << "cumsum does not support exclusive yet";
         return ERROR_INVALID_PARAM;
+    }
+    Status status = CumsumAclnnRunner::LoadMethod();
+    if (status != NO_ERROR) {
+        return status;
     }
     *operation = new (std::nothrow) CumsumOperation(opParam);
     if (*operation == nullptr) {
@@ -89,7 +93,8 @@ Status CumsumOperation::SetupCheckImpl(const SVector<Tensor> &inTensors, const S
 std::shared_ptr<Runner> CumsumOperation::CreateRunner(Context &context) const
 {
     (void)context;
-    return std::make_shared<CumsumOpsRunner>(param_);
+    ATB_LOG(INFO) << GetLogPrefix() << "create Cumsum AclnnRunner";
+    return std::make_shared<CumsumAclnnRunner>(param_);
 }
 
 nlohmann::json CumsumOperation::GetParamJson() const
