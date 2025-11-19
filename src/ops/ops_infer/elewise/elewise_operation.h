@@ -25,6 +25,7 @@ protected:
     Status InferShapeImpl(const SVector<TensorDesc> &inTensorDescs, SVector<TensorDesc> &outTensorDescs) const override;
     Status InferShapeImplCast(const SVector<TensorDesc> &inTensorDescs, SVector<TensorDesc> &outTensorDescs) const;
     Status InferShapeImplQuant(const SVector<TensorDesc> &inTensorDescs, SVector<TensorDesc> &outTensorDescs) const;
+    Status InferShapeImplQuantPerTensor(const SVector<TensorDesc> &inTensorDescs, SVector<TensorDesc> &outTensorDescs) const;
     Status InferShapeImplDynamicQuant(const SVector<TensorDesc> &inTensorDescs,
                                       SVector<TensorDesc> &outTensorDescs) const;
     std::shared_ptr<Runner> CreateRunner(Context &context) const override;

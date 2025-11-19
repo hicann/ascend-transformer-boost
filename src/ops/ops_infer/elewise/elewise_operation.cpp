@@ -7,7 +7,6 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
- 
 #include <mki/utils/platform/platform_info.h>
 #include "atb/utils/tensor_check.h"
 #include "atb/utils/config.h"
@@ -17,6 +16,7 @@
 #include "atb/operation/op_param_funcs.h"
 #include "aclnn_ascend_quant_runner.h"
 #include "aclnn_dynamic_quant_runner.h"
+#include "elewise_aclnn_runner.h"
 #include "elewise_ops_runner.h"
 #include "elewise_operation.h"
 
@@ -45,7 +45,7 @@ template <> Status CreateOperation(const infer::ElewiseParam &opParam, Operation
         ATB_LOG(ERROR) << "Elewise dequant only support Atlas 800I A2 inference product";
         return ERROR_INVALID_PARAM;
     }
-    if ((!GetSingleton<Config>().Is910B()) &&
+    if ((!GetSingleton<Config>().Is910B() && Mki::PlatformInfo::Instance().GetPlatformType() != Mki::PlatformType::ASCEND_910_95) &&
         (opParam.elewiseType == infer::ElewiseParam::ElewiseType::ELEWISE_QUANT)) {
         ATB_LOG(ERROR) << "Elewise quant only support Atlas 800I A2 inference product";
         return ERROR_INVALID_PARAM;
@@ -103,6 +103,9 @@ ElewiseOperation::ElewiseOperation(const infer::ElewiseParam &param) : Operation
     if (it != opIniTable.end()) {
         if (it->first == infer::ElewiseParam::ElewiseType::ELEWISE_DYNAMIC_QUANT && param_.quantParam.asymmetric) {
             operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr(it->second + "Asymmetric");
+        } else if (it->first == infer::ElewiseParam::ElewiseType::ELEWISE_QUANT &&
+                   Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95){
+            operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr(it->second + "Ascend950");
         } else {
             operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr(it->second);
         }
@@ -168,7 +171,11 @@ Status ElewiseOperation::InferShapeImpl(const SVector<TensorDesc> &inTensorDescs
         case infer::ElewiseParam::ELEWISE_CAST:
             return InferShapeImplCast(inTensorDescs, outTensorDescs);
         case infer::ElewiseParam::ELEWISE_QUANT:
-            return InferShapeImplQuant(inTensorDescs, outTensorDescs);
+            if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+                return InferShapeImplQuantPerTensor(inTensorDescs, outTensorDescs);
+            } else {
+                return InferShapeImplQuant(inTensorDescs, outTensorDescs);
+            }
         case infer::ElewiseParam::ELEWISE_QUANT_PER_CHANNEL:
             return InferShapeImplQuantChannel(inTensorDescs, outTensorDescs);
         case infer::ElewiseParam::ELEWISE_DEQUANT_PER_CHANNEL:
@@ -213,6 +220,19 @@ Status ElewiseOperation::InferShapeImplCast(const SVector<TensorDesc> &inTensorD
         return ERROR_INVALID_PARAM;
     }
     return NO_ERROR;
+}
+
+Status ElewiseOperation::InferShapeImplQuantPerTensor(const SVector<TensorDesc> &inTensorDescs,
+                                                      SVector<TensorDesc> &outTensorDescs) const
+{
+    aclDataType dtype0 = inTensorDescs.at(TENSOR_IDX_ZERO).dtype;
+    if ((dtype0 == ACL_FLOAT) || (dtype0 == ACL_FLOAT16) || (dtype0 == ACL_BF16)) {
+        outTensorDescs.at(TENSOR_IDX_ZERO).dtype = param_.outTensorType;
+        return NO_ERROR;
+    } else {
+        ATB_LOG(WARN) << "ElewiseOperation InferShapeImplQuantPerTensor: no matched input desc.";
+        return ERROR_INVALID_PARAM;
+    }
 }
 
 Status ElewiseOperation::InferShapeImplQuant(const SVector<TensorDesc> &inTensorDescs,
@@ -406,6 +426,10 @@ std::shared_ptr<Runner> ElewiseOperation::CreateRunner(Context &context) const
     } else if (param_.elewiseType == infer::ElewiseParam::ElewiseType::ELEWISE_QUANT_PER_CHANNEL
         && Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
             return std::make_shared<AclnnAscendQuantRunner>(param_);
+    }
+    if (param_.elewiseType == infer::ElewiseParam::ElewiseType::ELEWISE_QUANT &&
+        Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+        return std::make_shared<ElewiseAclnnRunner>(param_);
     }
     return std::make_shared<ElewiseOpsRunner>(param_);
 }
