@@ -54,6 +54,8 @@ ascend-transformer-boost
 - 支持多种模型框架如PyTorch、MindSpore、Paddle。
 
 ## 二、环境构建
+### 版本兼容性说明
+ATB 版本提供双向兼容能力，向上与向下兼容 4 个版本。  
 ### 快速安装CANN软件
 本节提供快速安装CANN软件的示例命令，更多安装步骤请参考[详细安装指南](#cann详细安装指南)。
 
