@@ -138,12 +138,6 @@ aclnnStatus LinearParallelAclnnRunner::SetAclNNWorkspaceExecutor()
     char commMode[128] = "aiv";
 
     aclOpExecutor *raw_executor_ptr = this->aclnnExecutor_.get();
-    ATB_LOG(INFO) << GetLogPrefix() << "&(this->aclnnExecutor_): " << &(this->aclnnExecutor_)
-                  << ", addr of this->aclnnExecutor_: " << this->aclnnExecutor_
-                  << ", raw ptr from it: " << raw_executor_ptr
-                  << ", then take the address of the raw ptr: " << &raw_executor_ptr;
-
-    ATB_LOG(INFO) << GetLogPrefix() << "workspaceSize addr: " << &(this->atbVariantPack_.workspaceBufferSize);
 
     ret = LinearParallelAclnnRunner::aclnnMatmulReduceScatterV2GetWorkspaceSizeFunc_(
         x1, x2, bias, x1Scale, x2Scale, quantScale, blockSize, group, reduceOp, commTurn, streamMode, groupSize,

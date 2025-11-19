@@ -16,7 +16,8 @@
 
 namespace atb {
 
-AclnnRunner::AclnnRunner(const std::string &name) : Runner(name) {
+AclnnRunner::AclnnRunner(const std::string &name) : Runner(name)
+{
     runnerTypeIdx_ = RunnerTypeRegister::GetRunnerTypeIdx(name);
 }
 
@@ -61,9 +62,7 @@ Status AclnnRunner::SetupImpl(RunnerVariantPack &runnerVariantPack)
         ATB_LOG(ERROR) << GetLogPrefix() << "Atb aclnn op set workspace failed with return value: " << aclnnRet;
         return ERROR_CANN_ERROR;
     }
-    ATB_LOG(INFO) << GetLogPrefix() << "getWorkspace success, workspace addr: "
-                  << reinterpret_cast<void *>(this->atbVariantPack_.workspaceBuffer)
-                  << ", workspaceSize: " << this->atbVariantPack_.workspaceBufferSize;
+    ATB_LOG(INFO) << GetLogPrefix() << "getWorkspaceSize success, workspaceSize: " << this->atbVariantPack_.workspaceBufferSize;
     if (!useCache()) {
         return ret;
     }
@@ -95,13 +94,14 @@ uint64_t AclnnRunner::GetWorkspaceBufferSizeImpl()
 Status AclnnRunner::PreExecuteImpl(RunnerVariantPack &runnerVariantPack)
 {
     ATB_LOG(INFO) << GetLogPrefix() << "AclNNOpCacheUpdateAclNNVariantPack";
+    aclnnStatus ret = ACL_SUCCESS;
     for (size_t i = 0; i < this->aclnnVariantPack_.aclInTensors.size(); ++i) {
         // 部分场景中存在aclnn接口使用空tensor占位最后可选tensor，但是runnerVariantPack中不存放tensor的情况，可以跳过
         if (i >= runnerVariantPack.inTensors.size()) {
             break;
         }
-        int ret = -1;
-        if (!this->aclnnVariantPack_.aclInTensors[i]->needUpdateTensorDataPtr) {
+        if (this->aclnnVariantPack_.aclInTensors[i] == nullptr ||
+            !this->aclnnVariantPack_.aclInTensors[i]->needUpdateTensorDataPtr) {
             continue;
         }
         this->aclnnVariantPack_.aclInTensors[i]->atbTensor = runnerVariantPack.inTensors.at(i);
@@ -126,8 +126,8 @@ Status AclnnRunner::PreExecuteImpl(RunnerVariantPack &runnerVariantPack)
         if (i >= runnerVariantPack.outTensors.size()) {
             break;
         }
-        int ret = -1;
-        if (!this->aclnnVariantPack_.aclOutTensors[i]->needUpdateTensorDataPtr) {
+        if (this->aclnnVariantPack_.aclOutTensors[i] == nullptr ||
+            !this->aclnnVariantPack_.aclOutTensors[i]->needUpdateTensorDataPtr) {
             continue;
         }
         this->aclnnVariantPack_.aclOutTensors[i]->atbTensor = runnerVariantPack.outTensors.at(i);

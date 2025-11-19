@@ -172,13 +172,6 @@ aclnnStatus MlaPreprocessAclnnRunner::SetAclNNWorkspaceExecutor()
     kvCacheOut1 = this->aclnnVariantPack_.aclOutTensors.at(outTensorStart++)->tensor;
 
     aclOpExecutor *raw_executor_ptr = this->aclnnExecutor_.get();
-    ATB_LOG(INFO) << GetLogPrefix() << "&(this->aclnnExecutor_): " << &(this->aclnnExecutor_)
-                  << ", addr of this->aclnnExecutor_: " << this->aclnnExecutor_
-                  << ", raw ptr from it: " << raw_executor_ptr
-                  << ", then take the address of the raw ptr: " << &raw_executor_ptr;
-
-    ATB_LOG(INFO) << GetLogPrefix() << "workspaceSize addr: " << &(this->atbVariantPack_.workspaceBufferSize);
-
     int64_t wdkvSplitCount = 1;
     aclnnStatus ret = MlaPreprocessAclnnRunner::aclnnGetWorkspaceSizeFunc_(
         input, gamma0, beta0, quantScale0, quantOffset0, wdqkv, deScale0, bias0, gamma1, beta1, quantScale1,

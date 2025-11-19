@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Technologies Co., Ltd.
+ * Copyright (c) 2025 Huawei Technologies Co., Ltd.
  * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
  * CANN Open Software License Agreement Version 2.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
@@ -19,18 +19,6 @@ static const uint64_t IN_TENSOR_COUNT_FOUR = 4;
 static const uint64_t IN_TENSOR_COUNT_THREE = 3;
 static const uint64_t OUT_TENSOR_COUNT_TWO = 2;
 static const uint64_t OUT_TENSOR_COUNT_ONE = 1;
-
-void LayerNormOpsRunner::SetLayerNormParam(const infer::LayerNormParam &inferParam,
-                                           AsdOps::OpParam::Norm &asdopsParam) const
-{
-    asdopsParam.inGamma = true;
-    asdopsParam.inBeta = true;
-    asdopsParam.outMean = true;
-    asdopsParam.outVarience = true;
-    asdopsParam.epsilon = inferParam.normParam.epsilon;
-    asdopsParam.beginNormAxis = inferParam.normParam.beginNormAxis;
-    asdopsParam.beginParamsAxis = inferParam.normParam.beginParamsAxis;
-}
 
 void LayerNormOpsRunner::SetLayerNormQuantParam(const infer::LayerNormParam &inferParam,
                                                 AsdOps::OpParam::Norm &asdopsParam) const
@@ -75,30 +63,6 @@ void LayerNormOpsRunner::SetPostLayerNormQuantParam(const infer::LayerNormParam 
     asdopsParam.outResQuant = true;
     asdopsParam.epsilon = inferParam.postNormParam.epsilon;
     asdopsParam.opsMode = inferParam.postNormParam.opMode;
-}
-
-void LayerNormOpsRunner::BuildLayerNormGraph(const AsdOps::OpParam::Norm &layerNormParam)
-{
-    // 3 in -> 3 out, layerNorm, any dim
-    kernelGraph_.inTensors.resize(IN_TENSOR_COUNT_THREE);
-    int inId = 0;
-    Mki::Tensor &inputXTensor = kernelGraph_.inTensors.at(inId++);
-    Mki::Tensor &gammaTensor = kernelGraph_.inTensors.at(inId++);
-    Mki::Tensor &betaTensor = kernelGraph_.inTensors.at(inId++);
-
-    kernelGraph_.outTensors.resize(1);
-    Mki::Tensor &resultTensor = kernelGraph_.outTensors.at(0);
-
-    int interId = 0;
-    kernelGraph_.internalTensors.resize(2); // 承载2个无用输出
-    Mki::Tensor &meanTensor = kernelGraph_.internalTensors.at(interId++);
-    Mki::Tensor &variencetTensor = kernelGraph_.internalTensors.at(interId++);
-
-    kernelGraph_.nodes.resize(1);
-    auto &layerNormNode = kernelGraph_.nodes[0];
-    layerNormNode.opDesc = {0, "NormOperation", layerNormParam};
-    layerNormNode.inTensors = {&inputXTensor, &gammaTensor, &betaTensor};
-    layerNormNode.outTensors = {&resultTensor, &meanTensor, &variencetTensor};
 }
 
 void LayerNormOpsRunner::BuildLayerNormQuantGraph(const AsdOps::OpParam::Norm &layerNormParam)
@@ -218,10 +182,7 @@ LayerNormOpsRunner::LayerNormOpsRunner(const infer::LayerNormParam &param)
 {
     AsdOps::OpParam::Norm layerNormParam = {AsdOps::OpParam::Norm::LAYER_NORM};
     if (param_.layerType == infer::LayerNormParam::LAYER_NORM_NORM) {
-        if (param_.normParam.quantType == infer::QUANT_UNQUANT) {
-            SetLayerNormParam(param_, layerNormParam);
-            BuildLayerNormGraph(layerNormParam);
-        } else {
+         if (param_.normParam.quantType != infer::QUANT_UNQUANT) {
             SetLayerNormQuantParam(param_, layerNormParam);
             if (param_.normParam.dynamicQuantType == infer::DYNAMIC_QUANT_UNDEFINED) {
                 BuildLayerNormQuantGraph(layerNormParam);
