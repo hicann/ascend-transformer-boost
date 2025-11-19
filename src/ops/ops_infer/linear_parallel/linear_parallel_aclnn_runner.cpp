@@ -193,6 +193,4 @@ Status LinearParallelAclnnRunner::LoadMethodMatmulReduceScatter()
                                              LinearParallelAclnnRunner::aclnnMatmulReduceScatterV2Func_);
     return status;
 }
-
-REG_RUNNER_TYPE(LinearParallelAclnnRunner);
 } // namespace atb

@@ -49,7 +49,7 @@ atb::SVector<int64_t> GetTransposeTensorStride(atb::Dims &tensorDims);
 /// \param dataType the dataType of the tensor, used for specifying empty tensors.
 /// \return A status code that indicates whether `aclTensor` has been created.
 atb::Status CallAclCreateTensor(atb::Dims &viewDims, atb::Dims &storageDims, atb::Tensor &atbTensor,
-                                std::shared_ptr<AclNNTensor> aclnnTensor, aclDataType dataType = ACL_DT_UNDEFINED);
+                                std::shared_ptr<AclNNTensor> aclnnTensor, aclDataType dataType = ACL_DT_UNDEFINED, int64_t offset = 0);
 
 /// Reshape a tensor by squeezing batch size axis and seq len axis if the tensor's shape has two dimensions.
 ///
