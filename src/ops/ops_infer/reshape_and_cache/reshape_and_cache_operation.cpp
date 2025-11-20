@@ -8,6 +8,7 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 #include "reshape_and_cache_operation.h"
+#include <mki/utils/platform/platform_info.h>
 #include "reshape_and_cache_ops_runner.h"
 #include "reshape_and_cache_ops_runner_310p.h"
 #include "reshape_and_cache_ops_runner_SISO.h"
@@ -18,6 +19,7 @@
 #include "atb/utils/singleton.h"
 #include "atb/operation/atb_operation_ir_cfg.h"
 #include "atb/operation/op_param_funcs.h"
+#include "reshape_and_cache_aclnn_runner.h"
 
 namespace atb {
 
@@ -98,7 +100,9 @@ ReshapeAndCacheOperation::ReshapeAndCacheOperation(const infer::ReshapeAndCacheP
     } else {
         operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("ReshapeAndCacheOperation");
     }
-
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+        operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("ReshapeAndCacheOperationAscend950");
+    }
     ATB_LOG(INFO) << GetLogPrefix() << "ReshapeAndCacheParam compressType:" << param.compressType
                   << ", kvCacheCfg:" << param.kvCacheCfg;
 }
@@ -228,6 +232,9 @@ Status ReshapeAndCacheOperation::DimCheck(const SVector<TensorDesc> &inTensorDes
     if (blockSize != inTensorDescs.at(IN_TENSOR_3_VALUECACHE).shape.dims[blockSizeIndex]) { // 3: valueCache
         ATB_LOG(ERROR) << GetLogPrefix() << "blockSizes should be same";
         return ERROR_INVALID_TENSOR_DIM;
+    }
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+        return KVCacheDimCheck910B(inTensorDescs);
     }
     return is910b_ ? KVCacheDimCheck910B(inTensorDescs) : KVCacheDimCheck310P(inTensorDescs);
 }
@@ -390,6 +397,10 @@ Status ReshapeAndCacheOperation::KVCacheDimCheck310P(const SVector<TensorDesc> &
 std::shared_ptr<Runner> ReshapeAndCacheOperation::CreateRunner(Context &context) const
 {
     (void)context;
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+        ATB_LOG(INFO) << GetLogPrefix() << "create ReshapeAndCache AclnnRunner";
+        return std::make_shared<ReshapeAndCacheAclnnRunner>(param_);
+    }
     if (GetSingleton<Config>().Is910B()) {
         if (param_.kvCacheCfg == infer::ReshapeAndCacheParam::KvCacheCfg::K_CACHE_V_BYPASS) {
             return std::make_shared<ReshapeAndCacheOpsRunnerSISO>(param_);
