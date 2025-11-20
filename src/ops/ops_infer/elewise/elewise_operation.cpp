@@ -7,16 +7,13 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
-
 #include "elewise_operation.h"
-#include <unordered_set>
-#include "elewise_aclnn_runner.h"
 #include "elewise_ops_runner.h"
 #include "atb/utils/tensor_check.h"
 #include "atb/utils/config.h"
 #include "atb/utils/param_to_json.h"
-#include "atb/utils/singleton.h"
 #include "atb/operation/atb_operation_ir_cfg.h"
+#include "atb/utils/singleton.h"
 #include "atb/operation/op_param_funcs.h"
 
 namespace atb {
@@ -57,11 +54,6 @@ template <> Status CreateOperation(const infer::ElewiseParam &opParam, Operation
     if (opParam.elewiseType <= infer::ElewiseParam::ElewiseType::ELEWISE_UNDEFINED ||
         opParam.elewiseType >= infer::ElewiseParam::ElewiseType::ELEWISE_TYPE_MAX) {
         ATB_LOG(ERROR) << "Please enter the correct elewiseType";
-        return ERROR_INVALID_PARAM;
-    }
-    Status status = ElewiseAclnnRunner::LoadMethod(opParam.elewiseType);
-    if (status != NO_ERROR) {
-        ATB_LOG(ERROR) << "Load Aclnn functions failed!";
         return ERROR_INVALID_PARAM;
     }
     *operation = new (std::nothrow) ElewiseOperation(opParam);
@@ -247,14 +239,14 @@ Status ElewiseOperation::InferShapeImplDynamicQuant(const SVector<TensorDesc> &i
     if (dtype == ACL_FLOAT16) {
         if (GetSingleton<Config>().Is910B() && !InferShapeCheckDynamicQuant(inTensorDescs)) {
             ATB_LOG(ERROR) << "In Atlas 800I A2 inference product, ElewiseOperation InferShapeImplDynamicQuant:"
-                           << " when the dtype of the first tensor is float16,"
-                           << " the size of the last dimension does not exceed 26624.";
+                << " when the dtype of the first tensor is float16,"
+                << " the size of the last dimension does not exceed 26624.";
             return ERROR_INVALID_TENSOR_DIM;
         }
         if (!GetSingleton<Config>().Is910B() && !InferShapeCheckDynamicQuant310P(inTensorDescs)) {
             ATB_LOG(ERROR) << "In Atlas inference products, ElewiseOperation InferShapeImplDynamicQuant:"
-                           << " when the dtype of the first tensor is float16,"
-                           << " the size of the last dimension does not exceed 4096.";
+                << " when the dtype of the first tensor is float16,"
+                << " the size of the last dimension does not exceed 4096.";
             return ERROR_INVALID_TENSOR_DIM;
         }
         outTensorDescs.at(TENSOR_IDX_ZERO).dtype = ACL_INT8;
@@ -394,16 +386,6 @@ bool ElewiseOperation::InferShapeCheckDynamicQuant310P(const SVector<TensorDesc>
 std::shared_ptr<Runner> ElewiseOperation::CreateRunner(Context &context) const
 {
     (void)context;
-    std::unordered_set<infer::ElewiseParam::ElewiseType> aclnnOpType = {
-        infer::ElewiseParam::ElewiseType::ELEWISE_CAST,        infer::ElewiseParam::ElewiseType::ELEWISE_COS,
-        infer::ElewiseParam::ElewiseType::ELEWISE_SIN,         infer::ElewiseParam::ElewiseType::ELEWISE_NEG,
-        infer::ElewiseParam::ElewiseType::ELEWISE_LOGICAL_NOT, infer::ElewiseParam::ElewiseType::ELEWISE_LOGICAL_AND,
-        infer::ElewiseParam::ElewiseType::ELEWISE_LOGICAL_OR,  infer::ElewiseParam::ElewiseType::ELEWISE_SUB,
-        infer::ElewiseParam::ElewiseType::ELEWISE_EQUAL,       infer::ElewiseParam::ElewiseType::ELEWISE_TANH,
-    };
-    if (aclnnOpType.find(param_.elewiseType) != aclnnOpType.end()) {
-        return std::make_shared<ElewiseAclnnRunner>(param_);
-    }
     return std::make_shared<ElewiseOpsRunner>(param_);
 }
 
