@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Huawei Technologies Co., Ltd.
+ * Copyright (c) 2024 Huawei Technologies Co., Ltd.
  * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
  * CANN Open Software License Agreement Version 2.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
@@ -8,8 +8,8 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 #include "concat_operation.h"
-#include "concat_aclnn_runner.h"
 #include "atb/utils/log.h"
+#include "concat_ops_runner.h"
 #include "atb/utils/tensor_check.h"
 #include "atb/utils/param_to_json.h"
 #include "atb/operation/atb_operation_ir_cfg.h"
@@ -23,10 +23,6 @@ template <> Status CreateOperation(const infer::ConcatParam &opParam, Operation 
         return ERROR_INVALID_PARAM;
     }
     OP_PARAM_RSV_CHECK(opParam);
-    Status status = ConcatAclnnRunner::LoadMethod();
-    if (status != NO_ERROR) {
-        return status;
-    }
     *operation = new (std::nothrow) ConcatOperation(opParam);
     if (*operation == nullptr) {
         ATB_LOG(ERROR) << "failed to new operation";
@@ -122,8 +118,7 @@ Status ConcatOperation::CheckInTensorShape(const Dims &shape1, const Dims &shape
 std::shared_ptr<Runner> ConcatOperation::CreateRunner(Context &context) const
 {
     (void)context;
-    ATB_LOG(INFO) << GetLogPrefix() << "create Concat AclnnRunner";
-    return std::make_shared<ConcatAclnnRunner>(param_);
+    return std::make_shared<ConcatOpsRunner>(param_);
 }
 
 nlohmann::json ConcatOperation::GetParamJson() const
