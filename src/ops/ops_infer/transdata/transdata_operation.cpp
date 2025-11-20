@@ -8,7 +8,6 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 #include "transdata_operation.h"
-#include "transdata_aclnn_runner.h"
 #include "transdata_ops_runner.h"
 #include "atb/utils/tensor_check.h"
 #include "atb/utils/param_to_json.h"
@@ -34,13 +33,6 @@ template <> Status CreateOperation(const infer::TransdataParam &opParam, Operati
         return ERROR_INVALID_PARAM;
     }
     OP_PARAM_RSV_CHECK(opParam);
-    if (GetSingleton<Config>().Is910B()) {
-        Status status = TransdataAclnnRunner::LoadMethod();
-        if (status != NO_ERROR) {
-            ATB_LOG(ERROR) << "Load aclnnNpuFormatCast func failed!";
-            return status;
-        }
-    }
     *operation = new (std::nothrow) TransdataOperation(opParam);
     if (*operation == nullptr) {
         ATB_LOG(ERROR) << "failed to new operation";
@@ -55,12 +47,10 @@ TransdataOperation::TransdataOperation(const infer::TransdataParam &param)
     std::string opIrKey;
     if (GetSingleton<Config>().Is310B()) {
         opIrKey = param_.transdataType == atb::infer::TransdataParam::TransdataType::ND_TO_FRACTAL_NZ ?
-                      "TransdataOperationNdToNzAtlas200I500A2" :
-                      "TransdataOperationNzToNdAtlas200I500A2";
+            "TransdataOperationNdToNzAtlas200I500A2" : "TransdataOperationNzToNdAtlas200I500A2";
     } else {
         opIrKey = param_.transdataType == atb::infer::TransdataParam::TransdataType::ND_TO_FRACTAL_NZ ?
-                      "TransdataOperationNdToNz" :
-                      "TransdataOperationNzToNd";
+            "TransdataOperationNdToNz" : "TransdataOperationNzToNd";
     }
     operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr(opIrKey);
 }
@@ -191,9 +181,6 @@ Status TransdataOperation::SetupCheckImpl(const SVector<Tensor> &inTensors, cons
 std::shared_ptr<Runner> TransdataOperation::CreateRunner(Context &context) const
 {
     (void)context;
-    if (GetSingleton<Config>().Is910B()) {
-       return std::make_shared<TransdataAclnnRunner>(param_);
-    }
     return std::make_shared<TransdataOpsRunner>(param_);
 }
 

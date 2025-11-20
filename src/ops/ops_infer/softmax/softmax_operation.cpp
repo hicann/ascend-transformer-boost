@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Huawei Technologies Co., Ltd.
+ * Copyright (c) 2024 Huawei Technologies Co., Ltd.
  * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
  * CANN Open Software License Agreement Version 2.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
@@ -10,7 +10,7 @@
 
 #include "softmax_operation.h"
 #include "atb/utils/log.h"
-#include "softmax_aclnn_runner.h"
+#include "softmax_ops_runner.h"
 #include "atb/utils/tensor_check.h"
 #include "atb/utils/param_to_json.h"
 #include "atb/utils/singleton.h"
@@ -27,11 +27,6 @@ template <> Status CreateOperation(const infer::SoftmaxParam &opParam, Operation
         return ERROR_INVALID_PARAM;
     }
     OP_PARAM_RSV_CHECK(opParam);
-    Status status = SoftmaxAclnnRunner::LoadMethod();
-    if (status != NO_ERROR) {
-        ATB_LOG(ERROR) << "Load aclnnSoftmax func failed!";
-        return status;
-    }
     *operation = new (std::nothrow) SoftmaxOperation(opParam);
     if (*operation == nullptr) {
         ATB_LOG(ERROR) << "failed to new operation";
@@ -108,7 +103,7 @@ Status SoftmaxOperation::ParamCheck(const TensorDesc &inTensorDesc) const
 std::shared_ptr<Runner> SoftmaxOperation::CreateRunner(Context &context) const
 {
     (void)context;
-    return std::make_shared<SoftmaxAclnnRunner>(param_);
+    return std::make_shared<SoftmaxOpsRunner>(param_);
 }
 
 nlohmann::json SoftmaxOperation::GetParamJson() const
