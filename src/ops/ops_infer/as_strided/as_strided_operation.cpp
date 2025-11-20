@@ -10,7 +10,7 @@
 
 #include "as_strided_operation.h"
 #include <limits>
-#include "as_strided_aclnn_runner.h"
+#include "as_strided_ops_runner.h"
 #include "atb/utils/tensor_check.h"
 #include "atb/utils.h"
 #include "atb/utils/param_to_json.h"
@@ -26,10 +26,6 @@ template <> Status CreateOperation(const infer::AsStridedParam &opParam, Operati
 {
     if (operation == nullptr) {
         return ERROR_INVALID_PARAM;
-    }
-    Status status = AsStridedAclnnRunner::LoadMethod();
-    if (status != NO_ERROR) {
-        return status;
     }
     OP_PARAM_RSV_CHECK(opParam);
     *operation = new (std::nothrow) AsStridedOperation(opParam);
@@ -99,8 +95,7 @@ Status AsStridedOperation::SetupCheckImpl(const SVector<Tensor> &inTensors, cons
 std::shared_ptr<Runner> AsStridedOperation::CreateRunner(Context &context) const
 {
     (void)context;
-    ATB_LOG(INFO) << GetLogPrefix() << "create Concat AclnnRunner";
-    return std::make_shared<AsStridedAclnnRunner>(param_);
+    return std::make_shared<AsStridedOpsRunner>(param_);
 }
 
 Status AsStridedOperation::ParamCheck(TensorDesc inTensorDesc) const
