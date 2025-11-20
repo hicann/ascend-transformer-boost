@@ -26,7 +26,6 @@ private:
     void SetOuttensor(KernelGraphNode &elewiseNode);
     uint32_t GetIntensorSize() const;
     AsdOps::OpParam::Elewise::ElewiseType GetOpElwiseType() const;
-    Mki::TensorDType GetOutTensorType(const aclDataType outType) const;
 };
 } // namespace atb
 #endif
