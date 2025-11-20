@@ -7,26 +7,22 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
-#ifndef OPS_ELEWISE_ELEWISEOPSRUNNER_H
-#define OPS_ELEWISE_ELEWISEOPSRUNNER_H
-#include <asdops/params/params.h>
+#ifndef OPS_REPEAT_REPEATOPSRUNNER_H
+#define OPS_REPEAT_REPEATOPSRUNNER_H
 #include "atb/runner/ops_runner.h"
 #include "atb/infer_op_params.h"
 
 namespace atb {
-class ElewiseOpsRunner : public OpsRunner {
+class RepeatOpsRunner : public OpsRunner {
 public:
-    explicit ElewiseOpsRunner(const infer::ElewiseParam &param);
-    ~ElewiseOpsRunner() override;
+    explicit RepeatOpsRunner(const infer::RepeatParam &param);
+    ~RepeatOpsRunner() override;
 
 private:
-    infer::ElewiseParam param_;
-    Mki::Tensor nullTensor_ = {}; // 空tensor占位符
-    bool SetIntensor(KernelGraphNode &elewiseNode);
-    void SetOuttensor(KernelGraphNode &elewiseNode);
-    uint32_t GetIntensorSize() const;
-    AsdOps::OpParam::Elewise::ElewiseType GetOpElwiseType() const;
-    Mki::TensorDType GetOutTensorType(const aclDataType outType) const;
+    void InTensorViewFunc(const Mki::SVector<int64_t> &oldDims, Mki::SVector<int64_t> &newDims);
+
+    infer::RepeatParam param_;
+    Mki::SVector<int64_t> repeatParam_;
 };
 } // namespace atb
 #endif
