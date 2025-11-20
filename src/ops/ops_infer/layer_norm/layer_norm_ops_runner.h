@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Huawei Technologies Co., Ltd.
+ * Copyright (c) 2024 Huawei Technologies Co., Ltd.
  * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
  * CANN Open Software License Agreement Version 2.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
@@ -21,10 +21,12 @@ public:
     ~LayerNormOpsRunner() override;
 
 private:
+    void SetLayerNormParam(const infer::LayerNormParam &inferParam, AsdOps::OpParam::Norm &asdopsParam) const;
     void SetLayerNormQuantParam(const infer::LayerNormParam &inferParam, AsdOps::OpParam::Norm &asdopsParam) const;
     void SetPreLayerNormParam(const infer::LayerNormParam &inferParam, AsdOps::OpParam::Norm &asdopsParam) const;
     void SetPostLayerNormParam(const infer::LayerNormParam &inferParam, AsdOps::OpParam::Norm &asdopsParam) const;
     void SetPostLayerNormQuantParam(const infer::LayerNormParam &inferParam, AsdOps::OpParam::Norm &asdopsParam) const;
+    void BuildLayerNormGraph(const AsdOps::OpParam::Norm &layerNormParam);
     void BuildLayerNormQuantGraph(const AsdOps::OpParam::Norm &layerNormParam);
     void BuildLayerNormDynamicQuantGraph(const AsdOps::OpParam::Norm &layerNormParam);
     void BuildPreLayerNormGraph(const AsdOps::OpParam::Norm &layerNormParam);
