@@ -71,11 +71,19 @@ public:
             return;
         }
         std::ifstream cpp(resolvedPath);
-        std::string line;
+        std::string line = "";
         uint32_t counter = 0;
         while (std::getline(cpp, line)) {
-            char c = static_cast<char>(std::stoi(line, nullptr, 16));
-            matMulAddFusionKernelBinData[counter++] = c;
+            try {
+                char c = static_cast<char>(std::stoi(line, nullptr, 16));
+                matMulAddFusionKernelBinData[counter++] = c;
+            }
+            catch (const std::invalid_argument& e) {
+                MKI_LOG(ERROR) << "invalid_argument: ";
+            }
+            catch (const std::out_of_range& e) {
+                MKI_LOG(ERROR) << "out_of_range: ";
+            }
         }
         cpp.close();
         std::string deviceVersion = PlatformInfo::Instance().GetPlatformName();
@@ -120,11 +128,19 @@ public:
             return;
         }
         std::ifstream cpp(resolvedPath);
-        std::string line;
+        std::string line = "";
         uint32_t counter = 0;
         while (std::getline(cpp, line)) {
-            char c = static_cast<char>(std::stoi(line, nullptr, 16));
-            matMulGeluFusionKernelBinData[counter++] = c;
+            try {
+                char c = static_cast<char>(std::stoi(line, nullptr, 16));
+                matMulGeluFusionKernelBinData[counter++] = c;
+            }
+            catch (const std::invalid_argument& e) {
+                MKI_LOG(ERROR) << "invalid_argument: ";
+            }
+            catch (const std::out_of_range& e) {
+                MKI_LOG(ERROR) << "out_of_range: ";
+            }
         }
         cpp.close();
         std::string deviceVersion = PlatformInfo::Instance().GetPlatformName();
@@ -169,11 +185,19 @@ public:
             return;
         }
         std::ifstream cpp(resolvedPath);
-        std::string line;
+        std::string line = "";
         uint32_t counter = 0;
         while (std::getline(cpp, line)) {
-            char c = static_cast<char>(std::stoi(line, nullptr, 16));
-            matMulSigmoidFusionKernelBinData[counter++] = c;
+            try {
+                char c = static_cast<char>(std::stoi(line, nullptr, 16));
+                matMulSigmoidFusionKernelBinData[counter++] = c;
+            }
+            catch (const std::invalid_argument& e) {
+                MKI_LOG(ERROR) << "invalid_argument: ";
+            }
+            catch (const std::out_of_range& e) {
+                MKI_LOG(ERROR) << "out_of_range: ";
+            }
         }
         cpp.close();
         std::string deviceVersion = PlatformInfo::Instance().GetPlatformName();
@@ -218,11 +242,19 @@ public:
             return;
         }
         std::ifstream cpp(resolvedPath);
-        std::string line;
+        std::string line = "";
         uint32_t counter = 0;
         while (std::getline(cpp, line)) {
-            char c = static_cast<char>(std::stoi(line, nullptr, 16));
-            matMulSwigluFusionKernelBinData[counter++] = c;
+            try {
+                char c = static_cast<char>(std::stoi(line, nullptr, 16));
+                matMulSwigluFusionKernelBinData[counter++] = c;
+            }
+            catch (const std::invalid_argument& e) {
+                MKI_LOG(ERROR) << "invalid_argument: ";
+            }
+            catch (const std::out_of_range& e) {
+                MKI_LOG(ERROR) << "out_of_range: ";
+            }
         }
         cpp.close();
         std::string deviceVersion = PlatformInfo::Instance().GetPlatformName();
