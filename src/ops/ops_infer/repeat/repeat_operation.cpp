@@ -8,7 +8,7 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 #include "repeat_operation.h"
-#include "repeat_ops_runner.h"
+#include "repeat_aclnn_runner.h"
 #include "atb/utils/tensor_check.h"
 #include "atb/utils/param_to_json.h"
 #include "atb/utils/singleton.h"
@@ -36,7 +36,11 @@ template <> Status CreateOperation(const infer::RepeatParam &opParam, Operation 
             return ERROR_INVALID_PARAM;
         }
     }
-
+    Status status = RepeatAclnnRunner::LoadMethod();
+    if (status != NO_ERROR) {
+        ATB_LOG(ERROR) << "Load Aclnn functions failed!";
+        return ERROR_INVALID_PARAM;
+    }
     *operation = new (std::nothrow) RepeatOperation(opParam);
     if (*operation == nullptr) {
         ATB_LOG(ERROR) << "failed to new operation";
@@ -130,7 +134,7 @@ Status RepeatOperation::SetupCheckImpl(const SVector<Tensor> &inTensors, const S
 std::shared_ptr<Runner> RepeatOperation::CreateRunner(Context &context) const
 {
     (void)context;
-    return std::make_shared<RepeatOpsRunner>(param_);
+    return std::make_shared<RepeatAclnnRunner>(param_);
 }
 
 nlohmann::json RepeatOperation::GetParamJson() const
