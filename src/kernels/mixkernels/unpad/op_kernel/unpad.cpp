@@ -15,6 +15,7 @@ using namespace AscendC;
 
 constexpr int32_t BUFFER_NUM = 1;
 constexpr int32_t ELE_PER_BLK = 8;
+constexpr int32_t ELE_PER_BLK_INT64 = 4;
 constexpr int32_t MAX_BATCH_NUM = 64;
 
 class KernelUnpad {
@@ -36,6 +37,7 @@ public:
         cumOffsetOutGm.SetGlobalBuffer((__gm__ int32_t *)cum_offsets_out, batch_);
         paddingOffsetGm.SetGlobalBuffer((__gm__ int32_t *)padding_offset, padLength_ * batch_);
         padLengthAlign_ = ((padLength_ + ELE_PER_BLK - 1) / ELE_PER_BLK) * ELE_PER_BLK;
+        padLengthAlignInt64_ = ((padLength_ + ELE_PER_BLK_INT64 - 1) / ELE_PER_BLK_INT64) * ELE_PER_BLK_INT64;
         batchAlign_ = ((batch_ + ELE_PER_BLK - 1) / ELE_PER_BLK) * ELE_PER_BLK;
         pipe_.InitBuffer(inputIdsQueue_, BUFFER_NUM, padLengthAlign_ * sizeof(int64_t));
         pipe_.InitBuffer(cumOffsetsQueue_, BUFFER_NUM, MAX_BATCH_NUM * sizeof(int32_t));
@@ -118,7 +120,7 @@ private:
     __aicore__ inline void CopyIn(uint64_t progress)
     {
         LocalTensor<int64_t> inputIdsLocal = inputIdsQueue_.AllocTensor<int64_t>();
-        DataCopy(inputIdsLocal, inputIdsGm[progress * padLength_], padLengthAlign_);
+        DataCopy(inputIdsLocal, inputIdsGm[progress * padLength_], padLengthAlignInt64_);
         inputIdsQueue_.EnQue(inputIdsLocal);
     }
 
@@ -127,7 +129,7 @@ private:
         LocalTensor<int64_t> inputIdsLocal = inputIdsQueue_.DeQue<int64_t>();
         AscendC::LocalTensor<int32_t> broadCast = broadCastBuf_.Get<int32_t>();
         AscendC::LocalTensor<int64_t> xRemovePaddingLocal = xRemovePaddingQueue_.Get<int64_t>();
-        DataCopy(xRemovePaddingLocal, inputIdsLocal, padLengthAlign_);
+        DataCopy(xRemovePaddingLocal, inputIdsLocal, padLengthAlignInt64_);
         AscendC::PipeBarrier<PIPE_ALL>();
         inputIdsQueue_.FreeTensor(inputIdsLocal);
     }
@@ -139,18 +141,18 @@ private:
         AscendC::LocalTensor<int32_t> broadCast = broadCastBuf_.Get<int32_t>();
 
         if (progress == 0) {
-            DataCopy(xRemovePaddingGm, xRemovePaddingLocal, padLengthAlign_);
+            DataCopy(xRemovePaddingGm, xRemovePaddingLocal, padLengthAlignInt64_);
         } else {
             DataCopy(xRemovePaddingGm[progress * padLength_ - cumOffsetsBuffer.GetValue(progress - 1)],
-                     xRemovePaddingLocal, padLengthAlign_);
+                     xRemovePaddingLocal, padLengthAlignInt64_);
         }
         AscendC::PipeBarrier<PIPE_ALL>();
 
-        for (int32_t i = 0; i < padLengthAlign_; i++) {
+        for (int32_t i = 0; i < padLengthAlignInt64_; i++) {
             xRemovePaddingLocal.SetValue(i, (int64_t)0);
         }
         DataCopy(xRemovePaddingGm[batch_ * padLength_ - cumOffsetsBuffer.GetValue(batch_ - 1)],
-            xRemovePaddingLocal, padLengthAlign_);
+            xRemovePaddingLocal, padLengthAlignInt64_);
     }
 
     __aicore__ inline void ClearStep()
@@ -170,7 +172,7 @@ private:
             broadCast, padLengthAlign_);
 
         DataCopy(xRemovePaddingGm[batch_ * padLength_ - cumOffsetsBuffer.GetValue(batch_ - 1)],
-            xRemovePaddingLocal, padLengthAlign_);
+            xRemovePaddingLocal, padLengthAlignInt64_);
     }
 private:
     TPipe pipe_;
@@ -186,6 +188,7 @@ private:
     uint32_t padLength_{1};
     uint64_t batch_{1};
     uint32_t padLengthAlign_{16};
+    uint32_t padLengthAlignInt64_{4};
     uint32_t batchAlign_{8};
     int64_t seqLenZero_{0};
 };
