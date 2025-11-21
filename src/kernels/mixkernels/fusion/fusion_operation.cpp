@@ -56,7 +56,12 @@ public:
     void MatMulAddFusion()
     {
         static uint8_t matMulAddFusionKernelBinData[DYNAMICSIZE];
-        std::string path = std::string(std::getenv("HOME")) + "/.atb_auto_fusion/bishengir_bin/matmul_add.cpp";
+        char *env = std::getenv("HOME");
+        if (env == nullptr) {
+            MKI_LOG(ERROR) << "get env \"HOME\" is invalid, please check";
+            return;
+        }
+        std::string path = std::string(env) + "/.atb_auto_fusion/bishengir_bin/matmul_add.cpp";
         if (!Mki::CheckNameValid(path, 256)) { // 256: 最大路径路径长度
             MKI_LOG(ERROR) << "path is invalid, please check the path: " << path;
             return;
@@ -113,7 +118,12 @@ public:
     void MatMulGeluFusion()
     {
         static uint8_t matMulGeluFusionKernelBinData[DYNAMICSIZE];
-        std::string path = std::string(std::getenv("HOME")) + "/.atb_auto_fusion/bishengir_bin/matmul_gelu.cpp";
+        char *env = std::getenv("HOME");
+        if (env == nullptr) {
+            MKI_LOG(ERROR) << "get env \"HOME\" is invalid, please check";
+            return;
+        }
+        std::string path = std::string(env) + "/.atb_auto_fusion/bishengir_bin/matmul_gelu.cpp";
         if (!Mki::CheckNameValid(path, 256)) { // 256: 最大路径路径长度
             MKI_LOG(ERROR) << "path is invalid, please check the path: " << path;
             return;
@@ -170,7 +180,12 @@ public:
     void MatMulSigmoidFusion()
     {
         static uint8_t matMulSigmoidFusionKernelBinData[DYNAMICSIZE];
-        std::string path = std::string(std::getenv("HOME")) + "/.atb_auto_fusion/bishengir_bin/matmul_sigmoid.cpp";
+        char *env = std::getenv("HOME");
+        if (env == nullptr) {
+            MKI_LOG(ERROR) << "get env \"HOME\" is invalid, please check";
+            return;
+        }
+        std::string path = std::string(env) + "/.atb_auto_fusion/bishengir_bin/matmul_sigmoid.cpp";
         if (!Mki::CheckNameValid(path, 256)) { // 256: 最大路径路径长度
             MKI_LOG(ERROR) << "path is invalid, please check the path: " << path;
             return;
@@ -227,7 +242,12 @@ public:
     void MatMulSwigluFusion()
     {
         static uint8_t matMulSwigluFusionKernelBinData[DYNAMICSIZE];
-        std::string path = std::string(std::getenv("HOME")) + "/.atb_auto_fusion/bishengir_bin/matmul_swiglu.cpp";
+        char *env = std::getenv("HOME");
+        if (env == nullptr) {
+            MKI_LOG(ERROR) << "get env \"HOME\" is invalid, please check";
+            return;
+        }
+        std::string path = std::string(env) + "/.atb_auto_fusion/bishengir_bin/matmul_swiglu.cpp";
         if (!Mki::CheckNameValid(path, 256)) { // 256: 最大路径路径长度
             MKI_LOG(ERROR) << "path is invalid, please check the path: " << path;
             return;
