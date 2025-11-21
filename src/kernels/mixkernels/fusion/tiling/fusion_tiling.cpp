@@ -20,9 +20,14 @@ const uint64_t BLOCK_DIM = 40;
 Status FusionTiling(const LaunchParam &launchParam, KernelInfo &kernelInfo)
 {
     OpParam::Fusion fusionType = launchParam.GetParam<OpParam::Fusion>();
-    std::string path(std::getenv("HOME"));
-    path += std::string("/.atb_auto_fusion/bishengir_bin/") +
-            (fusionType.fusionType == OpParam::Fusion::MATMUL_ADD ? "libmatmul_add.so" : "libmatmul_gelu.so");
+    char *env = std::getenv("HOME");
+    if (env == nullptr) {
+        MKI_LOG(ERROR) << "get env \"HOME\" is nullptr, please check";
+        Status::FailStatus(-1, "get env \"HOME\" is nullptr, please check!");
+    }
+    std::string path =
+        std::string(env) + "/.atb_auto_fusion/bishengir_bin/" +
+        (fusionType.fusionType == OpParam::Fusion::MATMUL_ADD ? "libmatmul_add.so" : "libmatmul_gelu.so");
     std::string inferWorkspaceFuncName =
         (fusionType.fusionType == OpParam::Fusion::MATMUL_ADD ? "matmul_add_" : "matmul_gelu_");
     FusionTilingData *tilingDataPtr = reinterpret_cast<FusionTilingData *>(kernelInfo.GetTilingHostAddr());
