@@ -30,7 +30,11 @@ function get_cxx_abi_option()
         if [[ ! -d "$python_path/torch" ]]; then
             cxx_abi=1
         else
-            cxx_abi=$(grep -a -m1 -oP 'GLIBCXX_USE_CXX11_ABI=\K[01]' $python_path/torch/lib/libtorch_cpu.so)
+            ## torch2.7.1版本之后把构建参数D_GLIBCXX_USE_CXX11_ABI删除，默认是基于CXX11_ABI构建
+            ## https://github.com/pytorch/pytorch/blob/v2.7.1/CMakeLists.txt
+            ## https://github.com/pytorch/pytorch/commit/5a7588f1832a840285ed29b039f01b9031570e5c
+            result=$(grep -a -m1 -oP 'GLIBCXX_USE_CXX11_ABI=\K[01]' $python_path/torch/lib/libtorch_cpu.so)
+            cxx_abi=${result:-1}
         fi
     fi
 }
