@@ -73,6 +73,8 @@ Status GatherPreRmsNormTiling(const LaunchParam &launchParam, KernelInfo &kernel
         Utils::CeilDiv(static_cast<uint32_t>(tilingDataPtr->numRow), maxCoreNum)));
     MKI_CHECK(tilingDataPtr->numCore <= UINT_MAX - tilingDataPtr->numRow, "numRow + numCore is invalid!",
               return Status::FailStatus(ERROR_INVALID_VALUE));
+    MKI_CHECK(tilingDataPtr->numCore > 0, "numCore should be greater than 0!",
+              return Status::FailStatus(ERROR_INVALID_VALUE));
     kernelInfo.SetBlockDim(tilingDataPtr->numCore);
     tilingDataPtr->numRowPerCore = (tilingDataPtr->numRow + tilingDataPtr->numCore - 1) / tilingDataPtr->numCore;
     tilingDataPtr->numRowPerCoreAlign = (tilingDataPtr->numRowPerCore + INT32_ALIGN_NUM - 1) /
