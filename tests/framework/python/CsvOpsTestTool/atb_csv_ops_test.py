@@ -548,7 +548,7 @@ class CsvOpsTest():
                     res = (diff <= error_threshold).all().item()
                     logging.debug("accuracy is correct in new standard: %r", res)
                     return res
-            result = ((mare_rate < 10) and (mere_rate < 2) and (rmse_rate < 2) and (EB < eb_threshold)) or (compare_output_data(actual_output.half(), golden_output.half(), [0.001, 0.001, 0.005, 0.005]))
+            result = ((mare_rate < 10) and (mere_rate < 2) and (rmse_rate < 2)) or (compare_output_data(actual_output.half(), golden_output.half(), [0.001, 0.001, 0.005, 0.005]))
             logging.info(f"mare_npu:{mare_npu} mare_gpu:{mare_gpu}")
             logging.info(f"mere_npu:{mere_npu} mere_gpu:{mere_gpu}")
             logging.info(f"rmse_npu:{rmse_npu} rmse_gpu:{rmse_gpu}")

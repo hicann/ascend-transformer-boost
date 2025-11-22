@@ -19,7 +19,6 @@ sys.path.append('../..')
 import torch
 from enum import Enum
 import random
-# from precision_calcu import *
  
 import json
 import random
@@ -29,7 +28,7 @@ np.random.seed(0)
  
 sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
 import operation_test  # NOQA: E402
-import relay_attention.golden_compare_cv as golden_compare_cv
+from precision_calcu import compare_cv
  
 class ScaleType(Enum):
     SCALE_TOR = 0
@@ -573,8 +572,8 @@ class TestRelayAttention(operation_test.OperationTest):
  
     def golden_compare(self, out_tensor, golden_out_tensor):
         result_single = data_generator.compare_output_data(out_tensor[0].cpu(), golden_out_tensor[0].cpu(), [0.001, 0.001, 0.005, 0.005])
-        result_double = golden_compare_cv.compare_cv(data_generator.golden_out_true, golden_out_tensor[0].cpu(), out_tensor[0].cpu())
-        # result_double = golden_compare_cv.compare_cv(golden_out_tensor[1], golden_out_tensor[0], out_tensor[0].cpu())
+        result_double = compare_cv(data_generator.golden_out_true, golden_out_tensor[0].cpu(), out_tensor[0].cpu())
+        # result_double = compare_cv(golden_out_tensor[1], golden_out_tensor[0], out_tensor[0].cpu())
         return (result_double or result_single)
         # if data_generator.is_int8_flag:
         #     result_double = compare_cv(data_generator.golden_out_true, golden_out_tensor.cpu(), out_tensor.cpu())
