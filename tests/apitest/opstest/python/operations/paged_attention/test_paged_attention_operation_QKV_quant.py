@@ -23,11 +23,11 @@ import math
 np.random.seed(1)
 random.seed(1)
 MAX_SEQ_LEN = 1024
-from paged_attention.precision_calcu import *
 
 import json
 import torch_npu
 sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
+from precision_calcu import *
 import operation_test  # NOQA: E402
 
 class TestPagedAttentionDataGenerator():

@@ -15,10 +15,9 @@ import unittest
 import numpy as np
 import sys
 import os
-from precision_calcu import compare_cv
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
-
+from precision_calcu import compare_cv
 import operation_test
 torch.set_printoptions(profile="full")
 np.set_printoptions(threshold=np.inf)

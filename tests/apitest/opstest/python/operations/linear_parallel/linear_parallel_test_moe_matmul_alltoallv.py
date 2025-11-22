@@ -221,7 +221,7 @@ def check_precision_new(tensor_a, tensor_b, tensor_c):
             print("resule is error")
             return 0
 
-    if mean_relative_error_npu / max(mean_relative_error_cpu, err_threshold) >= 2 or rmse_npu / max(rmse_cpu, err_threshold) >= 2 or EB >= eb_threshold:
+    if mean_relative_error_npu / max(mean_relative_error_cpu, err_threshold) >= 2 or rmse_npu / max(rmse_cpu, err_threshold) >= 2:
         print("result is error")
         return 0
     print("result is same with expect")

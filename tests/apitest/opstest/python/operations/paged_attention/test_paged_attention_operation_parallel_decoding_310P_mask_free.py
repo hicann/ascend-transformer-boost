@@ -19,9 +19,9 @@ import numpy as np
 import torch
 import torch_npu
 from paged_attention.paged_attention_test_data_generator import PagedAttentionDataGenerator
-from precision_calcu import *
  
 sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
+from precision_calcu import *
 import operation_test  # NOQA: E402
  
 torch.manual_seed(1)
