@@ -97,7 +97,7 @@ Status RepeatOperation::InferShapeCheckImpl(const SVector<TensorDesc> &inTensorD
             repeatDimNum++;
         }
     }
-    if (repeatDimNum + inTensorDescs.at(0).shape.dimNum > MAX_DIM) {
+    if (repeatDimNum + inTensorDescs.at(0).shape.dimNum > MAX_DIM || repeatDimNum + param_.multiples.size() > MAX_DIM) {
         ATB_LOG(ERROR) << "inTensor dimNum is invalid, repeat dims + inTensor dimNum should <= 8";
         return ERROR_INVALID_TENSOR_DIM;
     }
@@ -116,7 +116,7 @@ Status RepeatOperation::SetupCheckImpl(const SVector<Tensor> &inTensors, const S
             repeatDimNum++;
         }
     }
-    if (repeatDimNum + inTensors.at(0).desc.shape.dimNum > MAX_DIM) {
+    if (repeatDimNum + inTensors.at(0).desc.shape.dimNum > MAX_DIM || repeatDimNum + param_.multiples.size() > MAX_DIM) {
         ATB_LOG(ERROR) << "inTensor dimNum is invalid, repeat dims + inTensor dimNum should <= 8";
         return ERROR_INVALID_TENSOR_DIM;
     }

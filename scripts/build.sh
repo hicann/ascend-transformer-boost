@@ -779,6 +779,7 @@ function fn_main()
             SRC_ONLY=ON
             ;;
         "--customizeops_tests")
+            [[ ! -d "$THIRD_PARTY_DIR" ]] && mkdir $THIRD_PARTY_DIR
             fn_build_googletest
             COMPILE_OPTIONS="${COMPILE_OPTIONS} -DBUILD_CUSTOMIZE_OPS_TEST=ON"
             ;;

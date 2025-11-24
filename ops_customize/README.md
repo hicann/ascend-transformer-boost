@@ -6,45 +6,65 @@
 
 ## 使用说明
 以customize_block_copy Operation为例
-### 单独编译
-- 首先source 对应的CANN和nnal包
-    1. source [cann安装路径]/set_env.sh
-        
-            e.g. source /usr/local/Ascend/ascend-toolkit/set_env.sh
-    2. source [nnal安装路径]/set_env.sh
-        
-            e.g. source /usr/local/Ascend/nnal/atb/set_env.sh
-        1. 如果使用加速库源码编译，source [加速库源码路径]/output/atb/set_env.sh
-            
-                e.g. source ./ascend-transformer-boost/output/atb/set_env.sh
-- 编译自定义算子目录
-    - bash build.sh
-        
-        该脚本目前支持: default|clean|unittest| --use_cxx11_abi=0|--use_cxx11_abi=1|--debug|--msdebug
-- 执行用例
-    - bash build.sh unittest
+### 方式一：单独编译
+#### 安装CANN
+```shell
+chmod +x Ascend-cann-toolkit_$(version)_linux-$(arch).run
+./Ascend-cann-toolkit_$(version)_linux-$(arch).run --install
+```
+#### 安装后配置
+配置环境变量脚本set_env.sh，当前安装路径以${HOME}/Ascend为例。
+```shell
+source ${HOME}/Ascend/ascend-toolkit/set_env.sh
+```  
+#### 安装NNAL
+```shell
+chmod +x Ascend-cann-nnal_$(version)_linux-$(arch).run
+./Ascend-cann-nnal_$(version)_linux-$(arch).run --install
+```
+#### 安装后配置
+配置环境变量脚本set_env.sh，当前安装路径以${HOME}/Ascend为例。
+```shell
+source ${HOME}/Ascend/nnal/atb/set_env.sh
+```
+#### 编译自定义算子目录
+```shell
+cd ascend-transformer-boost/ops_customize
+bash build.sh
+```
+该脚本目前支持: `default|clean|unittest| --use_cxx11_abi=0|--use_cxx11_abi=1|--debug|--msdebug`
+编译命令具体功能介绍：
 
-        执行customize_block_copy Operation的测试用例
-### 与ATB加速库一同编译
-- 首先source 对应的CANN包和设置编译所需的nnal包
-    1. source [cann安装路径]/set_env.sh
-        
-            e.g. source /usr/local/Ascend/ascend-toolkit/set_env.sh
-    2. 设置环境变量`ATB_BUILD_DEPENDENCY_PATH`
-        
-            e.g. source /usr/local/Ascend/nnal/atb/set_env.sh
-                 export ATB_BUILD_DEPENDENCY_PATH=${ATB_HOME_PATH}
-- 编译带有自定义算子的ATB加速库
-    - bash scripts/build.sh customizeops
+- `default`: 默认选项，构建ops_customize的内容
+- `clean`: 清理所有构建历史，删除构建目录
+- `unittest`: 构建单元测试，运行ops_customize的单元测试
+- `--use_cxx11_abi=0`: 禁用 `C++11 ABI`
+- `--use_cxx11_abi=1`: 启用 `C++11 ABI`
+- `--debug`: 设置构建类型为 `Debug` 模式
+- `--msdebug`: 启用`MSDebug`模式，用于对算子内核代码进行调测
 
-        需要注意此时为编译ATB加速库，需要位于ATB加速库工程的根目录 (e.g. `/home/ascend-transformer-boost`)
-- 执行用例
-    1. bash scripts/build.sh customizeops --customizeops_tests
-
-        编译带有自定算子和测试用例的ATB加速库
-    2. source ./output/atb/set_env.sh
-
-        设置ATB加速库环境变量，需要位于ATB加速库工程的根目录 (e.g. `/home/ascend-transformer-boost`)
-    3. cd ./build/ops_customize/ops/customize_blockcopy/tests/ && ./customize_blockcopy_test
-
-        执行customize_block_copy Operation的测试用例
+#### 执行测试用例
+执行customize_block_copy Operation的测试用例
+```shell
+bash build.sh unittest
+```
+### 方式二：与ATB加速库一同编译
+#### 准备环境变量
+当前安装路径以${HOME}/Ascend为例。
+```shell
+source ${HOME}/Ascend/ascend-toolkit/set_env.sh
+source ${HOME}/Ascend/nnal/atb/set_env.sh
+export ATB_BUILD_DEPENDENCY_PATH=${ATB_HOME_PATH}
+```
+#### 编译带有自定义算子的ATB加速库
+```shell
+cd ascend-transformer-boost
+bash scripts/build.sh customizeops
+```
+#### 执行测试用例
+编译带有自定算子和测试用例的ATB加速库, 执行customize_block_copy Operation的测试用例
+```shell
+bash scripts/build.sh customizeops --customizeops_tests
+source ./output/atb/set_env.sh
+cd ./build/ops_customize/ops/customize_blockcopy/tests/ && ./customize_blockcopy_test
+```
