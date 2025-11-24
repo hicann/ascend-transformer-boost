@@ -54,7 +54,7 @@ atb::Status PrepareInTensor(atb::Context *contextPtr, aclrtStream stream, std::v
     atb::Tensor tensorV;
     CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, kvData, ACL_FLOAT16, aclFormat::ACL_FORMAT_ND,
                                         {NTOKENS, qHiddenSize}, tensorV));
-    std::vector<unsigned int16_t> kvCacheData(LAYER_NUM * BATCH_SIZE * MAX_SEQ_LEN * kvHiddenSize, 1);
+    std::vector<uint16_t> kvCacheData(LAYER_NUM * BATCH_SIZE * MAX_SEQ_LEN * kvHiddenSize, 1);
     std::vector<int64_t> kvCacheShape = {LAYER_NUM, BATCH_SIZE, kvHiddenSize / NZ_ALIGN_FACTOR, MAX_SEQ_LEN,
                                          NZ_ALIGN_FACTOR};
     atb::Tensor tensorCacheK;
