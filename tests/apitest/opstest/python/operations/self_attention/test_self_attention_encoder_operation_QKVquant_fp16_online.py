@@ -28,7 +28,7 @@ np.random.seed(0)
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
 import operation_test  # NOQA: E402
-from paged_attention.precision_calcu import *
+from precision_calcu import *
 
 
 class ScaleType(Enum):
