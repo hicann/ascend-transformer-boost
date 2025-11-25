@@ -29,7 +29,7 @@ USE_ASCENDC_DUMP=OFF
 SKIP_BUILD=OFF
 BUILD_TBE_ADAPTER=OFF
 CSVOPSTEST_OPTIONS=""
-BUILD_PYBIND=ON
+BUILD_PYBIND=OFF
 SRC_ONLY=OFF
 MKI_BUILD_MODE=Test
 VERSION="8.0.0"
@@ -39,7 +39,7 @@ ENV_FLAG=0
 
 BUILD_OPTION_LIST="help default testframework unittest kernelunittest pythontest torchatbtest kernelpythontest csvopstest fuzztest infratest hitest alltest clean gendoc customizeops"
 BUILD_CONFIGURE_LIST=("--verbose" "--use_cxx11_abi=0" "--use_cxx11_abi=1"
-    "--asan" "--skip_build" "--csvopstest_options=.*" "--debug" "--clean-first" "--msdebug" "--ascendc_dump" "--mssanitizer" "--no-pybind"
+    "--asan" "--skip_build" "--csvopstest_options=.*" "--debug" "--clean-first" "--msdebug" "--ascendc_dump" "--mssanitizer" "--torch_atb"
     "--src-only" "--customizeops_tests")
 
 function fn_build_googletest()
@@ -772,8 +772,8 @@ function fn_main()
             [[ -d "$OUTPUT_DIR" ]] && rm -rf $OUTPUT_DIR
             [[ -d "$THIRD_PARTY_DIR" ]] && rm -rf $THIRD_PARTY_DIR
             ;;
-        "--no-pybind")
-            BUILD_PYBIND=OFF
+        "--torch_atb")
+            BUILD_PYBIND=ON
             ;;
         "--src-only")
             SRC_ONLY=ON
@@ -833,7 +833,8 @@ function fn_main()
             fn_run_kernel_pythontest
             ;;
         "torchatbtest")
-            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_TORCH_ATB_TEST=ON"
+            BUILD_PYBIND=ON
+            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DBUILD_PYBIND=$BUILD_PYBIND -DUSE_TORCH_ATB_TEST=ON"
             fn_build
             fn_run_torchatbtest
             ;;
@@ -871,7 +872,8 @@ function fn_main()
             COVERAGE_TYPE="ALLTEST"
             fn_build_3rdparty_for_doc
             fn_gen_doc
-            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_ALL_TEST=ON"
+            BUILD_PYBIND=ON
+            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DBUILD_PYBIND=$BUILD_PYBIND -DUSE_ALL_TEST=ON"
             CSVOPSTEST_OPTIONS="-i $CODE_ROOT/tests/apitest/opstest/csv/ -o $CODE_ROOT/output/atb/csvopstest -tt Function"
             fn_build_3rdparty_for_test
             fn_build
@@ -896,7 +898,7 @@ function fn_main()
             ;;
         *)
             echo "Usage: "
-            echo "run build.sh help|default|testframework|unittest|kernelunittest|pythontest|kernelpythontest|torchatbtest|csvopstest|infratest|fuzztest|alltest|clean|gendoc|customizeops| --debug|--verbose|--use_cxx11_abi=0|--use_cxx11_abi=1|--skip_build|--msdebug|--ascendc_dump|--mssanitizer|--csvopstest_options=<options>|--clean-first|--no-pybind"
+            echo "run build.sh help|default|testframework|unittest|kernelunittest|pythontest|kernelpythontest|torchatbtest|csvopstest|infratest|fuzztest|alltest|clean|gendoc|customizeops| --debug|--verbose|--use_cxx11_abi=0|--use_cxx11_abi=1|--skip_build|--msdebug|--ascendc_dump|--mssanitizer|--csvopstest_options=<options>|--clean-first|--torch_atb"
             ;;
     esac
 }
