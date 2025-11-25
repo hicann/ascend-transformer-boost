@@ -196,7 +196,9 @@ public:
                 DataCopyParams dataCopyParams{(uint16_t)calcLen, (uint16_t)(colVal * sizeof(T)), 0, 0};
                 DataCopyPadParams padParams{true, 0, (uint8_t)(colValAlign - colVal), 0};
                 LocalTensor<float> rstd = inQueRstd.AllocTensor<float>();
-                DataCopy(rstd, rstdGm[loopIdx * ubCalcTailNum], (calcLen + alignLen - 1) / alignLen * alignLen);
+                DataCopyParams rstdDataCopyParams{(uint16_t)1, (uint16_t)(calcLen * sizeof(float)), 0, 0};
+                DataCopyPadParams rstdPadParams{false, 0, 0, 0};
+                DataCopyPad(rstd, rstdGm[loopIdx * ubCalcTailNum], rstdDataCopyParams, rstdPadParams);
                 inQueRstd.EnQue(rstd);
                 LocalTensor<T> x = inQueX.AllocTensor<T>();
                 DataCopyPad(x, xGm[loopIdx * ubCalcTailNum * colVal], dataCopyParams, padParams);
