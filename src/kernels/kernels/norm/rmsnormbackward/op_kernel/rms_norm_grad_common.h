@@ -34,22 +34,11 @@ __aicore__ inline void WaitInitOutput(GM_ADDR sync, GlobalTensor<int32_t> syncGm
 {
     int32_t BlockNum = AscendC::GetBlockNum();
     syncGm_.SetGlobalBuffer((__gm__ int32_t *)(sync),
-                            BlockNum * BLOCK_SIZE * WORK_SPACE_TWICE_SIZE + BLOCK_SIZE);
-    uint64_t blockIdx = AscendC::GetBlockIdx();
-    if (blockIdx == 0) {
-        InitOutput<int32_t>(syncGm_,
-                            BlockNum * CAL_ONE_BLOCK_FP32 * WORK_SPACE_TWICE_SIZE +
-                            CAL_ONE_BLOCK_FP32, 0);
-        auto syncBuf = inQueGamma.AllocTensor<int32_t>();
-        for (uint32_t blockDimI = 1; blockDimI <= blockDim - 1; blockDimI++) {
-            AscendC::IBSet(syncGm_, syncBuf, blockDimI, 0);
-        }
-        inQueGamma.FreeTensor(syncBuf);
-    } else {
-        auto syncBuf = inQueGamma.AllocTensor<int32_t>();
-        AscendC::IBWait(syncGm_, syncBuf, blockIdx, 0);
-        inQueGamma.FreeTensor(syncBuf);
-    }
+                            BlockNum * sizeof(int32_t) * WORK_SPACE_TWICE_SIZE * BLOCK_SIZE * WORK_SPACE_TWICE_SIZE + BLOCK_SIZE);
+    InitOutput<int32_t>(syncGm_, BlockNum * sizeof(int32_t) * WORK_SPACE_TWICE_SIZE, 0);
+    auto syncBuf = inQueGamma.AllocTensor<int32_t>();
+    AscendC::SyncAll(syncGm_, syncBuf);
+    inQueGamma.FreeTensor(syncBuf);
 }
 
 __aicore__ inline void ReduceSumFP32(uint32_t idx, LocalTensor<float>& dstLocal,
