@@ -33,14 +33,10 @@ public:
     bool Is310P() const;
     bool Is910A() const;
     bool Is310B() const;
-    bool IsOpsRunnerSetupCacheEnable() const;
     uint32_t GetWorkspaceMemAllocAlgType() const;
     uint32_t GetLocalKernelCacheCount() const;
     uint32_t GetGlobalKernelCacheCount() const;
-    uint32_t GetHostTilingBlockNum() const;
-    uint32_t GetDeviceTilingBlockNum() const;
     bool IsCompareTilingEveryKernelEnable() const;
-    bool IsworkspaceMemAllocGlobal() const;
     std::string GetShareMemoryNameSuffix() const;
     bool IsMatmulShuffleKEnable() const;
 
@@ -50,7 +46,6 @@ private:
     void InitWorkspaceSize();
     void InitSocVersion();
     void InitKernelCache();
-    void InitTilingBuffer();
     void InitVariable(const char *envName, uint32_t min, uint32_t max, uint32_t &value) const;
     void InitShareMemoryNameSuffix();
 
@@ -63,14 +58,10 @@ private:
     bool is310P_ = false;
     bool is910A_ = false;
     bool is310B_ = false;
-    bool isOpsRunnerSetupCacheEnable_ = false;
     uint32_t workspaceMemAllocAlgType_ = 1;
     uint32_t localKernelCacheCount_ = 1;
     uint32_t globalKernelCacheCount_ = 1;
     bool isCompareTilingEveryKernelEnable_ = false;
-    bool isworkspaceMemAllocGlobal_ = true;
-    uint32_t hostTilingBlockNum_ = 128;
-    uint32_t deviceTilingBlockNum_ = 32;
     std::string shareMemoryNameSuffix_;
     bool isMatmulShuffleKEnable_ = false;
 };

@@ -34,13 +34,6 @@ class TestSetupCache(unittest.TestCase):
         TestSetupCache.out_tensors = [torch.randn(32, 32, dtype=torch.float16).npu()]
 
     def test_performance(self):
-        os.putenv("ATB_OPSRUNNER_SETUP_CACHE_ENABLE", "0")
-        setup_result, setup_time_without_cache, precision_result = self._get_operation_result()
-        logging.info(f"setup_result:{setup_result}, setup_time_without_cache:{setup_time_without_cache}, precision_result:{precision_result}")
-        assert setup_result == 0
-        assert precision_result
-
-        os.putenv("ATB_OPSRUNNER_SETUP_CACHE_ENABLE", "1")
         setup_result, setup_time_with_cache, precision_result = self._get_operation_result()
         logging.info(f"setup_result:{setup_result}, setup_time_with_cache:{setup_time_with_cache}, precision_result:{precision_result}")
         assert setup_result == 0

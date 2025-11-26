@@ -30,32 +30,25 @@ Config::Config()
     InitAtbHomePath();
     InitSocVersion();
     InitKernelCache();
-    InitTilingBuffer();
     InitShareMemoryNameSuffix();
     isStreamSyncEveryKernelEnable_ = IsEnable("ATB_STREAM_SYNC_EVERY_KERNEL_ENABLE");
     isStreamSyncEveryRunnerEnable_ = IsEnable("ATB_STREAM_SYNC_EVERY_RUNNER_ENABLE");
     isStreamSyncEveryOperationEnable_ = IsEnable("ATB_STREAM_SYNC_EVERY_OPERATION_ENABLE");
-    isOpsRunnerSetupCacheEnable_ = IsEnable("ATB_OPSRUNNER_SETUP_CACHE_ENABLE", true);
     const char *envStr = std::getenv("ATB_WORKSPACE_MEM_ALLOC_ALG_TYPE");
     workspaceMemAllocAlgType_ = envStr != nullptr ? static_cast<uint32_t>(strtol(envStr, nullptr, DECIMAL)) :
                                                     DEFAULT_WORKSPACE_MEM_ALLOC_ALG_TYPE;
     isCompareTilingEveryKernelEnable_ = IsEnable("ATB_COMPARE_TILING_EVERY_KERNEL");
-    isworkspaceMemAllocGlobal_ = IsEnable("ATB_WORKSPACE_MEM_ALLOC_GLOBAL");
     isMatmulShuffleKEnable_ = IsEnable("ATB_MATMUL_SHUFFLE_K_ENABLE", true);
     ATB_LOG(INFO) << "AtbHomePath: " << atbHomePath_
                   << ", IsStreamSyncEveryRunnerEnable: " << isStreamSyncEveryRunnerEnable_
                   << ", IsStreamSyncEveryKernelEnable: " << isStreamSyncEveryKernelEnable_
                   << ", IsStreamSyncEveryOperationEnable: " << isStreamSyncEveryOperationEnable_;
-    ATB_LOG(INFO) << "IsOpsRunnerSetupCacheEnable: " << isOpsRunnerSetupCacheEnable_
-                  << ", LocalKernelCacheCount: " << localKernelCacheCount_
+    ATB_LOG(INFO) << ", LocalKernelCacheCount: " << localKernelCacheCount_
                   << ", GlobalKernelCacheCount: " << globalKernelCacheCount_;
     ATB_LOG(INFO) << "ProfilingLevel0Status: " << GetSingleton<Mki::ProfilingFuncs>().GetProfilingLevel0Status()
                   << ", ProfilingLevel1Status: " << GetSingleton<Mki::ProfilingFuncs>().GetProfilingLevel1Status()
                   << ", IsCompareTilingEveryKernelEnable: " << isCompareTilingEveryKernelEnable_;
     ATB_LOG(INFO) << "WorkspaceMemAllocAlgType: " << workspaceMemAllocAlgType_
-                  << ", IsworkspaceMemAllocGlobal: " << isworkspaceMemAllocGlobal_
-                  << ", HostTilingBufferBlockNum:" << hostTilingBlockNum_
-                  << ", DeviceTilingBufferBlockNum:" << deviceTilingBlockNum_
                   << ", ShareMemoryNameSuffix:" << shareMemoryNameSuffix_
                   << ", IsMatmulShuffleKEnable:" << isMatmulShuffleKEnable_;
 }
@@ -97,17 +90,6 @@ void Config::InitAtbHomePath()
         return;
     }
     atbHomePath_ = std::string(envStr);
-}
-
-void Config::InitTilingBuffer()
-{
-    const uint32_t hostMinBlockNum = 128;
-    const uint32_t hostMaxBlockNum = 1024;
-    InitVariable("ATB_HOST_TILING_BUFFER_BLOCK_NUM", hostMinBlockNum, hostMaxBlockNum, hostTilingBlockNum_);
-
-    const uint32_t deviceMinBlockNum = 32;
-    const uint32_t deviceMaxBlockNum = 1024;
-    InitVariable("ATB_DEVICE_TILING_BUFFER_BLOCK_NUM", deviceMinBlockNum, deviceMaxBlockNum, deviceTilingBlockNum_);
 }
 
 void Config::InitShareMemoryNameSuffix()
@@ -170,11 +152,6 @@ std::string Config::GetAtbHomePath() const
     return atbHomePath_;
 }
 
-bool Config::IsOpsRunnerSetupCacheEnable() const
-{
-    return isOpsRunnerSetupCacheEnable_;
-}
-
 uint32_t Config::GetWorkspaceMemAllocAlgType() const
 {
     return workspaceMemAllocAlgType_;
@@ -219,21 +196,6 @@ uint32_t Config::GetGlobalKernelCacheCount() const
 bool Config::IsCompareTilingEveryKernelEnable() const
 {
     return isCompareTilingEveryKernelEnable_;
-}
-
-bool Config::IsworkspaceMemAllocGlobal() const
-{
-    return isworkspaceMemAllocGlobal_;
-}
-
-uint32_t Config::GetHostTilingBlockNum() const
-{
-    return hostTilingBlockNum_;
-}
-
-uint32_t Config::GetDeviceTilingBlockNum() const
-{
-    return deviceTilingBlockNum_;
 }
 
 void Config::InitVariable(const char *envName, uint32_t min, uint32_t max, uint32_t &value) const

@@ -44,13 +44,6 @@ class TestWorkSpaceAlloc(unittest.TestCase):
                    intensor8_nd, intensor9, intensor10, intensor11, intensor12, intensor13, intensor14, intensor15]
         outtensor0 = torch.rand(28, 8, 8192, dtype=torch.float16).npu().half()
         TestWorkSpaceAlloc.outtensors = [outtensor0]
-
-    def test_workspacesize_switch(self):
-        os.putenv("ATB_WORKSPACE_MEM_ALLOC_GLOBAL", "0")
-        workspace_size_off = self.diff_mem_alloc_global_type(TestWorkSpaceAlloc.intensors, TestWorkSpaceAlloc.outtensors)
-        os.putenv("ATB_WORKSPACE_MEM_ALLOC_GLOBAL", "1")
-        workspace_size_on = self.diff_mem_alloc_global_type(TestWorkSpaceAlloc.intensors, TestWorkSpaceAlloc.outtensors)
-        assert workspace_size_off > workspace_size_on
     
     def test_workspacesize_alg_type(self):
         os.putenv("ATB_WORKSPACE_MEM_ALLOC_ALG_TYPE", "0")

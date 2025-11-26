@@ -49,12 +49,12 @@ ContextBase::~ContextBase() noexcept
     }
 }
 
-Status ContextBase::Init(const std::function<void*(size_t)>& alloc, const std::function<void(void*)>& dealloc)
+Status ContextBase::Init(const std::function<void *(size_t)> &alloc, const std::function<void(void *)> &dealloc,
+                         uint32_t hostTilingBlockNum, uint32_t deviceTilingBlockNum)
 {
     executeStreams_.resize(DEFAULT_EXECUTE_STREAM_NUMBER);
 
-    hostTilingBufferPool_ = std::make_unique<HostTilingBufferPool>(GetSingleton<Config>().GetHostTilingBlockNum(),
-                                                                   TILING_BUFFER_BLOCK_SIZE);
+    hostTilingBufferPool_ = std::make_unique<HostTilingBufferPool>(hostTilingBlockNum, TILING_BUFFER_BLOCK_SIZE);
     if (!hostTilingBufferPool_) {
         return ERROR_OUT_OF_HOST_MEMORY;
     }
@@ -73,8 +73,8 @@ Status ContextBase::Init(const std::function<void*(size_t)>& alloc, const std::f
         ATB_LOG(ERROR) << "Can not support to pass in only Allocate Function or Deallocate Function";
         return ERROR_INVALID_PARAM;
     }
-    deviceTilingBufferPool_ = std::make_unique<DeviceTilingBufferPool>(GetSingleton<Config>().GetDeviceTilingBlockNum(),
-                                                                       TILING_BUFFER_BLOCK_SIZE, allocateFunc_, deallocateFunc_);
+    deviceTilingBufferPool_ = std::make_unique<DeviceTilingBufferPool>(deviceTilingBlockNum, TILING_BUFFER_BLOCK_SIZE,
+                                                                       allocateFunc_, deallocateFunc_);
     if (!deviceTilingBufferPool_) {
         return ERROR_OUT_OF_DEVICE_MEMORY;
     }

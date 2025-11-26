@@ -23,7 +23,9 @@ public:
     ~ContextBase() override;
     ContextBase(const ContextBase &other) = delete;
     ContextBase &operator=(const ContextBase &other) = delete;
-    Status Init(const std::function<void*(size_t)>& alloc = nullptr, const std::function<void(void*)>& dealloc = nullptr);
+    Status Init(const std::function<void *(size_t)> &alloc = nullptr,
+                const std::function<void(void *)> &dealloc = nullptr, uint32_t hostTilingBlockNum = 128,
+                uint32_t deviceTilingBlockNum = 32);
     void Destroy();
     Status SetExecuteStream(aclrtStream stream) override;
     aclrtStream GetExecuteStream() const override;

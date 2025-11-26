@@ -63,6 +63,41 @@ Status CreateContext(Context **context, const std::function<void*(size_t)>& allo
     return NO_ERROR;
 }
 
+Status CreateContext(Context **context, uint32_t hostTilingBlockNum, uint32_t deviceTilingBlockNum)
+{
+    if (!context) {
+        ATB_LOG(ERROR) << "param context is null, CreateContext fail";
+        return ERROR_INVALID_PARAM;
+    }
+
+    if (hostTilingBlockNum < 128 || hostTilingBlockNum > 1024) {
+        ATB_LOG(ERROR) << "param hostTilingBlockNum is invalid, CreateContext fail";
+        return ERROR_INVALID_PARAM;
+    }
+
+    if (deviceTilingBlockNum < 32 || deviceTilingBlockNum > 1024) {
+        ATB_LOG(ERROR) << "param deviceTilingBlockNum is invalid, CreateContext fail";
+        return ERROR_INVALID_PARAM;
+    }
+
+    ContextBase *contextBase = new (std::nothrow) ContextBase();
+    if (!contextBase) {
+        ATB_LOG(ERROR) << "new ContextBase fail, CreateContext fail";
+        return ERROR_OUT_OF_HOST_MEMORY;
+    }
+
+    Status st = contextBase->Init(nullptr, nullptr, hostTilingBlockNum, deviceTilingBlockNum);
+    if (st != NO_ERROR) {
+        ATB_LOG(ERROR) << "ContextBase init fail, CreateContext fail";
+        delete contextBase;
+        contextBase = nullptr;
+        return st;
+    }
+
+    *context = contextBase;
+    return NO_ERROR;
+}
+
 Status DestroyContext(Context *context)
 {
     if (context) {
