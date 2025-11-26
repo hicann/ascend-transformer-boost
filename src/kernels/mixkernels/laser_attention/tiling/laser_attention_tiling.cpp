@@ -151,7 +151,7 @@ int32_t GetWindowLen(const bool isTriangle, const int32_t preTokens, const int32
 void SetWorkspace(KernelInfo &kernelInfo, const int32_t colSize, const int32_t coreGroupNum,
                   const LaserAttentionTilingData &tilingData)
 {
-    int32_t rowSumSize = tilingData.batchSize * tilingData.headNum * tilingData.qSeqLength * FLOAT_SIZE;
+    uint64_t rowSumSize = tilingData.batchSize * tilingData.headNum * tilingData.qSeqLength * FLOAT_SIZE;
 
     uint64_t qSize = static_cast<uint64_t>(static_cast<int64_t>(tilingData.batchSize) * static_cast<int64_t>(tilingData.headNum) *
                                            static_cast<int64_t>(tilingData.qSeqLength) * DIM_192 * 2);
@@ -249,6 +249,11 @@ Status LaserAttentionTiling(const LaunchParam &launchParam, KernelInfo &kernelIn
     tilingData.qSeqLength = seqSize;
     tilingData.kSeqLength = kSeqLength;
 
+    int64_t thresh = INT64_MAX / (static_cast<int64_t>(tilingData.batchSize) * static_cast<int64_t>(tilingData.headNum));
+    if (static_cast<int64_t>(tilingData.qSeqLength) * DIM_192 * 2 > thresh || static_cast<int64_t>(tilingData.kSeqLength) * DIM_256 * 2 > thresh) {
+        return Status::FailStatus(ERROR_INVALID_VALUE, "Integer overflow: value is too large");
+    }
+    
     bool isTriangle = (launchParam.GetInTensor(ATTEN_MASK_IN_TENSOR_INDEX).data != nullptr);
     tilingData.isTriangle = isTriangle ? 1 : 0;
 
