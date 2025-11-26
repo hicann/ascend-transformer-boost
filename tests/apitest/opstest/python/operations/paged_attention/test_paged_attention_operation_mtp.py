@@ -17,8 +17,7 @@ import operation_test
 import torch
 import random
 from precision_calcu import *
-# np.random.seed(1)
-# random.seed(1)
+from typing import List
 
 class TestPagedAttentionMTP(operation_test.OperationTest):
     def compare_output_data(self, out, golden, ratios):
@@ -169,10 +168,11 @@ class TestPagedAttentionMTP(operation_test.OperationTest):
                   block_size: int,
                   head_size_qk: int,
                   head_size_vo: int,
-                  q_seqlen_list: int,
-                  k_seqlen_list: int,
+                  q_seqlen_list: List[int],
+                  k_seqlen_list: List[int],
                   mask_type,
-                  dtype = torch.float16
+                  dtype = torch.float16,
+                  q_scale:float = 1
     ):
         self.data_type = dtype
         self.head_size_qk = head_size_qk
@@ -184,8 +184,6 @@ class TestPagedAttentionMTP(operation_test.OperationTest):
         batch_size = len(q_seqlen_list)
         self.max_context_len = max(k_seqlen_list)
         query = torch.from_numpy(np.random.uniform(q_min_range, q_max_range, size=(num_tokens, num_heads, head_size_qk))).to(dtype)
-
-        # (num_blocks, block_size, num_heads, head_size)
         key_cache = torch.from_numpy(np.random.uniform(kv_min_range, kv_max_range, size=(num_blocks, block_size, kv_heads, head_size_qk))).to(dtype)
         # (num_blocks, block_size, num_heads, head_size)
         value_cache = key_cache[:, :, :, :head_size_vo]
@@ -232,7 +230,7 @@ class TestPagedAttentionMTP(operation_test.OperationTest):
         self.ref_single_query_cached_kv_attention(
             ref_output,
             true_out,
-            query,
+            query*q_scale,
             key_cache,
             value_cache,
             block_tables,
@@ -463,6 +461,36 @@ class TestPagedAttentionMTP(operation_test.OperationTest):
         RUN_PARAM = json.dumps({"contextLens": self.contex_lens.tolist(), "mlaVHeadSize": head_size_vo,"maskType": mask_type,"qLens": q_seqlen_list})
         self.execute_with_param(OP_NAME, PARAM, RUN_PARAM, [self.q.npu(), self.key_cache.npu(),
                 torch.from_numpy(self.block_tables.astype(np.int32)).npu(), torch.from_numpy(self.contex_lens).npu(),self.mask.npu(),torch.from_numpy(self.q_seqlen_list).npu()])
+
+    def test_paged_mla_prefill_qscale(self):
+        if not operation_test.get_soc_version() == 'Ascend910B':
+            print("this testcase only supports Ascend910B")
+            return
+        batch = 3
+        q_seqlen_list = [111] * batch
+        k_seqlen_list = [512] * batch
+        num_heads = 32
+        kv_heads = 1
+        block_size = 128
+        head_size_qk = 576
+        head_size_vo = 512
+        num_blocks = 64
+
+        tor = 1.0 / (head_size_qk ** 0.5)
+        mask_type = 0
+        dtype = torch.float16
+        q_scale = 0.2
+        self.calc_data(num_heads, kv_heads, num_blocks, block_size, head_size_qk, head_size_vo, q_seqlen_list, k_seqlen_list, mask_type, dtype, q_scale)
+ 
+        OP_NAME = "PagedAttentionOperation"
+        shape_out = ((self.num_tokens, num_heads, head_size_vo))
+        attention_out = torch.zeros(shape_out, dtype=dtype)
+        attention_out[:] = 0.1
+        PARAM = json.dumps({"headNum": num_heads, "qkScale": float(1.0 / (head_size_qk ** 0.5)), "kvHeadNum": kv_heads, "maskType": mask_type,"calcType": 1,
+                            "mlaVHeadSize": head_size_vo, "qScale": q_scale})
+        RUN_PARAM = json.dumps({"contextLens": self.contex_lens.tolist(), "mlaVHeadSize": head_size_vo,"maskType": mask_type,"qLens": q_seqlen_list})
+        self.execute_with_param(OP_NAME, PARAM, RUN_PARAM, [self.q.npu(), self.key_cache.npu(),
+                torch.from_numpy(self.block_tables.astype(np.int32)).npu(), torch.from_numpy(self.contex_lens).npu(),torch.from_numpy(self.q_seqlen_list).npu()])
 
 if __name__ == '__main__':
     unittest.main()
