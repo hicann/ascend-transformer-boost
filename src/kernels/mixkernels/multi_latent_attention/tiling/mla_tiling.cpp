@@ -151,6 +151,18 @@ Status GetMLANdInfo(const LaunchParam &launchParam, MLAInfo &mmInfo,
                           mmInfo.batch;
     if (mmInfo.mtpTp1Flag) {
         OP_TILING_CHECK_STATUS_RETURN(GetFlashDecodingInfo(mmInfo, param, blockDim));
+    } else {
+        if (mmInfo.maskType == OpParam::MLA::MASK_TYPE_MASK_FREE) {
+            auto maskTensor = launchParam.GetInTensor(DIM_5);
+            MKI_CHECK(!CheckEmptyTensor(maskTensor), "mask type inconsistent.",
+                return Status::FailStatus(ERROR_INVALID_VALUE));
+            auto maskShape = maskTensor.desc.dims;
+            if (maskShape.size() == DIM_3) {
+                MKI_CHECK(mmInfo.batch == maskShape.at(DIM_0), "mask shape is Illegal.",
+                    return Status::FailStatus(ERROR_INVALID_VALUE));
+                mmInfo.maskStride = maskShape.at(DIM_1) * maskShape.at(DIM_2);
+            }
+        }
     }
     return Status::OkStatus();
 }
