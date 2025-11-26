@@ -9,14 +9,21 @@
  */
 #include "self_attention_fusion_bypass_ops_runner_910a.h"
 #include <cmath>
-#include <asdops/params/params.h>
+#include "asdops/params/params.h"
 #include "atb/utils/log.h"
-#include "atb/utils/tensor_util.h"
-#include "param.h"
-#include "atb/utils/runner_util.h"
-#include "self_attention_runner_utils.h"
 #include "atb/utils/operation_register.h"
+#include "atb/utils/runner_util.h"
+#include "atb/utils/tensor_util.h"
+#include "atb/utils/utils_internal.h"
+#include "param.h"
+#include "self_attention_runner_utils.h"
 
+namespace {
+static constexpr uint32_t INTENSOR_BASE_SIZE = 6;
+static constexpr uint32_t INTERNAL_INTENSOR_BASE_SIZE = 4;
+static constexpr uint32_t KERNEL_GRAPH_BASE_SIZE = 5;
+static constexpr uint32_t FA_NODE_BASE_IDX = 2;
+} // namespace
 namespace atb {
 void TransQViewFuncBypass910a(const Mki::SVector<int64_t> &oldDims, Mki::SVector<int64_t> &newDims)
 {
@@ -51,6 +58,16 @@ void FlashAttentionInferShapePreFuncBypass910a(Mki::LaunchParam &launchParam)
     launchParam.GetInTensor(3).desc.dtype = Mki::TENSOR_DTYPE_UINT32; // 3: 设置第四个输入张量的dtype
 }
 
+void FlashAttentionViewFuncBypass910a(const Mki::SVector<int64_t> &oldDims, Mki::SVector<int64_t> &newDims) {
+    if (oldDims.size() > 3) { // 3: 维度必须大于3
+        newDims.clear();
+        newDims = {1, oldDims.at(0), oldDims.at(1) * oldDims.at(2), oldDims.at(3)};
+    } else {
+        ATB_LOG(ERROR) << "oldDim should be at least 4";
+        newDims.clear();
+    }
+}
+
 SelfAttentionFusionBypassOpsRunner910A::SelfAttentionFusionBypassOpsRunner910A(const infer::SelfAttentionParam &param)
     : OpsRunner("SelfAttentionFusionBypassOpsRunner910A"), param_(param)
 {
@@ -66,8 +83,8 @@ Status SelfAttentionFusionBypassOpsRunner910A::SetupKernelGraph(const OpsTensorP
     bool isMaskCompress = (param_.maskType == atb::infer::SelfAttentionParam::MASK_TYPE_ALIBI_COMPRESS ||
                            param_.maskType == atb::infer::SelfAttentionParam::MASK_TYPE_ALIBI_COMPRESS_SQRT);
     bool needLogN = (param_.scaleType == atb::infer::SelfAttentionParam::SCALE_TYPE_LOGN);
-
-    std::size_t intensorSize = 6; // 6: 设置inTensor数
+    bool needQscale = NeedElewiseMulsQScale(param_);
+    std::size_t intensorSize = INTENSOR_BASE_SIZE; // 6: 设置inTensor数
     if (needMask) {
         intensorSize++;
     }
@@ -98,25 +115,33 @@ Status SelfAttentionFusionBypassOpsRunner910A::SetupKernelGraph(const OpsTensorP
     Mki::Tensor &contextOut = kernelGraph_.outTensors.at(0);
     auto attnMaskFormat = needMask ? opsTensorPack.inTensors.at(3).desc.format : // bypass true 3
                                      static_cast<Mki::TensorFormat>(ACL_FORMAT_UNDEFINED);
-    kernelGraph_.internalTensors.resize(
-        (attnMaskFormat == static_cast<Mki::TensorFormat>(ACL_FORMAT_FRACTAL_NZ) || (!needMask)) ?
-            5 : (param_.maskType == atb::infer::SelfAttentionParam::MASK_TYPE_ALIBI ? 6 : 5)); // 6, 5: 设置总节点数
+    bool needMaskTransdata = (attnMaskFormat == static_cast<Mki::TensorFormat>(ACL_FORMAT_ND)) && needMask;
+    size_t internalTensorSize = INTERNAL_INTENSOR_BASE_SIZE;
+    size_t KenelnodeSize = KERNEL_GRAPH_BASE_SIZE;
+    if (needQscale) {
+        internalTensorSize++;
+        KenelnodeSize++;
+    }
+    if (needMaskTransdata) {
+        KenelnodeSize++;
+        if (param_.maskType == atb::infer::SelfAttentionParam::MASK_TYPE_ALIBI) {
+            internalTensorSize++;
+        }
+    }
+    kernelGraph_.internalTensors.resize(internalTensorSize);
 
     size_t internalTensorId = 0;
     Mki::Tensor &transdataQResultTensor = kernelGraph_.internalTensors.at(internalTensorId++);
-    Mki::Tensor &transposeQResultTensor = kernelGraph_.internalTensors.at(internalTensorId++);
-    Mki::Tensor &divOut = kernelGraph_.internalTensors.at(internalTensorId++);
+    Mki::Tensor *transposeQResultTensor = &kernelGraph_.internalTensors.at(internalTensorId++);
+    Mki::Tensor *divOut = needQscale ? &kernelGraph_.internalTensors.at(internalTensorId++) : transposeQResultTensor;
 
     Mki::Tensor *transdataAttnMaskTensor =
-        ((attnMaskFormat == static_cast<Mki::TensorFormat>(ACL_FORMAT_ND)) && needMask) ?
-            &kernelGraph_.internalTensors.at(internalTensorId++) :
-            attentionMask;
+        needMaskTransdata ? &kernelGraph_.internalTensors.at(internalTensorId++) : attentionMask;
 
     Mki::Tensor &context = kernelGraph_.internalTensors.at(internalTensorId++);
     Mki::Tensor &contextTranspose = kernelGraph_.internalTensors.at(internalTensorId++);
 
-    kernelGraph_.nodes.resize(
-        (attnMaskFormat == static_cast<Mki::TensorFormat>(ACL_FORMAT_ND) && needMask) ? 7 : 6); // 7, 6: 设置总节点数
+    kernelGraph_.nodes.resize(KenelnodeSize);
     size_t nodeId = 0;
 
     auto &transdataQNode = kernelGraph_.nodes.at(nodeId++);
@@ -140,26 +165,18 @@ Status SelfAttentionFusionBypassOpsRunner910A::SetupKernelGraph(const OpsTensorP
     AsdOps::OpParam::Transpose permuteQNodeAfterParam = {{1, 0, 2, 3}};
     permuteQAfterNode.opDesc = {0, "TransposeOperation", permuteQNodeAfterParam};
     permuteQAfterNode.inTensors = {&transdataQResultTensor};
-    permuteQAfterNode.outTensors = {&transposeQResultTensor};
+    permuteQAfterNode.outTensors = {transposeQResultTensor};
 
     // muls
-    auto &mulsQNode = kernelGraph_.nodes.at(nodeId++);
-    mulsQNode.opDesc = {0, "ElewiseOperation",
-                        AsdOps::OpParam::Elewise({AsdOps::OpParam::Elewise::ELEWISE_MULS, param_.qScale})};
-    mulsQNode.inTensors = {&transposeQResultTensor};
-    mulsQNode.inTensorViewFuncs.resize(mulsQNode.inTensors.size());
-    mulsQNode.inTensorViewFuncs[0] = [](const Mki::SVector<int64_t> &oldDims, Mki::SVector<int64_t> &newDims) {
-        if (oldDims.size() > 3) { // 3: 维度必须大于3
-            newDims = {1, oldDims.at(0), oldDims.at(1) * oldDims.at(2), oldDims.at(3)};
-        } else {
-            ATB_LOG(ERROR) << "oldDim should be at least 4";
-            newDims.clear();
-        }
-    };
-    mulsQNode.outTensors = {&divOut};
+    if (needQscale) {
+        auto &mulsQNode = kernelGraph_.nodes.at(nodeId++);
+        mulsQNode.opDesc = {0, "ElewiseOperation",
+                            AsdOps::OpParam::Elewise({AsdOps::OpParam::Elewise::ELEWISE_MULS, param_.qScale})};
+        mulsQNode.inTensors = {transposeQResultTensor};
+    }
 
     // Convert attentionMask from ND format to NZ format
-    if ((attnMaskFormat == static_cast<Mki::TensorFormat>(ACL_FORMAT_ND)) && needMask) {
+    if (needMaskTransdata) {
         auto &transdataAttnMaskNode = kernelGraph_.nodes.at(nodeId++);
         transdataAttnMaskNode.opDesc = {
             0, "TransdataOperation",
@@ -177,12 +194,14 @@ Status SelfAttentionFusionBypassOpsRunner910A::SetupKernelGraph(const OpsTensorP
     flashAttentionNode.opDesc = {0, "UnpadFlashAttentionNzOperation", flashAttentionQParam};
     if (needMask && attnMaskFormat == static_cast<Mki::TensorFormat>(ACL_FORMAT_ND)) {
         newParam_.attnMaskFormat = static_cast<aclFormat>(attnMaskFormat);
-        flashAttentionNode.inTensors = {&divOut, &cacheK, &cacheV, &layerId, transdataAttnMaskTensor, slopes, logN};
+        flashAttentionNode.inTensors = {divOut, &cacheK, &cacheV, &layerId, transdataAttnMaskTensor, slopes, logN};
     } else {
-        flashAttentionNode.inTensors = {&divOut, &cacheK, &cacheV, &layerId, attentionMask, slopes, logN};
+        flashAttentionNode.inTensors = {divOut, &cacheK, &cacheV, &layerId, attentionMask, slopes, logN};
     }
     flashAttentionNode.outTensors = {&context};
 
+    flashAttentionNode.inTensorViewFuncs.resize(flashAttentionNode.inTensors.size());
+    flashAttentionNode.inTensorViewFuncs[0] = &FlashAttentionViewFuncBypass910a;
     flashAttentionNode.inferShapePreFunc = &FlashAttentionInferShapePreFuncBypass910a;
 
     auto &permuteContextNode = kernelGraph_.nodes.at(nodeId++);
@@ -230,8 +249,15 @@ Status SelfAttentionFusionBypassOpsRunner910A::ModifyKernelGraph(const OpsTensor
         return ERROR_INVALID_PARAM;
     }
 
-    auto &flashAttentionNode = kernelGraph_.nodes.at(
-        (newParam_.attnMaskFormat == ACL_FORMAT_ND && needMask) ? 4 : 3); // 4, 3: flashAttention节点位置
+    size_t faNodeId = FA_NODE_BASE_IDX;
+    if (NeedElewiseMulsQScale(param_)) {
+        faNodeId++;
+    }
+    if (newParam_.attnMaskFormat == ACL_FORMAT_ND && needMask) {
+        faNodeId++;
+    }
+
+    auto &flashAttentionNode = kernelGraph_.nodes.at(faNodeId);
 
     ATB_LOG(INFO) << "newParam_.attnMaskFormat" << newParam_.attnMaskFormat;
 

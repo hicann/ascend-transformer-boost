@@ -81,7 +81,7 @@ def gen_seq_len(batch, max_seq, variate_seq=False):
         seqlen_aligned = seqlen_aligned.astype(np.int32)
 
     ntokens = seqlen.sum()
-    logging.info("ntokens:", ntokens)
+    logging.info(f"ntokens: {ntokens}")
     return seqlen, seqlen_aligned, ntokens
 
 def group_matmul(heads, group_num, A, B):
@@ -150,7 +150,7 @@ class TestFlashAttention(operation_test.OperationTest):
             kv_seqlen, kv_seqlen_aligned, kv_ntokens = q_seqlen, q_seqlen_aligned, q_ntokens   # crossattention时，q_seqlen != k_seqlen
         
         self.q_seqlen, self.q_seqlen_aligned, self.q_ntokens, self.kv_seqLen = q_seqlen, q_seqlen_aligned, q_ntokens, kv_seqlen
-        logging.info("qseqlen is ", self.q_seqlen)
+        logging.info("qseqlen is {self.q_seqlen}")
         self.kv_seqlen_aligned, self.kv_ntokens = kv_seqlen_aligned, kv_ntokens
         max_s = np.max(q_seqlen)
         ntokens2 = (q_seqlen * kv_seqlen).sum()
@@ -310,7 +310,7 @@ class TestFlashAttention(operation_test.OperationTest):
             self.layer_id = torch.from_numpy(np.array([1], dtype=np.int32)).to(torch.int32)
         else:
             self.layer_id = torch.from_numpy(np.array([0], dtype=np.int32)).to(torch.int32)
-        logging.info("here is ", self.q_seqlen)
+        logging.info(f"here is {self.q_seqlen}")
         self.q_max_seq = np.max(self.q_seqlen)
         self.kv_max_seq = np.max(self.kv_seqlen)
         q = torch.from_numpy(np.random.uniform(-5.0, 5.0, size=(self.q_ntokens, heads * self.embeddim)))
@@ -443,9 +443,9 @@ class TestFlashAttention(operation_test.OperationTest):
                 self.get_interleave(2 * closest_power_of_2)[0::2][:n - closest_power_of_2]
 
     def gen_swa_cmp(self, max_seq, window_size):
-        logging.info("self.pre_mask_coff", self.pre_mask_coff)
+        logging.info(f"self.pre_mask_coff {self.pre_mask_coff}")
         swa_mask = np.ones(shape=(1, 512, 512)) * self.pre_mask_coff
-        logging.info("gen_swa_cmp ", swa_mask.shape)
+        logging.info(f"gen_swa_cmp {swa_mask.shape}")
         pp_n = 128 if self.embeddim <= 128 else 64
         pp_n = 128 if self.embeddim != self.embeddimv else pp_n
         if window_size <= pp_n * 3:
@@ -456,11 +456,11 @@ class TestFlashAttention(operation_test.OperationTest):
             true_size = pp_n * 2 + window_size % pp_n
         triu_mask = np.triu(swa_mask, 1)
         tril_mask = np.tril(swa_mask, -true_size)
-        logging.info("gen_swa_cmp ", swa_mask.shape)
-        logging.info("gen_swa_cmp ", tril_mask.shape)
+        logging.info(f"gen_swa_cmp {swa_mask.shape}")
+        logging.info(f"gen_swa_cmp {tril_mask.shape}")
         swa_mask = triu_mask + tril_mask
         swa_mask = torch.from_numpy(swa_mask).to(torch.float32)
-        logging.info("gen_swa_cmp ", swa_mask.shape)
+        logging.info(f"gen_swa_cmp {swa_mask.shape}")
         return swa_mask
 
     def gen_razor_fusion_mask(self, razorLen, tileQ, tileKv, textQLen, textKvLen, preTokens, nextTokens, baseM):
@@ -468,7 +468,7 @@ class TestFlashAttention(operation_test.OperationTest):
         
         mask_sizeQ = razorLen * tileQ + textQLen
         mask_sizeK = razorLen * tileKv + textKvLen
-        logging.info("generate razor mask:", razorLen, tileQ, tileKv, textQLen, textKvLen, preTokens, nextTokens, baseM)
+        logging.info(f"generate razor mask: {razorLen}, {tileQ}, {tileKv}, {textQLen}, {textKvLen}, {preTokens}, {nextTokens}, {baseM}")
         mask = np.zeros((mask_sizeQ, mask_sizeK), dtype=int)
         preTokensBlock = preTokens // baseM
         nextTokensBlock = nextTokens // baseM
@@ -879,7 +879,7 @@ class TestFlashAttention(operation_test.OperationTest):
             k_offset += max_seq
             v_offset += max_seq
         # golden data
-        logging.info("now is: ", q_ntokens, heads, embedv)
+        logging.info(f"now is: {q_ntokens} {heads} {embedv}")
 
         if self.is_int8_flag:
             ans_concat = ans_concat.view(q_ntokens, heads * embedv)
@@ -1164,6 +1164,77 @@ class TestFlashAttention(operation_test.OperationTest):
             self.k = self.close_pack(self.k.to(torch.float32), kv_seqlen).to(self.data_type)
             self.v = self.close_pack(self.v.to(torch.float32), kv_seqlen).to(self.data_type)
 
+    def gen_out_tensor_calctype0(self, in_tensors):
+        mixed_q = in_tensors[0]
+        mixed_k = in_tensors[1]
+        mixed_v = in_tensors[2]
+        cache_k = in_tensors[3]
+        cache_v = in_tensors[4]
+        if len(in_tensors) == 9:
+            attention_mask = in_tensors[5]
+            layerid = int(in_tensors[8][0])
+        elif len(in_tensors) == 8:
+            layerid = int(in_tensors[7][0])
+            attention_mask = np.ones(shape=(1, 5)).astype(np.float16) * -10000.0 # 使用当前最大seqlen生成mask
+            kvseqlen = 5
+            window_size = 3
+            if self.cache_type == 1:
+                attention_mask[:, :window_size] = 0
+            else:
+                attention_mask[:, kvseqlen - window_size: kvseqlen] = 0
+            attention_mask = torch.from_numpy(attention_mask).npu()
+        offset = 0
+        context_list = []
+        for i, _ in enumerate(range(self.batch)):
+            cur_seqlen = self.param_seqlen[i]
+            cur_token_offset = self.param_token_offset[i]
+            cur_token_offset_start = cur_token_offset - cur_seqlen
+            next_offset = offset + cur_seqlen
+            cur_q = mixed_q[offset:next_offset]
+            cur_k = mixed_k[offset:next_offset]
+            cur_v = mixed_v[offset:next_offset]
+            if cur_token_offset_start > 0:
+                past_k = cache_k[layerid, i, :cur_token_offset_start, :]
+                past_v = cache_v[layerid, i, :cur_token_offset_start, :]
+                cur_k = torch.concat([past_k, cur_k], dim=0)
+                cur_v = torch.concat([past_v, cur_v], dim=0)
+            cur_q = (cur_q * self.q_scale).view(cur_seqlen, self.head_num, self.head_size).transpose(0, 1)
+            cur_k = cur_k.view(cur_token_offset, self.head_num, self.head_size).permute(1, 2, 0)
+            cur_qk = torch.bmm(cur_q, cur_k) # [head_num, seqlen, token_offset]
+            if attention_mask.ndim == 3: # masked_fill
+                cur_qk = cur_qk + attention_mask[i, :cur_seqlen, :cur_token_offset]
+            if attention_mask.ndim == 2:
+                if attention_mask.shape[0] == 512 and attention_mask.shape[1] == 512:
+                    window_size = 256
+                    max_seq = max(cur_seqlen, cur_token_offset)
+                    mask = np.ones(shape=(max_seq, max_seq)).astype(np.float16)  # 使用当前最大seqlen生成mask
+                    mask_u = np.triu(mask, 1)
+                    mask_l = np.tril(mask, -window_size)
+                    mask = mask_u + mask_l
+                    mask *= -10000.0
+                    mask = torch.from_numpy(mask).npu()
+                    cur_qk = cur_qk + mask[:cur_seqlen, :cur_token_offset]
+                elif attention_mask.shape[0] == 128 and attention_mask.shape[1] == 128:
+                    max_seq = max(cur_seqlen, cur_token_offset)
+                    mask = np.ones(shape=(max_seq, max_seq)).astype(np.float16)
+                    mask = np.triu(mask, 1)
+                    mask *= -10000.0
+                    mask = torch.from_numpy(mask).npu()
+                    cur_qk = cur_qk + mask[:cur_seqlen, :cur_token_offset]
+                else:
+                    cur_qk = cur_qk + attention_mask[:cur_seqlen, :cur_token_offset]
+            cur_qk = cur_qk * self.qk_scale
+            cur_qk = torch.nn.functional.softmax(cur_qk.type(torch.float32), dim=-1).type(torch.float16)
+            cur_v = cur_v.view(cur_token_offset, self.head_num, self.head_size_v).transpose(0, 1)
+            cur_context = torch.bmm(cur_qk, cur_v).transpose(0, 1).contiguous().view(cur_seqlen, self.head_num * self.head_size_v)
+            context_list.append(cur_context)
+
+            offset = next_offset
+
+        context = torch.concat(context_list, dim=0)
+        self.golden_out = context.to(self.data_type)
+        self.golden_out_true = context.to(torch.float32)
+
     def gen_seq_len(self, batch, seq_len):
         ntokens = sum(seq_len)
         return seq_len, ntokens
@@ -1235,10 +1306,10 @@ class TestFlashAttention(operation_test.OperationTest):
         return [golden_out]
 
     def golden_compare(self, out_tensors, golden_tensors):
-        logging.info("max(golden_out): ", torch.max(golden_tensors[0].clone().detach().half().npu()).item(),)
-        logging.info("min(golden_out): ", torch.min(golden_tensors[0].clone().detach().half().npu()).item(),)
-        logging.info("max(actual out): ", torch.max(out_tensors[0].clone().detach().half().npu()).item(),)
-        logging.info("min(actual out): ", torch.min(out_tensors[0].clone().detach().half().npu()).item(),)
+        logging.info(f"max(golden_out):  {torch.max(golden_tensors[0].clone().detach().half().npu()).item()}")
+        logging.info(f"min(golden_out):  {torch.min(golden_tensors[0].clone().detach().half().npu()).item()}")
+        logging.info(f"max(actual out):  {torch.max(out_tensors[0].clone().detach().half().npu()).item()}")
+        logging.info(f"min(actual out):  {torch.min(out_tensors[0].clone().detach().half().npu()).item()}")
         # nan/inf
         result_single = self.compare_output_data(out_tensors[0].clone().detach().half().npu(),
                                                  golden_tensors[0].clone().detach().half().npu(),
@@ -1571,7 +1642,6 @@ class TestFlashAttention(operation_test.OperationTest):
         self.param_seqlen = self.q_seqlen
         self.param_token_offset = self.kv_seqlen
         run_param = json.dumps({"tokenOffset": self.param_token_offset, "seqLen": self.param_seqlen})
-        # pdb.set_trace()
         self.execute_with_param(OP_NAME, param, run_param,
                                 [self.q.npu(), self.k.npu(), self.v.npu(), self.mask.to(data_type).npu(),
                                  torch.tensor(self.kv_seqlen).to(torch.int32).npu(),
@@ -1646,7 +1716,6 @@ class TestFlashAttention(operation_test.OperationTest):
         self.param_seqlen = self.q_seqlen
         self.param_token_offset = self.kv_seqlen
         run_param = json.dumps({"tokenOffset": self.param_token_offset, "seqLen": self.param_seqlen, "byPass": "true"})
-        #pdb.set_trace()
         self.execute_with_param_and_tensor_list(OP_NAME, param, run_param,
                      [self.q.npu(), self.k.npu(), self.v.npu(),self.mask.to(data_type).npu(),torch.tensor(self.kv_seqlen).to(torch.int32).npu(), torch.tensor(self.q_seqlen).to(torch.int32).npu(), self.layer_id.npu()],
                      [self.k_list, self.v_list], ["kCache", "vCache"])
@@ -1757,7 +1826,7 @@ class TestFlashAttention(operation_test.OperationTest):
                              is_clamp = is_clamp, clamp_max = clamp_max, clamp_min = clamp_min,
                              data_type = data_type, is_alibi = True,
                              op_type = 2001, mask_type = MASK_TYPE_ALIBI_WITH_BATCH, no_cache = True)
-        logging.info("embeddimv: ", self.embeddimv)
+        logging.info(f"embeddimv: {self.embeddimv}")
         self.gen_out_tensor()
         param_seqlen = self.kv_seqLen
         self.alibi_slopes *= -1
@@ -1772,7 +1841,6 @@ class TestFlashAttention(operation_test.OperationTest):
         PARAM = json.dumps({"headNum": 12, "qkScale": 1, "kvHeadNum": 1,
                                 "calcType": 3, "maskType": 4, "isTriuMask": 1, "kernelType": 1})
         RUN_PARAM = json.dumps({"seqLen": param_seqlen})
-        logging.info(self.q.npu().contiguous().shape, self.k.npu().contiguous().shape, self.v.npu().contiguous().shape, self.mask.npu().contiguous().shape, torch.from_numpy(np.array(self.kv_seqLen).astype(np.int32)).npu().contiguous().shape, self.alibi_slopes.npu().contiguous().shape, param_seqlen)
         self.execute_with_param(OP_NAME, PARAM, RUN_PARAM, [
             self.q.npu().contiguous(), self.k.npu().contiguous(), self.v.npu().contiguous(), self.mask.npu().contiguous(), torch.from_numpy(np.array(self.kv_seqLen).astype(np.int32)).npu().contiguous(), self.alibi_slopes.npu().contiguous()
         ])
@@ -1891,14 +1959,13 @@ class TestFlashAttention(operation_test.OperationTest):
             a = [logging.info(tensor.dtype, tensor.device) for tensor in in_tensors]
 
             OP_NAME = "SelfAttentionOperation"
-            logging.info("now qseqlen is ", self.q_seqlen)
+            logging.info(f"now qseqlen is {self.q_seqlen}")
             self.set_data_params(kv_head=kv_head, mask_type=mask_type, heads=self.heads, embeddim=self.embeddim, embeddimv=self.embeddimv, kv_seqLen=self.kv_seqLen, batch=2, window_size=window_size,
                                  no_cache=True)
             self.gen_out_tensor()
             PARAM = json.dumps({"headNum": kv_head, "qkScale": (1 / float(math.sqrt(128))), "kvHeadNum": kv_head, \
                 "maskType": mask_type, "calcType": 3, "windowSize": 32, "cacheType": 1})
             RUN_PARAM = json.dumps({"seqLen": param_seqlen})
-            logging.info(PARAM, RUN_PARAM)
         if not operation_test.get_soc_version() == 'Ascend910B':
             print("this testcase only supports Ascend910B")
             return
@@ -2192,6 +2259,79 @@ class TestFlashAttention(operation_test.OperationTest):
                                             self.v.reshape(ntokens, kv_head * embeddimV).npu(),
                                             self.mask.to(data_type).npu(),
                                  torch.tensor(self.kv_seqlen).to(torch.int32).npu()])
+
+    def execute_perf_with_param(self, op_name, op_param, run_param, in_tensors, times=200, warmup_times=10):
+        print(f"———————— {op_name} test start ————————")
+        self.operation = torch.classes.OperationTorch.OperationTorch(
+            op_name)
+        if isinstance(op_param, dict):
+            self.operation.set_param(json.dumps(op_param))
+        elif isinstance(op_param, str):
+            self.operation.set_param(op_param)
+        self.operation.set_varaintpack_param(run_param)
+
+        for _ in range(warmup_times):
+            self.operation.execute(in_tensors)
+        time.sleep(1)
+        
+        for _ in range(times):
+            self.operation.execute(in_tensors)
+        self.execute_with_param(op_name, op_param, run_param, in_tensors)
+
+    def test_norm(self):
+        """
+            calcType: UNDEFINED
+            qscale = 0.2, qkscale = tor
+        """
+        if not operation_test.get_soc_version() == 'Ascend910B':
+            print("this testcase only supports Ascend910B")
+            return
+        min_seqlen = 2
+        max_seqlen = 5
+        self.batch = 5
+        self.layer = 4
+        seqlen = torch.randint(min_seqlen, max_seqlen, (self.batch,), dtype=torch.int32).npu()
+        min_token_offset_start = 0
+        max_token_offset_start = 5
+        token_offset_start = torch.randint(min_token_offset_start, max_token_offset_start, (self.batch,), dtype=torch.int32).npu()
+        token_offset = token_offset_start + seqlen
+        total_seqlen = max_token_offset_start + max_seqlen
+        ntokens = int(seqlen.sum())
+        self.head_num = 4
+        self.head_size = 288
+        self.head_size_v = 16 * np.random.randint(8,18)
+        hidden_size = self.head_num * self.head_size
+        hidden_size_v = self.head_num * self.head_size_v
+        data_type = torch.float16
+        mixed_q = torch.rand(ntokens, hidden_size, dtype=torch.float16).npu()
+        mixed_k = torch.rand(ntokens, hidden_size, dtype=torch.float16).npu()
+        mixed_v = torch.rand(ntokens, hidden_size_v, dtype=torch.float16).npu()
+        cache_k = torch.rand(self.layer, self.batch, total_seqlen, hidden_size, dtype=torch.float16).npu()
+        cache_v = torch.rand(self.layer, self.batch, total_seqlen, hidden_size_v, dtype=torch.float16).npu()
+        
+        attention_mask = torch.zeros(self.batch, total_seqlen, total_seqlen, dtype=torch.float16).npu()
+        layerid = torch.randint(self.layer, (1,), dtype=torch.int32).npu()
+
+        tor = 1.0 / math.sqrt(1.0 * hidden_size)
+        
+        self.q_scale = 1
+        self.qk_scale = tor
+        self.set_data_params(dynamic_batch = False, is_compress = True,
+                             is_decoder = False, batch = self.batch, kv_head = self.head_num, heads = self.head_num,
+                             embeddim = hidden_size, embeddimv = hidden_size_v, max_seq = max_seqlen, kv_seqLen = seqlen.tolist(),
+                             q_seqlens=seqlen.tolist(), data_type = data_type, is_alibi = False,
+                             op_type = 1, mask_type = MASK_TYPE_NO_BATCH, tor = tor)
+        in_tensors = [mixed_q, mixed_k, mixed_v, cache_k, cache_v, attention_mask, token_offset, seqlen, layerid]
+        self.param_seqlen = seqlen.tolist()
+        self.param_token_offset = token_offset.tolist()
+        self.gen_out_tensor_calctype0(in_tensors)
+        
+        param = json.dumps({"headNum": self.head_num, "qScale": float(self.q_scale), "qkScale": float(self.qk_scale), "maskType": 1, "calcType": 0})
+        OP_NAME = "SelfAttentionOperation"
+
+        run_param = json.dumps({"tokenOffset": self.param_token_offset, "seqLen": self.param_seqlen})
+        self.execute_with_param(OP_NAME, param, run_param,
+                     [mixed_q, mixed_k, mixed_v, cache_k, cache_v, attention_mask, token_offset, seqlen, layerid])
 
 if __name__ == '__main__':
     unittest.main()

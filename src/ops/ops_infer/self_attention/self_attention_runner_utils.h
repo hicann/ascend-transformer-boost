@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Technologies Co., Ltd.
+ * Copyright (c) 2025 Huawei Technologies Co., Ltd.
  * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
  * CANN Open Software License Agreement Version 2.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
@@ -16,5 +16,7 @@ namespace atb {
 
 bool IsParamEqual(const infer::SelfAttentionParam &left, const infer::SelfAttentionParam &right);
 
+// 判断param.qScale非1时下发ElewiseMuls
+bool NeedElewiseMulsQScale(const infer::SelfAttentionParam &param);
 }
 #endif

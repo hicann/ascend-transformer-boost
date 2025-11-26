@@ -63,7 +63,7 @@ class TestUnpadSelfAttentionOperation(operation_test.OperationTest):
         self.v = torch.from_numpy(np.random.uniform(-1.0, 1.0, size=(self.layer_id[0] + 1, self.batch, self.max_seq, kv_head * self.embeddim_v))).to(data_type)
         self.gen_mask(self.batch, self.heads, data_type, mask_type)
 
-        self.q_scale = 1
+        self.q_scale = 0.7
         self.qk_scale = tor
         param = json.dumps({"headNum": self.heads, "qScale": float(self.q_scale), "qkScale": float(self.qk_scale), "maskType": 1, "kvcacheCfg":1,"calcType":2})
         self.param_seqlen = self.q_seqlen
@@ -199,6 +199,12 @@ class TestUnpadSelfAttentionOperation(operation_test.OperationTest):
         s = None
         _p = None
         out = None
+        
+        scale = self.q_scale
+        if not self.is_multi_layer:
+            scale = np.float32(layer_id + 1)
+        else:
+            q *= scale
 
         for idx in range(batch):
             q_s = q_seqlen[idx]
@@ -220,11 +226,7 @@ class TestUnpadSelfAttentionOperation(operation_test.OperationTest):
             else:
                 s = torch.cat((s, score.view([-1, ])), 0)
 
-            scale = 1
             tor = np.float32(1.0 / math.sqrt(1.0 * self.embeddim))
-            if not self.is_multi_layer:
-                # 当前scale和tor保持一致，模型侧可能传入scale = np.float32(layer_id + 1)
-                scale = np.float32(layer_id + 1)
             score = score * tor
 
             if self.is_clamp == 1:

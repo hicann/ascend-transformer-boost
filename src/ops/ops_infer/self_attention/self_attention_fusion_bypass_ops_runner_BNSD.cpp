@@ -9,13 +9,19 @@
  */
 #include "self_attention_fusion_bypass_ops_runner_BNSD.h"
 #include <cmath>
-#include <asdops/params/params.h>
+#include "asdops/params/params.h"
 #include "atb/utils/log.h"
+#include "atb/utils/operation_register.h"
 #include "atb/utils/tensor_util.h"
 #include "param.h"
-#include "atb/utils/operation_register.h"
+#include "self_attention_runner_utils.h"
 
+namespace {
 static constexpr uint32_t VALUE_TENSOR_POS = 2;
+static constexpr uint32_t INTENSOR_BASE_SIZE = 6;
+static constexpr uint32_t KERNEL_GRAPH_BASE_SIZE = 1;
+static constexpr uint32_t FA_NODE_BASE_IDX = 0;
+} // namespace
 
 namespace atb {
 
@@ -37,22 +43,22 @@ SelfAttentionFusionBypassOpsRunnerBNSD::SelfAttentionFusionBypassOpsRunnerBNSD(c
     ATB_LOG(INFO) << "SelfAttentionFusionBypassOpsRunnerBNSD::SelfAttentionFusionBypassOpsRunnerBNSD called";
 
     bool needMask = (param_.maskType != atb::infer::SelfAttentionParam::MASK_TYPE_UNDEFINED);
-    bool isMaskCompress = (param_.maskType == atb::infer::SelfAttentionParam::MASK_TYPE_ALIBI_COMPRESS ||
-                           param_.maskType == atb::infer::SelfAttentionParam::MASK_TYPE_ALIBI_COMPRESS_SQRT);
-
-    std::size_t intensorSize = 6; // 6: 设置inTensor数
+    bool isMaskAlibiCompress = (param_.maskType == atb::infer::SelfAttentionParam::MASK_TYPE_ALIBI_COMPRESS ||
+                                param_.maskType == atb::infer::SelfAttentionParam::MASK_TYPE_ALIBI_COMPRESS_SQRT);
+    bool needQScale = NeedElewiseMulsQScale(param_);
+    size_t intensorSize = INTENSOR_BASE_SIZE;
     if (needMask) {
         intensorSize++;
     }
     if (param_.batchRunStatusEnable) {
         intensorSize++;
     }
-    if (isMaskCompress) {
+    if (isMaskAlibiCompress) {
         intensorSize++;
     }
     kernelGraph_.inTensors.resize(intensorSize);
     size_t tensorId = 0;
-    Mki::Tensor &mixedQuery = kernelGraph_.inTensors.at(tensorId++);
+    Mki::Tensor *mixedQuery = &kernelGraph_.inTensors.at(tensorId++);
     Mki::Tensor &cacheK = kernelGraph_.inTensors.at(tensorId++);
     Mki::Tensor &cacheV = kernelGraph_.inTensors.at(tensorId++);
     Mki::Tensor *attentionMask = needMask ? &kernelGraph_.inTensors.at(tensorId++) : &nullTensor_;
@@ -64,21 +70,24 @@ SelfAttentionFusionBypassOpsRunnerBNSD::SelfAttentionFusionBypassOpsRunnerBNSD(c
     if (param_.batchRunStatusEnable) {
         tensorId++;
     }
-    Mki::Tensor *slopes = isMaskCompress ? &kernelGraph_.inTensors.at(tensorId++) : &nullTensor_;
+    Mki::Tensor *slopes = isMaskAlibiCompress ? &kernelGraph_.inTensors.at(tensorId++) : &nullTensor_;
 
     kernelGraph_.outTensors.resize(1);
     Mki::Tensor &context = kernelGraph_.outTensors.at(0);
-    kernelGraph_.internalTensors.resize(1);
-    Mki::Tensor &divOut = kernelGraph_.internalTensors.at(0);
-    kernelGraph_.nodes.resize(2); // 2: 设置总节点数
+    Mki::Tensor *divOut = mixedQuery;
+    kernelGraph_.nodes.resize(needQScale ? KERNEL_GRAPH_BASE_SIZE + 1 : KERNEL_GRAPH_BASE_SIZE); // 1: ElewiseMuls
     size_t nodeId = 0;
 
-    // muls
-    auto &mulsQNode = kernelGraph_.nodes.at(nodeId++);
-    mulsQNode.opDesc = {0, "ElewiseOperation",
-                        AsdOps::OpParam::Elewise({AsdOps::OpParam::Elewise::ELEWISE_MULS, param_.qScale})};
-    mulsQNode.inTensors = {&mixedQuery};
-    mulsQNode.outTensors = {&divOut};
+    if (needQScale) {
+        kernelGraph_.internalTensors.resize(1);       // 1: divOut
+        divOut = &kernelGraph_.internalTensors.at(0); // 0: qScale ElewiseMuls
+        // muls
+        auto &mulsQNode = kernelGraph_.nodes.at(nodeId++);
+        mulsQNode.opDesc = {0, "ElewiseOperation",
+                            AsdOps::OpParam::Elewise({AsdOps::OpParam::Elewise::ELEWISE_MULS, param_.qScale})};
+        mulsQNode.inTensors = {mixedQuery};
+        mulsQNode.outTensors = {divOut};
+    }
 
     // mix.h type=UNPAD_FLASH_ATTENTION
     auto &flashAttentionNode = kernelGraph_.nodes.at(nodeId++);
@@ -87,7 +96,7 @@ SelfAttentionFusionBypassOpsRunnerBNSD::SelfAttentionFusionBypassOpsRunnerBNSD(c
 
     flashAttentionNode.opDesc = {0, "UnpadFlashAttentionOperation", flashAttentionQParam};
     ATB_LOG(INFO) << "flashAttentionQParam.type: " << flashAttentionQParam.type;
-    flashAttentionNode.inTensors = {&divOut,       &cacheK,      &cacheV,      &layerId,
+    flashAttentionNode.inTensors = {divOut,        &cacheK,      &cacheV,      &layerId,
                                     attentionMask, slopes,       &nullTensor_, &nullTensor_,
                                     &nullTensor_,  &nullTensor_, &nullTensor_, &nullTensor_};
     flashAttentionNode.outTensors = {&context};
@@ -96,9 +105,9 @@ SelfAttentionFusionBypassOpsRunnerBNSD::SelfAttentionFusionBypassOpsRunnerBNSD(c
         flashAttentionNode.inTensorViewFuncs[0] = &SelfAttentionFusionViewBypassFuncDecoder;
     }
     flashAttentionNode.inferShapePreFunc = &FlashAttentionInferShapeBypassBNSDPreFunc;
-    newParam_.tokenOffset.reserve(128);    // 128::预留大小
+    newParam_.tokenOffset.reserve(128);    // 128: 预留大小
     newParam_.seqLen.reserve(128);         // 128: 预留大小
-    newParam_.batchRunStatus.reserve(128); // 128:预留大小
+    newParam_.batchRunStatus.reserve(128); // 128: 预留大小
 }
 
 Status SelfAttentionFusionBypassOpsRunnerBNSD::ModifyKernelGraph(const OpsTensorPack &opsTensorPack)
@@ -110,12 +119,15 @@ Status SelfAttentionFusionBypassOpsRunnerBNSD::ModifyKernelGraph(const OpsTensor
         ATB_LOG(ERROR) << GetLogPrefix() << " build param from host tensor fail";
         return ERROR_INVALID_PARAM;
     }
-
-    auto &flashAttentionNode = kernelGraph_.nodes.at(1); // 1: flashAttention节点位置
-    ATB_LOG(INFO) << "kernelGraph_.nodes.size: " << kernelGraph_.nodes.size();
+    size_t faNodeId = FA_NODE_BASE_IDX;
+    if (NeedElewiseMulsQScale(param_)) {
+        faNodeId++; // 1: qScale Elewise
+    }
+    auto &flashAttentionNode = kernelGraph_.nodes.at(faNodeId);
+    ATB_LOG(INFO) << GetLogPrefix() << "kernelGraph_.nodes.size: " << kernelGraph_.nodes.size();
     AtbOps::OpParam::UnpadFlashAttention flashAttentionQParam;
     SetFAParam(flashAttentionQParam);
-    ATB_LOG(INFO) << "SetFAParam";
+    ATB_LOG(INFO) << GetLogPrefix() << "SetFAParam";
     flashAttentionQParam.qSeqLen = newParam_.seqLen;
     flashAttentionQParam.kvSeqLen = newParam_.tokenOffset;
     flashAttentionQParam.batchRunStatus = newParam_.batchRunStatus;

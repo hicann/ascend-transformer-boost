@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Technologies Co., Ltd.
+ * Copyright (c) 2025 Huawei Technologies Co., Ltd.
  * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
  * CANN Open Software License Agreement Version 2.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
@@ -9,13 +9,21 @@
  */
 #include "self_attention_fusion_bypass_ops_runner.h"
 #include <cmath>
-#include <asdops/params/params.h>
+#include "asdops/params/params.h"
 #include "atb/utils/log.h"
+#include "atb/utils/operation_register.h"
 #include "atb/utils/tensor_util.h"
 #include "param.h"
-#include "atb/utils/operation_register.h"
+#include "self_attention_runner_utils.h"
 
+
+namespace {
 static constexpr uint32_t VALUE_TENSOR_POS = 2;
+static constexpr uint32_t INTENSOR_BASE_SIZE = 6;
+static constexpr uint32_t KERNEL_GRAPH_BASE_SIZE = 1;
+static constexpr uint32_t FA_NODE_BASE_IDX = 0;
+} // namespace
+
 
 namespace atb {
 void SelfAttentionFusionViewBypassFunc(const Mki::SVector<int64_t> &oldDims, Mki::SVector<int64_t> &newDims)
@@ -48,8 +56,8 @@ SelfAttentionFusionBypassOpsRunner::SelfAttentionFusionBypassOpsRunner(const inf
     bool isMaskCompress = (param_.maskType == atb::infer::SelfAttentionParam::MASK_TYPE_ALIBI_COMPRESS ||
                            param_.maskType == atb::infer::SelfAttentionParam::MASK_TYPE_ALIBI_COMPRESS_SQRT);
     bool needLogN = (param_.scaleType == atb::infer::SelfAttentionParam::SCALE_TYPE_LOGN);
-
-    std::size_t intensorSize = 6; // 6: 设置inTensor数
+    bool needQScale = NeedElewiseMulsQScale(param_);
+    std::size_t intensorSize = INTENSOR_BASE_SIZE;
     if (needMask) {
         intensorSize++;
     }
@@ -64,7 +72,7 @@ SelfAttentionFusionBypassOpsRunner::SelfAttentionFusionBypassOpsRunner(const inf
     }
     kernelGraph_.inTensors.resize(intensorSize);
     size_t tensorId = 0;
-    Mki::Tensor &mixedQuery = kernelGraph_.inTensors.at(tensorId++);
+    Mki::Tensor *mixedQuery = &kernelGraph_.inTensors.at(tensorId++);
     Mki::Tensor &cacheK = kernelGraph_.inTensors.at(tensorId++);
     Mki::Tensor &cacheV = kernelGraph_.inTensors.at(tensorId++);
     Mki::Tensor *attentionMask = needMask ? &kernelGraph_.inTensors.at(tensorId++) : &nullTensor_;
@@ -81,17 +89,25 @@ SelfAttentionFusionBypassOpsRunner::SelfAttentionFusionBypassOpsRunner(const inf
 
     kernelGraph_.outTensors.resize(1);
     Mki::Tensor &context = kernelGraph_.outTensors.at(0);
-    kernelGraph_.internalTensors.resize(1);
-    Mki::Tensor &divOut = kernelGraph_.internalTensors.at(0);
-    kernelGraph_.nodes.resize(2); // 2: 设置总节点数
+    Mki::Tensor *divOut = mixedQuery;
+    size_t kernelGraphSize = KERNEL_GRAPH_BASE_SIZE;
+
+    if (needQScale) {
+        kernelGraph_.internalTensors.resize(1);
+        divOut = &kernelGraph_.internalTensors.at(0);
+        kernelGraphSize++; // 1: qScale ElewiseMuls
+    }
+    kernelGraph_.nodes.resize(kernelGraphSize);
     size_t nodeId = 0;
 
     // muls
-    auto &mulsQNode = kernelGraph_.nodes.at(nodeId++);
-    mulsQNode.opDesc = {0, "ElewiseOperation",
-                        AsdOps::OpParam::Elewise({AsdOps::OpParam::Elewise::ELEWISE_MULS, param_.qScale})};
-    mulsQNode.inTensors = {&mixedQuery};
-    mulsQNode.outTensors = {&divOut};
+    if (needQScale) {
+        auto &mulsQNode = kernelGraph_.nodes.at(nodeId++);
+        mulsQNode.opDesc = {0, "ElewiseOperation",
+                            AsdOps::OpParam::Elewise({AsdOps::OpParam::Elewise::ELEWISE_MULS, param_.qScale})};
+        mulsQNode.inTensors = {mixedQuery};
+        mulsQNode.outTensors = {divOut};
+    }
 
     // mix.h type=UNPAD_FLASH_ATTENTION
     auto &flashAttentionNode = kernelGraph_.nodes.at(nodeId++);
@@ -100,16 +116,16 @@ SelfAttentionFusionBypassOpsRunner::SelfAttentionFusionBypassOpsRunner(const inf
 
     flashAttentionNode.opDesc = {0, "UnpadFlashAttentionOperation", flashAttentionQParam};
     ATB_LOG(INFO) << "flashAttentionQParam.type: " << flashAttentionQParam.type;
-    flashAttentionNode.inTensors = {&divOut,      &cacheK,      &cacheV,      &layerId,     attentionMask, slopes,
+    flashAttentionNode.inTensors = {divOut,      &cacheK,      &cacheV,      &layerId,     attentionMask, slopes,
                                     &nullTensor_, &nullTensor_, &nullTensor_, &nullTensor_, &nullTensor_,  logN};
     flashAttentionNode.outTensors = {&context};
     flashAttentionNode.inTensorViewFuncs.resize(flashAttentionNode.inTensors.size());
     flashAttentionNode.inTensorViewFuncs[0] = &SelfAttentionFusionViewBypassFunc;
     flashAttentionNode.inferShapePreFunc = &FlashAttentionInferShapeBypassPreFunc;
 
-    newParam_.tokenOffset.reserve(128);    // 128::预留大小
+    newParam_.tokenOffset.reserve(128);    // 128: 预留大小
     newParam_.seqLen.reserve(128);         // 128: 预留大小
-    newParam_.batchRunStatus.reserve(128); // 128:预留大小
+    newParam_.batchRunStatus.reserve(128); // 128: 预留大小
 }
 
 Status SelfAttentionFusionBypassOpsRunner::ModifyKernelGraph(const OpsTensorPack &opsTensorPack)
@@ -125,11 +141,14 @@ Status SelfAttentionFusionBypassOpsRunner::ModifyKernelGraph(const OpsTensorPack
     }
 
     ATB_LOG(INFO) << "kernelGraph_.nodes.size" << kernelGraph_.nodes.size();
-    auto &flashAttentionNode = kernelGraph_.nodes.at(1); // 1: flashAttention节点位置
-    ATB_LOG(INFO) << "kernelGraph_.nodes.size";
+    size_t faNodeId = FA_NODE_BASE_IDX;
+    if (NeedElewiseMulsQScale(param_)) {
+        faNodeId++; // 1: qScale ElewiseMuls
+    }
+    auto &flashAttentionNode = kernelGraph_.nodes.at(faNodeId);
     AtbOps::OpParam::UnpadFlashAttention flashAttentionQParam;
     SetFAParam(flashAttentionQParam);
-    ATB_LOG(INFO) << "SetFAParam";
+    ATB_LOG(INFO) << GetLogPrefix() << "SetFAParam";
     flashAttentionQParam.qSeqLen = newParam_.seqLen;
     flashAttentionQParam.kvSeqLen = newParam_.tokenOffset;
     flashAttentionQParam.batchRunStatus = newParam_.batchRunStatus;
