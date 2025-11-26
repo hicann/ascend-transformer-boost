@@ -67,6 +67,20 @@ enum ErrorType : int {
     ERROR_COMM_EMPTY,                     //!< 通信域指针为空
     ERROR_COPY_HOST_MEMORY_FAIL           //!< Host内存拷贝失败
 };
+
+//!
+//! \enum LogLevel
+//!
+//! \brief 加速库日志级别
+//!
+enum class LogLevel : int {
+    DEBUG = 0,          //!< DEBUG级别
+    INFO,               //!< INFO级别
+    WARN,               //!< WARNING级别
+    ERROR,              //!< ERROR级别
+    NONE                //!< 关闭日志
+};
+
 //!
 //! \struct Dims
 //!
