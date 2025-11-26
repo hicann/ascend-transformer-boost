@@ -80,6 +80,22 @@ public:
     //! \param itemCount 数组元素个数
     //!
     static void QuantParamConvert(const float *src, uint64_t *dest, uint64_t itemCount);
+
+    //!
+    //! \brief 用于程序执行过程中设置ATB日志级别
+    //!
+    //! \param atbLogLevel 日志级别
+    //!
+    //! \return 状态值，如果设置成功，返回NO_ERROR.
+    //!
+    static Status SetLogLevel(const atb::LogLevel atbLogLevel);
+
+    //!
+    //! \brief 恢复ATB日志级别到环境变量设置的状态
+    //!
+    //! \return 状态值，如果设置成功，返回NO_ERROR.
+    //!
+    static Status ResetLogLevel();
 };
 } // namespace atb
 #endif
