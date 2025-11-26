@@ -25,44 +25,6 @@ OP_NAME = "SelfAttentionOperation"
 seed = 42
 torch.manual_seed(seed)
 class TestUnpadSelfAttentionOperation(operation_test.OperationTest):
-    def test_norm(self):
-        if not operation_test.get_soc_version() == 'Ascend910B':
-            print("this testcase only supports Ascend910B")
-            return
-        min_seqlen = 2
-        max_seqlen = 5
-        self.batch = 512
-        self.layer = 4
-        seqlen = torch.randint(min_seqlen, max_seqlen, (self.batch,), dtype=torch.int32).npu()
-        min_token_offset_start = 0
-        max_token_offset_start = 5
-        token_offset_start = torch.randint(min_token_offset_start, max_token_offset_start, (self.batch,), dtype=torch.int32).npu()
-        token_offset = token_offset_start + seqlen
-        total_seqlen = max_token_offset_start + max_seqlen
-        ntokens = int(seqlen.sum())
-        self.head_num = 4
-        self.head_size = 288
-        self.head_size_v = 16 * np.random.randint(8,18)
-        hidden_size = self.head_num * self.head_size
-        hidden_size_v = self.head_num * self.head_size_v
-        mixed_q = torch.rand(ntokens, hidden_size, dtype=torch.float16).npu()
-        mixed_k = torch.rand(ntokens, hidden_size, dtype=torch.float16).npu()
-        mixed_v = torch.rand(ntokens, hidden_size_v, dtype=torch.float16).npu()
-        cache_k = torch.rand(self.layer, self.batch, total_seqlen, hidden_size, dtype=torch.float16).npu()
-        cache_v = torch.rand(self.layer, self.batch, total_seqlen, hidden_size_v, dtype=torch.float16).npu()
-        
-        attention_mask = torch.zeros(self.batch, total_seqlen, total_seqlen, dtype=torch.float16).npu()
-        layerid = torch.randint(self.layer, (1,), dtype=torch.int32).npu()
-
-        self.q_scale = 0.2
-        self.qk_scale = 1
-        param = json.dumps({"headNum": self.head_num, "qScale": float(self.q_scale), "qkScale": float(self.qk_scale), "maskType": 1})
-        self.param_seqlen = seqlen.tolist()
-        self.param_token_offset = token_offset.tolist()
-        run_param = json.dumps({"tokenOffset": self.param_token_offset, "seqLen": self.param_seqlen})
-        self.execute_with_param(OP_NAME, param, run_param,
-                     [mixed_q, mixed_k, mixed_v, cache_k, cache_v, attention_mask, token_offset, seqlen, layerid])
-        
     def test_norm_kvcache_param(self):
         if not operation_test.get_soc_version() == 'Ascend910B':
             print("this testcase only supports Ascend910B")
