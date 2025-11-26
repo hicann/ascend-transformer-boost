@@ -125,28 +125,25 @@ void GraphRunner::Graph::InitTensorMaxNodeMap()
 {
     tensorMaxNodeIdMap.clear();
     maxNodeIdTensorMap.clear();
+    for (size_t i = 0; i < inTensors.size(); ++i) {
+        Tensor *tensor = &inTensors.at(i);
+        auto it = isInTensorCanFree.find(tensor);
+        if (it == isInTensorCanFree.end() || !it->second) {
+            continue; // 若intensor的isInTensorCanFree为false，不参与内存释放
+        }
+        uint64_t maxNodeId = 0;
+        uint64_t dependNodeCount = 0;
 
-    if (atb::GetSingleton<Config>().IsworkspaceMemAllocGlobal()) {
-        for (size_t i = 0; i < inTensors.size(); ++i) {
-            Tensor *tensor = &inTensors.at(i);
-            auto it = isInTensorCanFree.find(tensor);
-            if (it == isInTensorCanFree.end() || !it->second) {
-                continue; // 若intensor的isInTensorCanFree为false，不参与内存释放
-            }
-            uint64_t maxNodeId = 0;
-            uint64_t dependNodeCount = 0;
-
-            SearchTensorInNodeInTensor(tensor, maxNodeId, dependNodeCount);
-            if (dependNodeCount == 0) {
-                ATB_LOG(WARN) << "runner graph intensor[" << i << "] dependNodeCount is 0, graph wrong";
-                tensorMaxNodeIdMap[tensor] = FREE_TENSOR_KEY; // 当intensor在graph内未被使用时，setup开始时立即释放
-                maxNodeIdTensorMap[FREE_TENSOR_KEY].insert(tensor);
-            } else {
-                ATB_LOG(INFO) << "runner graph intensor[" << i << "] maxNodeId: " << maxNodeId
-                              << ", dependNodeCount: " << dependNodeCount;
-                tensorMaxNodeIdMap[tensor] = maxNodeId;
-                maxNodeIdTensorMap[maxNodeId].insert(tensor);
-            }
+        SearchTensorInNodeInTensor(tensor, maxNodeId, dependNodeCount);
+        if (dependNodeCount == 0) {
+            ATB_LOG(WARN) << "runner graph intensor[" << i << "] dependNodeCount is 0, graph wrong";
+            tensorMaxNodeIdMap[tensor] = FREE_TENSOR_KEY; // 当intensor在graph内未被使用时，setup开始时立即释放
+            maxNodeIdTensorMap[FREE_TENSOR_KEY].insert(tensor);
+        } else {
+            ATB_LOG(INFO) << "runner graph intensor[" << i << "] maxNodeId: " << maxNodeId
+                          << ", dependNodeCount: " << dependNodeCount;
+            tensorMaxNodeIdMap[tensor] = maxNodeId;
+            maxNodeIdTensorMap[maxNodeId].insert(tensor);
         }
     }
 
@@ -201,11 +198,7 @@ bool GraphRunner::Graph::IsInternalTensor(const Tensor *tensor)
 
 GraphRunner::GraphRunner(const std::string &name) : Runner(name)
 {
-    if (GetSingleton<Config>().IsworkspaceMemAllocGlobal()) {
-        memAllocationSolver_ = GetGlobalMemAllocationSolver();
-    } else {
-        memAllocationSolver_ = CreateMemAllocationSolver();
-    }
+    memAllocationSolver_ = GetGlobalMemAllocationSolver();
 }
 
 GraphRunner::~GraphRunner() {}
@@ -305,9 +298,7 @@ Status GraphRunner::SetupNodes(const RunnerVariantPack &runnerVariantPack)
 Status GraphRunner::SetupImpl(RunnerVariantPack &runnerVariantPack)
 {
     ATB_LOG(INFO) << GetLogPrefix() << "setup start";
-    if (GetSingleton<Config>().IsworkspaceMemAllocGlobal()) {
-        memAllocationSolver_ = GetGlobalMemAllocationSolver();
-    }
+    memAllocationSolver_ = GetGlobalMemAllocationSolver();
     for (size_t nodeId = 0; nodeId < runnerGraph_.nodes.size(); ++nodeId) {
         auto &node = runnerGraph_.nodes.at(nodeId);
         ReserveSvector(node);
@@ -333,12 +324,7 @@ Status GraphRunner::SetupImpl(RunnerVariantPack &runnerVariantPack)
         return st;
     }
 
-    if (!GetSingleton<Config>().IsworkspaceMemAllocGlobal()) {
-        selfIntermediateBufferSize_ =
-            memAllocationSolver_->GetSize(); // 全局mem alloc时，selfIntermediateBufferSize_为0
-    } else {
-        UpdateOutTensorDeviceData(runnerVariantPack); // 全局mem alloc时，更新在内部malloc的outTensor的地址偏移
-    }
+    UpdateOutTensorDeviceData(runnerVariantPack); // 全局mem alloc时，更新在内部malloc的outTensor的地址偏移
     ATB_LOG(INFO) << GetLogPrefix() << " malloc size:" << memAllocationSolver_->GetMallocSize()
                   << ", real size:" << memAllocationSolver_->GetSize();
 
@@ -446,9 +432,6 @@ void GraphRunner::Reset()
     tilingBufferSizes_.clear();
     maxIntermediateBufferSize_ = 0;
     intermediateBufferSizes_.clear();
-    if (!GetSingleton<Config>().IsworkspaceMemAllocGlobal()) {
-        memAllocationSolver_->Reset();
-    }
     for (auto &tensor : runnerGraph_.internalTensors) {
         Tensor emptyTensor = {};
         tensor = emptyTensor;
@@ -546,8 +529,7 @@ Status GraphRunner::PreparseNodeInTensor(size_t nodeId, GraphRunner::Node &node)
         node.runnerVariantPack.inTensors.at(i) = RunInTensorReshapeFuncs(nodeId, node, i);
 
         auto it = runnerGraph_.tensorMaxNodeIdMap.find(node.inTensors.at(i));
-        if (GetSingleton<Config>().IsworkspaceMemAllocGlobal() && it != runnerGraph_.tensorMaxNodeIdMap.end() &&
-            it->second == nodeId) {
+        if (it != runnerGraph_.tensorMaxNodeIdMap.end() && it->second == nodeId) {
             node.runnerVariantPack.isInTensorCanFree.at(i) = true;
         } else {
             node.runnerVariantPack.isInTensorCanFree.at(i) = false;
@@ -716,13 +698,7 @@ Status GraphRunner::PreparseNodeOutTensor(size_t nodeId, GraphRunner::Node &node
             return st;
         }
     }
-
-    if (GetSingleton<Config>().IsworkspaceMemAllocGlobal()) {
-        NodeOutTensorGlobalMemAlloc(nodeId, node, node.lastOutTensorDescs);
-    } else {
-        NodeOutTensorLocalMemAlloc(nodeId, node, node.lastOutTensorDescs);
-    }
-
+    NodeOutTensorGlobalMemAlloc(nodeId, node, node.lastOutTensorDescs);
     return NO_ERROR;
 }
 
@@ -776,10 +752,7 @@ Status GraphRunner::SetupNodeRunners(size_t nodeId, GraphRunner::Node &node)
     ATB_LOG(INFO) << GetLogPrefix() << " node[" << nodeId << "] setup start";
 
     bool isRunnerSupportGlobalMemAlloc = true; // global mem alloc时，需判断runner是否支持内部申请释放非中间tensor
-    if (GetSingleton<Config>().IsworkspaceMemAllocGlobal()) {
-        isRunnerSupportGlobalMemAlloc = CheckRunnerBase(nodeId, node);
-    }
-
+    isRunnerSupportGlobalMemAlloc = CheckRunnerBase(nodeId, node);
     node.runner->SetRunnerOperation(node.op.get());
 
     Status st = node.runner->Setup(node.runnerVariantPack);
@@ -790,12 +763,9 @@ Status GraphRunner::SetupNodeRunners(size_t nodeId, GraphRunner::Node &node)
     if (!isRunnerSupportGlobalMemAlloc) {
         FreeInTensorAfterSetup(nodeId, node);
     }
-
-    if (GetSingleton<Config>().IsworkspaceMemAllocGlobal()) { // 更新内部malloc的tensor地址偏移
-        for (size_t i = 0; i < node.runnerVariantPack.outTensors.size(); i++) {
-            if (node.runnerVariantPack.isOutTensorNeedMalloc.at(i)) {
-                node.outTensors.at(i)->deviceData = node.runnerVariantPack.outTensors.at(i).deviceData;
-            }
+    for (size_t i = 0; i < node.runnerVariantPack.outTensors.size(); i++) {
+        if (node.runnerVariantPack.isOutTensorNeedMalloc.at(i)) {
+            node.outTensors.at(i)->deviceData = node.runnerVariantPack.outTensors.at(i).deviceData;
         }
     }
     ATB_LOG(INFO) << GetLogPrefix() << " node[" << nodeId << "] setup success";
@@ -821,21 +791,9 @@ void GraphRunner::CalcIntermediateBufferSize()
 {
     maxIntermediateBufferSize_ = 0;
     intermediateBufferSizes_.resize(runnerGraph_.nodes.size());
-    if (GetSingleton<Config>().IsworkspaceMemAllocGlobal()) { // 全局mem alloc时，所有runner共用一份内存
-        maxIntermediateBufferSize_ = memAllocationSolver_->GetSize();
-        for (size_t nodeId = 0; nodeId < runnerGraph_.nodes.size(); ++nodeId) {
-            intermediateBufferSizes_.at(nodeId) = maxIntermediateBufferSize_;
-        }
-        return;
-    }
+    maxIntermediateBufferSize_ = memAllocationSolver_->GetSize();
     for (size_t nodeId = 0; nodeId < runnerGraph_.nodes.size(); ++nodeId) {
-        auto &node = runnerGraph_.nodes.at(nodeId);
-        uint64_t runnerIntermediateBufferSize = node.runner->GetIntermediateBufferSize();
-        intermediateBufferSizes_.at(nodeId) = runnerIntermediateBufferSize;
-        maxIntermediateBufferSize_ = std::max(maxIntermediateBufferSize_, runnerIntermediateBufferSize);
-        ATB_LOG(INFO) << GetLogPrefix() << " node[" << nodeId
-                      << "] intermediate buffer size:" << runnerIntermediateBufferSize
-                      << ", max:" << maxIntermediateBufferSize_;
+        intermediateBufferSizes_.at(nodeId) = maxIntermediateBufferSize_;
     }
 }
 

@@ -168,6 +168,21 @@ Status CreateContext(Context **context);
 Status CreateContext(Context **context, const std::function<void*(size_t)>& alloc, const std::function<void(void*)>& dealloc);
 
 //!
+//! \brief 创建上下文.
+//!
+//! 在当前进程或线程中显式创建一个Context.
+//!
+//! \param context 传入的context
+//!
+//! \param hostTilingBlockNum Context内部HostTilingBuffer块数，可配置范围：最小128，最大1024
+//!
+//! \param deviceTilingBlockNum Context内部DeviceTilingBuffer块数，可配置范围：最小32，最大1024
+//!
+//! \return 状态值.如果设置成功，返回NO_ERROR.
+//!
+Status CreateContext(Context **context, uint32_t hostTilingBlockNum, uint32_t deviceTilingBlockNum);
+
+//!
 //! \brief 销毁上下文.
 //!
 //! 销毁上下文中所有的资源.
