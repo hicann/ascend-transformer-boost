@@ -16,5 +16,7 @@ namespace atb {
 
 bool IsParamEqual(const infer::PagedAttentionParam &left, const infer::PagedAttentionParam &right);
 
+// 判断param.qScale非1时下发ElewiseMuls
+bool NeedElewiseMulsQScale(const infer::PagedAttentionParam &param);
 }
 #endif
