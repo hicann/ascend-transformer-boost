@@ -889,7 +889,7 @@ void GetPaBlockTilingParallel(uint32_t *tilingParam, const PagedAttentionInfo &m
 Status GetNzPagedAttentionTiling(const PagedAttentionInfo &mmInfo, uint32_t &blockDim, uint32_t *tilingParam,
     const OpParam::PagedAttention &param, bool is910A)
 {
-    int64_t taskNumI64 = mmInfo.numHeads * mmInfo.batch;
+    int64_t taskNumI64 = static_cast<int64_t>(mmInfo.numHeads) * static_cast<int64_t>(mmInfo.batch);
     auto [tilingHeadNumLimitOffset, tilingMaskStrideOffset, tilingDecodeTypeOffset, unused] = GetNzTilingOffset();
     (void)unused;
 
