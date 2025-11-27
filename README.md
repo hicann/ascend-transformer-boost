@@ -197,7 +197,7 @@ ATB不推荐用户直接将样例作为业务代码，也不保证此种做法�
 ### 日志和环境变量说明
 - 加速库日志现在已经部分适配CANN日志，环境变量说明请参考
   **[CANN社区版文档/环境变量参考](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/83RC1alpha002/maintenref/envvar/envref_07_0119.html)**；
-- 由于CANN日志暂时没有ATB模块，ASCEND_MODULE_LOG_LEVEL请勿设置ATB。
+- ASCEND_MODULE_LOG_LEVEL请使用OP设置加速库。
 
 ## 四、自定义算子开发
 您可参考以下文档进行自定义算子的开发：
