@@ -29,6 +29,10 @@ template <> Status CreateOperation(const infer::OnehotParam &opParam, Operation 
         return ERROR_INVALID_PARAM;
     }
     OP_PARAM_RSV_CHECK(opParam);
+    if (opParam.axis < -1) {
+        ATB_LOG(ERROR) << "axis should not be less than -1";
+        return ERROR_INVALID_PARAM;
+    }
     *operation = new (std::nothrow) OnehotOperation(opParam);
     if (*operation == nullptr) {
         ATB_LOG(ERROR) << "failed to new operation";
