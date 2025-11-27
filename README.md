@@ -55,7 +55,7 @@ ascend-transformer-boost
 
 ## 二、环境构建
 ### 版本兼容性说明
-ATB 版本提供双向兼容能力，向上与向下兼容 4 个版本。  
+ATB 版本提供双向兼容能力，向前向后兼容一年内的版本。  
 ### 快速安装CANN软件
 本节提供快速安装CANN软件的示例命令，更多安装步骤请参考[详细安装指南](#cann详细安装指南)。
 
@@ -69,24 +69,24 @@ chmod +x Ascend-cann-toolkit_8.2.RC1_linux-$(arch).run
 ```
 #### 安装后配置
 配置环境变量脚本set_env.sh，当前安装路径以${HOME}/Ascend为例。
-```
+```sh
 source ${HOME}/Ascend/ascend-toolkit/set_env.sh
 ```  
 安装业务运行时依赖的Python第三方库（如果使用root用户安装，请将命令中的--user删除）。
-```
+```sh
 pip3 install attrs cython 'numpy>=1.19.2,<=1.24.0' decorator sympy cffi pyyaml pathlib2 psutil protobuf==3.20.0 scipy requests absl-py --user
 ```
 ### CANN详细安装指南 
 开发者可访问[昇腾文档-昇腾社区](https://www.hiascend.com/document)->CANN社区版->软件安装，查看CANN软件安装引导，根据机器环境、操作系统和业务场景选择后阅读详细安装步骤。
 
 ### ATB安装部署相关依赖说明
-在编译加速库之前，需访问[加速库包安装部署](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/83RC1alpha002/acce/ascendtb/ascendtb_0034.html)查看加速库相关依赖的版本要求，并进行对应依赖的安装部署。
+在编译加速库之前，需访问[加速库包安装部署](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/850alpha001/acce/ascendtb/ascendtb_0034.html)查看加速库相关依赖的版本要求，并进行对应依赖的安装部署。
 ### 基础工具版本要求与安装
 
 安装CANN之后，您可安装一些工具方便后续开发，参见以下内容：
 
-* [CANN依赖列表](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/83RC1alpha002/softwareinst/instg/instg_0045.html?Mode=PmIns&InstallType=local&OS=Debian&Software=cannToolKit)
-* [CANN安装后操作](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/83RC1alpha002/softwareinst/instg/instg_0094.html?Mode=PmIns&InstallType=local&OS=Debian&Software=cannToolKit)
+* [CANN依赖列表](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/850alpha001/softwareinst/instg/instg_0045.html?Mode=PmIns&InstallType=local&OS=Debian&Software=cannToolKit)
+* [CANN安装后操作](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/850alpha001/softwareinst/instg/instg_0094.html?Mode=PmIns&InstallType=local&OS=Debian&Software=cannToolKit)
 
 ## 三、快速上手
 ### ATB编译
@@ -95,6 +95,11 @@ pip3 install attrs cython 'numpy>=1.19.2,<=1.24.0' decorator sympy cffi pyyaml p
     git clone https://gitcode.com/cann/ascend-transformer-boost.git
     ```
    您可自行选择需要的分支。
+ - 环境变量设置  
+    在编译前，需要安装nnal软件包（安装方法请查看[常见问题与回答](docs/常见问题与回答.md#run-package-usage)），并根据nnal安装路径设置环境变量：
+    ```sh
+    source {install path}/nnal/atb/set_env.sh
+    ```
  - 加速库编译  
     编译加速库，设置加速库环境变量：
     ```sh
@@ -103,16 +108,18 @@ pip3 install attrs cython 'numpy>=1.19.2,<=1.24.0' decorator sympy cffi pyyaml p
     source output/atb/set_env.sh
     ```
     注意：该编译过程涉及①拉取算子库/MKI并编译②加速库的编译两个过程。更多命令介绍可查看ATB仓`scripts/build.sh`文件。
- - 如果出现缺少某些so文件的问题时，您可参考[常见问题与回答](docs/常见问题与回答.md)安装nnal软件包以获取对应so文件，安装后需要设置环境变量：
-    ```sh
-    source {install path}/nnal/atb/set_env.sh
-    export ATB_BUILD_DEPENDENCY_PATH=${ATB_HOME_PATH}
-    ```
  - 更多编译命令说明请参考[编译与构建](docs/编译与构建.md)
 ### 调用示例说明
 本节示例代码分别展示了如何通过Python和C++调用算子。
 #### Python
-运行以下代码需要导入ATB Python API模块torch_atb，该插件运行依赖PyTorch和torch_npu，可访问[加速库包安装部署](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/83RC1alpha002/acce/ascendtb/ascendtb_0034.html)查看版本要求和安装指导。  
+在运行python代码前，需要导入ATB Python API模块torch_atb，该插件运行依赖PyTorch和torch_npu，可访问[加速库包安装部署](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/850alpha001/acce/ascendtb/ascendtb_0034.html)查看版本要求和安装指导。  
+安装PyTorch和torch_npu之后，需要手动安装torch_atb，安装方法包含以下两种：
+- 通过`./Ascend-cann-nnal_${version_info}_linux-aarch64.run --install --torch_atb`命令安装
+- 在编译步骤中使用`bash scripts/build.sh --torch_atb`编译命令，`output/whl`文件夹下会生成torch_atb的whl文件，您可使用如下命令进行安装:
+    ```sh
+    pip3 install torch_atb-{version}-py3-none-any.whl
+    ```
+如下代码展示了如何通过Python调用算子：
 ```Python
 import torch
 import torch_atb#导入ATB Python API模块
@@ -133,7 +140,7 @@ outputs = op.forward([x, y])
 torch.npu.synchronize()
 ```
 
-代码编写指导可访问[算子使用指导（ATB Python API）-昇腾社区](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/83RC1alpha002/acce/ascendtb/ascendtb_0077.html)。
+代码编写指导可访问[算子使用指导（ATB Python API）-昇腾社区](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/850alpha001/acce/ascendtb/ascendtb_0077.html)。
 
 #### C++
 
@@ -187,7 +194,7 @@ CHECK_STATUS(DestroyContext(context)); // context，全局资源，后释放
 CHECK_STATUS(aclFinalize());
 ```
 文件编译说明：进入`example/op_demo/faupdate`，执行`bash build.sh`完成编译和执行。  
-代码编写指导：可访问[单算子-昇腾社区](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/83RC1alpha002/acce/ascendtb/ascendtb_0046.html)。
+代码编写指导：可访问[单算子-昇腾社区](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/850alpha001/acce/ascendtb/ascendtb_0046.html)。
 
 #### 样例安全声明
 `example`目录下的样例旨在提供快速上手、开发和调试ATB特性的最小化实现，其核心目标是使用最精简的代码展示ATB核心功能，**而非提供生产级的安全保障**。与成熟的生产级使用方法相比，此样例中的安全功能（如输入校验、边界校验）相对有限。
@@ -219,10 +226,10 @@ ATB不推荐用户直接将样例作为业务代码，也不保证此种做法�
 - [开发指南](docs/开发指南.md)：以一个融合算子为例，详细介绍了ATB算子开发的流程，以及如何对算子进行功能、精度、性能测试。
 - [贡献指南](docs/贡献指南.md)：介绍了如何向ATB库贡献代码。
 - [日志与调试](docs/日志与调试.md)：介绍ATB的日志相关环境变量，以及调测方法。
-- [API文档](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/83RC1alpha002/API/ascendtbapi/ascendtb_01_0098.html)：介绍了ATB库的接口和相关术语。
+- [API文档](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/850alpha001/API/ascendtbapi/ascendtb_01_0098.html)：介绍了ATB库的接口和相关术语。
 - [常见问题与回答](docs/常见问题与回答.md)：介绍ATB的编译和安装使用过程中遇到的一些常见问题与解决方案。
 - [问题报告](https://gitcode.com/cann/ascend-transformer-boost/issues)：通过Issue提交发现的问题。
 
 ## 七、参考文档
-**[CANN社区版文档](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/83RC1alpha002/index/index.html)**  
-**[ATB社区版文档](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/83RC1alpha002/acce/ascendtb/ascendtb_0001.html)**
+**[CANN社区版文档](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/850alpha001/index/index.html)**  
+**[ATB社区版文档](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/850alpha001/acce/ascendtb/ascendtb_0001.html)**

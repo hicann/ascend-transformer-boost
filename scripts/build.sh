@@ -32,7 +32,7 @@ CSVOPSTEST_OPTIONS=""
 BUILD_PYBIND=OFF
 SRC_ONLY=OFF
 MKI_BUILD_MODE=Test
-VERSION="8.0.0"
+VERSION="8.5.0"
 LOG_PATH="/var/log/cann_atb_log/"
 LOG_NAME="cann_atb_install.log"
 ENV_FLAG=0
@@ -269,13 +269,17 @@ function fn_get_cxx_abi_string()
 
 function fn_copy_tbe_adapter()
 {
-    if [ -z $ATB_BUILD_DEPENDENCY_PATH ]; then
-        ATB_BUILD_DEPENDENCY_PATH=/usr/local/Ascend/nnal/atb/latest/atb/$(fn_get_cxx_abi_string)
-        echo "warning: ATB_BUILD_DEPENDENCY_PATH is not set. Using default path: /usr/local/Ascend/nnal/atb/latest/atb/$(fn_get_cxx_abi_string)"
+    if [ -z $ATB_HOME_PATH ]; then
+        ATB_HOME_PATH=/usr/local/Ascend/nnal/atb/latest/atb/$(fn_get_cxx_abi_string)
+        echo "warning: ATB_HOME_PATH is not set. Using default path: /usr/local/Ascend/nnal/atb/latest/atb/$(fn_get_cxx_abi_string)"
     fi
-
+    if [ -z $ATB_BUILD_DEPENDENCY_PATH ]; then
+        ATB_BUILD_DEPENDENCY_PATH=${ATB_HOME_PATH}
+        echo "info: ATB_BUILD_DEPENDENCY_PATH auto-derived to: ${ATB_BUILD_DEPENDENCY_PATH}"
+    fi
+    
     if [ ! -f $ATB_BUILD_DEPENDENCY_PATH/lib/libtbe_adapter.so ]; then
-        echo "error:$ATB_BUILD_DEPENDENCY_PATH/lib/libtbe_adapter.so dose not exist, please set correct ATB_BUILD_DEPENDENCY_PATH"
+        echo "error:$ATB_BUILD_DEPENDENCY_PATH/lib/libtbe_adapter.so does not exist, please set correct ATB_BUILD_DEPENDENCY_PATH"
         return 0
     fi
 
