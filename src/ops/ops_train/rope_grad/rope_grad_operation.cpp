@@ -143,6 +143,13 @@ Status RopeGradOperation::DimCheck(const SVector<TensorDesc> &inTensorDescs) con
         return ERROR_INVALID_TENSOR_SIZE;
     }
 
+    if (inTensorDescs.at(0).shape.dims[1] % 128 != 0 || inTensorDescs.at(1).shape.dims[1] % 128 != 0) {
+        ATB_LOG(ERROR) << "The hiddenSize of Q_grad1 and Q_grad2 must be divisible by 128. "
+                       << "Q_grad1 : " << TensorUtil::TensorDescToString(inTensorDescs.at(0))
+                       << ", Q_grad2: " << TensorUtil::TensorDescToString(inTensorDescs.at(1));
+        return ERROR_INVALID_TENSOR_DIM;
+    }
+
     return NO_ERROR;
 }
 
