@@ -2514,7 +2514,7 @@ private:
         uint32_t qk_n,
         uint32_t qk_round_n,
         uint32_t sub_m,
-        uint32_t mask_offset,
+        uint64_t mask_offset,
         const uint32_t sub_n_loop,
         const uint32_t cur_batch,
         const uint32_t start_kv,
@@ -2581,7 +2581,7 @@ private:
             } else if (need_mask && mask_type == 4) {
                 AscendC::DataCopy(
                     mask_ubuf_tensor,
-                    mask_gm_tensor,
+                    mask_gm_tensor[mask_offset],
                     AscendC::DataCopyParams(
                         cur_q_seqlen,   // blockCount
                         qk_round_n * 2 / 32, // blockLen, 2 is sizeof(half)
@@ -3760,7 +3760,7 @@ private:
                                 (int64_t)sub_block_idx * cur_head_num * cur_q_seqlen / 2 * qk_round_n + (uint64_t)(n_idx % 2) * TMP_SIZE_DECODER / 2],
                             mask_gm_tensor[mask_start_offset],
                             dm32_ubuf_tensor, ll_ubuf_tensor, pm32_ubuf_tensor,
-                            n_idx, qk_n, qk_round_n, sub_m, 0, sub_n_loop, cur_batch, start_kv, real_n_loop, head_idx, pm_flag_scalar1, cur_q_seqlen, cur_kv_seqlen, need_mask, n_loop
+                            n_idx, qk_n, qk_round_n, sub_m, addr_mask_scalar, sub_n_loop, cur_batch, start_kv, real_n_loop, head_idx, pm_flag_scalar1, cur_q_seqlen, cur_kv_seqlen, need_mask, n_loop
                         );
                     } else {
                         SoftmaxStage1(
@@ -3775,7 +3775,7 @@ private:
                                 TMP_SIZE_DECODER / 2],
                             mask_gm_tensor[mask_start_offset],
                             dm32_stage2_ubuf_tensor, ll_stage2_ubuf_tensor, pm32_ubuf_stage2_tensor,
-                            n_idx, qk_n, qk_round_n, sub_m, 0, sub_n_loop, cur_batch, start_kv, real_n_loop, head_idx, pm_flag_scalar2, cur_q_seqlen, cur_kv_seqlen, need_mask, n_loop
+                            n_idx, qk_n, qk_round_n, sub_m, addr_mask_scalar, sub_n_loop, cur_batch, start_kv, real_n_loop, head_idx, pm_flag_scalar2, cur_q_seqlen, cur_kv_seqlen, need_mask, n_loop
                         );
                     }
                 }

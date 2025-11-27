@@ -558,7 +558,8 @@ Status MultiLatentAttentionOperation::InTensorDimCheckPrefill(const SVector<Tens
         inTensorDesc.at(IN_TENSOR_5).shape.dimNum != 1 ||   // 5: qSeqLen    1: 1 dims
         inTensorDesc.at(IN_TENSOR_6).shape.dimNum != 1 ||   // 6: kvSeqLen   1: 1 dims
         (param_.maskType == infer::MultiLatentAttentionParam::MaskType::MASK_TYPE_MASK_FREE &&
-         inTensorDesc.at(IN_TENSOR_7).shape.dimNum != 2)) { // 7: mask       2: 2 dims
+         (inTensorDesc.at(IN_TENSOR_7).shape.dimNum != 2 &&
+          inTensorDesc.at(IN_TENSOR_7).shape.dimNum != 3))) { // 7: mask       2: 2 dims, 3: 3 dims
         ATB_LOG(ERROR) << GetLogPrefix() << "invalid intensor dimNum";
         return ERROR_INVALID_TENSOR_DIM_NUM;
     }
@@ -577,13 +578,15 @@ Status MultiLatentAttentionOperation::InTensorDimCheckPrefill(const SVector<Tens
         return st;
     }
     if (param_.maskType == infer::MultiLatentAttentionParam::MaskType::MASK_TYPE_MASK_FREE) {
-        if (inTensorDesc.at(IN_TENSOR_7).shape.dims[0] != 512) { // 512: 压缩mask的规格
-            ATB_LOG(ERROR) << GetLogPrefix() << "dim 0 of mask(intensor7) should be equal to 512";
-            return ERROR_INVALID_TENSOR_DIM;
-        }
-        if (inTensorDesc.at(IN_TENSOR_7).shape.dims[1] != 512) { // 512: 压缩mask的规格
-            ATB_LOG(ERROR) << GetLogPrefix() << "dim 1 of mask(intensor7) should be equal to 512";
-            return ERROR_INVALID_TENSOR_DIM;
+        if (inTensorDesc.at(IN_TENSOR_7).shape.dimNum == 2) {
+            if (inTensorDesc.at(IN_TENSOR_7).shape.dims[0] != 512) { // 512: 压缩mask的规格
+                ATB_LOG(ERROR) << GetLogPrefix() << "dim 0 of mask(intensor7) should be equal to 512";
+                return ERROR_INVALID_TENSOR_DIM;
+            }
+            if (inTensorDesc.at(IN_TENSOR_7).shape.dims[1] != 512) { // 512: 压缩mask的规格
+                ATB_LOG(ERROR) << GetLogPrefix() << "dim 1 of mask(intensor7) should be equal to 512";
+                return ERROR_INVALID_TENSOR_DIM;
+            }
         }
     }
     return NO_ERROR;
