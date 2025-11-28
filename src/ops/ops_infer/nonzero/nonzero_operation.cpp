@@ -22,6 +22,7 @@
 
 static const int32_t IN_TENSOR_NUM = 1;
 static const int32_t OUT_TENSOR_NUM = 2;
+static const int32_t OUT_TENSOR0_DIM_NUM = 2;
 
 namespace atb {
 template <> Status CreateOperation(const infer::NonzeroParam &opParam, Operation **operation)
@@ -66,6 +67,7 @@ Status NonzeroOperation::InferShapeImpl(const SVector<TensorDesc> &inTensorDescs
 {
     outTensorDescs.at(0) = inTensorDescs.at(0);
     outTensorDescs.at(1) = inTensorDescs.at(0);
+    outTensorDescs.at(0).shape.dimNum = OUT_TENSOR0_DIM_NUM;
     outTensorDescs.at(0).shape.dims[0] = inTensorDescs.at(0).shape.dimNum;
 
     outTensorDescs.at(0).shape.dims[1] = static_cast<int64_t>(Utils::GetTensorNumel(inTensorDescs.at(0)));
@@ -82,17 +84,21 @@ Status NonzeroOperation::SetupCheckImpl(const SVector<Tensor> &inTensors, const 
 
 Status NonzeroOperation::SetupDimNumCheck(const SVector<Tensor> &inTensors, const SVector<Tensor> &outTensors) const
 {
+    if (outTensors.at(0).desc.shape.dimNum != OUT_TENSOR0_DIM_NUM) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "invalid outtensor dim number, outTensors.at(0) dimNum should be 2.";
+        return ERROR_INVALID_TENSOR_DIM_NUM;
+    }
     // 第一个outtensor的dim[0]为intensor的dimNum, 且第一个outtensor的dim[1]为intensor Numel, 第二个outtensor应为[1]
     int64_t inTensorDimNum = inTensors.at(0).desc.shape.dimNum;
     if (outTensors.at(0).desc.shape.dims[0] != inTensorDimNum ||
         outTensors.at(0).desc.shape.dims[1] != static_cast<int64_t>(Utils::GetTensorNumel(inTensors.at(0).desc))) {
-        ATB_LOG(ERROR) << "invalid tensor dim number, outTensors.at(0).dim[0] should be inTensorDimNum, "
+        ATB_LOG(ERROR) << GetLogPrefix() << "invalid tensor dim number, outTensors.at(0).dim[0] should be inTensorDimNum, "
                           "outTensors.at(0).dim[1] == intensor Numel!";
         return ERROR_INVALID_TENSOR_DIM;
     }
 
     if (outTensors.at(1).desc.shape.dimNum != 1 || outTensors.at(1).desc.shape.dims[0] != 1) {
-        ATB_LOG(ERROR) << "invalid outtensor dim number, outTensors.at(1) dimNum should be 1 and dim[0] == 1";
+        ATB_LOG(ERROR) << GetLogPrefix() << "invalid outtensor dim number, outTensors.at(1) dimNum should be 1 and dim[0] == 1";
         return ERROR_INVALID_TENSOR_DIM;
     }
 
