@@ -4,5 +4,6 @@ CaseNum|CaseName          |OpName          |OpParam|InNum|InDType|InFormat|InSha
 3      |NonzeroErrorFormat|NonzeroOperation|{}     |1    |int64  |ncdhw   |2,490  |2     |int64;int64|nd;nd    |2,980;1  |customize  |-100,100;   |            |             |        |         |         |Ascend910B|I:ERROR_INVALID_TENSOR_INI_MATCH
 4      |NonzeroErrorDim1  |NonzeroOperation|{}     |1    |int64  |nd      |2,490  |2     |int64;int64|nd;nd    |2,980;2  |customize  |-100,100;   |            |             |        |         |         |Ascend910B|S:ERROR_INVALID_TENSOR_DIM      
 5      |NonzeroErrorDim2  |NonzeroOperation|{}     |1    |int64  |nd      |2,490  |2     |int64;int64|nd;nd    |2,970;1  |customize  |-100,100;   |            |             |        |         |         |Ascend910B|S:ERROR_INVALID_TENSOR_DIM      
-5      |NonzeroErrorDim3  |NonzeroOperation|{}     |1    |int64  |nd      |2,490  |2     |int64;int64|nd;nd    |2,970;1,1|customize  |-100,100;   |            |             |        |         |         |Ascend910B|S:ERROR_INVALID_TENSOR_DIM      
-6|rsv|NonzeroOperation|{"rsv":[1]}|0||||0||||||||||||C:ERROR_INVALID_PARAM
+6      |NonzeroErrorDim3  |NonzeroOperation|{}     |1    |int64  |nd      |2,490  |2     |int64;int64|nd;nd    |2,970;1,1|customize  |-100,100;   |            |             |        |         |         |Ascend910B|S:ERROR_INVALID_TENSOR_DIM      
+7      |NonzeroErrorDimNum1|NonzeroOperation|{}    |1    |int64  |nd      |2,490  |2     |int64;int64|nd;nd    |980;1,1  |customize  |-100,100;   |            |             |        |         |         |Ascend910B|S:ERROR_INVALID_TENSOR_DIM_NUM      
+8|rsv|NonzeroOperation|{"rsv":[1]}|0||||0||||||||||||C:ERROR_INVALID_PARAM
