@@ -64,8 +64,8 @@ ATB 版本提供双向兼容能力，向前向后兼容一年内的版本。
 离线安装时，请单击[获取链接](https://www.hiascend.com/developer/download/community/result?module=cann)下载CANN软件包，并上传到安装环境任意路径。
 #### 安装CANN
 ```shell
-chmod +x Ascend-cann-toolkit_8.2.RC1_linux-$(arch).run
-./Ascend-cann-toolkit_8.2.RC1_linux-$(arch).run --install
+chmod +x Ascend-cann-toolkit_${VERSION}_linux-$(arch).run  # 其中${VERSION}表示对应的CANN版本，如8.2.RC1
+./Ascend-cann-toolkit_${VERSION}_linux-$(arch).run --install
 ```
 #### 安装后配置
 配置环境变量脚本set_env.sh，当前安装路径以${HOME}/Ascend为例。
