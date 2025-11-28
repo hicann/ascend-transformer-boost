@@ -149,14 +149,14 @@ int LcalComm::InitDumpAddr()
     ret = aclrtMalloc(reinterpret_cast<void **>(&dumpAddr), dumpWorkspaceSize, ACL_MEM_MALLOC_HUGE_FIRST);
     if (ret != ACL_SUCCESS) {
         MKI_LOG(ERROR) << "aclrtMalloc err " << __LINE__ << " " << ret;
-        return LCAL_ERROR_INTERNAL;
+        return LCAL_ERROR_OUT_OF_MEMORY;
     }
     aclrtMemset(dumpAddr, dumpWorkspaceSize, 0, dumpWorkspaceSize);
 
     GM_ADDR memory = static_cast<GM_ADDR>(std::malloc(dumpWorkspaceSize));
     if (!memory) {
         MKI_LOG(ERROR) << "std::malloc err " << __LINE__;
-        return LCAL_ERROR_INTERNAL;
+        return LCAL_ERROR_OUT_OF_MEMORY;
     }
     errno_t result = memset_s(memory, dumpWorkspaceSize, 0, dumpWorkspaceSize);
     if (result != 0) {
@@ -196,8 +196,11 @@ int LcalComm::SyncCommArgs()
         commArgs_.peerMems[i] = peerMem_[i];
     }
 
-    if (isEnableMsprofOp_ && InitDumpAddr() != LCAL_SUCCESS) {
-        return LCAL_ERROR_INTERNAL;
+    if (isEnableMsprofOp_) {
+        int ret = InitDumpAddr();
+        if (ret != LCAL_SUCCESS) {
+            return ret;
+        }
     }
 
     if (isEnableMix_) {
@@ -215,7 +218,7 @@ int LcalComm::SyncCommArgs()
     ret = aclrtMalloc(reinterpret_cast<void **>(&commArgsPtr_), sizeof(commArgs_), ACL_MEM_MALLOC_HUGE_FIRST);
     if (ret != ACL_SUCCESS) {
         MKI_LOG(ERROR) << "aclrtMalloc err " << __LINE__ << " " << ret;
-        return LCAL_ERROR_INTERNAL;
+        return LCAL_ERROR_OUT_OF_MEMORY;
     }
     ret = aclrtMemcpy(commArgsPtr_, sizeof(commArgs_), &commArgs_, sizeof(commArgs_), ACL_MEMCPY_HOST_TO_DEVICE);
     if (ret != ACL_SUCCESS) {
@@ -522,7 +525,7 @@ int LcalComm::InitMem()
         (GetChipName() == ChipName::CHIP_310P3) ? ACL_MEM_MALLOC_HUGE_FIRST_P2P : ACL_MEM_MALLOC_HUGE_FIRST);
     if (ret != ACL_SUCCESS) {
         MKI_LOG(ERROR) << "allocate device mem error " << __FILE__ << ":" << __LINE__ << " " << ret;
-        return LCAL_ERROR_INTERNAL;
+        return LCAL_ERROR_OUT_OF_MEMORY;
     }
     MKI_LOG(DEBUG) << "peerMem[rank" << rank_ << "], allocate finished.";
     aclrtMemset(peerMem_[rank_], lcalBuffSize, 0, lcalBuffSize);
