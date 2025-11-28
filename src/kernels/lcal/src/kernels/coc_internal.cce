@@ -220,7 +220,7 @@ inline __aicore__ void AlignJudge(bool trans_a, bool trans_b, int32_t m, int32_t
     if (!trans_a) {
         aligned_a = k != k_align;
     } else {
-        aligned_a = (m != m_align && m != 1);
+        aligned_a = (m != m_align);
     }
 
     if (!trans_b) {
