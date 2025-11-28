@@ -170,7 +170,7 @@ Status FusedAddTopkDivOperation::InTensorDescsCheck(const SVector<TensorDesc> &i
         return ERROR_INVALID_TENSOR_DIM;
     }
     if (param_.groupNum != 8 && inTensor0Dim1 > 32) { // 8: groupNum, 32: dim1 maximum
-        ATB_LOG(ERROR) << GetLogPrefix() << "groupNum is 8, inTensor0 dim1 should not larger than 32"
+        ATB_LOG(ERROR) << GetLogPrefix() << "when groupNum is not 8, inTensor0 dim1 should be less than or equal to 32"
                        << ", inTensor0 dim1 = " << inTensor0Dim1;
         return ERROR_INVALID_TENSOR_DIM;
     }
