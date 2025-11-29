@@ -18,14 +18,6 @@
 #include "atb/utils/operation_register.h"
 #include "atb/utils/param_compare.h"
 
-namespace {
-static constexpr uint32_t INTENSOR_BASE_SIZE = 5;
-static constexpr uint32_t INTERNAL_TENSOR_BASE_SIZE = 2;
-// 3: q transdata, pa, output transda
-static constexpr uint32_t KERNEL_GRAPH_NODE_BASE_SIZE = 3;
-static constexpr uint32_t PA_NODE_BASE_IDX = 1;
-} // namespace
-
 namespace atb {
 void PATransQViewFunc910a(const Mki::SVector<int64_t> &oldDims, Mki::SVector<int64_t> &newDims)
 {
@@ -39,7 +31,6 @@ PagedAttentionOpsRunner910A::PagedAttentionOpsRunner910A(const infer::PagedAtten
     : OpsRunner("PagedAttentionOpsRunner"), param_(param)
 {
     needKernelGraphModify_ = true;
-    needQScale_ = NeedElewiseMulsQScale(param_);
     ATB_LOG(INFO) << "PagedAttentionOpsRunner910A::PagedAttentionOpsRunner910A called";
 }
 
@@ -48,7 +39,8 @@ Status PagedAttentionOpsRunner910A::SetupKernelGraph(const OpsTensorPack &opsTen
     bool needMask = (param_.maskType != atb::infer::PagedAttentionParam::UNDEFINED);
     bool needQLens = (param_.calcType == atb::infer::PagedAttentionParam::CALC_TYPE_SPEC);
     bool needLogN = (param_.scaleType == atb::infer::PagedAttentionParam::SCALE_TYPE_LOGN);
-    std::size_t intensorSize = INTENSOR_BASE_SIZE; // 5: q, k, v, block_tables, contextLens
+
+    std::size_t intensorSize = 5; // 5: q, k, v, block_tables, contextLens
     if (needMask) {
         intensorSize += 1;
     }
@@ -62,7 +54,7 @@ Status PagedAttentionOpsRunner910A::SetupKernelGraph(const OpsTensorPack &opsTen
     kernelGraph_.outTensors.resize(1);
 
     size_t tensorId = 0;
-    Mki::Tensor *query = &kernelGraph_.inTensors.at(tensorId++);
+    Mki::Tensor &query = kernelGraph_.inTensors.at(tensorId++);
     Mki::Tensor &keyCache = kernelGraph_.inTensors.at(tensorId++);
     Mki::Tensor &valueCache = kernelGraph_.inTensors.at(tensorId++);
     Mki::Tensor &blockTables = kernelGraph_.inTensors.at(tensorId++);
@@ -77,37 +69,28 @@ Status PagedAttentionOpsRunner910A::SetupKernelGraph(const OpsTensorPack &opsTen
 
     auto attnMaskFormat = needMask ? opsTensorPack.inTensors.at(5).desc.format :
                                      static_cast<Mki::TensorFormat>(ACL_FORMAT_UNDEFINED); // 5: attnMask tensor
-    bool needTransdataMask = (attnMaskFormat == static_cast<Mki::TensorFormat>(ACL_FORMAT_ND)) && needMask;
-    size_t internalTensorSize = INTERNAL_TENSOR_BASE_SIZE; // 2: transdata q, transdata output
-    if (needTransdataMask) {
-        internalTensorSize++;
-    }
-    if (needQScale_) {
-        internalTensorSize++;
-    }
-    kernelGraph_.internalTensors.resize(internalTensorSize);
-    size_t internalTensorId = 0;
-    Mki::Tensor *transdataQResultTensor = &kernelGraph_.internalTensors.at(internalTensorId++);
-    Mki::Tensor *divOut = needQScale_ ? &kernelGraph_.internalTensors.at(internalTensorId++) : transdataQResultTensor;
-    Mki::Tensor *transdataAttnMaskTensor =
-        needTransdataMask ? &kernelGraph_.internalTensors.at(internalTensorId++) : mask;
-    Mki::Tensor *context = &kernelGraph_.internalTensors.at(internalTensorId++);
+    kernelGraph_.internalTensors.resize(
+        ((attnMaskFormat == static_cast<Mki::TensorFormat>(ACL_FORMAT_ND)) && needMask) ? 4 : 3); // 4, 3: 中间tensor数
 
-    size_t nodeSize = KERNEL_GRAPH_NODE_BASE_SIZE;
-    if (needTransdataMask) {
-        nodeSize++;
-    }
-    if (needQScale_) {
-        nodeSize++;
-    }
-    kernelGraph_.nodes.resize(nodeSize);
+    size_t internalTensorId = 0;
+    Mki::Tensor &transdataQResultTensor = kernelGraph_.internalTensors.at(internalTensorId++);
+    Mki::Tensor &mulQTensor = kernelGraph_.internalTensors.at(internalTensorId++);
+    Mki::Tensor *transdataAttnMaskTensor =
+        ((attnMaskFormat == static_cast<Mki::TensorFormat>(ACL_FORMAT_ND)) && needMask) ?
+            &kernelGraph_.internalTensors.at(internalTensorId++) :
+            mask;
+    Mki::Tensor &context = kernelGraph_.internalTensors.at(internalTensorId++);
+
+    kernelGraph_.nodes.resize((attnMaskFormat == static_cast<Mki::TensorFormat>(ACL_FORMAT_ND) && needMask) ?
+                                  5 : // 5: attn mask 为nd时
+                                  4); // 4: attn mask 为nz时
 
     size_t nodeId = 0;
     auto &transdataQNode = kernelGraph_.nodes.at(nodeId++);
     transdataQNode.opDesc = {0, "TransdataOperation",
                              AsdOps::OpParam::Transdata({AsdOps::OpParam::Transdata::ND_TO_FRACTAL_NZ, {0, 0}})};
-    transdataQNode.inTensors = {query};
-    transdataQNode.outTensors = {transdataQResultTensor};
+    transdataQNode.inTensors = {&query};
+    transdataQNode.outTensors = {&transdataQResultTensor};
     transdataQNode.inTensorViewFuncs.resize(transdataQNode.inTensors.size());
     transdataQNode.inTensorViewFuncs[0] = &PATransQViewFunc910a;
     transdataQNode.inferShapePreFunc = [&](Mki::LaunchParam &launchParam) {
@@ -116,14 +99,11 @@ Status PagedAttentionOpsRunner910A::SetupKernelGraph(const OpsTensorPack &opsTen
     };
 
     // muls
-    if (needQScale_) {
-        auto &mulsQNode = kernelGraph_.nodes.at(nodeId++);
-        mulsQNode.opDesc = {0, "ElewiseOperation",
-                            AsdOps::OpParam::Elewise({AsdOps::OpParam::Elewise::ELEWISE_MULS, param_.qScale})};
-        mulsQNode.inTensors = {transdataQResultTensor};
-        mulsQNode.inTensorViewFuncs.resize(mulsQNode.inTensors.size());
-        mulsQNode.outTensors = {divOut};
-    }
+    auto &mulsQNode = kernelGraph_.nodes.at(nodeId++);
+    mulsQNode.opDesc = {0, "ElewiseOperation", AsdOps::OpParam::Elewise({AsdOps::OpParam::Elewise::ELEWISE_MULS, 1.0})};
+    mulsQNode.inTensors = {&transdataQResultTensor};
+    mulsQNode.inTensorViewFuncs.resize(mulsQNode.inTensors.size());
+    mulsQNode.outTensors = {&mulQTensor};
 
     // Convert attentionMask from ND format to NZ format
     if ((attnMaskFormat == static_cast<Mki::TensorFormat>(ACL_FORMAT_ND)) && needMask) {
@@ -149,11 +129,11 @@ Status PagedAttentionOpsRunner910A::SetupKernelGraph(const OpsTensorPack &opsTen
 
     if (needMask && (attnMaskFormat == static_cast<Mki::TensorFormat>(ACL_FORMAT_ND))) {
         pagedAttentionNode.inTensors = {
-            divOut, &keyCache, &valueCache, &blockTables, &contextLens, transdataAttnMaskTensor, logN};
+            &mulQTensor, &keyCache, &valueCache, &blockTables, &contextLens, transdataAttnMaskTensor, logN};
     } else {
-        pagedAttentionNode.inTensors = {divOut, &keyCache, &valueCache, &blockTables, &contextLens, mask, logN};
+        pagedAttentionNode.inTensors = {&mulQTensor, &keyCache, &valueCache, &blockTables, &contextLens, mask, logN};
     }
-    pagedAttentionNode.outTensors = {context};
+    pagedAttentionNode.outTensors = {&context};
     pagedAttentionNode.inTensorViewFuncs.resize(pagedAttentionNode.inTensors.size()); // view
     pagedAttentionNode.tilingCacheEnable = false;
 
@@ -161,7 +141,7 @@ Status PagedAttentionOpsRunner910A::SetupKernelGraph(const OpsTensorPack &opsTen
     transdataAttnNode.opDesc = {
         0, "TransdataOperation",
         AsdOps::OpParam::Transdata({AsdOps::OpParam::Transdata::FRACTAL_NZ_TO_ND, {ntokens_, hiddenSize_}})};
-    transdataAttnNode.inTensors = {context};
+    transdataAttnNode.inTensors = {&context};
     transdataAttnNode.outTensors = {&contextOut};
     transdataAttnNode.inferShapePreFunc = [=](Mki::LaunchParam &launchParam) {
         launchParam.SetParam(
@@ -188,13 +168,8 @@ Status PagedAttentionOpsRunner910A::ModifyKernelGraph(const OpsTensorPack &opsTe
     }
     auto attnMaskFormat =
         needMask ? opsTensorPack.inTensors.at(5).desc.format : static_cast<Mki::TensorFormat>(ACL_FORMAT_UNDEFINED);
-    int paNodeId = PA_NODE_BASE_IDX;
-    if (needQScale_) {
-        paNodeId++;
-    }
-    if (needMask && (attnMaskFormat == static_cast<Mki::TensorFormat>(ACL_FORMAT_ND))) {
-        paNodeId++;
-    }
+    int paNodeId =
+        (needMask && (attnMaskFormat == static_cast<Mki::TensorFormat>(ACL_FORMAT_ND))) ? 3 : 2; // 2, 3 : pa node位置
     auto &pagedAttentionNode = kernelGraph_.nodes.at(paNodeId);
     AtbOps::OpParam::PagedAttention inPagedAttention;
     inPagedAttention.headSize = param_.headNum;
@@ -220,7 +195,6 @@ void PagedAttentionOpsRunner910A::SetParam(const Mki::Any &param)
         param_ = newParam;
         isParamUpdated_ = true;
     }
-    needQScale_ = NeedElewiseMulsQScale(param_);
 }
 
 REG_RUNNER_TYPE(PagedAttentionOpsRunner);

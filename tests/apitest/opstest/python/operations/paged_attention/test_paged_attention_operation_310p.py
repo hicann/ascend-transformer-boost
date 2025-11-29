@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2025 Huawei Technologies Co., Ltd.
+# Copyright (c) 2024 Huawei Technologies Co., Ltd.
 # This program is free software, you can redistribute it and/or modify it under the terms and conditions of
 # CANN Open Software License Agreement Version 2.0 (the "License").
 # Please refer to the License for details. You may not use this file except in compliance with the License.
@@ -18,14 +18,10 @@ import collections
 import numpy as np
 import torch
 import torch_npu
+from precision_calcu import *
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
 import operation_test  # NOQA: E402
-from precision_calcu import *
-
-
-import logging
-logging.basicConfig(level=logging.INFO)
 
 MAX_SEQ_LEN = 1024
 kv_head_num = 32
@@ -275,7 +271,6 @@ def generate_data(
         num_blocks=64,
         k_seqlen=500,
         dtype="float16",
-        q_scale=1,
 ):
     query = np.random.uniform(-5.0, 5.0, size=(num_tokens, num_heads, head_size)).astype(dtype)
     # kv cache shape: (num_blocks, block_size, num_heads, head_size)
@@ -309,11 +304,10 @@ def generate_data(
     # alibi_slopes = np.zeros(num_heads)
     ref_output = np.zeros_like(query)
     output_gt = np.zeros_like(query).astype(np.float32)
-    print(f"query {query} shape {query.shape} max {np.max(query)} min {np.min(query)}")
     ref_single_query_cached_kv_attention(
         ref_output,
         output_gt,
-        query * q_scale,
+        query,
         key_cache,
         value_cache,
         block_tables,
@@ -341,29 +335,27 @@ def generate_data(
     value_cache_nz = np.ascontiguousarray(value_cache_nz)
     alibi_mask_nz = np.ascontiguousarray(alibi_mask_nz)
     logn_tensor = np.array([rand_list[x] for x in range(query.shape[0])]).astype(np.float16)
-    print("=" * 80)
-    print(f"query {query} shape {query.shape} max {np.max(query)} min {np.min(query)}")
     return query, key_cache_nz, value_cache_nz, block_tables, context_lens, alibi_mask_nz, logn_tensor, ref_output, output_gt
+
+
+data = generate_data()
+in_tensors = [torch.from_numpy(tensor) for tensor in data]
+in_tensors = [tensor.npu() for tensor in in_tensors]
+a = [print(tensor.dtype, tensor.device, tensor.shape) for tensor in in_tensors]
+
 
 class TestPagedAttentionAttentionOperation(operation_test.OperationTest):
     def golden_calc(self, input_tensors):
-        
-        return [self.ref_output]
+        return [in_tensors[-2]]
 
     def golden_compare(self, out_tensor, golden_out_tensor):
-        result_double = compare_cv(self.output_gt, golden_out_tensor.npu(), out_tensor.npu())
+        result_double = compare_cv(in_tensors[-1], golden_out_tensor.npu(), out_tensor.npu())
         return result_double
 
-    def test_pa(self):
+    def test(self):
         if not operation_test.get_soc_version() == 'Ascend310P':
             print("this testcase only supports Ascend310P")
             return True
-        data = generate_data()
-        in_tensors = [torch.from_numpy(tensor) for tensor in data]
-        in_tensors = [tensor.npu() for tensor in in_tensors]
-        a = [print(tensor.dtype, tensor.device, tensor.shape) for tensor in in_tensors]
-        self.ref_output = in_tensors[-2]
-        self.output_gt = in_tensors[-1]
         in_tensors[1] = torch_npu.npu_format_cast(in_tensors[1], 29)
         in_tensors[2] = torch_npu.npu_format_cast(in_tensors[2] , 29)
         in_tensors[5] = torch_npu.npu_format_cast(in_tensors[5] , 29)
@@ -376,33 +368,6 @@ class TestPagedAttentionAttentionOperation(operation_test.OperationTest):
         if SCALE_TYPE != 0:
             in_tensors_final.append(in_tensors[6])
 
-        self.execute(OP_NAME, PARAM, in_tensors_final)
-
-
-    def test_qscale(self):
-        if not operation_test.get_soc_version() == 'Ascend310P':
-            print("this testcase only supports Ascend310P")
-            return True
-        q_scale = 1
-        data = generate_data(q_scale=q_scale)
-        in_tensors = [torch.from_numpy(tensor) for tensor in data]
-        in_tensors = [tensor.npu() for tensor in in_tensors]
-        a = [print(tensor.dtype, tensor.device, tensor.shape) for tensor in in_tensors]
-        self.ref_output = in_tensors[-2]
-        self.output_gt = in_tensors[-1]
-        in_tensors[1] = torch_npu.npu_format_cast(in_tensors[1], 29)
-        in_tensors[2] = torch_npu.npu_format_cast(in_tensors[2] , 29)
-        in_tensors[5] = torch_npu.npu_format_cast(in_tensors[5] , 29)
-
-        in_tensors_final = [in_tensors[0], in_tensors[1], in_tensors[2], in_tensors[3], in_tensors[4]]
-
-        if MASK_TYPE != 0:
-            in_tensors_final.append(in_tensors[5])
-
-        if SCALE_TYPE != 0:
-            in_tensors_final.append(in_tensors[6])
-        PARAM = json.dumps({"headNum": 32, "qkScale": (1 / float(math.sqrt(128))), 
-                            "kvHeadNum": kv_head_num, "maskType": MASK_TYPE, "scaleType": SCALE_TYPE, "qScale": q_scale})
         self.execute(OP_NAME, PARAM, in_tensors_final)
 
 
