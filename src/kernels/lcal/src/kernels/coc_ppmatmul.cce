@@ -439,20 +439,32 @@ public:
 
         WaitFlag<HardEvent::MTE1_MTE2>(event_id);
         // *** load matrix A to L1
-        if (TA) {
-            auto src_len = m;
-            if (aligned_a == 1) {
-                src_len = m_align;
-            }
-            CopyGmToL1Nd2zN<MmadDtype>::move(l1_buf_a, gm_src_a, k_actual, m_actual, src_len, k_round);
+        if (m == 1 || m_actual == 1 && !TA) {
+            CopyGmToCbuf(
+                l1_buf_a,
+                gm_src_a,
+                0,             // sid
+                1,             // nBurst
+                k_round / block_size,  // lenBurst
+                0,             // srcGap
+                0,             // dstGap
+                PAD_NONE       // padMode
+            );
         } else {
-            auto src_len = k;
-            if (aligned_a == 1) {
-                src_len = k_align;
+            if (TA) {
+                auto src_len = m;
+                if (aligned_a == 1) {
+                    src_len = m_align;
+                }
+                CopyGmToL1Nd2zN<MmadDtype>::move(l1_buf_a, gm_src_a, k_actual, m_actual, src_len, k_round);
+            } else {
+                auto src_len = k;
+                if (aligned_a == 1) {
+                    src_len = k_align;
+                }
+                CopyGmToL1Nd2zN<MmadDtype>::move(l1_buf_a, gm_src_a, m_actual, k_actual, src_len, m_round);
             }
-            CopyGmToL1Nd2zN<MmadDtype>::move(l1_buf_a, gm_src_a, m_actual, k_actual, src_len, m_round);
         }
-
         SetFlag<HardEvent::MTE2_MTE1>(event_id);
 
         // *** load matrix B to L1
@@ -542,22 +554,34 @@ public:
 
                 WaitFlag<HardEvent::MTE1_MTE2>(event_id_next);
                 // *** load matrix A to L1
-                if (TA) {
-                    auto src_len = m;
-                    if (aligned_a == 1) {
-                        src_len = m_align;
-                    }
-                    CopyGmToL1Nd2zN<MmadDtype>::move(
-                            l1_buf_a_next, gm_src_a, k_actual_next, m_actual, src_len, k_round_next);
+                if (m == 1 || m_actual == 1 && !TA) {
+                    CopyGmToCbuf(
+                        l1_buf_a_next,
+                        gm_src_a,
+                        0,                          // sid
+                        1,                          // nBurst
+                        k_round_next / block_size,  // lenBurst
+                        0,                          // srcGap
+                        0,                          // dstGap
+                        PAD_NONE                    // padMode
+                    );
                 } else {
-                    auto src_len = k;
-                    if (aligned_a == 1) {
-                        src_len = k_align;
+                    if (TA) {
+                        auto src_len = m;
+                        if (aligned_a == 1) {
+                            src_len = m_align;
+                        }
+                        CopyGmToL1Nd2zN<MmadDtype>::move(
+                                l1_buf_a_next, gm_src_a, k_actual_next, m_actual, src_len, k_round_next);
+                    } else {
+                        auto src_len = k;
+                        if (aligned_a == 1) {
+                            src_len = k_align;
+                        }
+                        CopyGmToL1Nd2zN<MmadDtype>::move(
+                                l1_buf_a_next, gm_src_a, m_actual, k_actual_next, src_len, m_round);
                     }
-                    CopyGmToL1Nd2zN<MmadDtype>::move(
-                            l1_buf_a_next, gm_src_a, m_actual, k_actual_next, src_len, m_round);
                 }
-
                 SetFlag<HardEvent::MTE2_MTE1>(event_id_next);
 
                 // *** load matrix B to L1
@@ -603,54 +627,67 @@ public:
                     WaitFlag<HardEvent::MTE2_MTE1>(event_id);
                 }
                 WaitFlag<HardEvent::M_MTE1>(mte1_mad_event_id);
-                if (TA) {
-                    if (IS_INT8) {
-                        for (int i = 0; i < m_round / BLOCK_SIZE_32; i++) {
-                            LoadCbufToCaTranspose(
-                                l0a_buf + i * k0_round * BLOCK_SIZE_32,
-                                l1_buf_a + k_part_idx * k_part_len * BLOCK_SIZE_32 +
-                                    i * k_round * BLOCK_SIZE_32,
-                                0,   // baseIdx
-                                k0_round / BLOCK_SIZE_32,  // repeat
-                                1,   // srcStride
-                                0,   // dstStride
-                                0,   // addrmode
-                                k0_round / BLOCK_SIZE_32 - 1 // dstFracStride
-                            );
+                if (m == 1 || m_actual == 1 && !TA) {
+                    LoadCbufToCa(
+                            l0a_buf,
+                            l1_buf_a + k_part_idx * k_part_len,
+                            0,                                                    // baseIdx
+                            DivCeil(k0_round, cube_matrix_size), // repeat
+                            1,                                                    // srcStride
+                            0,                                                    // dstStride
+                            0,                                                    // sid
+                            false,                                                // transpose
+                            inc                                                   // addr_cal_mode_t
+                    );
+                } else {
+                    if (TA) {
+                        if (IS_INT8) {
+                            for (int i = 0; i < m_round / BLOCK_SIZE_32; i++) {
+                                LoadCbufToCaTranspose(
+                                    l0a_buf + i * k0_round * BLOCK_SIZE_32,
+                                    l1_buf_a + k_part_idx * k_part_len * BLOCK_SIZE_32 +
+                                        i * k_round * BLOCK_SIZE_32,
+                                    0,   // baseIdx
+                                    k0_round / BLOCK_SIZE_32,  // repeat
+                                    1,   // srcStride
+                                    0,   // dstStride
+                                    0,   // addrmode
+                                    k0_round / BLOCK_SIZE_32 - 1 // dstFracStride
+                                );
+                            }
+                        } else {
+                            for (int i = 0; i < m_round / BLOCK_SIZE_16; i++) {
+                                LoadCbufToCa(
+                                        l0a_buf + i * k0_round * BLOCK_SIZE_16,
+                                        l1_buf_a + k_part_idx * k_part_len * BLOCK_SIZE_16 +
+                                            i * k_round * BLOCK_SIZE_16,
+                                        0,                                      // baseIdx
+                                        k0_round / BLOCK_SIZE_16,                  // repeat
+                                        1,                                      // srcStride
+                                        0,                                      // dstStride
+                                        0,                                      // sid
+                                        true,                                   // transpose
+                                        inc                                     // addr_cal_mode_t
+                                );
+                            }
                         }
                     } else {
-                        for (int i = 0; i < m_round / BLOCK_SIZE_16; i++) {
+                        for (int32_t i = 0; i < k0_round / block_size; i++) {
                             LoadCbufToCa(
-                                    l0a_buf + i * k0_round * BLOCK_SIZE_16,
-                                    l1_buf_a + k_part_idx * k_part_len * BLOCK_SIZE_16 +
-                                        i * k_round * BLOCK_SIZE_16,
-                                    0,                                      // baseIdx
-                                    k0_round / BLOCK_SIZE_16,                  // repeat
-                                    1,                                      // srcStride
-                                    0,                                      // dstStride
-                                    0,                                      // sid
-                                    true,                                   // transpose
-                                    inc                                     // addr_cal_mode_t
+                                l0a_buf + i * cube_matrix_size,
+                                l1_buf_a + k_part_idx * k_part_len * m_round +
+                                    i * m_round * block_size,
+                                0,                          // baseIdx
+                                m_round / BLOCK_SIZE_16,    // repeat
+                                1,                          // srcStride
+                                k0_round / block_size - 1,  // dstStride
+                                0,                      // sid
+                                false,                  // transpose
+                                inc                     // addr_cal_mode_t
                             );
                         }
                     }
-                } else {
-                    for (int32_t i = 0; i < k0_round / block_size; i++) {
-                        LoadCbufToCa(
-                            l0a_buf + i * cube_matrix_size,
-                            l1_buf_a + k_part_idx * k_part_len * m_round +
-                                i * m_round * block_size,
-                            0,                          // baseIdx
-                            m_round / BLOCK_SIZE_16,    // repeat
-                            1,                          // srcStride
-                            k0_round / block_size - 1,  // dstStride
-                            0,                      // sid
-                            false,                  // transpose
-                            inc                     // addr_cal_mode_t
-                        );
-                    }
                 }
-
                 if (k_part_idx == k_part_loop - 1) {
                     SetFlag<HardEvent::MTE1_MTE2>(event_id);
                 }
@@ -781,6 +818,7 @@ public:
             ping_flag = 1 - ping_flag;
         }
 
+
         if (IS_INT8 && std::is_same<OutDtype, half>::value && (dequant_granularity == QuantGranularity::PER_CHANNEL ||
             dequant_granularity == QuantGranularity::PER_TOKEN)) {
             WaitFlag<HardEvent::FIX_MTE2>(EVENT_ID0);
@@ -874,7 +912,7 @@ public:
         SetFlag<HardEvent::FIX_MTE2>(EVENT_ID0);
         SetFlag<HardEvent::M_MTE1>(EVENT_ID0);
         SetFlag<HardEvent::M_MTE1>(EVENT_ID1);
-        SetFlag<HardEvent::FIX_MTE1>(EVENT_ID1);
+        SetFlag<HardEvent::FIX_MTE1>(EVENT_ID1);    //
     }
 
     inline __aicore__ void Endflags() {
