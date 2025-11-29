@@ -37,7 +37,9 @@ public:
         MKI_CHECK(inTensor0.desc.dims.size() == 2, "dim size of inTensor0 is invalid", return false);
         auto &inTensor1 = launchParam.GetInTensor(DIM_1);
         MKI_CHECK(inTensor1.desc.dims.size() == 2, "dim size of inTensor1 is invalid", return false);
-        MKI_CHECK(inTensor0.desc.dims[0] == inTensor1.desc.dims[0], "Shape of inTensor0/inTensor1 should be same",
+        MKI_CHECK(inTensor0.desc.dims[0] == inTensor1.desc.dims[0] && inTensor0.desc.dims[1] == inTensor1.desc.dims[1],
+                  "Shape of inTensor0/inTensor1 should be same", return false);
+        MKI_CHECK(inTensor0.desc.dims[1] % 128 == 0, "hiddenSize shoule be divisible by 128",
                      return false);
         auto &cos = launchParam.GetInTensor(DIM_2);
         auto &sin = launchParam.GetInTensor(DIM_3);
