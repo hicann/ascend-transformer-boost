@@ -33,7 +33,6 @@ private:
     int64_t ntokens_ = 0;
     int64_t hiddenSize_ = 0;
     int64_t batch_ = 0;
-    bool needQScale_ = false;
     Mki::Tensor nullTensor_ = {}; // 空tensor
     PagedAttentionFusionVariantPackParam newParam_;
 };

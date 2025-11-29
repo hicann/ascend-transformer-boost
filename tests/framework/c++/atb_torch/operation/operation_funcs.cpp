@@ -803,16 +803,12 @@ static atb::Status PagedAttentionOperationCreate(const nlohmann::json &paramJson
     if (paramJson.contains("batchRunStatusEnable")) {
         param.batchRunStatusEnable = paramJson["batchRunStatusEnable"].get<bool>();
     }
-    if (paramJson.contains("qScale")) {
-        param.qScale = paramJson["qScale"].get<float>();
-    }
     ATB_LOG(INFO) << "PagedAttentionOperationCreate headNum:" << param.headNum << ", scale:" << param.qkScale
                   << ", kvHeadNum:" << param.kvHeadNum << ", quantType:" << param.quantType
                   << ", hasQuantOffset:" << param.hasQuantOffset << ", compressType:" << param.compressType
                   << ", calcType:" << param.calcType << ", scaleType:" << param.scaleType
                   << ", outDataType:" << param.outDataType << ", inputLayout:" << param.inputLayout
-                  << ", mlaVHeadSize:" << param.mlaVHeadSize << ", batchRunStatusEnable:" << param.batchRunStatusEnable
-                  << ", qScale:" << param.qScale;
+                  << ", mlaVHeadSize:" << param.mlaVHeadSize << ", batchRunStatusEnable:" << param.batchRunStatusEnable;
     if (paramJson.contains("rsv")) {
         for (size_t i = 0; i < paramJson["rsv"].size(); i++) {
             param.rsv[i] = paramJson["rsv"].at(i).get<int8_t>();

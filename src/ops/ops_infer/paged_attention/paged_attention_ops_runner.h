@@ -33,7 +33,6 @@ private:
     Mki::Tensor nullTensor_ = {}; // 空tensor，作为{true, 0}场景占位符
     PagedAttentionFusionVariantPackParam newParam_;
     bool isMla_ = false;
-    bool needQScale_ = false;
 };
 } // namespace atb
 
