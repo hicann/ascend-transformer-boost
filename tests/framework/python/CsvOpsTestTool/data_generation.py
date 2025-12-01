@@ -22,7 +22,6 @@ import sys
 import shutil
 import logging
 import re
-import tensorflow as tf
 from enum import Enum
 from functools import reduce
 
@@ -3812,16 +3811,16 @@ class RelayAttentionOperation(DataGen):
 class OnehotOperation(DataGen):
 
     @staticmethod
-    def golden(in_tensors, op_params):
-        data_type = in_tensors[0].dtype
-        json_data = json.loads(op_params)
-        depth = json_data['depth']
-        axis = json_data['axis']
+    def golden(in_tensors, op_params):	
+        data_type = in_tensors[0].dtype	
+        json_data = json.loads(op_params)	
+        depth = json_data['depth']	
 
-        input0 = in_tensors[0]
-        res = tf.one_hot(input0, depth, axis=axis)
-        res = torch.from_numpy(res.numpy()).to(data_type)
-        return [res]
+
+        input0 = in_tensors[0].numpy()	
+        res = np.eye(depth)[input0]	
+        res = torch.from_numpy(res).to(data_type)	
+        return [res]	
 
     @staticmethod
     def get_op_type(op_params):
