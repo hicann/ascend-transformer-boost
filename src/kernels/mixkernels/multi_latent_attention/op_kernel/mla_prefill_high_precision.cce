@@ -1127,7 +1127,9 @@ public:
         logN_gm_tensor.SetGlobalBuffer(reinterpret_cast<__gm__  IN_DATA_TYPE*>(logN_gm));
         logN_float_gm_tensor.SetGlobalBuffer(reinterpret_cast<__gm__ float *>(logN_gm));
         float mask_coff = std::is_same_v<IN_DATA_TYPE, half> ? HALF_MASK_COFF : BF16_MASK_COFF;
-        GenMaskMatrix(mask16_ubuf_tensor.template ReinterpretCast<float>(), mask_coff);
+        if constexpr (MASK_TYPE == MaskType::MASK_TYPE_CAUSAL_MASK) {
+            GenMaskMatrix(mask16_ubuf_tensor.template ReinterpretCast<float>(), mask_coff);
+        }
         uint32_t next_process = 0;
         bool swa_flag = (window_size > 0  && MASK_TYPE == MaskType::MASK_TYPE_MASK_SWA);
         
