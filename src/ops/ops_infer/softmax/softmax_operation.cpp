@@ -9,8 +9,10 @@
  */
 
 #include "softmax_operation.h"
+#include <mki/utils/platform/platform_info.h>
 #include "atb/utils/log.h"
 #include "softmax_ops_runner.h"
+#include "softmax_aclnn_runner.h"
 #include "atb/utils/tensor_check.h"
 #include "atb/utils/param_to_json.h"
 #include "atb/utils/singleton.h"
@@ -27,6 +29,13 @@ template <> Status CreateOperation(const infer::SoftmaxParam &opParam, Operation
         return ERROR_INVALID_PARAM;
     }
     OP_PARAM_RSV_CHECK(opParam);
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+        Status status = SoftmaxAclnnRunner::LoadMethod();
+        if (status != NO_ERROR) {
+            ATB_LOG(ERROR) << "Load aclnnSoftmax func failed!";
+            return status;
+        }
+    }
     *operation = new (std::nothrow) SoftmaxOperation(opParam);
     if (*operation == nullptr) {
         ATB_LOG(ERROR) << "failed to new operation";
@@ -103,6 +112,9 @@ Status SoftmaxOperation::ParamCheck(const TensorDesc &inTensorDesc) const
 std::shared_ptr<Runner> SoftmaxOperation::CreateRunner(Context &context) const
 {
     (void)context;
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+        return std::make_shared<SoftmaxAclnnRunner>(param_);
+    }
     return std::make_shared<SoftmaxOpsRunner>(param_);
 }
 
