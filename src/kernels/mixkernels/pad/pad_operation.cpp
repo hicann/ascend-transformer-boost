@@ -46,7 +46,7 @@ public:
         MKI_CHECK(launchParam.GetInTensor(DIM_2).desc.dims[0] == launchParam.GetInTensor(DIM_3).desc.dims[0],
             "input_ids or seqlen is wrong", return false);
         MKI_CHECK(launchParam.GetInTensor(DIM_3).desc.dims[DIM_0] <= MAX_BATCH_NUM,
-            "batch should be less than 64", return false);
+            "batch should not be larger than 64", return false);
         return true;
     }
 

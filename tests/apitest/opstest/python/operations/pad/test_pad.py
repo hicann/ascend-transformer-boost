@@ -39,8 +39,9 @@ class TestPadOperation(operation_test.OperationTest):
         return [out.npu()]
     
     def test_2d_half(self):
-        if  operation_test.get_soc_version() == 'Ascend310B':
-            print("this testcase don't supports Ascend310B")
+        if  operation_test.get_soc_version() == 'Ascend910A' or \
+            operation_test.get_soc_version() == 'Ascend310B':
+            print("this testcase don't supports Ascend910A\Ascend310B")
             return True
         batch = 32
         total_length_imm = 64
