@@ -8,6 +8,7 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 #include "activation_operation.h"
+#include <mki/utils/platform/platform_info.h>
 #include "atb/utils/param_to_json.h"
 #include "activation_aclnn_runner.h"
 #include "activation_ops_runner.h"
@@ -47,6 +48,18 @@ template <> Status CreateOperation(const infer::ActivationParam &opParam, Operat
         }
         return ERROR_INVALID_PARAM;
     }
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+        if (opParam.activationType != atb::infer::ActivationType::ACTIVATION_SWISH &&
+            opParam.activationType != atb::infer::ActivationType::ACTIVATION_SIGMOID) {
+            ATB_LOG(ERROR) << "activationType: " << opParam.activationType << " is not yet supported.";
+            return ERROR_INVALID_PARAM;
+        }
+        Status status = ActivationAclnnRunner::LoadAclnnFunctions();
+        if (status != NO_ERROR) {
+            ATB_LOG(ERROR) << "load aclnn funcs failed.";
+            return ERROR_CANN_ERROR;
+        }
+    }
     *operation = new (std::nothrow) ActivationOperation(opParam);
     if (*operation == nullptr) {
         ATB_LOG(ERROR) << "failed to new operation";
@@ -82,10 +95,27 @@ static Mki::OperationIr *GetOperationIrForActivation(const infer::ActivationType
     return nullptr;
 }
 
+static Mki::OperationIr *GetOperationIrForActivation91095(const infer::ActivationType activationType)
+{
+    switch (activationType) {
+        case atb::infer::ActivationType::ACTIVATION_SIGMOID:
+            return GetSingleton<AtbOperationIrCfg>().GetOperationIr("ActivationOperationSIGMOID");
+        case atb::infer::ActivationType::ACTIVATION_SWISH:
+            return GetSingleton<AtbOperationIrCfg>().GetOperationIr("ActivationOperationSWISH91095");
+        default:
+            ATB_LOG(ERROR) << "not support activationType:" << activationType;
+    }
+    return nullptr;
+}
+
 ActivationOperation::ActivationOperation(const infer::ActivationParam &param)
     : OperationBase("ActivationOperation"), param_(param)
 {
-    operationIr_ = GetOperationIrForActivation(param_.activationType);
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+        operationIr_ = GetOperationIrForActivation91095(param_.activationType);
+    } else {
+        operationIr_ = GetOperationIrForActivation(param_.activationType);
+    }
     if (!operationIr_) {
         ATB_LOG(ERROR) << "GetOperationIrForActivation failed.";
     }
@@ -235,6 +265,9 @@ Status ActivationOperation::SetupCheckImpl(const SVector<Tensor> &inTensors, con
 std::shared_ptr<Runner> ActivationOperation::CreateRunner(Context &context) const
 {
     (void)context;
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+        return std::make_shared<ActivationAclnnRunner>(param_);
+    }
     return std::make_shared<ActivationOpsRunner>(param_);
 }
 
