@@ -56,6 +56,9 @@ protected:
     bool MlaBatchSizeCheck(const SVector<TensorDesc> &inTensorDescs) const;
     Status MaskFreeInferShapeCheck310P(const SVector<TensorDesc> &inTensorDescs) const;
     Status MaskFreeSetupCheck310P(const SVector<Tensor> &inTensor) const;
+    Status InTensorDescsCheck91095(const SVector<TensorDesc> &inTensorDescs) const;
+    Status InTensorsCheck91095(const SVector<Tensor> &inTensors) const;
+    Status OutTensorsCheck91095(const SVector<Tensor> &outTensors) const;
 
 private:
     bool IsInMLAIncompatible() const;

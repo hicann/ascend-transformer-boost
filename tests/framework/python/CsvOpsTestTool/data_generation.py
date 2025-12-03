@@ -29,7 +29,8 @@ from self_attention_golden import SelfAttentionGolden, SelfAttentionGenOutTensor
 
 dtype_dict = {"float": torch.float32, "float16": torch.float16, "int8": torch.int8, "int32": torch.int32, "uint8": torch.uint8,
               "int16": torch.int16, "uint16": torch.int16, "uint32": torch.int32, "int64": torch.int64, "uint64": torch.int64,
-              "double": torch.double, "bool": torch.bool, "complex64": torch.complex64, "complex128": torch.complex128, "bf16": torch.bfloat16}
+              "double": torch.double, "bool": torch.bool, "complex64": torch.complex64, "complex128": torch.complex128, "bf16": torch.bfloat16,
+              "hifloat8": torch.bits8, "float8_e5m2": torch.float8_e5m2, "float8_e4m3fn": torch.float8_e4m3fn}
 
 format_dict = {"undefined": -1, "nchw": 0, "nhwc": 1, "nd": 2, "nc1hwc0": 3,
                 "fractal_z": 4, "nc1hwc0_c04": 12, "hwcn": 16, "ndhwc": 27,
@@ -122,6 +123,8 @@ def get_soc_version():
         soc_version = "Ascend910A"
     elif (re.search("Ascend310B", device_name, re.I)):
         soc_version = "Ascend310B"
+    elif (re.search("Ascend910_95", device_name, re.I)):
+        soc_version = "Ascend910_95"
     else:
         logging.error("device_name {} is not supported".format(device_name))
         quit(1)
@@ -4214,6 +4217,11 @@ class PagedAttentionOperation(DataGen):
             return torch.int32
         if dtype == "int64":
             return torch.int64
+        if dtype == "float8_e5m2":
+            return torch.float8_e5m2
+        if dtype == "float8_e4m3fn":
+            return torch.float8_e4m3fn
+
     @staticmethod
     def process_deq_scale(deq_scale) -> np.ndarray:
         new_deq_scale = np.frombuffer(deq_scale.tobytes(), dtype=np.uint32)
@@ -4576,6 +4584,11 @@ class PagedAttentionOperation(DataGen):
         num_heads = query.shape[1]
         kv_heads = value_cache.shape[2]
 
+        if get_soc_version() == "Ascend910_95":
+            if key_cache.dtype == torch.float8_e5m2 or key_cache.dtype == torch.float8_e4m3fn:
+                key_cache = key_cache.to(torch.float16)
+                value_cache = value_cache.to(torch.float16)
+
         index = 0
         cu_seqlen = 0
         razor_mod = 0
@@ -4745,12 +4758,25 @@ class PagedAttentionOperation(DataGen):
                 if PagedAttentionOperation.in_tensors[j].shape[0] != 0:
                     tensor_count += 1
                     if tensor_count == i + 1:
-                        PagedAttentionOperation.in_tensors[j] = \
-                            PagedAttentionOperation.in_tensors[j].to(PagedAttentionOperation.trans_dtype(datatype))
+                        if get_soc_version() == "Ascend910_95":
+                            cpu_tensor = PagedAttentionOperation.in_tensors[j].cpu().to(PagedAttentionOperation.trans_dtype(datatype))
+                            PagedAttentionOperation.in_tensors[j] = cpu_tensor.npu()
+                            PagedAttentionOperation.golden_tensors[j] = cpu_tensor.npu()
+                        else:
+                            PagedAttentionOperation.in_tensors[j] = \
+                                PagedAttentionOperation.in_tensors[j].to(PagedAttentionOperation.trans_dtype(datatype))
                         return torch_npu.npu_format_cast(PagedAttentionOperation.in_tensors[j], format_dict[format])
+        if get_soc_version() == "Ascend910_95" and i == 0:
+            if hasattr(PagedAttentionOperation, 'in_tensors'):
+                delattr(PagedAttentionOperation, 'in_tensors')
+            if hasattr(PagedAttentionOperation, 'golden_tensors'):
+                delattr(PagedAttentionOperation, 'golden_tensors')
         soc_version = get_soc_version()
         json_data = json.loads(op_params)
-        is_NZ = soc_version != "Ascend910B"
+        if soc_version == "Ascend910B" or soc_version == "Ascend910_95":
+            is_NZ = False
+        else:
+            is_NZ = True
         maskType = 0
         if "maskType" in json_data:
             maskType = json_data["maskType"]
@@ -4804,7 +4830,10 @@ class PagedAttentionOperation(DataGen):
             head_size_v = json_data["mlaVHeadSize"]
             max_num_blocks_per_query = shapes[2][1]
             batch = shapes[3][0]
-        max_seq_len = 256
+        if soc_version == "Ascend910_95":
+            max_seq_len = 32
+        else:
+            max_seq_len = 256
 
         if is_compresshead:
             # 0 query [num_tokens, num_head, head_size]
@@ -4856,7 +4885,11 @@ class PagedAttentionOperation(DataGen):
         if quantType == 1:
             q_range = 4
             kv_range = 4
-            kv_dtype = np.int8
+            if soc_version == "Ascend910_95":
+                if kv_dtype == "float8_e4m3fn" or kv_dtype == "float8_e5m2":
+                    kv_dtype = np.float16
+            else:
+                kv_dtype = np.int8
         # create q,k,v
         if is_compresshead:
             query = np.random.uniform(-q_range, q_range, size=(num_tokens, num_head, head_size)).astype(dtype)
@@ -5018,8 +5051,12 @@ class PagedAttentionOperation(DataGen):
         PagedAttentionOperation.golden_tensors = golden_tensors
         PagedAttentionOperation.in_tensors = in_tensors
 
-        PagedAttentionOperation.in_tensors[0] = \
-                            PagedAttentionOperation.in_tensors[0].to(PagedAttentionOperation.trans_dtype(datatype))
+        if soc_version == "Ascend910_95":
+            in_tensor0_cpu = PagedAttentionOperation.in_tensors[0].cpu().to(PagedAttentionOperation.trans_dtype(datatype))
+            PagedAttentionOperation.in_tensors[0] = in_tensor0_cpu.npu()
+        else:
+            PagedAttentionOperation.in_tensors[0] = \
+                PagedAttentionOperation.in_tensors[0].to(PagedAttentionOperation.trans_dtype(datatype))
 
         return torch_npu.npu_format_cast(PagedAttentionOperation.in_tensors[0], format_dict[format])
 
@@ -5053,8 +5090,10 @@ class PagedAttentionOperation(DataGen):
     @staticmethod
     def golden(in_tensors, op_params):
         json_data = json.loads(op_params)
-
-        is_NZ = get_soc_version() != "Ascend910B"
+        if get_soc_version() == "Ascend910B" or get_soc_version() == "Ascend910_95":
+            is_NZ = False
+        else:
+            is_NZ = True
         head_size_o = 0
         if "mlaVHeadSize" in json_data and json_data["mlaVHeadSize"] > 0:
             head_size_o = json_data["mlaVHeadSize"]
@@ -5157,6 +5196,7 @@ class PagedAttentionOperation(DataGen):
             PagedAttentionOperation.golden_tensors[14].cpu()
         )
         delattr(PagedAttentionOperation, 'golden_tensors')
+        delattr(PagedAttentionOperation, 'in_tensors')
         return [ref_output.cpu()]
 
     @staticmethod

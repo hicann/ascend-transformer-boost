@@ -9,6 +9,9 @@
  */
 #include "paged_attention_operation.h"
 #include <map>
+#include <aclnn/opdev/op_errno.h>
+#include <mki/utils/platform/platform_info.h>
+#include "paged_attention_aclnn_runner.h"
 #include "paged_attention_ops_runner.h"
 #include "paged_attention_ops_runner_910a.h"
 #include "atb/utils/tensor_check.h"
@@ -47,25 +50,68 @@ static bool LogNParamCheck(const infer::PagedAttentionParam &opParam);
 static bool BNSDParamCheck(const infer::PagedAttentionParam &opParam);
 static bool MlaParamCheck(const infer::PagedAttentionParam &opParam);
 
+bool CommonParamCheck(const infer::PagedAttentionParam &opParam)
+{
+    if (opParam.headNum <= 0) {
+        ATB_LOG(ERROR) << "headNum should be greater than zero!";
+        return false;
+    }
+    if (opParam.kvHeadNum < 0) {
+        ATB_LOG(ERROR) << "kvHeadNum should be no less than zero!";
+        return false;
+    }
+    if (opParam.kvHeadNum != 0) {
+        if (opParam.headNum % opParam.kvHeadNum != 0) {
+            ATB_LOG(ERROR) << "headNum mod kvHeadNum should be zero";
+            return false;
+        }
+    }
+    return true;
+}
+
+bool Ascend950ParamCheck(const infer::PagedAttentionParam &opParam)
+{
+    if (!CommonParamCheck(opParam)) {
+        return false;
+    }
+    if (opParam.qkScale <= 0 || opParam.qkScale > 1) {
+        ATB_LOG(ERROR) << "On Ascend950, param qkScale [" << opParam.qkScale << "] should be in range (0, 1]";
+        return false;
+    }
+    if (opParam.quantType != infer::PagedAttentionParam::QuantType::TYPE_QUANT_UNQUANT && opParam.quantType != infer::PagedAttentionParam::QuantType::TYPE_DEQUANT_FUSION) {
+        ATB_LOG(ERROR) << "On Ascend950, param quantType [" << opParam.quantType << "] should be TYPE_QUANT_UNQUANT or TYPE_DEQUANT_FUSION";
+        return false;
+    }
+    if (opParam.inputLayout != infer::TYPE_BSND) {
+        ATB_LOG(ERROR) << "On Ascend950, param inputLayout [" << opParam.inputLayout << "] should be TYPE_BSND";
+        return false;
+    }
+    return true;
+}
+
 template <> Status CreateOperation(const infer::PagedAttentionParam &opParam, Operation **operation)
 {
     if (operation == nullptr) {
         return ERROR_INVALID_PARAM;
     }
     OP_PARAM_RSV_CHECK(opParam);
-    if (opParam.headNum <= 0) {
-        ATB_LOG(ERROR) << "headNum should be greater than zero!";
-        return ERROR_INVALID_PARAM;
-    }
-    if (opParam.kvHeadNum < 0) {
-        ATB_LOG(ERROR) << "kvHeadNum should be no less than zero!";
-        return ERROR_INVALID_PARAM;
-    }
-    if (opParam.kvHeadNum != 0) {
-        if (opParam.headNum % opParam.kvHeadNum != 0) {
-            ATB_LOG(ERROR) << "headNum mod kvHeadNum should be zero";
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+        if (PagedAttentionAclnnRunner::LoadAclnnFuncs() != NO_ERROR) {
+            ATB_LOG(ERROR) << "Load aclnn function failed, please check your CANN version.";
+            return ERROR_CANN_ERROR;
+        }
+        if (!Ascend950ParamCheck(opParam)) {
             return ERROR_INVALID_PARAM;
         }
+        *operation = new (std::nothrow) PagedAttentionOperation(opParam);
+        if (*operation == nullptr) {
+            ATB_LOG(ERROR) << "failed to new operation";
+            return ERROR_OUT_OF_HOST_MEMORY;
+        }
+        return NO_ERROR;
+    }
+    if (!CommonParamCheck(opParam)) {
+        return ERROR_INVALID_PARAM;
     }
     if (!DeviceParamCheck(opParam)) {
         return ERROR_INVALID_PARAM;
@@ -332,6 +378,14 @@ PagedAttentionOperation::PagedAttentionOperation(const infer::PagedAttentionPara
         InitOpIni();
     }
 
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+        if (param_.quantType == infer::PagedAttentionParam::QuantType::TYPE_DEQUANT_FUSION) {
+            operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("PagedAttentionOperationDequantFusionAscend91095");
+        } else {
+            operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("PagedAttentionOperationAscend91095");
+        }
+    }
+
     ATB_LOG(INFO) << GetLogPrefix() << "PagedAttentionParam headNum:" << param.headNum << ", qkScale:" << param.qkScale
                   << ", kvHeadNum:" << param.kvHeadNum << ", maskType:" << param.maskType
                   << ", batchRunStatusEnable:" << param.batchRunStatusEnable << ", quantType:" << param.quantType
@@ -410,6 +464,9 @@ Status PagedAttentionOperation::InferShapeImpl(const SVector<TensorDesc> &inTens
 
 Status PagedAttentionOperation::InferShapeCheckImpl(const SVector<TensorDesc> &inTensorDescs) const
 {
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+        return InTensorDescsCheck91095(inTensorDescs);
+    }
     Status st = NO_ERROR;
     if (param_.inputLayout == infer::InputLayout::TYPE_BNSD && GetSingleton<Config>().Is910B()) {
         st = InferShapeDimCheckBNSD910B(inTensorDescs);
@@ -426,13 +483,26 @@ Status PagedAttentionOperation::InferShapeCheckImpl(const SVector<TensorDesc> &i
 Status PagedAttentionOperation::SetupCheckImpl(const SVector<Tensor> &inTensors,
                                                const SVector<Tensor> &outTensors) const
 {
+    Status st = NO_ERROR;
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+        SVector<TensorDesc> inTensorDescs = {};
+        OperationUtil::InTensorsToInTensorDescs(inTensors, inTensorDescs);
+        st = InTensorDescsCheck91095(inTensorDescs);
+        if (st != NO_ERROR) {
+            return st;
+        }
+        st = InTensorsCheck91095(inTensors);
+        if (st != NO_ERROR) {
+            return st;
+        }
+        return OutTensorsCheck91095(outTensors);
+    }
     if (inTensors.at(1).desc.shape.dimNum != 4) { // 4: 必须是四维
         ATB_LOG(ERROR) << "ErrorCode: " << ERROR_INVALID_TENSOR_DIM
                        << ". the keyCache dimNum is:" << inTensors.at(1).desc.shape.dimNum
                        << ". keyCache should be 4 dims";
         return ERROR_INVALID_TENSOR_DIM_NUM;
     }
-    Status st = NO_ERROR;
     if (param_.inputLayout == infer::InputLayout::TYPE_BSND) {
         st = SetupDimCheck(inTensors, outTensors);
     } else if (param_.inputLayout == infer::InputLayout::TYPE_BNSD && GetSingleton<Config>().Is910B()) {
@@ -972,6 +1042,9 @@ std::shared_ptr<Runner> PagedAttentionOperation::CreateRunner(Context &context) 
         ATB_LOG(DEBUG) << "context cast to contextBase failed!";
         return nullptr;
     }
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+        return std::make_shared<PagedAttentionAclnnRunner>(param_);
+    }
     int64_t runnerTypeIdx = RunnerTypeRegister::GetRunnerTypeIdx("PagedAttentionOpsRunner");
     RunnerPool &pool = contextBase->GetRunnerPool(runnerTypeIdx);
     if (!GetSingleton<Config>().Is910B()) {
@@ -985,5 +1058,116 @@ std::shared_ptr<Runner> PagedAttentionOperation::CreateRunner(Context &context) 
 nlohmann::json PagedAttentionOperation::GetParamJson() const
 {
     return OpParamToJson(param_);
+}
+
+Status PagedAttentionOperation::InTensorDescsCheck91095(const SVector<TensorDesc> &inTensorDescs) const
+{
+    size_t inTensorId = 0;
+    TensorDesc qTensorDesc = inTensorDescs.at(inTensorId++);
+    TensorDesc kCacheTensorDesc = inTensorDescs.at(inTensorId++);
+    TensorDesc vCacheTensorDesc = inTensorDescs.at(inTensorId++);
+    TensorDesc blockTablesTensorDesc = inTensorDescs.at(inTensorId++);
+    TensorDesc contextLensTensorDesc = inTensorDescs.at(inTensorId++);
+
+    if (!TensorCheck::IsTensorDescDimNumValid(qTensorDesc, 3)) {
+        ATB_LOG(ERROR) << "q dim num should be 3, but get " << qTensorDesc.shape.dimNum;
+        return ERROR_INVALID_TENSOR_DIM_NUM;
+    }
+    if (!TensorCheck::IsTensorDescDimNumValid(kCacheTensorDesc, 4)) {
+        ATB_LOG(ERROR) << "kCache dim num should be 4, but get " << kCacheTensorDesc.shape.dimNum;
+        return ERROR_INVALID_TENSOR_DIM_NUM;
+    }
+    if (!TensorCheck::IsTensorDescDimNumValid(vCacheTensorDesc, 4)) {
+        ATB_LOG(ERROR) << "vCache dim num should be 4, but get " << vCacheTensorDesc.shape.dimNum;
+        return ERROR_INVALID_TENSOR_DIM_NUM;
+    }
+    if (!TensorCheck::IsTensorDescDimNumValid(blockTablesTensorDesc, 2)) {
+        ATB_LOG(ERROR) << "blockTables dim num should be 2, but get " << blockTablesTensorDesc.shape.dimNum;
+        return ERROR_INVALID_TENSOR_DIM_NUM;
+    }
+    if (!TensorCheck::IsTensorDescDimNumValid(contextLensTensorDesc, 1)) {
+        ATB_LOG(ERROR) << "contextLens dim num should be 1, but get " << contextLensTensorDesc.shape.dimNum;
+        return ERROR_INVALID_TENSOR_DIM_NUM;
+    }
+    int64_t numTokens = qTensorDesc.shape.dims[0];
+    int64_t qHeadNum = qTensorDesc.shape.dims[1];
+    if (qHeadNum != param_.headNum) {
+        ATB_LOG(ERROR) << "q dim1 and param headNum should be equal";
+        return ERROR_INVALID_TENSOR_DIM;
+    }
+    int64_t kvHeadNum = kCacheTensorDesc.shape.dims[2];
+    if (kvHeadNum != param_.kvHeadNum) {
+        ATB_LOG(ERROR) << "k dim2 and param kvHeadNum should be equal";
+        return ERROR_INVALID_TENSOR_DIM;
+    }
+    int64_t headSizeK = kCacheTensorDesc.shape.dims[3];
+    int64_t headSizeV = vCacheTensorDesc.shape.dims[3];
+    if (headSizeK != headSizeV) {
+        ATB_LOG(ERROR) << "k dim3 and v dim3 should be equal";
+        return ERROR_INVALID_TENSOR_DIM;
+    }
+    int64_t qSeqLen = 1;
+    int64_t batch = numTokens / qSeqLen;
+    int64_t contextLensBatch = contextLensTensorDesc.shape.dims[0];
+    if (contextLensBatch != batch) {
+        ATB_LOG(ERROR) << "contextLens dim0 should be " << batch << ", but get " << contextLensBatch;
+    }
+    if (param_.quantType == infer::PagedAttentionParam::QuantType::TYPE_DEQUANT_FUSION) {
+        TensorDesc kDescaleTensorDesc = inTensorDescs.at(inTensorId++);
+        TensorDesc vDescaleTensorDesc = inTensorDescs.at(inTensorId++);
+        if (!TensorCheck::IsTensorDescDimNumValid(kDescaleTensorDesc, 1)) {
+            ATB_LOG(ERROR) << "kDescale dim num should be 1, but get " << kDescaleTensorDesc.shape.dimNum;
+            return ERROR_INVALID_TENSOR_DIM_NUM;
+        }
+        if (!TensorCheck::IsTensorDescDimNumValid(vDescaleTensorDesc, 1)) {
+            ATB_LOG(ERROR) << "vDescale dim num should be 1, but get " << vDescaleTensorDesc.shape.dimNum;
+            return ERROR_INVALID_TENSOR_DIM_NUM;
+        }
+    }
+    return NO_ERROR;
+}
+
+Status PagedAttentionOperation::InTensorsCheck91095(const SVector<Tensor> &inTensors) const
+{
+    size_t inTensorId = 0;
+    Tensor qTensor = inTensors.at(inTensorId++);
+    Tensor kCacheTensor = inTensors.at(inTensorId++);
+    Tensor vCacheTensor = inTensors.at(inTensorId++);
+    Tensor blockTablesTensor = inTensors.at(inTensorId++);
+    Tensor contextLensTensor = inTensors.at(inTensorId++);
+    int64_t numTokens = qTensor.desc.shape.dims[0];
+    int64_t qSeqLen = 1;
+    int64_t batch = numTokens / qSeqLen;
+    int64_t numBlocks = kCacheTensor.desc.shape.dims[0];
+    int64_t blockSize = kCacheTensor.desc.shape.dims[1];
+    std::vector<int32_t> contextLens;
+    contextLens.resize(batch);
+    int32_t *contextLensTensorHostData = (int32_t *)contextLensTensor.hostData;
+    for (size_t i = 0; i < contextLens.size(); ++i) {
+        contextLens.at(i) = contextLensTensorHostData[i];
+    }
+    int64_t blockNumValid = 0;
+    for (int64_t i = 0; i < batch; i++) {
+        int32_t actualSeqKVPerBatch = contextLens.at(i);
+        int64_t blockNumPerBatch = (actualSeqKVPerBatch + blockSize - 1) / blockSize;
+        blockNumValid += blockNumPerBatch;
+    }
+    if (numBlocks < blockNumValid) {
+        ATB_LOG(ERROR) << "keyCache dim1 should not be smaller than " << blockNumValid << ", but get " << numBlocks;
+        return ERROR_INVALID_TENSOR_DIM;
+    }
+
+    (void)vCacheTensor;
+    (void)blockTablesTensor;
+    return NO_ERROR;
+}
+
+Status PagedAttentionOperation::OutTensorsCheck91095(const SVector<Tensor> &outTensors) const
+{
+    if (!TensorCheck::IsTensorDescDimNumValid(outTensors.at(0).desc, 3)) {
+        ATB_LOG(ERROR) << "outTensor dim num should be 3, but get " << outTensors.at(0).desc.shape.dimNum;
+        return ERROR_INVALID_TENSOR_DIM_NUM;
+    }
+    return NO_ERROR;
 }
 } // namespace atb
