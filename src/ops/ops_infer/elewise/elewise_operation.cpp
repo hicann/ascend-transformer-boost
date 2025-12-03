@@ -7,7 +7,10 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
-#include "elewise_operation.h"
+
+#include <unordered_set>
+#include <mki/utils/platform/platform_info.h>
+#include "elewise_aclnn_runner.h"
 #include "elewise_ops_runner.h"
 #include "atb/utils/tensor_check.h"
 #include "atb/utils/config.h"
@@ -15,6 +18,7 @@
 #include "atb/operation/atb_operation_ir_cfg.h"
 #include "atb/utils/singleton.h"
 #include "atb/operation/op_param_funcs.h"
+#include "elewise_operation.h"
 
 namespace atb {
 const uint32_t TENSOR_NUM_ONE = 1;
@@ -41,9 +45,9 @@ template <> Status CreateOperation(const infer::ElewiseParam &opParam, Operation
         ATB_LOG(ERROR) << "Elewise dequant only support Atlas 800I A2 inference product";
         return ERROR_INVALID_PARAM;
     }
-    if ((!GetSingleton<Config>().Is910B()) &&
+    if ((!GetSingleton<Config>().Is910B() && Mki::PlatformInfo::Instance().GetPlatformType() != Mki::PlatformType::ASCEND_910_95) &&
         (opParam.elewiseType == infer::ElewiseParam::ElewiseType::ELEWISE_QUANT)) {
-        ATB_LOG(ERROR) << "Elewise quant only support Atlas 800I A2 inference product";
+        ATB_LOG(ERROR) << "Elewise quant is not supported on this product series.";
         return ERROR_INVALID_PARAM;
     }
     if (opParam.elewiseType == infer::ElewiseParam::ElewiseType::ELEWISE_DYNAMIC_QUANT &&
@@ -54,6 +58,11 @@ template <> Status CreateOperation(const infer::ElewiseParam &opParam, Operation
     if (opParam.elewiseType <= infer::ElewiseParam::ElewiseType::ELEWISE_UNDEFINED ||
         opParam.elewiseType >= infer::ElewiseParam::ElewiseType::ELEWISE_TYPE_MAX) {
         ATB_LOG(ERROR) << "Please enter the correct elewiseType";
+        return ERROR_INVALID_PARAM;
+    }
+    Status status = ElewiseAclnnRunner::LoadMethod();
+    if (status != NO_ERROR) {
+        ATB_LOG(ERROR) << "Load Aclnn functions failed!";
         return ERROR_INVALID_PARAM;
     }
     *operation = new (std::nothrow) ElewiseOperation(opParam);
@@ -386,6 +395,18 @@ bool ElewiseOperation::InferShapeCheckDynamicQuant310P(const SVector<TensorDesc>
 std::shared_ptr<Runner> ElewiseOperation::CreateRunner(Context &context) const
 {
     (void)context;
+    std::unordered_set<infer::ElewiseParam::ElewiseType> aclnnOpType = {
+        infer::ElewiseParam::ElewiseType::ELEWISE_CAST,       infer::ElewiseParam::ElewiseType::ELEWISE_MULS,
+        infer::ElewiseParam::ElewiseType::ELEWISE_COS,        infer::ElewiseParam::ElewiseType::ELEWISE_SIN,
+        infer::ElewiseParam::ElewiseType::ELEWISE_ADD,        infer::ElewiseParam::ElewiseType::ELEWISE_LESS,
+        infer::ElewiseParam::ElewiseType::ELEWISE_MUL,        infer::ElewiseParam::ElewiseType::ELEWISE_GREATER,
+        infer::ElewiseParam::ElewiseType::ELEWISE_REALDIV,    infer::ElewiseParam::ElewiseType::ELEWISE_LOGICAL_NOT,
+        infer::ElewiseParam::ElewiseType::ELEWISE_QUANT,
+    };
+    if (aclnnOpType.find(param_.elewiseType) != aclnnOpType.end() &&
+        Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+        return std::make_shared<ElewiseAclnnRunner>(param_);
+    }
     return std::make_shared<ElewiseOpsRunner>(param_);
 }
 
