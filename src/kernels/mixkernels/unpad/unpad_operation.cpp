@@ -46,7 +46,7 @@ public:
             launchParam.GetInTensor(1).desc.dims[0] == launchParam.GetInTensor(DIM_3).desc.dims[0],
             "seq len / cum_offsets_now is wrong", return false);
         MKI_CHECK(launchParam.GetInTensor(0).desc.dims[DIM_0] <= MAX_BATCH_NUM,
-            "batch should be less than 64", return false);
+            "batch should not be larger than 64", return false);
         return true;
     }
 
