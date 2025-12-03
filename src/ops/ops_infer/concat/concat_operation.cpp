@@ -8,7 +8,9 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 #include "concat_operation.h"
+#include <mki/utils/platform/platform_info.h>
 #include "concat_ops_runner.h"
+#include "concat_aclnn_runner.h"
 #include "atb/utils/log.h"
 #include "atb/utils/tensor_check.h"
 #include "atb/utils/param_to_json.h"
@@ -23,6 +25,12 @@ template <> Status CreateOperation(const infer::ConcatParam &opParam, Operation 
         return ERROR_INVALID_PARAM;
     }
     OP_PARAM_RSV_CHECK(opParam);
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+        Status status = ConcatAclnnRunner::LoadMethod();
+        if (status != NO_ERROR) {
+            return status;
+        }
+    }
     *operation = new (std::nothrow) ConcatOperation(opParam);
     if (*operation == nullptr) {
         ATB_LOG(ERROR) << "failed to new operation";
@@ -33,6 +41,11 @@ template <> Status CreateOperation(const infer::ConcatParam &opParam, Operation 
 
 ConcatOperation::ConcatOperation(const infer::ConcatParam &param) : OperationBase("ConcatOperation"), param_(param)
 {
+    ATB_LOG(INFO) << GetLogPrefix() << "ConcatParam concatDim: " << param.concatDim;
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+        operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("ConcatOperationAscend91095");
+        return;
+    }
     operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("ConcatOperation");
 }
 
@@ -119,6 +132,9 @@ std::shared_ptr<Runner> ConcatOperation::CreateRunner(Context &context) const
 {
     (void)context;
     ATB_LOG(INFO) << GetLogPrefix() << "create Concat AclnnRunner";
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+        return std::make_shared<ConcatAclnnRunner>(param_);
+    }
     return std::make_shared<ConcatOpsRunner>(param_);
 }
 
