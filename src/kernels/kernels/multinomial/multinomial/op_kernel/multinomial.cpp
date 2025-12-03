@@ -159,7 +159,7 @@ private:
     __aicore__ inline void CopyOut()
     {
         AscendC::LocalTensor<int32_t> output = outputBuf_.Get<int32_t>();
-        DataCopy(zGm_[0], output, 8); // 8 for 32 bytes / sizeof(int32_t)
+        DataCopy(zGm_[0], output, (numSamples_ + 7) / 8 * 8); // 8 for 32 bytes / sizeof(int32_t)
     }
 private:
     AscendC::TPipe pipe_;
