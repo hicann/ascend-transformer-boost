@@ -18,6 +18,7 @@ static const uint32_t IN_TENSOR_NUM = 4;
 static const uint32_t OUT_TENSOR_NUM = 3;
 static const uint32_t DIM_2 = 2;
 static const uint32_t DIM_3 = 3;
+static const int32_t MAX_BATCH_NUM = 64;
 
 namespace atb {
 template <> Status CreateOperation(const infer::UnpadParam &opParam, Operation **operation)
@@ -72,23 +73,27 @@ Status UnpadOperation::InferShapeImpl(const SVector<TensorDesc> &inTensorDescs,
 Status UnpadOperation::InferShapeCheckImpl(const SVector<TensorDesc> &inTensorDescs) const
 {
     if (inTensorDescs.at(1).shape.dims[1] != 1 || inTensorDescs.at(DIM_3).shape.dims[1] != 1) {
-        ATB_LOG(ERROR) << "intensor2 dim[1] and intensor4 dim[1] should be 1";
+        ATB_LOG(ERROR) << GetLogPrefix() << "intensor2 dim[1] and intensor4 dim[1] should be 1";
         return ERROR_INVALID_TENSOR_DIM;
     }
     if (inTensorDescs.at(DIM_2).shape.dims[0] != 1 || inTensorDescs.at(DIM_2).shape.dims[1] != 1) {
-        ATB_LOG(ERROR) << "intensor3 dim[0] and dim[1] should be 1";
+        ATB_LOG(ERROR) << GetLogPrefix() << "intensor3 dim[0] and dim[1] should be 1";
         return ERROR_INVALID_TENSOR_DIM;
     }
     if (!TensorCheck::IsTensorDescDimNumValid(inTensorDescs[0], DIM_2) ||
         !TensorCheck::IsTensorDescDimNumValid(inTensorDescs[1], DIM_2) ||
         !TensorCheck::IsTensorDescDimNumValid(inTensorDescs[DIM_2], DIM_2) ||
         !TensorCheck::IsTensorDescDimNumValid(inTensorDescs[DIM_3], DIM_2)) {
-        ATB_LOG(ERROR) << "inTensor dim num is not support, inTensor only support 2";
+        ATB_LOG(ERROR) << GetLogPrefix() << "input tensor dimension count must be 2";
         return ERROR_INVALID_TENSOR_DIM;
     }
     if (inTensorDescs.at(0).shape.dims[0] != inTensorDescs.at(DIM_3).shape.dims[0] ||
         inTensorDescs.at(1).shape.dims[0] != inTensorDescs.at(DIM_3).shape.dims[0]) {
-        ATB_LOG(ERROR) << "input_ids, cum_offsets_now, seq_len should have same batch shape ";
+        ATB_LOG(ERROR) << GetLogPrefix() << "input_ids, cum_offsets_now, seq_len should have same batch shape ";
+        return ERROR_INVALID_TENSOR_DIM;
+    }
+    if (inTensorDescs.at(DIM_3).shape.dims[0] > MAX_BATCH_NUM) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "batch should not be larger than " << MAX_BATCH_NUM;
         return ERROR_INVALID_TENSOR_DIM;
     }
     return NO_ERROR;
@@ -97,26 +102,30 @@ Status UnpadOperation::InferShapeCheckImpl(const SVector<TensorDesc> &inTensorDe
 Status UnpadOperation::SetupCheckImpl(const SVector<Tensor> &inTensors, const SVector<Tensor> &outTensors) const
 {
     if (inTensors.at(1).desc.shape.dims[1] != 1 || inTensors.at(DIM_3).desc.shape.dims[1] != 1) {
-        ATB_LOG(ERROR) << "intensor2 dim[1] and intensor4 dim[1] should be 1";
+        ATB_LOG(ERROR) << GetLogPrefix() << "intensor2 dim[1] and intensor4 dim[1] should be 1";
         return ERROR_INVALID_TENSOR_DIM;
     }
     if (inTensors.at(DIM_2).desc.shape.dims[0] != 1 || inTensors.at(DIM_2).desc.shape.dims[1] != 1) {
-        ATB_LOG(ERROR) << "intensor3 dim[0] and dim[1] should be 1";
+        ATB_LOG(ERROR) << GetLogPrefix() << "intensor3 dim[0] and dim[1] should be 1";
         return ERROR_INVALID_TENSOR_DIM;
     }
     if (!TensorCheck::IsTensorDescDimNumValid(inTensors[0].desc, DIM_2) ||
         !TensorCheck::IsTensorDescDimNumValid(inTensors[1].desc, DIM_2) ||
         !TensorCheck::IsTensorDescDimNumValid(inTensors[DIM_2].desc, DIM_2) ||
         !TensorCheck::IsTensorDescDimNumValid(inTensors[DIM_3].desc, DIM_2)) {
-        ATB_LOG(ERROR) << "inTensor dim num is not support, inTensor only support 2";
+        ATB_LOG(ERROR) << GetLogPrefix() << "input tensor dimension count must be 2";
         return ERROR_INVALID_TENSOR_DIM;
     }
     if (inTensors.at(0).desc.shape.dims[0] != inTensors.at(DIM_3).desc.shape.dims[0] ||
         inTensors.at(1).desc.shape.dims[0] != inTensors.at(DIM_3).desc.shape.dims[0]) {
-        ATB_LOG(ERROR) << "input_ids, cum_offsets_now, seq_len should have same batch shape ";
+        ATB_LOG(ERROR) << GetLogPrefix() << "input_ids, cum_offsets_now, seq_len should have same batch shape ";
         return ERROR_INVALID_TENSOR_DIM;
     }
-    ATB_LOG(DEBUG) << "outTensors size:" << outTensors.size();
+    if (inTensors.at(DIM_3).desc.shape.dims[0] > MAX_BATCH_NUM) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "batch should not be larger than " << MAX_BATCH_NUM;
+        return ERROR_INVALID_TENSOR_DIM;
+    }
+    ATB_LOG(DEBUG) << GetLogPrefix() << "outTensors size:" << outTensors.size();
     return NO_ERROR;
 }
 
