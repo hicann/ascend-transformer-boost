@@ -28,7 +28,8 @@ from multiprocessing.connection import Client
 
 dtype_enum_dict = {-1: "undefined", 0: "float", 1: "float16", 2: "int8", 3: "int32", 4: "uint8",
                     6: "int16", 7: "uint16", 8: "uint32", 9: "int64", 10: "uint64",
-                    11: "double", 12: "bool", 13: "string", 16: "complex64", 17: "complex128", 27: "bf16"}
+                    11: "double", 12: "bool", 13: "string", 16: "complex64", 17: "complex128", 27: "bf16",
+                    34: "hifloat8", 35: "float8_e5m2", 36: "float8_e4m3fn"}
 
 format_enum_dict = {-1: "undefined", 0: "nchw", 1: "nhwc", 2: "nd", 3: "nc1hwc0",
                 4: "fractal_z", 12: "nc1hwc0_c04", 16: "hwcn", 27: "ndhwc",
@@ -177,6 +178,8 @@ class CsvOpsTest():
                 os.makedirs(self.data_save_path)
 
     def __dump_tensor(self, tensor, tensor_data_type, index, info):
+        if tensor.dtype == torch.float8_e5m2 or tensor.dtype == torch.float8_e4m3fn or tensor.dtype == torch.bits8:
+            tensor = tensor.view(torch.int8)
         if self.args.save_tensor:
             dump_path = self.data_save_path + self.case_name.loc[self.index] + '_' + \
                 str(self.case_num.loc[self.index]) + '_deviceid_' + str(torch.npu.current_device()) + '_' + tensor_data_type + '_index_' + str(index)

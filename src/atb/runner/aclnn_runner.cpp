@@ -21,7 +21,29 @@ AclnnRunner::AclnnRunner(const std::string &name) : Runner(name)
     runnerTypeIdx_ = RunnerTypeRegister::GetRunnerTypeIdx(name);
 }
 
-AclnnRunner::~AclnnRunner() {}
+AclnnRunner::~AclnnRunner()
+{
+    for (size_t i = 0; i < aclnnVariantPack_.aclInTensorList.size(); i++) {
+        if (aclnnVariantPack_.aclInTensorList.at(i)) {
+            if (aclDestroyTensorList(aclnnVariantPack_.aclInTensorList.at(i)) != ACL_SUCCESS) {
+                ATB_LOG(ERROR) << "aclInTensorList[" << i << "] aclDestroyTensorList failed";
+            }
+            aclnnVariantPack_.aclInTensorList.at(i) = nullptr;
+        }
+    }
+    for (size_t i = 0; i < aclnnVariantPack_.aclOutTensorList.size(); i++) {
+        if (aclnnVariantPack_.aclOutTensorList.at(i)) {
+            if (aclDestroyTensorList(aclnnVariantPack_.aclOutTensorList.at(i)) != ACL_SUCCESS) {
+                ATB_LOG(ERROR) << "aclOutTensorList[" << i << "] aclDestroyTensorList failed";
+            }
+            aclnnVariantPack_.aclOutTensorList.at(i) = nullptr;
+        }
+    }
+    aclnnVariantPack_.aclInTensorList.clear();
+    aclnnVariantPack_.aclOutTensorList.clear();
+    aclnnVariantPack_.aclInTensors.clear();
+    aclnnVariantPack_.aclOutTensors.clear();
+}
 
 Status AclnnRunner::SetupImpl(RunnerVariantPack &runnerVariantPack)
 {
