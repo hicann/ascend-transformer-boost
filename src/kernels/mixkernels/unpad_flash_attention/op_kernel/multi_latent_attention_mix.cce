@@ -2141,6 +2141,7 @@ public:
                                                 8 // src1RepeatStride
                                             );
                                             PIPE_BARRIER(V);
+                                            SetVectorMask<int8_t>((uint64_t)-1, (uint64_t)-1);
                                         }
                                         if (qk_n % FLOAT_VECTOR_SIZE > 0) {
                                             __set_mask(qk_n % FLOAT_VECTOR_SIZE);
