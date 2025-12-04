@@ -8,12 +8,14 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 #include "transpose_operation.h"
-#include "transpose_ops_runner.h"
+#include <mki/utils/platform/platform_info.h>
 #include "atb/utils/tensor_check.h"
 #include "atb/utils/singleton.h"
 #include "atb/utils/param_to_json.h"
 #include "atb/operation/atb_operation_ir_cfg.h"
 #include "atb/operation/op_param_funcs.h"
+#include "transpose_aclnn_runner.h"
+#include "transpose_ops_runner.h"
 
 static const uint32_t IN_TENSOR_NUM = 1;
 static const uint32_t OUT_TENSOR_NUM = 1;
@@ -25,6 +27,12 @@ template <> Status CreateOperation(const infer::TransposeParam &opParam, Operati
         return ERROR_INVALID_PARAM;
     }
     OP_PARAM_RSV_CHECK(opParam);
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+        if (TransposeAclnnRunner::LoadAclnnFuncs() != NO_ERROR) {
+            ATB_LOG(ERROR) << "Load aclnn functions failed, please check your CANN version.";
+            return ERROR_CANN_ERROR;
+        }
+    }
     *operation = new (std::nothrow) TransposeOperation(opParam);
     if (*operation == nullptr) {
         ATB_LOG(ERROR) << "failed to new operation";
@@ -113,6 +121,9 @@ Status TransposeOperation::CheckPerm() const
 std::shared_ptr<Runner> TransposeOperation::CreateRunner(Context &context) const
 {
     (void)context;
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+        return std::make_shared<TransposeAclnnRunner>(param_);
+    }
     return std::make_shared<TransposeOpsRunner>(param_);
 }
 
