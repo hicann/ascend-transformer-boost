@@ -215,6 +215,7 @@ class TestDecodeUpdate(op_test.OpTest):
         output0 = torch.zeros(b*s*hc*hDim, dtype=torch.float32).reshape(shape4)
     
         OP_PARAM = {"faUpdateType": faUpdateType, "hDim": hDim, "sp": sp}
+        print(OP_PARAM)
         self.set_param(OP_NAME, OP_PARAM)
         self.execute([input0, input2],
                      [output0])
@@ -285,14 +286,106 @@ class TestDecodeUpdate(op_test.OpTest):
         self.execute([input0, input2],
                      [output0])
     
-    def test_fp32_case1_sp4(self):
+    def test_fp32_case6_sp4(self):
         hDim = 16
-        logging.info("TEST case1 sp = 4 starting")
+        logging.info("TEST case6 sp = 4 starting")
         self.set_support_910b_only()
         b = 2
         s = 150
         sp = 2
         hc = int(64 / sp)
+    
+        shape0 = (sp, b*s*hc) # sp, b*s*hc   320
+        shape2 = (sp, b*s*hc, hDim) # sp, b*s*hc,hdim
+        shape4 = (b*s*hc, hDim)
+    
+        #input0: lse   input2: in
+        input0 = torch.rand(shape0, dtype=torch.float32)
+        input2 = torch.rand(shape2, dtype=torch.float32)
+        output0 = torch.zeros(b*s*hc*hDim, dtype=torch.float32).reshape(shape4)
+    
+        OP_PARAM = {"faUpdateType": faUpdateType, "hDim": hDim, "sp": sp}
+        self.set_param(OP_NAME, OP_PARAM)
+        self.execute([input0, input2],
+                     [output0])
+
+    def test_fp32_case7_sp14_hDim304(self):
+        hDim = 304
+        logging.info("TEST case7 sp = 14 hDim = 304 starting")
+        self.set_support_910b_only()
+        b = 1
+        s = 1
+        sp = 14
+        hc = 1
+    
+        shape0 = (sp, b*s*hc) # sp, b*s*hc   320
+        shape2 = (sp, b*s*hc, hDim) # sp, b*s*hc,hdim
+        shape4 = (b*s*hc, hDim)
+    
+        #input0: lse   input2: in
+        input0 = torch.rand(shape0, dtype=torch.float32)
+        input2 = torch.rand(shape2, dtype=torch.float32)
+        output0 = torch.zeros(b*s*hc*hDim, dtype=torch.float32).reshape(shape4)
+    
+        OP_PARAM = {"faUpdateType": faUpdateType, "hDim": hDim, "sp": sp}
+        self.set_param(OP_NAME, OP_PARAM)
+        self.execute([input0, input2],
+                     [output0])
+
+    def test_fp32_case8_sp8_hDim424(self):
+        hDim = 424
+        logging.info("TEST case8 sp = 8 hDim = 424 starting")
+        self.set_support_910b_only()
+        b = 1
+        s = 1
+        sp = 8
+        hc = 1
+    
+        shape0 = (sp, b*s*hc) # sp, b*s*hc   320
+        shape2 = (sp, b*s*hc, hDim) # sp, b*s*hc,hdim
+        shape4 = (b*s*hc, hDim)
+    
+        #input0: lse   input2: in
+        input0 = torch.rand(shape0, dtype=torch.float32)
+        input2 = torch.rand(shape2, dtype=torch.float32)
+        output0 = torch.zeros(b*s*hc*hDim, dtype=torch.float32).reshape(shape4)
+    
+        OP_PARAM = {"faUpdateType": faUpdateType, "hDim": hDim, "sp": sp}
+        self.set_param(OP_NAME, OP_PARAM)
+        self.execute([input0, input2],
+                     [output0])
+
+    def test_fp32_case9_sp12_hDim352(self):
+        hDim = 352
+        logging.info("TEST case9 sp = 12 hDim = 352 starting")
+        self.set_support_910b_only()
+        b = 1
+        s = 21
+        sp = 12
+        hc = 1
+    
+        shape0 = (sp, b*s*hc) # sp, b*s*hc   320
+        shape2 = (sp, b*s*hc, hDim) # sp, b*s*hc,hdim
+        shape4 = (b*s*hc, hDim)
+    
+        #input0: lse   input2: in
+        input0 = torch.rand(shape0, dtype=torch.float32)
+        input2 = torch.rand(shape2, dtype=torch.float32)
+        output0 = torch.zeros(b*s*hc*hDim, dtype=torch.float32).reshape(shape4)
+    
+        OP_PARAM = {"faUpdateType": faUpdateType, "hDim": hDim, "sp": sp}
+        self.set_param(OP_NAME, OP_PARAM)
+        self.execute([input0, input2],
+                     [output0])
+
+    def test_fp32_case10_bigsp_hDim256(self):
+        hDim = 256
+        logging.info("TEST case10 big sp and hDim256 starting")
+        self.set_support_910b_only()
+        b = 1
+        s = 17
+        sp = 16
+        hc = 1
     
         shape0 = (sp, b*s*hc) # sp, b*s*hc   320
         shape2 = (sp, b*s*hc, hDim) # sp, b*s*hc,hdim
