@@ -8,7 +8,9 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 #include "fill_operation.h"
+#include <mki/utils/platform/platform_info.h>
 #include "fill_ops_runner.h"
+#include "fill_aclnn_runner.h"
 #include "atb/utils/tensor_check.h"
 #include "atb/utils/param_to_json.h"
 #include "atb/operation/atb_operation_ir_cfg.h"
@@ -27,6 +29,11 @@ bool ParamCheck(const atb::infer::FillParam &opParam)
     }
     if (!opParam.withMask && !atb::TensorCheck::IsDimNumValid(opParam.outDim.size())) {
         ATB_LOG(ERROR) << "fillParam withMask is false, outDim.size() should >0 && <= MAX_DIM(8)";
+        return false;
+    }
+    atb::Status status = atb::FillAclnnRunner::LoadMethod();
+    if (!opParam.withMask && status != atb::ErrorType::NO_ERROR) {
+        ATB_LOG(ERROR) << "Load aclnn function failed, fill without mask is not supported!";
         return false;
     }
     return true;
@@ -137,6 +144,9 @@ Status FillOperation::CheckIsTensorBroadcastable(const TensorDesc &input, const 
 std::shared_ptr<Runner> FillOperation::CreateRunner(Context &context) const
 {
     (void)context;
+    if (!param_.withMask && Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+        return std::make_shared<FillAclnnRunner>(param_);
+    }
     return std::make_shared<FillOpsRunner>(param_);
 }
 
