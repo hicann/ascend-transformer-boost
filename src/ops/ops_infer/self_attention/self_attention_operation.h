@@ -43,6 +43,7 @@ private:
     Status InferShapeDimCheck(const SVector<TensorDesc> &inTensorDescs) const;
     Status InferShapePADimNumCheck(const SVector<TensorDesc> &inTensorDescs) const;
     Status InferShapePADimCheck(const SVector<TensorDesc> &inTensorDescs) const;
+    bool InferShapeInTensorDimCheckImpl(const SVector<TensorDesc> &inTensorDesc) const;
     Status InferShapePADimCheckBNSD(const SVector<TensorDesc> &inTensorDescs) const;
     Status InferShapePADimNumCheckBNSD(const SVector<TensorDesc> &inTensorDescs) const;
     Status InferShapeHiddenSizeCheck(const SVector<TensorDesc> &inTensorDescs) const;
@@ -57,6 +58,8 @@ private:
     Status InferShapePrefixDimNumCheck910B(const SVector<TensorDesc> &inTensorDescs) const;
     Status InferShapePrefixDimCheck910B(const SVector<TensorDesc> &inTensorDescs) const;
 
+    bool SetupTensorDimCheckImpl95(const SVector<Tensor> &inTensors, const SVector<Tensor> &outTensors) const;
+    int32_t CalSeqLenSum(const SVector<Tensor> &inTensors, const size_t seqLenTensorId) const;
     Status SetupOutTensorCheck(const SVector<TensorDesc> &inTensorDescs, const SVector<Tensor> &outTensors) const;
 
     Status InferShapeBypassDimCheckBNSD910B(const SVector<TensorDesc> &inTensorDescs) const;
