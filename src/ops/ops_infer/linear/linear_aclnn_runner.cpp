@@ -35,7 +35,6 @@ LinearAclnnRunner::LinearAclnnRunner(const infer::LinearParam &param) : AclnnRun
     ATB_LOG(INFO) << GetLogPrefix() << "LinearAclnnRunner::LinearAclnnRunner";
 
     GetTensorNum();
-    InitTensorIndex();
 }
 
 LinearAclnnRunner::~LinearAclnnRunner()
@@ -84,6 +83,7 @@ Status LinearAclnnRunner::BuildAclnnVariantPack(const RunnerVariantPack &runnerV
     ATB_LOG(INFO) << GetLogPrefix() << "LinearAclnnRunner::BuildAclnnVariantPack, runnerVariantPack: "
                   << runnerVariantPack.ToString();
     atbVariantPack_ = runnerVariantPack;
+    InitTensorIndex();
     aclnnVariantPack_.aclInTensors.reserve(aclInTensorNum_);
     aclnnVariantPack_.aclInTensors.resize(aclInTensorNum_);
     aclnnVariantPack_.aclOutTensors.reserve(aclOutTensorNum_);

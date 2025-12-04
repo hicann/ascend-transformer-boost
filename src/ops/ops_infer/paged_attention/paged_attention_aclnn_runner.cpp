@@ -36,7 +36,6 @@ PagedAttentionAclnnRunner::PagedAttentionAclnnRunner(const infer::PagedAttention
     ATB_LOG(INFO) << GetLogPrefix() << "PagedAttentionAclnnRunner::PagedAttentionAclnnRunner";
 
     GetTensorNum();
-    InitTensorIndex();
     InitAclnnParam();
 }
 
@@ -58,6 +57,7 @@ Status PagedAttentionAclnnRunner::BuildAclnnVariantPack(const RunnerVariantPack 
     ATB_LOG(INFO) << GetLogPrefix() << "PagedAttentionAclnnRunner::BuildAclnnVariantPack, runnerVariantPack: "
                   << runnerVariantPack.ToString();
     atbVariantPack_ = runnerVariantPack;
+    InitTensorIndex();
     aclnnVariantPack_.aclInTensors.reserve(aclInTensorNum_);
     aclnnVariantPack_.aclInTensors.resize(aclInTensorNum_);
     aclnnVariantPack_.aclInTensorList.reserve(aclInTensorListNum_);
