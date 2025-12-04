@@ -97,10 +97,10 @@ aclnnStatus LayerNormAclnnRunner::SetAclNNWorkspaceExecutor()
     Dims &xDims = xAclnnTensorPtr->atbTensor.desc.shape;
     int32_t beginNormAxis = param_.normParam.beginNormAxis;
     if (beginNormAxis < 0) {
-        beginNormAxis += xDims.dimNum;
+        beginNormAxis += static_cast<int32_t>(xDims.dimNum);
     }
 
-    int64_t totalNormAxes = xDims.dimNum - beginNormAxis;
+    int64_t totalNormAxes = static_cast<int64_t>(xDims.dimNum) - beginNormAxis;
     int64_t shapeHostData[totalNormAxes];
     for (int i = 0; i < totalNormAxes; ++i) {
         shapeHostData[i] = xDims.dims[beginNormAxis + i];
