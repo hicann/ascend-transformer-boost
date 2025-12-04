@@ -45,10 +45,11 @@ public:
         //  用94K的UB大小推算出 tileLength 最大能设置到多少
         uint32_t maxTileLength = (MAX_UB_SIZE - NUM8 * sizeof(uint32_t)) /
                                  (sizeof(float) * spAligned * BUFFER_NUM * (2 * (1 + hDim) + hDim / spAligned) +
-                                  hDim * spAligned * sizeof(float));
+                                  hDim * spAligned * sizeof(float) * 2);
         if (sp >= NUM8) {
             maxTileLength = maxTileLength / SPLIT_TO_2;
         }
+        maxTileLength = maxTileLength < 1 ? 1 : maxTileLength;
         this->tileLength = min(maxTileLength, blockLength);
         this->curLength = this->tileLength;
         this->lastLength = blockLength % tileLength;
@@ -147,9 +148,21 @@ private:
         PipeBarrier<PIPE_V>();
         // [sp,curLengthPad,headDim] [sp,cur,headDim]
         if (hDim > NUM256 && sp >= NUM8) {
+            int64_t tmpTailLength = hDim % NUM64;
+            int64_t tmpTailStart = hDim - tmpTailLength;
             for (int32_t i = 0; i < sp; i++) {
-                Mul(inLocal[i * curLength * hDim], inLocal[i * curLength * hDim], lesexpLocal[i * curLengthPad * NUM64],
-                    64, curLength * hDim / 64, {1, 1, 1, 8, 8, 0});
+                for (int32_t k = 0; k < curLength; k++) {
+                    Mul(inLocal[i * curLength * hDim + k * hDim], 
+                                inLocal[i * curLength * hDim + k * hDim], 
+                                lesexpLocal[i * curLengthPad * NUM64 + k * NUM64],
+                                NUM64, hDim / NUM64, {1, 1, 1, 8, 8, 0});
+                    if (tmpTailLength > 0) {
+                        Mul(inLocal[i * curLength * hDim + k * hDim + tmpTailStart],
+                                inLocal[i * curLength * hDim + k * hDim + tmpTailStart], 
+                                lesexpLocal[i * curLengthPad * NUM64 + k * NUM64],
+                                tmpTailLength, 1, {1, 1, 1, 8, 8, 0});
+                    }
+                }
             }
         } else {
             for (int32_t i = 0; i < sp; i++) {
