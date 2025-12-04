@@ -64,48 +64,6 @@ public:
                            this->padBefore_);
         }
     }
-    __aicore__ inline void CosFormatJudge(__gm__ uint8_t *extra,
-                                          __gm__ uint8_t *sync)
-    {
-        AscendC::GlobalTensor<uint8_t> extraGm;
-        extraGm.SetGlobalBuffer((__gm__ uint8_t *)extra);
-        AscendC::LocalTensor<QK_DTYPE> commonUbuf_ = outQueueCO2_.Get<QK_DTYPE>();
-        AscendC::GlobalTensor<COS_DTYPE> extraGmCosDtype;
-        extraGmCosDtype.SetGlobalBuffer((__gm__ COS_DTYPE *)extra);
-#if defined __CCE_AICORE__ == 100
-        AscendC::PipeBarrier<PIPE_ALL>();
-        this->ExpandCosSin(commonUbuf_, this->cosGm_, extraGmCosDtype);
-        this->cosGm_ = extraGmCosDtype;
-        AscendC::PipeBarrier<PIPE_ALL>();
-        this->ExpandCosSin(commonUbuf_, this->sinGm_,
-            extraGmCosDtype[this->tilingData_->ntokens * this->tilingData_->headDim]);
-        this->sinGm_ = extraGmCosDtype[this->tilingData_->ntokens * this->tilingData_->headDim];
-        extraGm = extraGm[this->tilingData_->ntokens * this->tilingData_->headDim *
-                            4]; // sizeof(uint8_t) * 2 = sizeof(half)
-        AscendC::PipeBarrier<PIPE_ALL>();
-       
-#else
-       AscendC::GlobalTensor<int32_t> syncGm;
-        syncGm.SetGlobalBuffer((__gm__ int32_t *)sync);
-        if (block_idx == 0) {
-            AscendC::PipeBarrier<PIPE_ALL>();
-            this->ExpandCosSin(commonUbuf_, this->cosGm_, extraGmCosDtype);
-            this->cosGm_ = extraGmCosDtype;
-            AscendC::PipeBarrier<PIPE_ALL>();
-            this->ExpandCosSin(commonUbuf_, this->sinGm_,
-                extraGmCosDtype[this->tilingData_->ntokens * this->tilingData_->headDim]);
-            this->sinGm_ = extraGmCosDtype[this->tilingData_->ntokens * this->tilingData_->headDim];
-            AscendC::PipeBarrier<PIPE_ALL>();
-        }
-        this->cosGm_ = extraGmCosDtype;
-        this->sinGm_ = extraGmCosDtype[this->tilingData_->ntokens * this->tilingData_->headDim];
-        extraGm = extraGm[this->tilingData_->ntokens * this->tilingData_->headDim *
-                            4]; // sizeof(uint8_t) * 2 = sizeof(half)
-        AscendC::LocalTensor<int32_t> syncBuf = outQueueCO2_.Get<int32_t>();
-        AscendC::SyncAll(syncGm, syncBuf);
-        
-#endif
-    }
 
     __aicore__ inline void Process(__gm__ uint8_t *extra, __gm__ uint8_t *sync)
     {
@@ -114,7 +72,7 @@ public:
 
         AscendC::LocalTensor<QK_DTYPE> commonUbuf_ = outQueueCO2_.Get<QK_DTYPE>();
         if (this->tilingData_->cosFormat == 1) {
-            CosFormatJudge(extra, sync);
+            this->template CosFormatJudge<COS_DTYPE>(extra, sync, outQueueCO2_);
         }
 
         uint32_t headNumTempQ = this->tilingData_->hiddenSizeQ > sliceSizeTmp_ ?
