@@ -8,7 +8,7 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 #include "split_operation.h"
-#include "split_ops_runner.h"
+#include <mki/utils/platform/platform_info.h>
 #include "atb/utils/log.h"
 #include "atb/utils/tensor_check.h"
 #include "atb/utils/param_to_json.h"
@@ -16,6 +16,8 @@
 #include "atb/operation/atb_operation_ir_cfg.h"
 #include "atb/utils/config.h"
 #include "atb/operation/op_param_funcs.h"
+#include "split_aclnn_runner.h"
+#include "split_ops_runner.h"
 
 namespace atb {
 static const uint32_t OUT_TENSOR_NUM_BISECT = 2;
@@ -28,6 +30,12 @@ template <> Status CreateOperation(const infer::SplitParam &opParam, Operation *
         return ERROR_INVALID_OPERATION_ADDR;
     }
     OP_PARAM_RSV_CHECK(opParam);
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+        if (SplitAclnnRunner::LoadAclnnFuncs() != NO_ERROR) {
+            ATB_LOG(ERROR) << "Load aclnn functions failed, please check your CANN version.";
+            return ERROR_CANN_ERROR;
+        }
+    }
     if (opParam.splitNum > 3 || opParam.splitNum <= 1) { // splitNum:2 or 3
         ATB_LOG(ERROR) << "SplitOperation splitNum should be 2 or 3, now splitNum is " << opParam.splitNum;
         return ERROR_INVALID_PARAM;
@@ -139,6 +147,9 @@ Status SplitOperation::ParamCheck(const TensorDesc &xTensorDesc, int32_t &dim) c
 std::shared_ptr<Runner> SplitOperation::CreateRunner(Context &context) const
 {
     (void)context;
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+        return std::make_shared<SplitAclnnRunner>(param_);
+    }
     return std::make_shared<SplitOpsRunner>(param_);
 }
 
