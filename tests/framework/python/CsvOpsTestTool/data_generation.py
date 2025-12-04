@@ -7648,6 +7648,12 @@ class NormRopeReshapeOperation(DataGen):
         return OpTypes.COMPUTE_FLOAT
 
 class FusedAddTopkDivOperation(DataGen):
+
+    @staticmethod
+    def customize(shapes, i, datatype, format, data_gen_ranges, op_params):
+        torch.manual_seed(42)
+        return DataGen.random(shapes[i], datatype, format, data_gen_ranges, op_params)
+
     @staticmethod
     def golden(in_tensors, op_params):
         json_data = json.loads(op_params)
