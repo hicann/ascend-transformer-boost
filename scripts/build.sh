@@ -757,7 +757,13 @@ function fn_main()
             ;;
         "--msdebug")
             USE_MSDEBUG=ON
-            CHIP_TYPE=$(npu-smi info -m | grep -oE 'Ascend\s*\S+' | head -n 1 | tr -d ' ' | tr '[:upper:]' '[:lower:]')
+            # In msdebug mode, ATB uses the same kernel configuration for 910c and 910b.
+            # Map 910c to 910b to keep the CMake SOC-matching logic consistent.
+            if npu-smi info -t board -i 0 -c 0 | grep -qE 'NPU Name\s*:\s*(9392|9382)'; then
+                CHIP_TYPE='ascend910b'
+            else
+                CHIP_TYPE=$(npu-smi info -m | grep -oE 'Ascend\s*\S+' | head -n 1 | tr -d ' ' | tr '[:upper:]' '[:lower:]')
+            fi
             COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_MSDEBUG=ON -DCHIP_TYPE=${CHIP_TYPE}"
             ;;
         "--ascendc_dump")
