@@ -406,7 +406,7 @@ int64_t Lcoc::GetWorkspaceSize()
     int32_t kAlign = AlignUp(mmInfo.k, nElemAlign);
     int32_t maxOutputSize = moeInfo.maxOutputSize;
 
-    bool hasAAlign = hasQuant || (!IsMatrixAligned(mmInfo.m, mmInfo.k, mmInfo.transA, nElemAlign) && mmInfo.m != 1);
+    bool hasAAlign = hasQuant || (!IsMatrixAligned(mmInfo.m, mmInfo.k, mmInfo.transA, nElemAlign));
 
     bool hasBAlign = (!mmInfo.weightNz) && ((hasDequant && !mmInfo.isInt8)
                      || (!IsMatrixAligned(mmInfo.k, mmInfo.n, mmInfo.transB, nElemAlign)));
