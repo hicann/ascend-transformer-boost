@@ -18,6 +18,7 @@
 #include "atb/utils/operation_util.h"
 #include "atb/utils/singleton.h"
 #include "atb/operation/op_param_funcs.h"
+#include "swiglu_forward_aclnn_runner.h"
 
 namespace {
 static const uint32_t IN_TENSOR_NUM = 1;
@@ -49,17 +50,25 @@ template <> Status CreateOperation(const infer::ActivationParam &opParam, Operat
         return ERROR_INVALID_PARAM;
     }
     if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
-        if (opParam.activationType != atb::infer::ActivationType::ACTIVATION_SWISH &&
-            opParam.activationType != atb::infer::ActivationType::ACTIVATION_SIGMOID) {
+        if (opParam.activationType == atb::infer::ActivationType::ACTIVATION_SWISH &&
+            opParam.activationType == atb::infer::ActivationType::ACTIVATION_SIGMOID) {
+            Status status = ActivationAclnnRunner::LoadAclnnFunctions();
+            if (status != NO_ERROR) {
+                ATB_LOG(ERROR) << "load aclnn funcs failed.";
+                return ERROR_CANN_ERROR;
+            }
+        } else if (opParam.activationType == atb::infer::ActivationType::ACTIVATION_SWIGLU_FORWARD){
+            Status status = SwigluForwardAclnnRunner::LoadMethod();
+            if (status != NO_ERROR) {
+                ATB_LOG(WARN) << "Load Aclnn functions failed!";
+                return ERROR_CANN_ERROR;
+            }
+        } else {
             ATB_LOG(ERROR) << "activationType: " << opParam.activationType << " is not yet supported.";
             return ERROR_INVALID_PARAM;
         }
-        Status status = ActivationAclnnRunner::LoadAclnnFunctions();
-        if (status != NO_ERROR) {
-            ATB_LOG(ERROR) << "load aclnn funcs failed.";
-            return ERROR_CANN_ERROR;
-        }
     }
+
     *operation = new (std::nothrow) ActivationOperation(opParam);
     if (*operation == nullptr) {
         ATB_LOG(ERROR) << "failed to new operation";
@@ -266,7 +275,13 @@ std::shared_ptr<Runner> ActivationOperation::CreateRunner(Context &context) cons
 {
     (void)context;
     if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
-        return std::make_shared<ActivationAclnnRunner>(param_);
+        if (param_.activationType == atb::infer::ActivationType::ACTIVATION_SWIGLU_FORWARD) {
+            ATB_LOG(INFO) << GetLogPrefix() << "create SwigluForward AclnnRunner";
+            return std::make_shared<SwigluForwardAclnnRunner>(param_);
+        } else {
+            ATB_LOG(INFO) << GetLogPrefix() << "create Activation AclnnRunner";
+            return std::make_shared<ActivationAclnnRunner>(param_);
+        }
     }
     return std::make_shared<ActivationOpsRunner>(param_);
 }

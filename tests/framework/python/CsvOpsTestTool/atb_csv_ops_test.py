@@ -986,6 +986,9 @@ def get_device_properties():
     elif re.search("Ascend910_93", device_name, re.I):
         torch.npu.config.allow_internal_format = True
         soc_version = "Ascend910B"
+    elif re.search("Ascend910_95", device_name, re.I):
+        torch.npu.config.allow_internal_format = True
+        soc_version = "Ascend910_95"
     elif re.search("Ascend310P", device_name, re.I):
         soc_version = "Ascend310P"
     elif (re.search("Ascend910ProB", device_name, re.I) or re.search("Ascend910B", device_name, re.I) or
