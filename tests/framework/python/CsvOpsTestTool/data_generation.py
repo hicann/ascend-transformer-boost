@@ -3344,7 +3344,109 @@ class RopeOperation(DataGen):
         return torch.cat((-x1, x0), dim=x0.ndim - 1)
 
     @staticmethod
+    def RopeA5_gloden(in_tensors, op_params):
+        json_data = json.loads(op_params)
+        if in_tensors[0].dtype == torch.bfloat16:
+            in_tensors[0] = in_tensors[0].to(torch.float32)
+            in_tensors[1] = in_tensors[1].to(torch.float32)
+            in_tensors[2] = in_tensors[2].to(torch.float32)
+            in_tensors[3] = in_tensors[3].to(torch.float32)
+            dtype = np.float32
+        else:
+            dtype = np.float16
+        q = np.array(in_tensors[0].cpu()).astype(dtype)
+        kk = np.array(in_tensors[1].cpu()).astype(dtype)
+        cos = np.array(in_tensors[2].cpu()).astype(dtype)
+        sin = np.array(in_tensors[3].cpu()).astype(dtype)
+        seqlen = np.array(in_tensors[4].cpu()).astype(np.int32)
+        batch = seqlen.shape[0]
+        rotaryCoeff = json_data['rotaryCoeff']
+        headDim = cos.shape[-1]
+        hiddensizeQ = 0
+        hiddensizeK = 0
+        headNumQ = 0
+        headNumK = 0
+        realHeadNumQ = 0
+        realHeadNumK = 0
+        realHeadDim = 0
+        realBatch = batch
+        realSeqLen = seqlen[0]
+        isFour = False
+        if len(q.shape) == 4:
+            isFour = True
+            hiddensizeQ = q.shape[-1] * q.shape[-2]
+            hiddensizeK = kk.shape[-1] * kk.shape[-2]
+            realHeadNumQ = q.shape[-2]
+            realHeadNumK = kk.shape[-2]
+            realHeadDim = q.shape[-1]
+            realBatch = q.shape[0]
+            realSeqLen = q.shape[1]
+        else:
+            hiddensizeQ = q.shape[-1]
+            hiddensizeK = kk.shape[-1]
+            realHeadNumQ = hiddensizeQ // headDim
+            realHeadNumK = hiddensizeK // headDim
+            realHeadDim = cos.shape[-1]
+        headNumQ = hiddensizeQ // headDim
+        headNumK = hiddensizeK // headDim
+        hiddensize = max(hiddensizeQ, hiddensizeK)
+        headNum = max(headNumQ, headNumK)
+        ntokens = np.sum(seqlen)
+        if len(q.shape) != len(cos.shape):
+            q = q.reshape((ntokens, hiddensizeQ))
+            kk = kk.reshape((ntokens, hiddensizeK))
+        rope_q = np.zeros(shape=(ntokens, hiddensizeQ)).astype(dtype)
+        rope_k = np.zeros(shape=(ntokens, hiddensizeK)).astype(dtype)
+        prefix_Ntokens = 0
+        cosTable = np.zeros(shape=(ntokens, hiddensize)).astype(dtype)
+        for i in range(ntokens):
+            for j in range(headNum):
+                cosTable[i][j*headDim:(j+1)*headDim] = cos[i][:]
+        for i in range(batch):
+            curr_seqLen = seqlen[i]
+            q1 = np.zeros(shape=(curr_seqLen, hiddensizeQ)).astype(dtype)
+            k1 = np.zeros(shape=(curr_seqLen, hiddensizeK)).astype(dtype)
+
+            for i in range(prefix_Ntokens, prefix_Ntokens + curr_seqLen):
+                q1[i-prefix_Ntokens] = q[i] * cosTable[i][:hiddensizeQ]
+                k1[i-prefix_Ntokens] = kk[i] * cosTable[i][:hiddensizeK] 
+            q2 = np.zeros(shape=(curr_seqLen, hiddensizeQ)).astype(dtype)
+            k2 = np.zeros(shape=(curr_seqLen, hiddensizeK)).astype(dtype)        
+            for k in range(headNum):
+                src_ = k * headDim
+                dst_ = (k + 1) * headDim
+                strdie = headDim // 2
+                rotaryStrdie = headDim // rotaryCoeff
+                rotaryTimesPerHead = rotaryCoeff / 2
+                for cycle in range(int(rotaryTimesPerHead)):
+                    src =  src_ + cycle * rotaryStrdie * 2
+                    dst = src + rotaryStrdie * 2
+                    for curr_seqLeni in range(curr_seqLen):
+                        if k < headNumQ:
+                            q2[curr_seqLeni][src:src + rotaryStrdie] = q[prefix_Ntokens + curr_seqLeni][src+ rotaryStrdie:dst] * (-1)
+                            q2[curr_seqLeni][src + rotaryStrdie:dst] = q[prefix_Ntokens + curr_seqLeni][src:src+rotaryStrdie]
+                            q2[curr_seqLeni][src:dst] = q2[curr_seqLeni][src:dst] * sin[prefix_Ntokens + curr_seqLeni][cycle * rotaryStrdie * 2: (cycle +1) * rotaryStrdie * 2]
+                        if k < headNumK:
+                            k2[curr_seqLeni][src:src + rotaryStrdie] = kk[prefix_Ntokens + curr_seqLeni][src+ rotaryStrdie:dst] * (-1)
+                            k2[curr_seqLeni][src + rotaryStrdie:dst] = kk[prefix_Ntokens + curr_seqLeni][src:src+rotaryStrdie]
+                            k2[curr_seqLeni][src:dst] = k2[curr_seqLeni][src:dst] * sin[prefix_Ntokens + curr_seqLeni][cycle * rotaryStrdie * 2: (cycle +1) * rotaryStrdie * 2]
+            rope_q[prefix_Ntokens:prefix_Ntokens + curr_seqLen] += q1 + q2
+            rope_k[prefix_Ntokens:prefix_Ntokens + curr_seqLen] += k1 + k2      
+            
+            prefix_Ntokens += curr_seqLen
+
+        if isFour:
+            rope_q = rope_q.reshape((realBatch, realSeqLen, realHeadNumQ, realHeadDim))
+            rope_k = rope_k.reshape((realBatch, realSeqLen, realHeadNumK, realHeadDim))
+        if dtype == np.float32:
+            return [torch.tensor(rope_q).bfloat16(), torch.tensor(rope_k).bfloat16()]
+        else:
+            return [torch.tensor(rope_q), torch.tensor(rope_k)]
+
+    @staticmethod
     def golden(in_tensors, op_params):
+        if get_soc_version() == "Ascend910_95":
+            return RopeOperation.RopeA5_gloden(in_tensors, op_params)
         json_data = json.loads(op_params)
         dtype = in_tensors[0].dtype
         if dtype == torch.bfloat16:
