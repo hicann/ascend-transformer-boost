@@ -1,3 +1,5 @@
+#!/bin/bash
+
 function compile_model() {
     mkdir -p build; 
     cd build;

@@ -18,7 +18,6 @@
 #include "atb/utils/statistic.h"
 #include "atb/operation.h"
 #include "atb/utils.h"
-#include "atb/utils/singleton.h"
 #include "atb/runner/ops_runner.h"
 
 namespace atb {
