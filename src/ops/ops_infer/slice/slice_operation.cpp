@@ -9,13 +9,15 @@
  */
 
 #include "slice_operation.h"
+#include <mki/utils/platform/platform_info.h>
 #include "atb/utils/log.h"
-#include "slice_ops_runner.h"
 #include "atb/utils/tensor_check.h"
 #include "atb/utils/param_to_json.h"
 #include "atb/utils/singleton.h"
 #include "atb/operation/atb_operation_ir_cfg.h"
 #include "atb/operation/op_param_funcs.h"
+#include "slice_aclnn_runner.h"
+#include "slice_ops_runner.h"
 
 namespace atb {
 static const uint32_t IN_TENSOR_NUM = 1;
@@ -27,6 +29,12 @@ template <> Status CreateOperation(const infer::SliceParam &opParam, Operation *
         return ERROR_INVALID_PARAM;
     }
     OP_PARAM_RSV_CHECK(opParam);
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+        if (SliceAclnnRunner::LoadAclnnFuncs() != NO_ERROR) {
+            ATB_LOG(ERROR) << "Load aclnn function failed, please check your CANN version.";
+            return ERROR_CANN_ERROR;
+        }
+    }
     *operation = new (std::nothrow) SliceOperation(opParam);
     if (*operation == nullptr) {
         ATB_LOG(ERROR) << "failed to new operation";
@@ -165,6 +173,9 @@ Status SliceOperation::ParamCheck(TensorDesc inTensorDesc) const
 std::shared_ptr<Runner> SliceOperation::CreateRunner(Context &context) const
 {
     (void)context;
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+        return std::make_shared<SliceAclnnRunner>(param_);
+    }
     return std::make_shared<SliceOpsRunner>(param_);
 }
 
