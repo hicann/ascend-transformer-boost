@@ -17,6 +17,7 @@
 #include "atb/utils/operation_util.h"
 #include "atb/operation/atb_operation_ir_cfg.h"
 #include "atb/operation/op_param_funcs.h"
+#include "aclnn_add_rms_norm_runner.h"
 #include "rms_norm_aclnn_runner.h"
 #include "rms_norm_ops_runner.h"
 
@@ -131,6 +132,14 @@ template <> Status CreateOperation(const infer::RmsNormParam &opParam, Operation
     OP_PARAM_RSV_CHECK(opParam.normParam);
     OP_PARAM_RSV_CHECK(opParam.preNormParam);
     OP_PARAM_RSV_CHECK(opParam.postNormParam);
+
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+        if (AclnnAddRmsNormRunner::LoadMethod() != NO_ERROR) {
+            ATB_LOG(ERROR) << "Load aclnn function failed, please check your CANN version.";
+            return ERROR_CANN_ERROR;
+        }
+    }
+
     ATB_LOG(INFO) << "CreateOperation with RmsNormParam: " << OpParamToJson(opParam);
     if (!EpsilonCheck(opParam)) {
         ATB_LOG(ERROR) << "Invalid epsilon, it's recommended to init a nonzero value for eps.";
@@ -160,6 +169,7 @@ template <> Status CreateOperation(const infer::RmsNormParam &opParam, Operation
 RmsNormOperation::RmsNormOperation(const infer::RmsNormParam &param) : OperationBase("RmsNormOperation"), param_(param)
 {
     is910b_ = GetSingleton<Config>().Is910B();
+    bool IS_950 = Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95;
     if (param_.layerType == infer::RmsNormParam::RMS_NORM_NORM) {
         if (param_.normParam.quantType == infer::QUANT_UNQUANT) {
             operationIr_ =
@@ -187,8 +197,10 @@ RmsNormOperation::RmsNormOperation(const infer::RmsNormParam &param) : Operation
             operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("RmsNormOperationPRENORMAndQUANT");
         } else if (param_.preNormParam.quantType == infer::QUANT_UNQUANT) {
             operationIr_ = param_.preNormParam.hasBias ?
-                               GetSingleton<AtbOperationIrCfg>().GetOperationIr("RmsNormOperationPRENORM") :
-                               GetSingleton<AtbOperationIrCfg>().GetOperationIr("RmsNormOperationPRENORMNoBias");
+            (IS_950 ? GetSingleton<AtbOperationIrCfg>().GetOperationIr("RmsNormOperationPRENORM950"):
+            GetSingleton<AtbOperationIrCfg>().GetOperationIr("RmsNormOperationPRENORM")):
+            (IS_950 ? GetSingleton<AtbOperationIrCfg>().GetOperationIr("RmsNormOperationPRENORMNoBias950"):
+            GetSingleton<AtbOperationIrCfg>().GetOperationIr("RmsNormOperationPRENORMNoBias"));
         } else {
             ATB_LOG(ERROR) << GetLogPrefix()
                            << "param_.normParam.quantType is invalid, type:" << param_.preNormParam.quantType;
@@ -472,6 +484,11 @@ bool RmsNormOperation::CheckRstd() const
 std::shared_ptr<Runner> RmsNormOperation::CreateRunner(Context &context) const
 {
     (void)context;
+    if (param_.layerType == infer::RmsNormParam::RMS_NORM_PRENORM
+        && Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+        ATB_LOG(INFO) << GetLogPrefix() << "create AddRmsNorm AclnnRunner";
+        return std::make_shared<AclnnAddRmsNormRunner>(param_);
+    }
     if (param_.layerType == infer::RmsNormParam::RMS_NORM_NORM &&
         param_.normParam.quantType == infer::QUANT_UNQUANT &&
         Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {

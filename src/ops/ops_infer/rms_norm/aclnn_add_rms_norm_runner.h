@@ -1,0 +1,45 @@
+/**
+ * Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+
+#ifndef ATB_ADD_RMS_NORM_RUNNER_H
+#define ATB_ADD_RMS_NORM_RUNNER_H
+#include "atb/infer_op_params.h"
+#include "atb/runner/aclnn_runner.h"
+
+using AclnnAddRmsNormGetWorkspaceSizeFunc = aclnnStatus(*)(const aclTensor *, const aclTensor *, const aclTensor *, double,
+        const aclTensor *, const aclTensor *, const aclTensor *,
+        uint64_t *, aclOpExecutor **);
+using AclnnAddRmsNormExecuteFunc = aclnnStatus (*)(void *, uint64_t, aclOpExecutor *, const aclrtStream);
+
+namespace atb {
+class AclnnAddRmsNormRunner : public AclnnRunner {
+public:
+    explicit AclnnAddRmsNormRunner(const infer::RmsNormParam &param);
+    ~AclnnAddRmsNormRunner() override;
+
+    static Status LoadMethod();
+
+protected:
+    Status BuildAclnnVariantPack(const RunnerVariantPack &runnerVariantPack) override;
+    Status LaunchAclnnKernel() override;
+    aclnnStatus SetAclNNWorkspaceExecutor() override;
+
+private:
+    infer::RmsNormParam param_;
+
+    // 对应aclnnop/aclnn_add_rms_norm.h中的两段式接口
+    static AclnnAddRmsNormGetWorkspaceSizeFunc aclnnGetWorkspaceSizeFunc_;
+    static AclnnAddRmsNormExecuteFunc aclnnExecuteFunc_;
+
+    atb::Tensor rstdTensor;
+    std::shared_ptr<AclNNTensor> rstdAclnnTensor;
+};
+} // namespace atb
+#endif
