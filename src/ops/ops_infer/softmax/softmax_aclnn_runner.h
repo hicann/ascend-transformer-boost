@@ -28,7 +28,7 @@ protected:
 
 private:
     infer::SoftmaxParam param_;
-    Dims targetDims_;
+    Dims targetDims_{};
     static aclnnStatus (*aclnnGetWorkspaceSizeFunc_)(const aclTensor *, int64_t, aclTensor *, uint64_t *,
                                                      aclOpExecutor **);
     static aclnnStatus (*aclnnExecuteFunc_)(void *, uint64_t, aclOpExecutor *, aclrtStream);
