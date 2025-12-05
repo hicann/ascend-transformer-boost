@@ -135,6 +135,14 @@ def get_soc_version():
         quit(1)
     return soc_version
 
+def numpy_bfloat16():
+    try:
+        import bfloat16ext
+        return bfloat16ext.bfloat16
+    except ImportError:
+        import tensorflow
+        return tensorflow.bfloat16.as_numpy_dtype
+
 class TensorBinFile:
     ATTR_VERSION = "$Version"
     ATTR_END = "$End"
@@ -4028,8 +4036,39 @@ class ElewiseOperation(DataGen):
         return [golden_result]
 
     def elewiseQuant(in_tensors, op_params):
-        golden_result = in_tensors[0].type(torch.int8)
-        return [golden_result]
+        json_data = json.loads(op_params)
+        if "outTensorType" in json_data:
+            outType = json_data["outTensorType"]
+        else:
+            outType = 2
+        scale = np.float32(json_data["quantParam"]["inputScale"])
+        offset = np.int32(json_data["quantParam"]["inputOffset"])
+        input_x = in_tensors[0].to(torch.float32).cpu().numpy().astype("float32")
+
+        if (in_tensors[0].dtype == torch.float16):
+            scale = scale.astype(np.float16)
+            offset = offset.astype(np.float16)
+            scale = scale.astype(np.float32)
+            offset = offset.astype(np.float32)
+        elif (in_tensors[0].dtype == torch.bfloat16):
+            scale = scale.astype(numpy_bfloat16())
+            offset = offset.astype(numpy_bfloat16())
+            scale = scale.astype(np.float32)
+            offset = offset.astype(np.float32)
+
+        out = input_x * scale + offset
+        out = np.round(out, 8) if outType in (34, 35, 36) else np.round(out, 0)
+        if outType == 35:
+            out = torch.from_numpy(out).to(torch.float8_e5m2)
+        elif outType == 36:
+            out = torch.from_numpy(out).to(torch.float8_e4m3fn)
+        elif outType == 34:
+            out = out.astype(hifloat8, copy=False).view(np.int8)
+            out = torch.from_numpy(out)
+        else:
+            out = torch.from_numpy(out).to(torch.int8)
+
+        return [out]
 
     def elewiseLogicalNot(in_tensors, op_params):
         golden_result = torch.logical_not(in_tensors[0])
