@@ -173,9 +173,10 @@ Status GetNdMLATiling(const MLAInfo &mmInfo, uint32_t &blockDim, uint32_t *tilin
         tilingParam[tilingOffset] = static_cast<uint32_t>(qSeqLen);
         tilingParam[tilingOffset + 1] = static_cast<uint32_t>(kvSeqlen);
         GetAddrOffsetMLA(tilingParam, addrOffsets, tilingOffset);
-        uint64_t addressQffset = static_cast<uint64_t>(mmInfo.numHeads) * qSeqLen;
-        uint64_t addressOffset = static_cast<uint64_t>(mmInfo.numHeads) * mmInfo.embeddingSize * qSeqLen;
-        uint64_t addressMaskOffset = static_cast<uint64_t>(qSeqLen) * maxKVseqlen;
+        uint64_t addressQffset = static_cast<uint64_t>(mmInfo.numHeads) * static_cast<uint64_t>(qSeqLen);
+        uint64_t addressOffset = static_cast<uint64_t>(mmInfo.numHeads) * static_cast<uint64_t>(mmInfo.embeddingSize) *
+                                 static_cast<uint64_t>(qSeqLen);
+        uint64_t addressMaskOffset = static_cast<uint64_t>(qSeqLen) * static_cast<uint64_t>(maxKVseqlen);
         if (mmInfo.maskType == OpParam::MLA::MASK_TYPE_MASK_FREE) {
             addressMaskOffset = mmInfo.maskStride;
         }

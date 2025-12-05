@@ -18,7 +18,6 @@
 #include "atb/utils/config.h"
 #include "atb/utils.h"
 #include "atb/utils/probe.h"
-#include "atb/utils/singleton.h"
 #include "atb/context/allocator/default_device_allocator.h"
 #include "atb/context/allocator/default_host_allocator.h"
 #include "atb/utils/operation_register.h"

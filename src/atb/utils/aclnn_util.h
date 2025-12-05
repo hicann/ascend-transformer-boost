@@ -112,7 +112,7 @@ Status LoadFromSharedObjectFile(const char *workSpaceSizeFuncName, const char *e
     std::call_once(onceFlag, []() {
         std::string soPath;
         const char *ascendHomePath = Mki::GetEnv("ASCEND_HOME_PATH");
-        if (!ascendHomePath || !*ascendHomePath) {
+        if (ascendHomePath == nullptr || *ascendHomePath == '\0') {
             ATB_LOG(ERROR) << "ASCEND_HOME_PATH is null.";
             initFlag.store(ERROR_INVALID_PARAM, std::memory_order_release);
             return;
