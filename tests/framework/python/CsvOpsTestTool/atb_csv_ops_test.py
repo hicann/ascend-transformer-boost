@@ -24,6 +24,9 @@ import re
 import shutil
 import scipy.stats
 import pickle
+import ml_dtypes
+
+from en_dtypes import hifloat8
 from multiprocessing.connection import Client
 
 dtype_enum_dict = {-1: "undefined", 0: "float", 1: "float16", 2: "int8", 3: "int32", 4: "uint8",
@@ -405,6 +408,50 @@ class CsvOpsTest():
         return str(torch.sum(tolerance <= 0).numpy() / torch.numel(tolerance) * 100)[:5]
 
     def __precision_eb_percent(self, i, actual_output, golden_output, precision_threshold, eb_threshold):
+        if actual_output.dtype in [torch.float8_e5m2, torch.float8_e4m3fn]:
+            actual_output = actual_output.view(torch.int8)
+            actual_output = actual_output.flatten()
+            golden_output = golden_output.view(torch.int8)
+            golden_output = golden_output.flatten()
+            diff_results = torch.abs(torch.subtract(actual_output, golden_output))
+            diff_indices = torch.where(diff_results > 1)[0]
+            del diff_results
+            precision = (golden_output.size()[0] - diff_indices.size()[0]) / golden_output.size()[0]
+            eb = eb_threshold
+            if eb_threshold != 0:
+                eb = torch.abs(torch.mean(torch.div(diff, tensor_max)))
+                self.__dump_tensor(eb, 'eb', i, 'index {}, eb_threshold: {}'.format(i, eb_threshold))
+            eb_percent = '0' if eb == 0 else str(torch.sum(eb).to(torch.float).numpy() / eb_threshold * 100)[:5]
+            return str(precision*100)[:5], eb_percent
+
+        elif actual_output.dtype in [torch.bits8]:
+            golden_output = np.float64(golden_output.detach().numpy().view(hifloat8))
+            golden_output = golden_output.flatten()
+            actual_output = actual_output.view(torch.int8)
+            actual_output = np.float64(actual_output.detach().numpy().view(hifloat8))
+            actual_output = actual_output.flatten()
+            EX = np.log2(abs(golden_output) + 2**(-1000))
+            EX[EX < -22] = -22
+            E = np.floor(EX)
+            Eabs = np.abs(E)
+            Wm = np.zeros_like(golden_output)
+            Wm[Eabs <= 15] = 1
+            Wm[Eabs <= 7 ] = 2
+            Wm[Eabs <= 3 ] = 3
+            ulp_err = (actual_output - golden_output) * 2 ** (-E + Wm)
+            S_EX = EX * np.where(actual_output >= 0, 1, -1)
+            EH = np.log2(abs(golden_output) + 2**(-1000))
+            S_EH = EH * np.where(golden_output >= 0, 1, -1)
+            ulp_err1 = S_EH - S_EX
+            ulp_err[Wm == 0] = ulp_err1[Wm == 0]
+            diff_indices = np.where( ulp_err > 1)[0]
+            precision = (len(golden_output) - len(diff_indices)) / len(golden_output)
+            eb = eb_threshold
+            if eb_threshold != 0:
+                eb = torch.abs(torch.mean(torch.div(diff, tensor_max)))
+                self.__dump_tensor(eb, 'eb', i, 'index {}, eb_threshold: {}'.format(i, eb_threshold))
+            eb_percent = '0' if eb == 0 else str(torch.sum(eb).to(torch.float).numpy() / eb_threshold * 100)[:5]
+            return str(precision * 100), eb_percent
         actual_output = actual_output if actual_output.dtype != torch.bool else actual_output.long()
         golden_output = golden_output if golden_output.dtype != torch.bool else golden_output.long()
         if self.op_type in [data_generation.OpTypes.COMPUTE_FLOAT, data_generation.OpTypes.COMPUTE_FLOAT_HIGH_PRECISION, data_generation.OpTypes.VECTOR_FUSION] and actual_output.dtype in [torch.float16, torch.bfloat16]:
@@ -551,7 +598,7 @@ class CsvOpsTest():
                     res = (diff <= error_threshold).all().item()
                     logging.debug("accuracy is correct in new standard: %r", res)
                     return res
-            result = ((mare_rate < 10) and (mere_rate < 2) and (rmse_rate < 2)) or (compare_output_data(actual_output.half(), golden_output.half(), [0.001, 0.001, 0.005, 0.005]))
+            result = ((mare_rate < 10) and (mere_rate < 2) and (rmse_rate < 2) and (EB < eb_threshold)) or (compare_output_data(actual_output.half(), golden_output.half(), [0.001, 0.001, 0.005, 0.005]))
             logging.info(f"mare_npu:{mare_npu} mare_gpu:{mare_gpu}")
             logging.info(f"mere_npu:{mere_npu} mere_gpu:{mere_gpu}")
             logging.info(f"rmse_npu:{rmse_npu} rmse_gpu:{rmse_gpu}")
@@ -991,6 +1038,8 @@ def get_device_properties():
         soc_version = "Ascend910_95"
     elif re.search("Ascend310P", device_name, re.I):
         soc_version = "Ascend310P"
+    elif re.search("Ascend910_95", device_name, re.I):
+        soc_version = "Ascend910_95"
     elif (re.search("Ascend910ProB", device_name, re.I) or re.search("Ascend910B", device_name, re.I) or
     re.search("Ascend910PremiumA", device_name, re.I) or re.search("Ascend910ProA", device_name, re.I) or
     re.search("Ascend910A", device_name, re.I)):

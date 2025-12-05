@@ -24,6 +24,7 @@ import logging
 import re
 from enum import Enum
 from functools import reduce
+from en_dtypes import hifloat8
 
 from self_attention_golden import SelfAttentionGolden, SelfAttentionGenOutTensor
 
@@ -119,6 +120,8 @@ def get_soc_version():
         soc_version = "Ascend910_95"
     elif re.search("Ascend310P", device_name, re.I):
         soc_version = "Ascend310P"
+    elif re.search("Ascend910_95", device_name, re.I):
+        soc_version = "Ascend910_95"
     elif (re.search("Ascend910ProB", device_name, re.I) or re.search("Ascend910B", device_name, re.I) or
     re.search("Ascend910PremiumA", device_name, re.I) or re.search("Ascend910ProA", device_name, re.I) or
     re.search("Ascend910A", device_name, re.I)):
@@ -220,7 +223,14 @@ class DataGen():
         Returns:
             torch.Tensor.npu()
         '''
-        data = torch.zeros(shape, dtype=dtype_dict[datatype]).npu()
+        if datatype == "float8_e4m3fn":
+            data = torch.zeros(shape, dtype=torch.float16).to(dtype=torch.float8_e4m3fn).npu()
+        elif datatype == "float8_e5m2":
+            data = torch.zeros(shape, dtype=torch.float16).to(dtype=torch.float8_e5m2).npu()
+        elif datatype == "hifloat8":
+            data = torch.zeros(shape, dtype=torch.int8).view(torch.bits8).npu()
+        else:
+            data = torch.zeros(shape, dtype=dtype_dict[datatype]).npu()
         return torch_npu.npu_format_cast(data, format_dict[format])
 
     @staticmethod
@@ -4064,26 +4074,45 @@ class ElewiseOperation(DataGen):
         return [golden_result]
 
     def elewiseQuantPerChannel(in_tensors, op_params):
-        # 获取输入张量
-        input_x = in_tensors[0].cpu()
-        input_scale = in_tensors[1].cpu()
-        input_offset = in_tensors[2].cpu()
+        if  get_soc_version() == "Ascend910_95":
+            json_data = json.loads(op_params)
+            outType = json_data["outTensorType"]
+            input_x = in_tensors[0].to(torch.float32).cpu().numpy().astype("float32")
+            input_scale = in_tensors[1].to(torch.float32).cpu().numpy().astype("float32")
+            input_offset = in_tensors[2].to(torch.float32).cpu().numpy().astype("float32")
+            out = input_x * input_scale
+            if len(input_offset) != 0:
+                out = out + input_offset
+            out = np.round(out, 8)
+            if outType == 35:
+                out = torch.from_numpy(out).to(torch.float8_e5m2)
+            elif outType == 36:
+                out = torch.from_numpy(out).to(torch.float8_e4m3fn)
+            elif outType == 34:
+                out = out.astype(hifloat8, copy=False).view(np.int8)
+                out = torch.from_numpy(out)
+            return [out]
+        else:
+            # 获取输入张量
+            input_x = in_tensors[0].cpu()
+            input_scale = in_tensors[1].cpu()
+            input_offset = in_tensors[2].cpu()
 
-        # 对 input_x 和 input_scale 进行广播和除法操作
-        result = input_x / input_scale
+            # 对 input_x 和 input_scale 进行广播和除法操作
+            result = input_x / input_scale
 
-        # 如果有 offset，则加上 offset
-        if len(input_offset) > 0:
-            result += input_offset
+            # 如果有 offset，则加上 offset
+            if len(input_offset) > 0:
+                result += input_offset
 
-        # 对结果进行四舍五入，并进行 clip 操作，限制范围为 [-128, 127]
-        result = result.round()
-        result = torch.clamp(result, min=-128, max=127)
+            # 对结果进行四舍五入，并进行 clip 操作，限制范围为 [-128, 127]
+            result = result.round()
+            result = torch.clamp(result, min=-128, max=127)
 
-        # 转换为 int8 类型
-        out = result.to(torch.int8)
+            # 转换为 int8 类型
+            out = result.to(torch.int8)
 
-        return [out]
+            return [out]
 
     def elewiseDequantPerChannel(in_tensors, op_params):
         input_y = in_tensors[0].cpu().numpy()
@@ -4116,17 +4145,39 @@ class ElewiseOperation(DataGen):
                     torch.from_numpy(out_scale.squeeze(axis=-1)).to(torch.float32),
                     torch.from_numpy(out_offset.squeeze(axis=-1)).to(torch.float32)]
         else:
-            input_abs = np.abs(input_x)
-            scale = np.max(input_abs, axis=-1, keepdims=True)
-            scale = scale.astype(np.float32)
-            out_scale = scale / 127
+            if "outTensorType" in json_data.keys():
+                outDtype = json_data['outTensorType']
+            else:
+                outDtype = 2
+            dmax = np.float32(0.0)
+            if outDtype == 2:
+                dmax = np.float32(127.0)
+            elif outDtype == 34:
+                dmax = np.float32(32768.0)
+            elif outDtype == 35:
+                dmax = np.float32(57344.0)
+            elif outDtype == 36:
+                dmax = np.float32(448.0)
 
-            input_x = input_x.astype(np.float32)
-            input_x = input_x * 127
-            input_x = input_x / scale
-            out_x = np.round(input_x)
-            return [torch.from_numpy(out_x).to(torch.int8),
-                    torch.from_numpy(out_scale.squeeze(axis=-1)).to(torch.float32)]
+            input_abs = np.abs(input_x)
+            input_max = np.max(input_abs, axis=-1, keepdims=True)
+            scale = input_max * (np.float32(1.0) / dmax)
+            input_scaled = input_x / scale
+
+            round_data = input_scaled if (outDtype) in (34, 35, 36) else np.round(input_scaled, 0)
+            
+            if outDtype == 2:
+                round_data = round_data.astype(np.int8, copy=False)
+                out = torch.from_numpy(round_data)
+            elif outDtype == 34:
+                out = round_data.astype(hifloat8, copy=False).view(np.int8)
+                out = torch.from_numpy(out)
+            elif outDtype == 35:
+                out = torch.from_numpy(round_data).to(torch.float8_e5m2)
+            elif outDtype == 36:
+                out = torch.from_numpy(round_data).to(torch.float8_e4m3fn)
+
+            return [out, torch.from_numpy(scale.squeeze(axis=-1)).to(torch.float32)]
 
     def elewiseTanh(in_tensors, op_params):
         golden_result = torch.tanh(in_tensors[0].float())
