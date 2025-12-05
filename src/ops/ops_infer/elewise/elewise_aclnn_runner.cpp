@@ -23,7 +23,7 @@ static const uint32_t IN_TENSOR_NUM_3 = 3;
 static const bool SQRT_MODE = false;
 static const std::string ROUND_MODE = "round";
 static const int AXIS = -1;
-static const int DST_TYPE = 2;
+static int DST_TYPE = 2;
 
 // 初始化类函数指针
 AclnnCastGetWorkspaceSizeFunc ElewiseAclnnRunner::aclnnCastGetWorkspaceSizeFunc_ = nullptr;
@@ -429,6 +429,9 @@ aclnnStatus ElewiseAclnnRunner::HandleQuant(aclOpExecutor** executor)
     aclTensor *out = aclnnVariantPack_.aclOutTensors.at(outTensorIndex++)->tensor;
     aclTensor *scale = aclnnVariantPack_.aclInTensors.at(inTensorIndex++)->tensor;
     aclTensor *offset = aclnnVariantPack_.aclInTensors.at(inTensorIndex++)->tensor;
+    if (param_.outTensorType != ACL_DT_UNDEFINED) {
+        DST_TYPE = param_.outTensorType;
+    }
     return aclnnAscendQuantGetWorkspaceSizeFunc_(self, scale, offset, SQRT_MODE, ROUND_MODE.c_str(), DST_TYPE, AXIS, out, &(atbVariantPack_.workspaceBufferSize), executor);
 }
 

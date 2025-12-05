@@ -104,7 +104,8 @@ ElewiseOperation::ElewiseOperation(const infer::ElewiseParam &param) : Operation
         {infer::ElewiseParam::ElewiseType::ELEWISE_COS, "ElewiseOperationCos"},
         {infer::ElewiseParam::ElewiseType::ELEWISE_SIN, "ElewiseOperationSin"},
         {infer::ElewiseParam::ElewiseType::ELEWISE_NEG, "ElewiseOperationNeg"},
-        {infer::ElewiseParam::ElewiseType::ELEWISE_QUANT, "ElewiseOperationQuant"},
+        {infer::ElewiseParam::ElewiseType::ELEWISE_QUANT,
+         IS_950 ? "ElewiseOperationQuantAscend950" : "ElewiseOperationQuant"},
         {infer::ElewiseParam::ElewiseType::ELEWISE_LOGICAL_NOT, "ElewiseOperationLogicalNot"},
         {infer::ElewiseParam::ElewiseType::ELEWISE_ADD,
          IS_310B ? "ElewiseOperationAddAtlas200I500A2" : "ElewiseOperationAdd"},
@@ -193,7 +194,11 @@ Status ElewiseOperation::InferShapeImpl(const SVector<TensorDesc> &inTensorDescs
         case infer::ElewiseParam::ELEWISE_CAST:
             return InferShapeImplCast(inTensorDescs, outTensorDescs);
         case infer::ElewiseParam::ELEWISE_QUANT:
-            return InferShapeImplQuant(inTensorDescs, outTensorDescs);
+            if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+                return InferShapeImplQuantAscend950(inTensorDescs, outTensorDescs);
+            } else {
+                return InferShapeImplQuant(inTensorDescs, outTensorDescs);
+            }
         case infer::ElewiseParam::ELEWISE_QUANT_PER_CHANNEL:
             return InferShapeImplQuantChannel(inTensorDescs, outTensorDescs);
         case infer::ElewiseParam::ELEWISE_DEQUANT_PER_CHANNEL:
@@ -258,6 +263,20 @@ Status ElewiseOperation::InferShapeImplQuant(const SVector<TensorDesc> &inTensor
         return ERROR_INVALID_PARAM;
     }
 }
+
+Status ElewiseOperation::InferShapeImplQuantAscend950(const SVector<TensorDesc> &inTensorDescs,
+                                                      SVector<TensorDesc> &outTensorDescs) const
+{
+    aclDataType dtype0 = inTensorDescs.at(TENSOR_IDX_ZERO).dtype;
+    if ((dtype0 == ACL_FLOAT) || (dtype0 == ACL_FLOAT16) || (dtype0 == ACL_BF16)) {
+        outTensorDescs.at(TENSOR_IDX_ZERO).dtype = param_.outTensorType == ACL_DT_UNDEFINED ? ACL_INT8 : param_.outTensorType;
+        return NO_ERROR;
+    } else {
+        ATB_LOG(WARN) << "ElewiseOperation InferShapeImplQuantAscend950: no matched input desc.";
+        return ERROR_INVALID_PARAM;
+    }
+}
+
 
 Status ElewiseOperation::InferShapeImplDynamicQuant(const SVector<TensorDesc> &inTensorDescs,
                                                     SVector<TensorDesc> &outTensorDescs) const
