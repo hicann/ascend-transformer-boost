@@ -113,13 +113,12 @@ int64_t TensorUtil::AlignInt(int64_t value, int align)
 
 void TensorUtil::ConvertAtbTensor2OpsTensor(const Tensor &atbTensor, Mki::Tensor &opsTensor)
 {
-    Mki::SVector<int64_t> dims;
-    for (size_t i = 0; i < atbTensor.desc.shape.dimNum; i++) {
-        dims.push_back(atbTensor.desc.shape.dims[i]);
-    }
     opsTensor.desc.dtype = static_cast<Mki::TensorDType>(atbTensor.desc.dtype);
     opsTensor.desc.format = static_cast<Mki::TensorFormat>(atbTensor.desc.format);
-    opsTensor.desc.dims = dims;
+    opsTensor.desc.dims.resize(atbTensor.desc.shape.dimNum);
+    for (size_t i = 0; i < atbTensor.desc.shape.dimNum; i++) {
+        opsTensor.desc.dims[i] = atbTensor.desc.shape.dims[i];
+    }
     opsTensor.data = atbTensor.deviceData;
     opsTensor.hostData = atbTensor.hostData;
     opsTensor.dataSize = atbTensor.dataSize;
