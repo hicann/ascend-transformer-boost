@@ -1238,9 +1238,10 @@ void OperationBase::FillHostTilingBuffer()
 uint64_t OperationBase::GetTotalWorkspaceBufferSize()
 {
     uint64_t totalWorkspaceBufferSize = 0;
-    for (size_t i = 0; i < runner_->GetWorkspaceBufferSize().size(); i++) {
-        totalWorkspaceBufferSize += runner_->GetWorkspaceBufferSize().at(i);
-        ATB_LOG(INFO) << GetLogPrefix() << "runner.workspaceBufferSize: " << runner_->GetWorkspaceBufferSize().at(i)
+    const std::vector<uint64_t> & getWorkspaceBufferSize = runner_->GetWorkspaceBufferSize();
+    for (size_t i = 0; i < getWorkspaceBufferSize.size(); i++) {
+        totalWorkspaceBufferSize += getWorkspaceBufferSize.at(i);
+        ATB_LOG(INFO) << GetLogPrefix() << "runner.workspaceBufferSize: " << getWorkspaceBufferSize.at(i)
                       << " at streamId: " << i;
     }
     return totalWorkspaceBufferSize;

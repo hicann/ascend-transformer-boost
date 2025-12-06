@@ -432,8 +432,7 @@ void GraphRunner::Reset()
     maxIntermediateBufferSize_ = 0;
     intermediateBufferSizes_.clear();
     for (auto &tensor : runnerGraph_.internalTensors) {
-        Tensor emptyTensor = {};
-        tensor = emptyTensor;
+        tensor = {};
     }
     runnerGraph_.tensorMalloced.clear();
 }
@@ -799,54 +798,60 @@ void GraphRunner::CalcIntermediateBufferSize()
 void GraphRunner::UpdateVariantPackBuffer(RunnerVariantPack &runnerVariantPack)
 {
     ATB_LOG(INFO) << GetLogPrefix() << " update runner variant pack's buffer start";
-    if (totalTilingBufferSize_ != 0) {
-        uint64_t offset = 0;
-        for (size_t nodeId = 0; nodeId < runnerGraph_.nodes.size(); ++nodeId) {
-            auto &node = runnerGraph_.nodes.at(nodeId);
-            node.runnerVariantPack.tilingBuffer = runnerVariantPack.tilingBuffer + offset;
-            node.runnerVariantPack.tilingBufferSize = tilingBufferSizes_.at(nodeId);
-            offset += tilingBufferSizes_.at(nodeId);
+    
+    const size_t nodeCount = runnerGraph_.nodes.size();
+    
+    const bool hasTilingBuffer = (totalTilingBufferSize_ != 0);
+    const bool hasArgsDeviceBuffer = (runnerVariantPack.argsDeviceBuffer != nullptr);
+    const bool hasArgsHostBuffer = (runnerVariantPack.argsHostBuffer != nullptr);
+    
+    uint64_t tilingOffset = 0;
+    uint64_t argsDeviceOffset = 0;
+    uint64_t argsHostOffset = 0;
+    
+    for (size_t nodeId = 0; nodeId < nodeCount; ++nodeId) {
+        auto &node = runnerGraph_.nodes.at(nodeId);
+        auto &nodeVariantPack = node.runnerVariantPack;
+        
+        // 设置tiling buffer
+        if (hasTilingBuffer) {
+            nodeVariantPack.tilingBuffer = runnerVariantPack.tilingBuffer + tilingOffset;
+            nodeVariantPack.tilingBufferSize = tilingBufferSizes_.at(nodeId); 
+            tilingOffset += tilingBufferSizes_.at(nodeId);
         }
-    } else {
-        ATB_LOG(WARN) << GetLogPrefix() << " totalTilingBufferSize is 0, not update variantPack's tilingBuffer";
-    }
-
-    for (size_t nodeId = 0; nodeId < runnerGraph_.nodes.size(); ++nodeId) {
-        auto &node = runnerGraph_.nodes.at(nodeId);
-        node.runnerVariantPack.workspaceBuffer = runnerVariantPack.workspaceBuffer;
-    }
-
-    for (size_t nodeId = 0; nodeId < runnerGraph_.nodes.size(); ++nodeId) {
-        auto &node = runnerGraph_.nodes.at(nodeId);
-        node.runnerVariantPack.intermediateBuffer = runnerVariantPack.intermediateBuffer + selfIntermediateBufferSize_;
-        node.runnerVariantPack.intermediateBufferSize = intermediateBufferSizes_.at(nodeId);
-    }
-
-    if (runnerVariantPack.argsDeviceBuffer != nullptr) {
-        uint64_t offset = 0;
-        for (size_t nodeId = 0; nodeId < runnerGraph_.nodes.size(); ++nodeId) {
-            auto &node = runnerGraph_.nodes.at(nodeId);
-            node.runnerVariantPack.argsDeviceBuffer = runnerVariantPack.argsDeviceBuffer + offset;
-            offset += node.runner->GetArgsSize();
+        
+        // 设置workspace buffer
+        nodeVariantPack.workspaceBuffer = runnerVariantPack.workspaceBuffer;
+        
+        // 设置intermediate buffer
+        nodeVariantPack.intermediateBuffer = runnerVariantPack.intermediateBuffer + selfIntermediateBufferSize_;
+        nodeVariantPack.intermediateBufferSize = intermediateBufferSizes_.at(nodeId);
+        
+        // 设置args device buffer
+        if (hasArgsDeviceBuffer) {
+            nodeVariantPack.argsDeviceBuffer = runnerVariantPack.argsDeviceBuffer + argsDeviceOffset;
+            argsDeviceOffset += node.runner->GetArgsSize();
 #ifdef _DEBUG
             ATB_LOG(DEBUG) << GetLogPrefix() << "Graph node " << nodeId << " argsDeviceAddr is "
-                           << reinterpret_cast<void *>(node.runnerVariantPack.argsDeviceBuffer);
+                << reinterpret_cast<void *>(nodeVariantPack.argsDeviceBuffer);
 #endif
         }
-    }
-
-    if (runnerVariantPack.argsHostBuffer != nullptr) {
-        uint64_t offset = 0;
-        for (size_t nodeId = 0; nodeId < runnerGraph_.nodes.size(); ++nodeId) {
-            auto &node = runnerGraph_.nodes.at(nodeId);
-            node.runnerVariantPack.argsHostBuffer = runnerVariantPack.argsHostBuffer + offset;
-            offset += node.runner->GetArgsSize();
+        
+        // 设置args host buffer
+        if (hasArgsHostBuffer) {
+            nodeVariantPack.argsHostBuffer = runnerVariantPack.argsHostBuffer + argsHostOffset;
+            argsHostOffset += node.runner->GetArgsSize();
 #ifdef _DEBUG
             ATB_LOG(DEBUG) << GetLogPrefix() << "Graph node " << nodeId << " argsHostAddr is "
-                           << reinterpret_cast<void *>(node.runnerVariantPack.argsHostBuffer);
+                << reinterpret_cast<void *>(nodeVariantPack.argsHostBuffer);
 #endif
         }
     }
+    
+    if (!hasTilingBuffer) {
+        ATB_LOG(WARN) << GetLogPrefix() << " totalTilingBufferSize is 0, not update variantPack's tilingBuffer";
+    }
+    
     ATB_LOG(INFO) << GetLogPrefix() << " update runner variant pack's buffer end";
 }
 
