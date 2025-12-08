@@ -20,7 +20,11 @@ const uint64_t BLOCK_DIM = 40;
 Status FusionTiling(const LaunchParam &launchParam, KernelInfo &kernelInfo)
 {
     OpParam::Fusion fusionType = launchParam.GetParam<OpParam::Fusion>();
-    std::string path(std::getenv("HOME"));
+    std::string path = std::getenv("HOME") ? std::string(std::getenv("HOME")) : "";
+    if ("" == path) {
+        MKI_LOG(ERROR) << "Get ENV HOME failed!";
+        return Status::FailStatus(-1, "Can not Get ENV HOME!");
+    }
     path += std::string("/.atb_auto_fusion/bishengir_bin/") +
             (fusionType.fusionType == OpParam::Fusion::MATMUL_ADD ? "libmatmul_add.so" : "libmatmul_gelu.so");
     std::string inferWorkspaceFuncName =
