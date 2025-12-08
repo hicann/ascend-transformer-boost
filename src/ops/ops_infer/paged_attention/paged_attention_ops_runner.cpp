@@ -9,9 +9,16 @@
  */
 
 #include "paged_attention_ops_runner.h"
-#include <atbops/params/params.h>
-#include "paged_attention_operation.h"
+#include "asdops/params/params.h"
+#include "atbops/params/params.h"
 #include "atb/utils/log.h"
+#include "paged_attention_operation.h"
+#include "paged_attention_runner_utils.h"
+
+namespace {
+static constexpr uint32_t KERNEL_GRAPH_NODE_BASE_SIZE = 1;
+static constexpr uint32_t PA_NODE_BASE_IDX = 0;
+} // namespace
 
 namespace atb {
 
@@ -63,13 +70,14 @@ PagedAttentionOpsRunner::PagedAttentionOpsRunner(const infer::PagedAttentionPara
     skipSetUpKernelGraphWhenCacheHit_ = false;
     ATB_LOG(INFO) << "PagedAttentionOpsRunner::PagedAttentionOpsRunner called";
     isMla_ = param_.mlaVHeadSize > 0;
+    needQScale_ = NeedElewiseMulsQScale(param_);
 
     std::size_t intensorSize = IntensorSizeGenerate();
     kernelGraph_.inTensors.resize(intensorSize);
     kernelGraph_.outTensors.resize(1);
 
     int inTensorStart = 0;
-    Mki::Tensor &query = kernelGraph_.inTensors.at(inTensorStart++);
+    Mki::Tensor *query = &kernelGraph_.inTensors.at(inTensorStart++);
     Mki::Tensor &keyCache = kernelGraph_.inTensors.at(inTensorStart++);
     Mki::Tensor *valueCache = isMla_ ? &nullTensor_ : &kernelGraph_.inTensors.at(inTensorStart++);
     Mki::Tensor &blockTables = kernelGraph_.inTensors.at(inTensorStart++);
@@ -124,8 +132,26 @@ PagedAttentionOpsRunner::PagedAttentionOpsRunner(const infer::PagedAttentionPara
     Mki::Tensor *logN = needLogN ? &kernelGraph_.inTensors.at(inTensorStart++) : &nullTensor_;
     Mki::Tensor &output = kernelGraph_.outTensors.at(0);
 
-    kernelGraph_.nodes.resize(1);
-    auto &pagedAttentionNode = kernelGraph_.nodes.at(0);
+    // 用于ElewiseMuls
+    Mki::Tensor *divOut = query;
+
+    size_t nodeSize = KERNEL_GRAPH_NODE_BASE_SIZE;
+    if (needQScale_) {
+        kernelGraph_.internalTensors.resize(1); // 1: qScale ElewiseMuls
+        divOut = &kernelGraph_.internalTensors.at(0);
+        nodeSize++;
+    }
+    kernelGraph_.nodes.resize(nodeSize);
+    size_t nodeId = 0;
+    if (needQScale_) {
+        auto &mulsQNode = kernelGraph_.nodes.at(nodeId++);
+        mulsQNode.opDesc = {0, "ElewiseOperation",
+                            AsdOps::OpParam::Elewise({AsdOps::OpParam::Elewise::ELEWISE_MULS, param_.qScale})};
+        mulsQNode.inTensors = {query};
+        mulsQNode.outTensors = {divOut};
+    }
+
+    auto &pagedAttentionNode = kernelGraph_.nodes.at(nodeId++);
 
     AtbOps::OpParam::PagedAttention inPagedAttention;
     inPagedAttention.type = AtbOps::OpParam::PagedAttention::PAGED_ATTENTION_MASK_ND;
@@ -141,12 +167,12 @@ PagedAttentionOpsRunner::PagedAttentionOpsRunner(const infer::PagedAttentionPara
     pagedAttentionNode.opDesc = {0, "PagedAttentionOperation", inPagedAttention};
 
     if (!isMla_) {
-        pagedAttentionNode.inTensors = {&query,  &keyCache, valueCache, &blockTables, mask,   kDescale,
+        pagedAttentionNode.inTensors = {divOut,  &keyCache, valueCache, &blockTables, mask,   kDescale,
                                         kOffset, vDescale,  vOffset,    razorOffset,  pScale, logN};
     } else if (needQLens) {
-        pagedAttentionNode.inTensors = {&query, &keyCache, &blockTables, mask};
+        pagedAttentionNode.inTensors = {divOut, &keyCache, &blockTables, mask};
     } else {
-        pagedAttentionNode.inTensors = {&query,  &keyCache, &blockTables, mask,  kDescale,
+        pagedAttentionNode.inTensors = {divOut,  &keyCache, &blockTables, mask,  kDescale,
                                         kOffset, vDescale,  vOffset,      pScale};
     }
 
@@ -201,7 +227,8 @@ Status PagedAttentionOpsRunner::ModifyKernelGraph(const OpsTensorPack &opsTensor
         ATB_LOG(ERROR) << GetLogPrefix() << " build param from host tensor fail";
         return ERROR_INVALID_PARAM;
     }
-    auto &pagedAttentionNode = kernelGraph_.nodes.at(0); // 0: pagedAttention节点位置
+    size_t paNodeId = needQScale_ ? PA_NODE_BASE_IDX + 1 : PA_NODE_BASE_IDX; // 1: qScale ElewiseMuls
+    auto &pagedAttentionNode = kernelGraph_.nodes.at(paNodeId);
     AtbOps::OpParam::PagedAttention inPagedAttention;
     SetPaParam(inPagedAttention);
     pagedAttentionNode.opDesc = {0, "PagedAttentionOperation", inPagedAttention};
@@ -246,5 +273,6 @@ void PagedAttentionOpsRunner::SetPaParam(AtbOps::OpParam::PagedAttention &inPage
             inPagedAttention.identityM[i * 32 + i] = 1;
         }
     }
+    needQScale_ = NeedElewiseMulsQScale(param_);
 }
 } // namespace atb

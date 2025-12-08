@@ -14,10 +14,15 @@ namespace atb {
 bool IsParamEqual(const infer::PagedAttentionParam &left, const infer::PagedAttentionParam &right)
 {
     return left.headNum == right.headNum && UtilsInternal::IsFloatEqual(left.qkScale, right.qkScale) &&
+           UtilsInternal::IsFloatEqual(left.qScale, right.qScale) &&
            left.kvHeadNum == right.kvHeadNum && left.maskType == right.maskType &&
            left.batchRunStatusEnable == right.batchRunStatusEnable && left.quantType == right.quantType &&
            left.hasQuantOffset == right.hasQuantOffset && left.compressType == right.compressType &&
            left.calcType == right.calcType && left.scaleType == right.scaleType &&
            left.mlaVHeadSize == right.mlaVHeadSize;
+}
+
+bool NeedElewiseMulsQScale(const infer::PagedAttentionParam &param) {
+    return !UtilsInternal::IsFloatEqual(param.qScale, 1) && !UtilsInternal::IsFloatEqual(param.qScale, 0);
 }
 } // namespace atb
