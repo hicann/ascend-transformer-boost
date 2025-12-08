@@ -8,14 +8,16 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
-#include "reduce_operation.h"
+#include <mki/utils/platform/platform_info.h>
 #include <algorithm>
+#include "reduce_aclnn_runner.h"
 #include "reduce_ops_runner.h"
 #include "atb/utils/tensor_check.h"
 #include "atb/utils/param_to_json.h"
 #include "atb/operation/atb_operation_ir_cfg.h"
 #include "atb/utils/singleton.h"
 #include "atb/operation/op_param_funcs.h"
+#include "reduce_operation.h"
 
 namespace atb {
 static const uint32_t IN_TENSOR_NUM = 1;
@@ -27,6 +29,14 @@ template <> Status CreateOperation(const infer::ReduceParam &opParam, Operation 
         return ERROR_INVALID_PARAM;
     }
     OP_PARAM_RSV_CHECK(opParam);
+
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+        if (ReduceAclnnRunner::LoadMethod() != NO_ERROR) {
+            ATB_LOG(ERROR) << "Load aclnn function failed, please check your CANN version.";
+            return ERROR_CANN_ERROR;
+        }
+    }
+
     *operation = new (std::nothrow) ReduceOperation(opParam);
     if (*operation == nullptr) {
         ATB_LOG(ERROR) << "failed to new operation";
@@ -126,6 +136,9 @@ Status ReduceOperation::ParamCheck(TensorDesc inTensorDesc) const
 std::shared_ptr<Runner> ReduceOperation::CreateRunner(Context &context) const
 {
     (void)context;
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+        return std::make_shared<ReduceAclnnRunner>(param_);
+    }
     return std::make_shared<ReduceOpsRunner>(param_);
 }
 

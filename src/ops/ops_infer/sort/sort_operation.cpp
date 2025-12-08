@@ -8,7 +8,7 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
-#include "sort_operation.h"
+#include <mki/utils/platform/platform_info.h>
 #include "atb/utils/log.h"
 #include "sort_ops_runner.h"
 #include "atb/utils/tensor_check.h"
@@ -16,6 +16,10 @@
 #include "atb/utils/singleton.h"
 #include "atb/operation/atb_operation_ir_cfg.h"
 #include "atb/operation/op_param_funcs.h"
+#include "sort_aclnn_runner.h"
+#include "sort_ops_runner.h"
+#include "sort_operation.h"
+
 namespace {
 static const uint32_t IN_TENSOR_NUM = 1;
 static const uint32_t OUT_TENSOR_NUM = 2;
@@ -26,6 +30,21 @@ static const int64_t SIXTEEN = 16;
 bool ParamCheck(const atb::infer::SortParam &opParam)
 {
     (void)opParam;
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+        if (opParam.num.size() != 1) {
+            ATB_LOG(ERROR) << "ParamCheckImpl:param.num size should be 1.";
+            return false;
+        }
+        if (opParam.num.at(0) <= 0) {
+            ATB_LOG(ERROR) << "ParamCheckImpl:param.num should > 0";
+            return false;
+        }
+        atb::Status status = atb::SortAclnnRunner::LoadMethod();
+        if (status != atb::ErrorType::NO_ERROR) {
+            ATB_LOG(ERROR) << "load aclnn funct failed!";
+            return false;
+        }
+    }
     return true;
 }
 } // namespace
@@ -35,7 +54,11 @@ OPERATION_PARAM_FUNCS(SortOperation, infer::SortParam)
 
 SortOperation::SortOperation(const infer::SortParam &param) : OperationBase("SortOperation"), param_(param)
 {
-    operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("SortOperation");
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+        operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("SortOperation950");
+    } else {
+        operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("SortOperation");
+    }
 }
 
 SortOperation::~SortOperation() {}
@@ -58,6 +81,9 @@ Status SortOperation::InferShapeImpl(const SVector<TensorDesc> &inTensorDescs,
     outTensorDescs.at(0).shape.dims[outTensorDescs.at(0).shape.dimNum - 1] = param_.num[0];
     outTensorDescs.at(1).shape.dims[outTensorDescs.at(0).shape.dimNum - 1] = param_.num[0];
     outTensorDescs.at(1).dtype = ACL_INT32;
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+        outTensorDescs.at(1).dtype = ACL_INT64;
+    }
     return NO_ERROR;
 }
 
@@ -114,6 +140,9 @@ Status SortOperation::ParamCheckImpl(const TensorDesc &xTensorDesc) const
 std::shared_ptr<Runner> SortOperation::CreateRunner(Context &context) const
 {
     (void)context;
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+        return std::make_shared<SortAclnnRunner>(param_);
+    }
     return std::make_shared<SortOpsRunner>(param_);
 }
 
