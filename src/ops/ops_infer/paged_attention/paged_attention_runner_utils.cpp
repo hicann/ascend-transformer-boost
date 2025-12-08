@@ -23,6 +23,6 @@ bool IsParamEqual(const infer::PagedAttentionParam &left, const infer::PagedAtte
 }
 
 bool NeedElewiseMulsQScale(const infer::PagedAttentionParam &param) {
-    return !UtilsInternal::IsFloatEqual(param.qScale, 1);
+    return !UtilsInternal::IsFloatEqual(param.qScale, 1) && !UtilsInternal::IsFloatEqual(param.qScale, 0);
 }
 } // namespace atb
