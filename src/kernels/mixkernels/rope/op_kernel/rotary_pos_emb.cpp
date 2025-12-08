@@ -50,18 +50,18 @@ extern "C" __global__ __aicore__ void rotary_pos_emb(GM_ADDR q, GM_ADDR k, GM_AD
     } else if (TILING_KEY_IS(31)) {
         RopeFp32<half, float, true> ropeFp32(&tiling_data, &pipe);
         ropeFp32.RopeInitGm(q, k, cos, sin, seqLen, outQ, outK);
-        ropeFp32.Process(workspace);
+        ropeFp32.Process(workspace, sync);
     } else if (TILING_KEY_IS(32)) {
 #if defined(__CCE_KT_TEST__) || (__CCE_AICORE__ == 220)
         RopeBf16<bfloat16_t, bfloat16_t, true> ropeBf16(&tiling_data, &pipe);
         ropeBf16.RopeInitGm(q, k, cos, sin, seqLen, outQ, outK);
-        ropeBf16.Process(workspace);
+        ropeBf16.Process(workspace, sync);
 #endif
     } else if (TILING_KEY_IS(33)) {
 #if defined(__CCE_KT_TEST__) || (__CCE_AICORE__ == 220)
         RopeBf16Align<bfloat16_t, bfloat16_t, true> ropeBf16(&tiling_data, &pipe);
         ropeBf16.RopeInitGm(q, k, cos, sin, seqLen, outQ, outK);
-        ropeBf16.Process(workspace);
+        ropeBf16.Process(workspace, sync);
 #endif
     } else if (TILING_KEY_IS(20)) {
         RopeFp16<half, half, false> ropeFp16(&tiling_data, &pipe);
@@ -70,18 +70,18 @@ extern "C" __global__ __aicore__ void rotary_pos_emb(GM_ADDR q, GM_ADDR k, GM_AD
     } else if (TILING_KEY_IS(21)) {
         RopeFp32<half, float, false> ropeFp32(&tiling_data, &pipe);
         ropeFp32.RopeInitGm(q, k, cos, sin, seqLen, outQ, outK);
-        ropeFp32.Process(workspace);
+        ropeFp32.Process(workspace, sync);
     } else if (TILING_KEY_IS(22)) {
 #if defined(__CCE_KT_TEST__) || (__CCE_AICORE__ == 220)
         RopeBf16<bfloat16_t, bfloat16_t, false> ropeBf16(&tiling_data, &pipe);
         ropeBf16.RopeInitGm(q, k, cos, sin, seqLen, outQ, outK);
-        ropeBf16.Process(workspace);
+        ropeBf16.Process(workspace, sync);
 #endif
     } else if (TILING_KEY_IS(24)) {
 #if defined(__CCE_KT_TEST__) || (__CCE_AICORE__ == 220)
         RopeBf16Align<bfloat16_t, bfloat16_t, false> ropeBf16(&tiling_data, &pipe);
         ropeBf16.RopeInitGm(q, k, cos, sin, seqLen, outQ, outK);
-        ropeBf16.Process(workspace);
+        ropeBf16.Process(workspace, sync);
 #endif
     } else if (TILING_KEY_IS(23)) {
         RopeFp16LargeNtokens<half, half, false> ropeFp16LargeNtokens(&tiling_data, &pipe);
