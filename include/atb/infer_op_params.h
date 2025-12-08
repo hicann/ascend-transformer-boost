@@ -1952,10 +1952,12 @@ struct PagedAttentionParam {
     //! \note 默认值为0
     //! \warning 取值范围为[0,576]
     uint32_t mlaVHeadSize = 0;
+    //! query缩放系数，设置为0或1时不生效
+    float qScale = 0;
     //!
     //! \brief 预留参数
     //!
-    uint8_t rsv[68] = {0};
+    uint8_t rsv[64] = {0};
 };
 
 //!
