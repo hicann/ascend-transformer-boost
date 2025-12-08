@@ -59,6 +59,9 @@ AclnnGtTensorExecuteFunc ElewiseAclnnRunner::aclnnGtTensorExecuteFunc_ = nullptr
 AclnnAscendQuantGetWorkspaceSizeFunc ElewiseAclnnRunner::aclnnAscendQuantGetWorkspaceSizeFunc_ = nullptr;
 AclnnAscendQuantExecuteFunc ElewiseAclnnRunner::aclnnAscendQuantExecuteFunc_ = nullptr;
 
+AclnnSubGetWorkspaceSizeFunc ElewiseAclnnRunner::aclnnSubGetWorkspaceSizeFunc_ = nullptr;
+AclnnSubExecuteFunc ElewiseAclnnRunner::aclnnSubExecuteFunc_ = nullptr;
+
 ElewiseAclnnRunner::ElewiseAclnnRunner(const infer::ElewiseParam &param)
     : AclnnRunner("ElewiseAclnnRunner"), param_(param)
 {
@@ -75,6 +78,7 @@ ElewiseAclnnRunner::ElewiseAclnnRunner(const infer::ElewiseParam &param)
         {infer::ElewiseParam::ElewiseType::ELEWISE_LESS, IN_TENSOR_NUM_2},
         {infer::ElewiseParam::ElewiseType::ELEWISE_GREATER, IN_TENSOR_NUM_2},
         {infer::ElewiseParam::ElewiseType::ELEWISE_QUANT, IN_TENSOR_NUM_3},
+        {infer::ElewiseParam::ElewiseType::ELEWISE_SUB, IN_TENSOR_NUM_2},
     };
     std::unordered_map<infer::ElewiseParam::ElewiseType, uint32_t>::iterator it =
         inTensorNumMap.find(param.elewiseType);
@@ -296,6 +300,9 @@ aclnnStatus ElewiseAclnnRunner::SetAclNNWorkspaceExecutor()
         case infer::ElewiseParam::ElewiseType::ELEWISE_QUANT:
             ret = HandleQuant(&rawExecutorPtr);
             break;
+        case infer::ElewiseParam::ElewiseType::ELEWISE_SUB:
+            ret = HandleSub(&rawExecutorPtr);
+            break;
         default:
             break;
     }
@@ -316,6 +323,26 @@ aclnnStatus ElewiseAclnnRunner::HandleCast(aclOpExecutor** executor)
     aclTensor *out = aclnnVariantPack_.aclOutTensors.at(outTensorIndex++)->tensor;
     return ElewiseAclnnRunner::aclnnCastGetWorkspaceSizeFunc_(self, param_.outTensorType, out, &(atbVariantPack_.workspaceBufferSize), executor);
 }
+
+aclnnStatus ElewiseAclnnRunner::HandleSub(aclOpExecutor** executor)
+{   
+    size_t inTensorIndex = 0;
+    aclTensor *self = aclnnVariantPack_.aclInTensors.at(inTensorIndex++)->tensor;
+    size_t outTensorIndex = 0;
+    aclTensor *out = aclnnVariantPack_.aclOutTensors.at(outTensorIndex++)->tensor;
+    aclTensor *other = aclnnVariantPack_.aclInTensors.at(inTensorIndex++)->tensor;
+    float varAttrFloat_ = 1.0f;
+    int32_t varAttrInt = 1;
+    if (aclnnVariantPack_.aclInTensors.at(0)->atbTensor.desc.dtype == aclDataType::ACL_FLOAT ||
+        aclnnVariantPack_.aclInTensors.at(0)->atbTensor.desc.dtype == aclDataType::ACL_FLOAT16 ||
+        aclnnVariantPack_.aclInTensors.at(0)->atbTensor.desc.dtype == aclDataType::ACL_BF16) {
+        alpha_ = aclCreateScalar(&varAttrFloat_, aclDataType::ACL_FLOAT);
+    } else {
+        alpha_ = aclCreateScalar(&varAttrInt, aclDataType::ACL_INT32);
+    };
+    return aclnnSubGetWorkspaceSizeFunc_(self, other, alpha_, out, &(atbVariantPack_.workspaceBufferSize), executor);
+}
+
 
 aclnnStatus ElewiseAclnnRunner::HandleMuls(aclOpExecutor** executor)
 {
@@ -471,6 +498,11 @@ Status ElewiseAclnnRunner::LaunchAclnnKernel()
                                        atbVariantPack_.workspaceBufferSize,
                                        aclnnExecutor_.get(), executeStream);
             break;
+        case infer::ElewiseParam::ElewiseType::ELEWISE_SUB:
+            ret = aclnnSubExecuteFunc_(atbVariantPack_.workspaceBuffer,
+                                       atbVariantPack_.workspaceBufferSize,
+                                       aclnnExecutor_.get(), executeStream);
+            break;
         case infer::ElewiseParam::ElewiseType::ELEWISE_MUL:
             ret = aclnnMulExecuteFunc_(atbVariantPack_.workspaceBuffer,
                                        atbVariantPack_.workspaceBufferSize,
@@ -518,6 +550,12 @@ Status ElewiseAclnnRunner::LoadMethod()
 {
     ATB_LOG(INFO) << "ElewiseAclnnRunner LoadMethod";
     Status status = NO_ERROR;
+    if (ElewiseAclnnRunner::aclnnSubGetWorkspaceSizeFunc_ == nullptr ||
+        ElewiseAclnnRunner::aclnnSubExecuteFunc_ == nullptr) {
+        status = LoadFromSharedObjectFile("aclnnSubGetWorkspaceSize", "aclnnSub",
+                                          ElewiseAclnnRunner::aclnnSubGetWorkspaceSizeFunc_,
+                                          ElewiseAclnnRunner::aclnnSubExecuteFunc_);
+    }
     if (aclnnCastGetWorkspaceSizeFunc_ == nullptr ||
         aclnnCastExecuteFunc_ == nullptr) {
         status = LoadFromSharedObjectFile("aclnnCastGetWorkspaceSize", "aclnnCast",

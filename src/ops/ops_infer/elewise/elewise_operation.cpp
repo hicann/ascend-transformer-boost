@@ -457,7 +457,7 @@ std::shared_ptr<Runner> ElewiseOperation::CreateRunner(Context &context) const
         infer::ElewiseParam::ElewiseType::ELEWISE_ADD,        infer::ElewiseParam::ElewiseType::ELEWISE_LESS,
         infer::ElewiseParam::ElewiseType::ELEWISE_MUL,        infer::ElewiseParam::ElewiseType::ELEWISE_GREATER,
         infer::ElewiseParam::ElewiseType::ELEWISE_REALDIV,    infer::ElewiseParam::ElewiseType::ELEWISE_LOGICAL_NOT,
-        infer::ElewiseParam::ElewiseType::ELEWISE_QUANT,
+        infer::ElewiseParam::ElewiseType::ELEWISE_QUANT,      infer::ElewiseParam::ElewiseType::ELEWISE_SUB,
     };
     if (aclnnOpType.find(param_.elewiseType) != aclnnOpType.end() &&
         Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
