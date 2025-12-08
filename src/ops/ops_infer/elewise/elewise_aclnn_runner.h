@@ -31,6 +31,9 @@ using AclnnLogicalNotExecuteFunc = aclnnStatus (*)(void *, uint64_t, aclOpExecut
 using AclnnAddGetWorkspaceSizeFunc = aclnnStatus (*)(const aclTensor *, const aclTensor *, const aclScalar *, const aclTensor *, uint64_t *, aclOpExecutor **);
 using AclnnAddExecuteFunc = aclnnStatus (*)(void *, uint64_t, aclOpExecutor *, aclrtStream);
 
+using AclnnSubGetWorkspaceSizeFunc = aclnnStatus (*)(const aclTensor *, const aclTensor *, const aclScalar *, const aclTensor *, uint64_t *, aclOpExecutor **);
+using AclnnSubExecuteFunc = aclnnStatus (*)(void *, uint64_t, aclOpExecutor *, aclrtStream);
+
 using AclnnMulGetWorkspaceSizeFunc = aclnnStatus (*)(const aclTensor *, const aclTensor *, const aclTensor *, uint64_t *, aclOpExecutor **);
 using AclnnMulExecuteFunc = aclnnStatus (*)(void *, uint64_t, aclOpExecutor *, aclrtStream);
 
@@ -72,6 +75,7 @@ protected:
                                        std::shared_ptr<AclNNTensor>& tensorPtr);
     Status LaunchAclnnKernel() override;
     aclnnStatus SetAclNNWorkspaceExecutor() override;
+    aclnnStatus HandleSub(aclOpExecutor** executor);
     aclnnStatus HandleCast(aclOpExecutor** executor);
     aclnnStatus HandleMuls(aclOpExecutor** executor);
     aclnnStatus HandleCos(aclOpExecutor** executor);
@@ -110,6 +114,9 @@ private:
 
     static AclnnAddGetWorkspaceSizeFunc aclnnAddGetWorkspaceSizeFunc_;
     static AclnnAddExecuteFunc aclnnAddExecuteFunc_;
+
+    static AclnnSubGetWorkspaceSizeFunc aclnnSubGetWorkspaceSizeFunc_;
+    static AclnnSubExecuteFunc aclnnSubExecuteFunc_;
 
     static AclnnMulGetWorkspaceSizeFunc aclnnMulGetWorkspaceSizeFunc_;
     static AclnnMulExecuteFunc aclnnMulExecuteFunc_;
