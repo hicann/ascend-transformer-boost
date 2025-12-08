@@ -160,7 +160,52 @@ public:
         }
         seqLenQueue_.FreeTensor(seqLenLocal);
     }
+    template<typename COS_DTYPE>
+    __aicore__ inline void CosFormatJudge(__gm__ uint8_t *extra, __gm__ uint8_t *sync,
+                                          AscendC::TBuf<AscendC::TPosition::VECCALC>& outQueueCO2_)
+    {
+        AscendC::GlobalTensor<uint8_t> extraGm;
+        extraGm.SetGlobalBuffer((__gm__ uint8_t *)extra);
+        AscendC::LocalTensor<COS_DTYPE> judgeUbuf_ = outQueueCO2_.Get<COS_DTYPE>();
+        AscendC::GlobalTensor<COS_DTYPE> extraGmCosDtype;
+        extraGmCosDtype.SetGlobalBuffer((__gm__ COS_DTYPE *)extra);
+#if defined __CCE_AICORE__ == 100
+        AscendC::PipeBarrier<PIPE_ALL>();
+        this->ExpandCosSin(judgeUbuf_, this->cosGm_, extraGmCosDtype);
+        this->cosGm_ = extraGmCosDtype;
+        AscendC::PipeBarrier<PIPE_ALL>();
+        this->ExpandCosSin(judgeUbuf_, this->sinGm_,
+            extraGmCosDtype[this->tilingData_->ntokens * this->tilingData_->headDim]);
+        this->sinGm_ = extraGmCosDtype[this->tilingData_->ntokens * this->tilingData_->headDim];
+        extraGm = extraGm[this->tilingData_->ntokens * this->tilingData_->headDim *
+                            4]; // sizeof(uint8_t) * 2 = sizeof(half)
+        AscendC::PipeBarrier<PIPE_ALL>();
 
+#else
+       AscendC::GlobalTensor<int32_t> syncGm;
+        syncGm.SetGlobalBuffer((__gm__ int32_t *)sync);
+        if (block_idx == 0) {
+            AscendC::PipeBarrier<PIPE_ALL>();
+            this->ExpandCosSin(judgeUbuf_, this->cosGm_, extraGmCosDtype);
+            this->cosGm_ = extraGmCosDtype;
+            AscendC::PipeBarrier<PIPE_ALL>();
+            this->ExpandCosSin(judgeUbuf_, this->sinGm_,
+                extraGmCosDtype[this->tilingData_->ntokens * this->tilingData_->headDim]);
+            this->sinGm_ = extraGmCosDtype[this->tilingData_->ntokens * this->tilingData_->headDim];
+            AscendC::PipeBarrier<PIPE_ALL>();
+        }
+        if(this->tilingData_->batch > 1)
+        {
+            this->cosGm_ = extraGmCosDtype;
+            this->sinGm_ = extraGmCosDtype[this->tilingData_->ntokens * this->tilingData_->headDim];
+        }
+        extraGm = extraGm[this->tilingData_->ntokens * this->tilingData_->headDim *
+                            4]; // sizeof(uint8_t) * 2 = sizeof(half)
+        AscendC::LocalTensor<int32_t> syncBuf = outQueueCO2_.Get<int32_t>();
+        AscendC::SyncAll(syncGm, syncBuf);
+
+#endif
+    }
     template<typename BUF_TYPE>
     __aicore__ inline void AlignExpandNeg(const AscendC::LocalTensor<BUF_TYPE> &tempBuf,
         uint32_t bufPos, uint32_t headNumTemp, uint32_t repeatTimeTemp)
