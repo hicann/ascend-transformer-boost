@@ -105,15 +105,16 @@ Status SoftmaxAclnnRunner::RecordDims(SVector<Tensor> tensors, const size_t id, 
     }
     int64_t start = axes.at(0);
     int64_t end = axes.at(axes.size() - 1);
-    for (uint32_t i = 0; i <= start; ++i) {
+    int64_t dimNum = static_cast<int64_t>(originDims_.dimNum);
+    for (int64_t i = 0; i <= start; ++i) {
         targetDims_.dims[i] = originDims_.dims[i];
     }
     if (axes.size() > 1) {
-        for (uint32_t i = static_cast<uint32_t>(axes.at(1)); i <= end; ++i) {
+        for (int64_t i = axes.at(1); i <= end; ++i) {
             targetDims_.dims[start] *= originDims_.dims[i];
         }
     }
-    for (uint32_t i = static_cast<uint32_t>(end + 1); i < originDims_.dimNum; ++i) {
+    for (int64_t i = end + 1; i < dimNum; ++i) {
         targetDims_.dims[++start] = originDims_.dims[i];
     }
     targetDims_.dimNum = static_cast<uint64_t>(start + 1);
