@@ -157,7 +157,7 @@ Status GetNdMLATiling(const MLAInfo &mmInfo, uint32_t &blockDim, uint32_t *tilin
         return AtbOps::Status::FailStatus(ERROR_INFERSHAPE_ERROR, "OpParam is invalid"));
 
     int32_t maxKVseqlen =  GetMaxKVseqlen(param);
-    MKI_CHECK(maxKVseqlen > 0, "kvSeqlen max value invalid, please check",
+    MKI_CHECK(maxKVseqlen >= 0, "kvSeqlen max value invalid, please check",
         return AtbOps::Status::FailStatus(ERROR_INFERSHAPE_ERROR, "OpParam is invalid"));
 
     int32_t curQNBlockTile = GetQNBlockTile(mmInfo, maxQseqlen);
@@ -166,7 +166,6 @@ Status GetNdMLATiling(const MLAInfo &mmInfo, uint32_t &blockDim, uint32_t *tilin
     for (int32_t seqIdx = 0; seqIdx < mmInfo.batch; seqIdx++) {
         int32_t qSeqLen = 1;
         qSeqLen = (emptySeq == 1) ? 1 : *(mmInfo.qSeqLen + seqIdx);
-        qSeqLen = (*(mmInfo.kvSeqLen + seqIdx) == 0) ? 0 : qSeqLen;
         int32_t kvSeqlen = *(mmInfo.kvSeqLen + seqIdx);
 
         int32_t tilingOffset = TILING_HEAD_SIZE + TILING_PARA_SIZE * seqIdx;
