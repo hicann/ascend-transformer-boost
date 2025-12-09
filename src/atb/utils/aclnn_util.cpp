@@ -281,6 +281,10 @@ int ConvertTensorToSeqLengths(atb::Tensor &tensor, aclIntArray *&actualSeqLength
     if (seqLenCache.size() < dataSize) {
         seqLenCache.resize(dataSize);
     }
+    if (tensor.hostData == nullptr) {
+        ATB_LOG(ERROR) << "tensor.hostData is nullptr, please check!";
+        return ERROR_INVALID_TENSOR_ADDR;
+    }
     if (memcpy_s(seqLenCache.data(), dataSize * 8, tensor.hostData, dataSize * 8) != 0) { // 8: int64 size
         ATB_LOG(ERROR) << "memcpy_s failed!";
         return atb::ERROR_INTERNAL_ERROR;

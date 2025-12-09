@@ -17,11 +17,7 @@ bool RingMLAVariantPackParam::BuildFromTensor(const SVector<Mki::Tensor> &inTens
 {
     const Mki::Tensor &seqLenTensor = inTensors.at(seqLenTensorId);
     if (!seqLenTensor.hostData) {
-#ifdef _DEBUG
-        ATB_LOG(ERROR) << "seqLenTensor.hostData is null, seqLenTensor.hostData: " << seqLenTensor.hostData;
-#else
         ATB_LOG(ERROR) << "seqLenTensor.hostData is null";
-#endif
         return false;
     }
 
@@ -60,7 +56,6 @@ bool RingMLAVariantPackParam::BuildFromTensor(const SVector<Mki::Tensor> &inTens
             ss << kvSeqLen[i] << "\t";
         }
     }
-    ATB_LOG(INFO) << "RIngMLA BuildFromTensor " << ss.str();
     return true;
 }
 } // namespace atb
