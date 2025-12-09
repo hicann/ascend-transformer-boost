@@ -32,20 +32,18 @@ std::vector<int32_t> contextLensData(BATCH_SIZE, 256); // contextLens的host侧�
 atb::Status PrepareInTensor(atb::Context *contextPtr, aclrtStream stream, atb::SVector<atb::Tensor> &inTensors)
 {
     // 创建query tensor
-    std::vector<unsigned int16_t> queryData(NTOKENS * HEAD_NUM * HEAD_SIZE, 0x3C00); // 0x3C00: float16的1
+    std::vector<float> queryData(NTOKENS * HEAD_NUM * HEAD_SIZE, 1.0);
     atb::Tensor query;
     CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, queryData, ACL_FLOAT16, aclFormat::ACL_FORMAT_ND,
-                                        {NTOKENS, HEAD_NUM, HEAD_SIZE}, query, ACL_FLOAT16));
+                                        {NTOKENS, HEAD_NUM, HEAD_SIZE}, query));
     // 创建key，value tensor
-    std::vector<unsigned int16_t> kvCacheData(BLOCK_NUM * BLOCK_SIZE * KV_HEAD_NUM * HEAD_SIZE, 0x3C00);
+    std::vector<float> kvCacheData(BLOCK_NUM * BLOCK_SIZE * KV_HEAD_NUM * HEAD_SIZE, 1.0);
     atb::Tensor kCache;
     CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, kvCacheData, ACL_FLOAT16, aclFormat::ACL_FORMAT_FRACTAL_NZ,
-                                        {BLOCK_NUM, HEAD_SIZE * KV_HEAD_NUM / 16, BLOCK_SIZE, 16}, kCache,
-                                        ACL_FLOAT16));
+                                        {BLOCK_NUM, HEAD_SIZE * KV_HEAD_NUM / 16, BLOCK_SIZE, 16}, kCache));
     atb::Tensor vCache;
     CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, kvCacheData, ACL_FLOAT16, aclFormat::ACL_FORMAT_FRACTAL_NZ,
-                                        {BLOCK_NUM, HEAD_SIZE * KV_HEAD_NUM / 16, BLOCK_SIZE, 16}, vCache,
-                                        ACL_FLOAT16));
+                                        {BLOCK_NUM, HEAD_SIZE * KV_HEAD_NUM / 16, BLOCK_SIZE, 16}, vCache));
     // 创建blockTables
     uint32_t maxNumBlocksPerQuery = (MAX_CONTEXT_LEN + BLOCK_SIZE - 1) / BLOCK_SIZE;
     std::vector<int32_t> blockTablesData(NTOKENS * maxNumBlocksPerQuery, 0);
