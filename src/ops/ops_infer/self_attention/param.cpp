@@ -36,14 +36,8 @@ bool SelfAttentionFusionVariantPackParam::BuildFromTensor(const SVector<Mki::Ten
                   << ", seqLenTensor.hostData:" << seqLenTensor.hostData
                   << " ,tokenOffsetTensorId: " << tokenOffsetTensorId << ", seqLenTensorId: " << seqLenTensorId;
     if (!tokenOffsetTensor.hostData || !seqLenTensor.hostData) {
-#ifdef _DEBUG
-        ATB_LOG(ERROR) << "tensor.hostData is null, tokenOffsetTensor.hostData:" << tokenOffsetTensor.hostData
-                       << ", seqLenTensor.hostData:" << seqLenTensor.hostData
-                       << " ,tokenOffsetTensorId: " << tokenOffsetTensorId << ", seqLenTensorId: " << seqLenTensorId;
-#else
         ATB_LOG(ERROR) << "tensor.hostData is null"
                        << " ,tokenOffsetTensorId: " << tokenOffsetTensorId << " , seqLenTensorId: " << seqLenTensorId;
-#endif
         return false;
     }
 
