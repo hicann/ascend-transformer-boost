@@ -28,22 +28,22 @@ atb::Status PrepareInTensor(atb::Context *contextPtr, aclrtStream stream, aclDat
 {
     // 创建shape为[tokenNum, headNum, 512]的输入qNope tensor
     atb::Tensor qNope;
-    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<__fp16>(tokenNum * headNum * 512, 1),
+    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<float>(tokenNum * headNum * 512, 1),
                                         ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, {tokenNum, headNum, 512}, qNope));
     // 创建shape为[tokenNum, headNum, 64]的输入qRope tensor
     atb::Tensor qRope;
-    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<__fp16>(tokenNum * headNum * 64, 0), dtype,
-                                        aclFormat::ACL_FORMAT_ND, {tokenNum, headNum, 64}, qRope, dtype));
+    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<float>(tokenNum * headNum * 64, 0), dtype,
+                                        aclFormat::ACL_FORMAT_ND, {tokenNum, headNum, 64}, qRope));
     int maxBlockNumPerSeq = (kSeqLen + blockSize - 1) / blockSize;
     blockNum = tokenNum * maxBlockNumPerSeq;
     // 创建shape为[blockNum, blockSize, kvHeadNum, 512]的输入ctKV tensor
     atb::Tensor ctKV;
-    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<__fp16>(blockNum * blockSize * 512, 1),
+    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<float>(blockNum * blockSize * 512, 1),
                                         ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, {blockNum, blockSize, 1, 512}, ctKV));
     // 创建shape为[blockNum, blockSize, kvHeadNum, 64]的输入kRope tensor
     atb::Tensor kRope;
-    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<__fp16>(blockNum * blockSize * 64, 0), dtype,
-                                        aclFormat::ACL_FORMAT_ND, {blockNum, blockSize, 1, 64}, kRope, dtype));
+    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<float>(blockNum * blockSize * 64, 0), dtype,
+                                        aclFormat::ACL_FORMAT_ND, {blockNum, blockSize, 1, 64}, kRope));
     // 创建shape为[BATCH, maxBlockNumPerSeq]的输入blockTables tensor
     auto blockTablesHost = std::vector<int32_t>(BATCH * maxBlockNumPerSeq);
     for (size_t i = 0; i < BATCH; i++) {
