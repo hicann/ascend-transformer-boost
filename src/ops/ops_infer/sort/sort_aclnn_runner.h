@@ -12,6 +12,15 @@
 #include "atb/infer_op_params.h"
 #include "atb/runner/aclnn_runner.h"
 
+
+using AclnnGetWorkspaceSizeFunc = aclnnStatus(*)(const aclTensor *, int64_t, int64_t, bool, bool, aclTensor *,
+                                                     aclTensor *, uint64_t *, aclOpExecutor **);
+using AclnnExecuteFunc = aclnnStatus(*)(void *, uint64_t, aclOpExecutor *, aclrtStream);
+
+using AclnnCastGetWorkspaceSizeFunc = aclnnStatus(*)(const aclTensor *, const aclDataType,
+                                                        aclTensor *, uint64_t *, aclOpExecutor **);
+using AclnnCastExecuteFunc = aclnnStatus(*)(void *, uint64_t, aclOpExecutor *, aclrtStream);
+
 namespace atb {
 class SortAclnnRunner : public AclnnRunner {
 public:
@@ -26,9 +35,15 @@ protected:
 
 private:
     infer::SortParam param_;
-    static aclnnStatus (*aclnnGetWorkspaceSizeFunc_)(const aclTensor *, int64_t, int64_t, bool, bool, aclTensor *,
-                                                     aclTensor *, uint64_t *, aclOpExecutor **);
-    static aclnnStatus (*aclnnExecuteFunc_)(void *, uint64_t, aclOpExecutor *, aclrtStream);
+
+    static AclnnGetWorkspaceSizeFunc aclnnGetWorkspaceSizeFunc_;
+    static AclnnExecuteFunc aclnnExecuteFunc_;
+    static AclnnCastGetWorkspaceSizeFunc aclnnCastGetWorkspaceSizeFunc_;
+    static AclnnCastExecuteFunc aclnnCastExecuteFunc_;
+
+    std::shared_ptr<AclNNTensor> indices_;
+    uint64_t castworkspacesize_;
+    std::shared_ptr<aclOpExecutor> aclnnCastExecutor_;
 };
 } // namespace atb
 #endif // ATB_SOFTMAX_ACLNN_RUNNER_H
