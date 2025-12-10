@@ -17,9 +17,17 @@
 #include <securec.h>
 #include <sys/types.h>
 #include <fcntl.h>
-#include <toolchain/slog.h>
+#if defined(HAVE_DLOG)
+    #include <base/dlog_pub.h>
+#else
+    #include <toolchain/slog.h>
+#endif
 #include <toolchain/prof_api.h>
-#include <toolchain/prof_common.h>
+#if defined(COMMON_IN_PROF)
+    #include <prof_common.h>
+#else
+    #include <toolchain/prof_common.h>
+#endif
 #include <hccl_types.h>
 #include <mki/utils/log/log.h>
 

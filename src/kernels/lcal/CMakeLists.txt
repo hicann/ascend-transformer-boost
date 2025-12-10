@@ -52,8 +52,23 @@ include_directories(
     ${ASCEND_HOME_PATH}/${ARCH}-linux/include/experiment
     ${ASCEND_HOME_PATH}/${ARCH}-linux/include/experiment/runtime/
     ${ASCEND_HOME_PATH}/${ARCH}-linux/include/experiment/msprof/
+    ${ASCEND_HOME_PATH}/${ARCH}-linux/include/experiment/msprof/
+    ${ASCEND_HOME_PATH}/pkg_inc/runtime/
+    ${ASCEND_HOME_PATH}/pkg_inc/profiling
     )
 link_directories(${ASCEND_HOME_PATH}/${ARCH}-linux/lib64/)
+
+set(DLOG_HEADER_PATH "$ENV{ASCEND_HOME_PATH}/pkg_inc/base/dlog_pub.h")
+if (EXISTS "${DLOG_HEADER_PATH}")
+    message(STATUS "Found dlog_pub.h, use HAVE_DLOG")
+    add_compile_definitions(HAVE_DLOG)
+endif()
+
+set(PROF_COMMON_NEW "$ENV{ASCEND_HOME_PATH}/pkg_inc/profiling/prof_common.h")
+if (EXISTS "${PROF_COMMON_NEW}")
+    message(STATUS "Found prof_common.h in profiling pkg_inc, define COMMON_IN_PROF")
+    add_compile_definitions(COMMON_IN_PROF)
+endif()
 
 set(AIV_ARCH dav-c220-vec)
 set(AIC_ARCH dav-c220-cube)
