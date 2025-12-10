@@ -244,8 +244,13 @@ function fn_build_cann_dependency()
     mkdir -p $THIRD_PARTY_DIR/compiler
     CCEC_COMPILER_DIR=$THIRD_PARTY_DIR/compiler/ccec_compiler
     TIKCPP_DIR=$THIRD_PARTY_DIR/compiler/tikcpp
-    ln -s $ASCEND_HOME_PATH/compiler/ccec_compiler $CCEC_COMPILER_DIR
-    ln -s $ASCEND_HOME_PATH/compiler/tikcpp $TIKCPP_DIR
+    if [ -f "$ASCEND_HOME_PATH/compiler/ccec_compiler/bin/ccec" ]; then
+        ln -s $ASCEND_HOME_PATH/compiler/ccec_compiler $CCEC_COMPILER_DIR
+        ln -s $ASCEND_HOME_PATH/compiler/tikcpp $TIKCPP_DIR
+    else
+        ln -s $ASCEND_HOME_PATH/tools/ccec_compiler $CCEC_COMPILER_DIR
+        ln -s $ASCEND_HOME_PATH/tools/tikcpp $TIKCPP_DIR
+    fi
 }
 
 function fn_build_3rdparty_for_test()
