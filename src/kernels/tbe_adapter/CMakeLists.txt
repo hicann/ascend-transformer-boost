@@ -513,6 +513,7 @@ if("${PACKAGE_COMPILE}" STREQUAL "ON" AND NOT "${LOCAL_RELEASE_COMPILE}" STREQUA
         ${PROJECT_SOURCE_DIR}/3rdparty/canndev/ops/common/
         ${PROJECT_SOURCE_DIR}/3rdparty/canndev/ops/common/inc
         ${PROJECT_SOURCE_DIR}/3rdparty/canndev/third_party/fwkacllib/inc
+        ${PROJECT_SOURCE_DIR}/3rdparty/canndev/third_party/fwkacllib/inc/toolchain
         ${METADEF_DIR}/inc/graph
         $ENV{ASCEND_HOME_PATH}/include
         $ENV{ASCEND_HOME_PATH}/include/tiling
