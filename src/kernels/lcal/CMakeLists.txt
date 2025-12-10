@@ -53,6 +53,7 @@ include_directories(
     ${ASCEND_HOME_PATH}/${ARCH}-linux/include/experiment/runtime/
     ${ASCEND_HOME_PATH}/${ARCH}-linux/include/experiment/msprof/
     ${ASCEND_HOME_PATH}/${ARCH}-linux/include/experiment/msprof/
+    ${ASCEND_HOME_PATH}/pkg_inc/
     ${ASCEND_HOME_PATH}/pkg_inc/runtime/
     ${ASCEND_HOME_PATH}/pkg_inc/profiling
     )
