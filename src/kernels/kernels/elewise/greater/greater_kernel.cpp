@@ -28,7 +28,7 @@ public:
         MKI_CHECK(launchParam.GetInTensorCount() == 2, "input num invalid", return false);
         MKI_CHECK(launchParam.GetOutTensorCount() == 1, "output num invalid", return false);
         MKI_CHECK(launchParam.GetParam().Type() == typeid(OpParam::Elewise),
-            "elewise: param type invalid", return false);
+            "greater kernel: param type invalid", return false);
         auto opParam = AnyCast<OpParam::Elewise>(launchParam.GetParam());
         OpParam::Elewise::ElewiseType type = opParam.elewiseType;
         MKI_CHECK(type == OpParam::Elewise::ELEWISE_GREATER, "greater: param type invalid", return false);
