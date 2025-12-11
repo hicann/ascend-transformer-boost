@@ -170,37 +170,35 @@ Status AtbToMkiLogLevel(const atb::LogLevel logLevel, Mki::LogLevel &mkiLevel)
             mkiLevel = Mki::LogLevel::ERROR;
             return NO_ERROR;
         default:
-            ATB_LOG(ERROR) << "Unsupported log level.";
             return ERROR_INVALID_PARAM;
     }
 }
 
-Status ParseEnvLogLevel(const char *val, Mki::LogLevel &mkiLevel)
+Status ParseEnvLogLevel(const char *val, atb::LogLevel &atbLevel)
 {
     if (val == nullptr) {
         return ERROR_INVALID_PARAM;
     }
     if (strcmp(val, "0") == 0) {
-        mkiLevel = Mki::LogLevel::TRACE;
+        atbLevel = atb::LogLevel::DEBUG;
         return NO_ERROR;
     }
     if (strcmp(val, "1") == 0) {
-        mkiLevel = Mki::LogLevel::INFO;
+        atbLevel = atb::LogLevel::INFO;
         return NO_ERROR;
     }
     if (strcmp(val, "2") == 0) {
-        mkiLevel = Mki::LogLevel::WARN;
+        atbLevel = atb::LogLevel::WARN;
         return NO_ERROR;
     }
     if (strcmp(val, "3") == 0) {
-        mkiLevel = Mki::LogLevel::ERROR;
+        atbLevel = atb::LogLevel::ERROR;
         return NO_ERROR;
     }
     if (strcmp(val, "4") == 0) {
-        mkiLevel = Mki::LogLevel::ERROR;
+        atbLevel = atb::LogLevel::NONE;
         return NO_ERROR;
     }
-    ATB_LOG(ERROR) << "Invalid logLevel from env: " << val;
     return ERROR_INVALID_PARAM;
 }
 
@@ -271,8 +269,8 @@ Status Utils::SetLogLevel(const atb::LogLevel atbLogLevel)
     if (atbLogLevel == atb::LogLevel::NONE) {
         Mki::LogCore::Instance().RemoveSink<Mki::LogSinkStdout>();
         Mki::LogCore::Instance().RemoveSink<Mki::LogSinkFile>();
-        Mki::LogCore::Instance().SetLogLevel(Mki::LogLevel::ERROR);
-        ATB_LOG(INFO) << "Log disabled by level NONE";
+        // Env cannot set the FATAL level. Use FATAL as an internal sentinel to mean "logging is disabled".
+        Mki::LogCore::Instance().SetLogLevel(Mki::LogLevel::FATAL);
         return NO_ERROR;
     }
 
@@ -284,10 +282,9 @@ Status Utils::SetLogLevel(const atb::LogLevel atbLogLevel)
 
     auto &logCore = Mki::LogCore::Instance();
 
-    if (IsLogFileDisabled()) {
-        logCore.RemoveSink<Mki::LogSinkStdout>();
-        logCore.RemoveSink<Mki::LogSinkFile>();
-
+    // If logging was previously disabled either by env configuration (IsLogFileDisabled() == True) or by ATB API
+    // (sentinel level FATAL), there should be no sink registered and thus need to be added.
+    if ((IsLogFileDisabled() || logCore.GetLogLevel() == Mki::LogLevel::FATAL) && logCore.GetAllSinks().empty()) {
         logCore.AddSink(std::make_shared<Mki::LogSinkFile>());
         if (IsLogToStdoutEnabled()) {
             logCore.AddSink(std::make_shared<Mki::LogSinkStdout>());
@@ -295,47 +292,33 @@ Status Utils::SetLogLevel(const atb::LogLevel atbLogLevel)
     }
 
     logCore.SetLogLevel(mkiLogLevel);
-    ATB_LOG(INFO) << "LogLevel set to " << static_cast<int>(atbLogLevel);
     return NO_ERROR;
 }
 
 Status Utils::ResetLogLevel()
 {
-    auto &logCore = Mki::LogCore::Instance();
-
     const char *envModuleLogLevel = Mki::GetEnv("ASCEND_MODULE_LOG_LEVEL");
     const char *envGlobalLogLevel = Mki::GetEnv("ASCEND_GLOBAL_LOG_LEVEL");
 
-    Mki::LogLevel mkiLevel = Mki::LogLevel::ERROR;
+    atb::LogLevel atbLevel = atb::LogLevel::ERROR;
 
     Status st = NO_ERROR;
     std::string atbModuleLogLevel;
     if (envModuleLogLevel != nullptr && GetAtbModuleLogLevelStr(envModuleLogLevel, atbModuleLogLevel) == NO_ERROR) {
-        st = ParseEnvLogLevel(atbModuleLogLevel.c_str(), mkiLevel);
+        st = ParseEnvLogLevel(atbModuleLogLevel.c_str(), atbLevel);
         if (st != NO_ERROR) {
             return st;
         }
     } else if (envGlobalLogLevel != nullptr) {
-        st = ParseEnvLogLevel(envGlobalLogLevel, mkiLevel);
+        st = ParseEnvLogLevel(envGlobalLogLevel, atbLevel);
         if (st != NO_ERROR) {
             return st;
         }
     } else {
-        mkiLevel = Mki::LogLevel::ERROR;
+        atbLevel = atb::LogLevel::ERROR;
     }
 
-    logCore.SetLogLevel(mkiLevel);
-    logCore.RemoveSink<Mki::LogSinkStdout>();
-    logCore.RemoveSink<Mki::LogSinkFile>();
-
-    if (!IsLogFileDisabled()) {
-        logCore.AddSink(std::make_shared<Mki::LogSinkFile>());
-        if (IsLogToStdoutEnabled()) {
-            logCore.AddSink(std::make_shared<Mki::LogSinkStdout>());
-        }
-    }
-
-    ATB_LOG(INFO) << "Log level reset to state from env.";
-    return NO_ERROR;
+    st = SetLogLevel(atbLevel);
+    return st;
 }
 } // namespace atb
