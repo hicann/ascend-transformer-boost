@@ -2260,6 +2260,62 @@ class TestFlashAttention(operation_test.OperationTest):
                                             self.mask.to(data_type).npu(),
                                  torch.tensor(self.kv_seqlen).to(torch.int32).npu()])
 
+    def test_flash_attention_mla_swa_fp16_head_size(self):
+        """
+            mla + swa norm mask, is_decoder = 0, datatype = torch.float16
+            embeddim = 576, embeddimV = 512
+            qseqlen = kv_seqLen
+            maskType = MASK_TYPE_SLIDING_WINDOW_NORM
+        """
+        # unpad encoder
+        if not operation_test.get_soc_version() == 'Ascend910B':
+            print("this testcase only supports Ascend910B")
+            return
+        batch = 4
+        kv_head = 8        # kv_head num
+        isdecoder = 0      # prefill or decoder
+        heads = 8          # llama7b  hidden_size 4096
+        embeddim = 576
+        embeddimV = 512
+        tor = 1.0 / math.sqrt(1.0 * embeddim)
+        self.qk_scale = tor
+        self.q_scale = 1
+        dynamic_batch = False
+        
+        kv_seqLen = [1024] * 4
+        max_seq = max(kv_seqLen)
+        
+        self.q_seqlen = kv_seqLen
+        ntokens = sum(kv_seqLen)
+
+        is_clamp = 0
+        clamp_min = 0
+        clamp_max = 0
+        window_size = 16 * 7 + 58
+        OP_NAME = "SelfAttentionOperation"
+        data_type = torch.float16
+
+        self.set_data_params(dynamic_batch = dynamic_batch,
+                             is_decoder = isdecoder, batch = batch, kv_head = kv_head, heads = heads,
+                             embeddim = embeddim,embeddimv = embeddimV, max_seq = max_seq, kv_seqLen = kv_seqLen,
+                             is_clamp = is_clamp, clamp_max = clamp_max, clamp_min = clamp_min,
+                             data_type = data_type, is_alibi = False, window_size = window_size,
+                             op_type = 1, mask_type = MASK_TYPE_NO_BATCH, tor = tor)
+        self.gen_out_tensor()
+        self.mask = np.reshape(self.mask, (max_seq, max_seq))
+
+        param = json.dumps(
+            {"headNum": self.heads, "qScale": float(self.q_scale), "qkScale": float(self.qk_scale),
+             "maskType": MASK_TYPE_SLIDING_WINDOW_NORM, "calcType": 3, "windowSize": self.window_size})
+        
+        run_param = json.dumps({"seqLen": self.kv_seqlen, "maskType": MASK_TYPE_SLIDING_WINDOW_NORM})
+        self.execute_with_param(OP_NAME, param, run_param,
+                                [self.q.reshape(ntokens, heads * embeddim).npu(),
+                                            self.k.reshape(ntokens, kv_head * embeddim).npu(),
+                                            self.v.reshape(ntokens, kv_head * embeddimV).npu(),
+                                            self.mask.to(data_type).npu(),
+                                 torch.tensor(self.kv_seqlen).to(torch.int32).npu()])
+
     def execute_perf_with_param(self, op_name, op_param, run_param, in_tensors, times=200, warmup_times=10):
         print(f"———————— {op_name} test start ————————")
         self.operation = torch.classes.OperationTorch.OperationTorch(
