@@ -634,17 +634,26 @@ Status SelfAttentionOperation::BypassInferShapeImpl910B(const SVector<TensorDesc
                                                         SVector<TensorDesc> &outTensorDescs) const
 {
     outTensorDescs.at(0) = inTensorDescs.at(0);
-    if (inTensorDescs.at(0).shape.dimNum == 4) { // 4: 总维度数量
+    int64_t vHeadSize = 0;
+    // when layout is BNSD, vCache shape: [B,N,S,D]
+    uint32_t headSizePos = inTensorDescs.at(2).shape.dimNum - 1; // 2: valueTensor
+    vHeadSize = inTensorDescs.at(2).shape.dims[headSizePos];     // 2: valueTensor
+    if (param_.inputLayout == atb::infer::InputLayout::TYPE_BSND) {
+        // vCache: [layerNum, B, S, ND]
+        if (vHeadSize % kvHeadNum_ != 0) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "expect intensor2, vCache's hiddenSize(dim3) to be multiple of kvhead "
+                           << kvHeadNum_ << ", but got " << vHeadSize;
+            return ERROR_INVALID_TENSOR_DIM;
+        }
+        vHeadSize /= kvHeadNum_;
+    }
+    if (inTensorDescs.at(0).shape.dimNum == 4) { // 4: 总维度数量 [B,S,N,D]/[B,N,S,D]
         outTensorDescs.at(0).shape.dimNum = 3;   // 3: 表示输出维度
         outTensorDescs.at(0).shape.dims[0] = inTensorDescs.at(0).shape.dims[0];
         outTensorDescs.at(0).shape.dims[1] = inTensorDescs.at(0).shape.dims[1];
-        outTensorDescs.at(0).shape.dims[2] =   // 2: outTensor的最后一维
-            inTensorDescs.at(2).shape.dims[3]; // 2: valueCache, 3: hiddenSize
-    } else {
-        uint64_t outHiddenSizePos = inTensorDescs.at(0).shape.dimNum - 1;     // outTensor的最后一维
-        uint64_t vHiddenSizePos = inTensorDescs.at(2).shape.dimNum - 1;       // valueTensor的最后一维
-        int64_t vHiddenSize = inTensorDescs.at(2).shape.dims[vHiddenSizePos]; // 2: valueTensor
-        outTensorDescs.at(0).shape.dims[outHiddenSizePos] = vHiddenSize;
+        outTensorDescs.at(0).shape.dims[2] = param_.headNum * vHeadSize; // 2: valueCache, 3: hiddenSize
+    } else { // q shape: [BS,ND]
+        outTensorDescs.at(0).shape.dims[1] = param_.headNum * vHeadSize;
     }
     return NO_ERROR;
 }
