@@ -48,7 +48,7 @@ void CacheSlot::AddTiling(uint8_t *tilingData, uint64_t tilingSize, const Mki::L
 }
 
 TilingBufferPtr CacheSlot::GetTilingByIndex(const size_t index, const Mki::LaunchParam &launchParam,
-                                            Mki::Kernel *&kernel)
+                                            const Mki::Kernel* &kernel)
 {
     auto &cachedItem = cachedItems.at(index);
     Mki::Timer timer;
@@ -58,7 +58,7 @@ TilingBufferPtr CacheSlot::GetTilingByIndex(const size_t index, const Mki::Launc
     if (equal) {
         Mki::Timer kernelCacheTimer;
         if (cachedItem.kernel != nullptr) {
-            kernel = cachedItem.kernel->Clone();
+            kernel = cachedItem.kernel.get();
         }
         GetOpSetupStatistic().kernelCacheGetRunInfoTime += kernelCacheTimer.ElapsedMicroSecond();
         hitPos = index;
@@ -67,7 +67,7 @@ TilingBufferPtr CacheSlot::GetTilingByIndex(const size_t index, const Mki::Launc
     return nullptr;
 }
 
-TilingBufferPtr CacheSlot::GetTiling(const Mki::LaunchParam &launchParam, Mki::Kernel *&kernel)
+TilingBufferPtr CacheSlot::GetTiling(const Mki::LaunchParam &launchParam, const Mki::Kernel* &kernel)
 {
     TilingBufferPtr tilingBuffeerAddr = nullptr;
     for (size_t i = hitPos; i < validSize; i++) {
@@ -108,7 +108,7 @@ void KernelCache::AddTiling(size_t kernelIndex, uint8_t *tilingData, uint64_t ti
     }
 }
 
-TilingBufferPtr KernelCache::GetTiling(size_t kernelIndex, const Mki::LaunchParam &launchParam, Mki::Kernel *&kernel)
+TilingBufferPtr KernelCache::GetTiling(size_t kernelIndex, const Mki::LaunchParam &launchParam, const Mki::Kernel* &kernel)
 {
     if (IsValid(kernelIndex)) {
         auto &cacheSlot = cachedSlots_.at(kernelIndex);

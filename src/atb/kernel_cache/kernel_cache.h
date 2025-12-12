@@ -31,8 +31,8 @@ struct CacheSlot {
     void Init(uint32_t cacheItemCount);
     void AddTiling(uint8_t *tilingData, uint64_t tilingSize, const Mki::LaunchParam &launchParam,
                    const Mki::Kernel *kernel);
-    TilingBufferPtr GetTilingByIndex(const size_t index, const Mki::LaunchParam &launchParam, Mki::Kernel *&kernel);
-    TilingBufferPtr GetTiling(const Mki::LaunchParam &launchParam, Mki::Kernel *&kernel);
+    TilingBufferPtr GetTilingByIndex(const size_t index, const Mki::LaunchParam &launchParam, const Mki::Kernel* &kernel);
+    TilingBufferPtr GetTiling(const Mki::LaunchParam &launchParam, const Mki::Kernel* &kernel);
 };
 
 class KernelCache {
@@ -42,7 +42,7 @@ public:
     void Init(uint64_t kernelCount, uint32_t cacheItemCount = 1);
     void AddTiling(size_t kernelIndex, uint8_t *tilingData, uint64_t tilingSize, const Mki::LaunchParam &launchParam,
                    const Mki::Kernel *kernel);
-    TilingBufferPtr GetTiling(size_t kernelIndex, const Mki::LaunchParam &launchParam, Mki::Kernel *&kernel);
+    TilingBufferPtr GetTiling(size_t kernelIndex, const Mki::LaunchParam &launchParam, const Mki::Kernel* &kernel);
 
 private:
     bool IsValid(size_t kernelIndex) const;

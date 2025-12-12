@@ -240,7 +240,7 @@ bool MkiNodeImplement::GetCachedTiling(KernelCache &kernelCache, size_t kernelIn
 {
     tilingBufferFilled_ = false;
     Mki::Timer kernelCacheGetTilingTimer;
-    Mki::Kernel *kernelCached = nullptr;
+    const Mki::Kernel* kernelCached = nullptr;
     TilingBufferPtr cachedTilingBuffer = kernelCache.GetTiling(kernelIndex, launchParam_, kernelCached);
     if (kernelCached != nullptr) {
         // 由于当前的kernel在设计上是带状态的，必须保证kernel状态与当前所需相同才能使用cache中的kernel
@@ -249,7 +249,15 @@ bool MkiNodeImplement::GetCachedTiling(KernelCache &kernelCache, size_t kernelIn
             ATB_LOG(INFO) << "Cache miss because of status of tilingLaunch mismatch.";
             return false;
         }
-        kernel_.reset(kernelCached);
+        if (!kernel_) {
+            kernel_.reset(kernelCached->Clone());
+        } else {
+            Mki::Status st = kernel_->Copy(*kernelCached);
+            if (!st.Ok()) {
+                ATB_LOG(ERROR) << GetLogPrefix() << " mki node copy kernelCached to kernel fail, error: " << st.Message();
+                return false;
+            }
+        }
         kernelCacheValid_ = true;
     }
     GetOpSetupStatistic().kernelCacheGetTilingTime += kernelCacheGetTilingTimer.ElapsedMicroSecond();
