@@ -3692,7 +3692,7 @@ class ReshapeAndCacheOperation(DataGen):
                 block_offset = slot % block_size
 
                 token_key = key[j]
-                if (soc_version == 'Ascend910B' and key_expect[0][0].shape == token_key.shape):
+                if ((soc_version == 'Ascend910B' or soc_version == 'Ascend910_95') and key_expect[0][0].shape == token_key.shape):
                     key_expect[block_index][block_offset] = token_key
 
             ret_data = key, key_cache, slot_mapping, key_expect
@@ -3714,7 +3714,7 @@ class ReshapeAndCacheOperation(DataGen):
         num_tokens_v = shapes[1][0]
         num_heads_v  = shapes[1][1]
         head_size_v = shapes[1][2]
-        if (soc_version == 'Ascend910B' and ("kvCacheCfg" in json_data and  json_data["kvCacheCfg"] == 2)) or soc_version == 'Ascend310P':
+        if ((soc_version == 'Ascend910B' or soc_version == 'Ascend910_95') and ("kvCacheCfg" in json_data and  json_data["kvCacheCfg"] == 2)) or soc_version == 'Ascend310P':
             block_size = shapes[2][2]
         else:
             block_size = shapes[2][1]
@@ -3738,7 +3738,7 @@ class ReshapeAndCacheOperation(DataGen):
             slot_list = random.sample(range(range_min, num_slots), num_tokens_slots)
         slot_mapping = np.array(slot_list).astype(np.int32)
 
-        if soc_version == 'Ascend910B':
+        if soc_version == 'Ascend910B' or soc_version == 'Ascend910_95':
             key_cache = np.zeros((shapes[2][0], shapes[2][1], shapes[2][2], shapes[2][3])).astype(dtype)
             value_cache = np.zeros((shapes[3][0], shapes[3][1], shapes[3][2], shapes[3][3])).astype(dtype)
             key_expect = np.zeros((shapes[2][0], shapes[2][1], shapes[2][2], shapes[2][3])).astype(dtype)
@@ -3775,7 +3775,7 @@ class ReshapeAndCacheOperation(DataGen):
                 for v in range(num_heads_v * head_size_v // last_dim_v):
                     if (block_index < value_expect.shape[0] and block_offset < value_expect.shape[2] and value_expect.shape[3] == last_dim_v and v < value_expect.shape[1]):
                         value_expect[block_index][v][block_offset][:] = token_v[v * last_dim_v: v * last_dim_v + last_dim_v]
-            elif soc_version == 'Ascend910B': # 910B ND
+            elif soc_version == 'Ascend910B' or soc_version == 'Ascend910_95': # 910B ND
                 if key_expect[0][0].shape == token_key.shape:
                     key_expect[block_index][block_offset] = token_key
                 if value_expect[0][0].shape == token_v.shape:
@@ -3820,7 +3820,7 @@ class ReshapeAndCacheOperation(DataGen):
             data_type = in_tensors[0].dtype
             slot_mapping = in_tensors[2]
             soc_version = get_soc_version()
-            if soc_version == 'Ascend910B':
+            if soc_version == 'Ascend910B' or soc_version == 'Ascend910_95':
                 num_blocks, block_size, _, _ = in_tensors[1].shape # key_cache
                 key_expect = in_tensors[1]
                 for i, slot in enumerate(slot_mapping):
@@ -3864,7 +3864,7 @@ class ReshapeAndCacheOperation(DataGen):
                 for v in range(num_heads * v_head_size // last_dim_v):
                     value_expect_nz[block_index][v][block_offset][:] = token_v[v * last_dim_v: v * last_dim_v + last_dim_v]
             return [key_expect_nz, value_expect_nz]
-        elif soc_version == 'Ascend910B':
+        elif soc_version == 'Ascend910B' or soc_version == 'Ascend910_95':
             num_blocks, block_size, _, _ = in_tensors[2].shape # key_cache
             key_expect = in_tensors[2]
             value_expect = in_tensors[3]
