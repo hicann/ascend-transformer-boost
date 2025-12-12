@@ -247,10 +247,12 @@ class TestOpParam(unittest.TestCase):
         expected_axes = []
         expected_exclusive = False
         expected_reverse = False
+        expected_deterministic = False
 
         self.assertEqual(cumsum_param.axes, expected_axes)
         self.assertEqual(cumsum_param.exclusive, expected_exclusive)
         self.assertEqual(cumsum_param.reverse, expected_reverse)
+        self.assertEqual(cumsum_param.deterministic, expected_deterministic)
 
     def test_dynamic_NTK(self):
         dynamic_NTK_param = torch_atb.DynamicNTKParam()
