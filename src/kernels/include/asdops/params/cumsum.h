@@ -21,7 +21,7 @@ struct Cumsum {
     Mki::SVector<int64_t> axis;
     bool exclusive = false;
     bool reverse = false;
-    bool deterministic = true;
+    bool deterministic = false;
 
     bool operator==(const Cumsum &other) const
     {
