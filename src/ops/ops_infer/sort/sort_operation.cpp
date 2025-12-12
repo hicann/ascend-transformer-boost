@@ -54,11 +54,7 @@ OPERATION_PARAM_FUNCS(SortOperation, infer::SortParam)
 
 SortOperation::SortOperation(const infer::SortParam &param) : OperationBase("SortOperation"), param_(param)
 {
-    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
-        operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("SortOperation950");
-    } else {
-        operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("SortOperation");
-    }
+    operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("SortOperation");
 }
 
 SortOperation::~SortOperation() {}
