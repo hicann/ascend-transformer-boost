@@ -39,8 +39,8 @@ static constexpr uint32_t PREFIX_ENCODER_IN_TENSOR_NUM = 8;
 static constexpr uint32_t PREFIX_128MASK_ENCODER_IN_TENSOR_NUM = 7;
 static constexpr uint32_t FUSION_OUT_TENSOR_NUM = 1;
 static constexpr uint32_t NOFUSION_OUT_TENSOR_NUM = 3;
-
-static constexpr uint32_t MAX_HEAD_SIZE_MLA = 576;
+static constexpr uint32_t MAX_HEAD_SIZE_MLA_KERNEL = 1024; // mla kernel max
+static constexpr uint32_t MAX_HEAD_SIZE_MLA = 576; // mla bypass max
 static constexpr uint32_t MAX_HEAD_SIZE = 256;
 static const int BATCH_BIT = 0x00001;
 static const int SLOPES_BIT = 0x00002;
@@ -1326,7 +1326,11 @@ Status SelfAttentionOperation::HeadSizeDimCheck910B(const SVector<TensorDesc> &i
 Status SelfAttentionOperation::MaxHeadSizeCheck910B(const int64_t headSizeK, const int64_t headSizeV) const
 {
     int64_t maxHeadSize = MAX_HEAD_SIZE_MLA;
-    if ((param_.windowSize > 0 && !isMla_) || param_.scaleType != infer::SelfAttentionParam::SCALE_TYPE_TOR ||
+    bool useMlaKernel = !isMla_ && (headSizeK != headSizeV);
+    if (useMlaKernel) {
+        maxHeadSize = MAX_HEAD_SIZE_MLA_KERNEL;
+    }
+    if ((param_.windowSize > 0 && !useMlaKernel) || param_.scaleType != infer::SelfAttentionParam::SCALE_TYPE_TOR ||
         param_.inputLayout == atb::infer::InputLayout::TYPE_BNSD ||
         (!isMla_ && param_.quantType != infer::SelfAttentionParam::QuantType::TYPE_QUANT_UNQUANT)) {
         maxHeadSize = 256; // 256: 不支持mla的场景headsize小于等于256，且headSizeK，headSizeV需要相等
