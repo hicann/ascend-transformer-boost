@@ -37,10 +37,10 @@ public:
 
     Status InitImpl(const LaunchParam &launchParam) override
     {
-        size_t outputNum = launchParam.GetOutTensorCount();
-        if (outputNum == 2) { // split 2 Outputs
+        size_t splitOutputNum = launchParam.GetOutTensorCount();
+        if (splitOutputNum == 2) { // split 2 Outputs
             return Split2OutputsTiling(GetName(), launchParam, kernelInfo_, *GetBinHandle());
-        } else if (outputNum == 3) { // split 3 Outputs
+        } else if (splitOutputNum == 3) { // split 3 Outputs
             return Split3OutputsTiling(GetName(), launchParam, kernelInfo_, *GetBinHandle());
         }
         return Status::FailStatus(1);
@@ -57,7 +57,7 @@ public:
 
     bool CanSupport(const LaunchParam &launchParam) const override
     {
-        MKI_CHECK(SplitKernel::CanSupport(launchParam), "failed to check support", return false);
+        MKI_CHECK(SplitKernel::CanSupport(launchParam), "support check failed", return false);
         MKI_CHECK(launchParam.GetInTensor(0).desc.dtype == TENSOR_DTYPE_FLOAT16 ||
                   launchParam.GetInTensor(0).desc.dtype == TENSOR_DTYPE_BF16,
                   "tensor dtype unsupported", return false);
