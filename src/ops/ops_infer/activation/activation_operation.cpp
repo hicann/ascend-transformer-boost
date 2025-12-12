@@ -111,6 +111,8 @@ static Mki::OperationIr *GetOperationIrForActivation91095(const infer::Activatio
             return GetSingleton<AtbOperationIrCfg>().GetOperationIr("ActivationOperationSIGMOID");
         case atb::infer::ActivationType::ACTIVATION_SWISH:
             return GetSingleton<AtbOperationIrCfg>().GetOperationIr("ActivationOperationSWISH91095");
+        case atb::infer::ActivationType::ACTIVATION_SWIGLU_FORWARD:
+            return GetSingleton<AtbOperationIrCfg>().GetOperationIr("ActivationOperationSWIGLUFORWARD");
         default:
             ATB_LOG(ERROR) << "not support activationType:" << activationType;
     }
