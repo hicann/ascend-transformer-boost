@@ -65,12 +65,8 @@ protected:
     aclnnStatus SetAclNNWorkspaceExecutor() override;
 
 private:
-    uint32_t GetInputNum() const;
     uint32_t GetInputNumAclnn() const;
     uint32_t GetOutputNumAclnn() const;
-    uint32_t GetInputNumAtb() const;
-    uint32_t GetOutputNumAtb() const;
-    uint32_t GetOutputNum() const;
     atb::Status CreateAclnnInTensor(const RunnerVariantPack &runnerVariantPack);
     atb::Status CreateAclnnInTensorList(const RunnerVariantPack &runnerVariantPack);
     atb::Status CreateAclnnOutTensor(const RunnerVariantPack &runnerVariantPack);
