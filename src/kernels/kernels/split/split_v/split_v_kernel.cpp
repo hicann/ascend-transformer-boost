@@ -28,7 +28,7 @@ public:
     bool CanSupport(const LaunchParam &launchParam) const override
     {
         MKI_CHECK(launchParam.GetParam().Type() == typeid(OpParam::Split),
-            "split: param type invalid", return false);
+            "split v: param type invalid", return false);
         OpParam::Split param = AnyCast<OpParam::Split>(launchParam.GetParam());
         MKI_CHECK(launchParam.GetInTensorCount() == 1, "input num invalid", return false);
         MKI_CHECK(launchParam.GetOutTensorCount() == static_cast<size_t>(param.splitNum),
@@ -85,7 +85,7 @@ public:
 
     bool CanSupport(const LaunchParam &launchParam) const override
     {
-        MKI_CHECK(SplitVKernel::CanSupport(launchParam), "failed to check support", return false);
+        MKI_CHECK(SplitVKernel::CanSupport(launchParam), "support check failed", return false);
         MKI_CHECK(launchParam.GetInTensor(0).desc.dtype == TENSOR_DTYPE_FLOAT16 ||
                      launchParam.GetInTensor(0).desc.dtype == TENSOR_DTYPE_BF16,
                      "tensor dtype unsupported", return false);
