@@ -35,7 +35,8 @@ Status NonzeroTiling(const LaunchParam &launchParam, KernelInfo &kernelInfo)
         tilingDataPtr->xDims[i] = static_cast<uint32_t>(xShape[i]);
     }
     tilingDataPtr->xdimLength = xShape.size();
-
+    MKI_CHECK(xShape.size() < std::numeric_limits<uint64_t>::max() / 8 / xNumel, "yshape invalid",
+                 return Status::FailStatus(ERROR_INVALID_VALUE));
     uint64_t sysWorkspaceSize = 16;
     kernelInfo.GetScratchSizes() = {sysWorkspaceSize};
     kernelInfo.SetBlockDim(1);
