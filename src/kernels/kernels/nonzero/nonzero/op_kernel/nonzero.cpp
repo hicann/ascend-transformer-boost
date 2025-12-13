@@ -14,6 +14,7 @@
 
 namespace {
 static constexpr int32_t BUFFER_NUM = 1;
+static constexpr uint32_t ONE_LOOP_ELE = 16384;
 
 class Nonzero {
 public:
@@ -31,11 +32,28 @@ public:
         xGm_ = (__gm__ int64_t *)x;
         yGm_ = (__gm__ int64_t *)y;
         numTruesGm_ = (__gm__ int64_t *)numTrues;
+        y_gm.SetGlobalBuffer(yGm_);
+        pipe.InitBuffer(y_buff, ONE_LOOP_ELE);
     }
     __aicore__ inline void Process()
     {
         int64_t numTrues = 0;
-
+        AscendC::LocalTensor<int64_t> y64_local = y_buff.Get<int64_t>();
+        AscendC::LocalTensor<int32_t> y32_local = y_buff.Get<int32_t>();
+        Duplicate(y32_local, (int32_t)0, ONE_LOOP_ELE / sizeof(int32_t));
+        y64_local = y32_local.ReinterpretCast<int64_t>();
+        uint64_t copyTime = (static_cast<uint64_t>(xNumel_) * xdimLength_ * 8) / ONE_LOOP_ELE;
+        uint64_t copyRemain = (static_cast<uint64_t>(xNumel_) * xdimLength_ * 8) % ONE_LOOP_ELE;
+        for (uint64_t i = 0; i < copyTime; i++) {
+            AscendC::DataCopyParams dataCopyParams{(uint16_t)1, (uint16_t)(ONE_LOOP_ELE), 0, 0};
+            AscendC::DataCopyPad(y_gm[i * ONE_LOOP_ELE / 8], y64_local, dataCopyParams);
+        }
+        if(copyRemain != 0)
+        {
+            AscendC::DataCopyParams dataCopyParamsRemain{(uint16_t)1, (uint16_t)(copyRemain), 0, 0};
+            AscendC::DataCopyPad(y_gm[copyTime * ONE_LOOP_ELE / 8], y64_local, dataCopyParamsRemain);
+        }
+        AscendC::PipeBarrier<PIPE_ALL>();
         for (uint32_t i = 0; i < xNumel_; i++) {
             if (xGm_[i]) {
                 uint32_t numelLeft = xNumel_;
@@ -43,22 +61,24 @@ public:
                 for (uint32_t j = 0; j < xdimLength_; j++) {
                     numelLeft /=  xDims_[j];
                     uint32_t idxThis = tmp / numelLeft;
-                    __gm__ int64_t *y_now = yGm_ + j * xNumel_;
-                    *(y_now + numTrues) = idxThis;
+                    y_gm.SetValue(j * xNumel_ + numTrues, idxThis);
                     tmp %= numelLeft;
                 }
 
                 numTrues++;
             }
         }
-
+        AscendC::DataCacheCleanAndInvalid<int64_t, AscendC::CacheLine::ENTIRE_DATA_CACHE, AscendC::DcciDst::CACHELINE_OUT>(y_gm);
         numTruesGm_[0] = numTrues;
     }
 
 private:
+    AscendC::TPipe pipe;
+    AscendC::TBuf<AscendC::TPosition::VECCALC> y_buff;
     __gm__ int64_t *xGm_;
     __gm__ int64_t *yGm_;
     __gm__ int64_t *numTruesGm_;
+    AscendC::GlobalTensor<int64_t> y_gm;
     uint32_t xdimLength_{1};
     uint32_t xNumel_{1};
     uint32_t *xDims_{nullptr};
