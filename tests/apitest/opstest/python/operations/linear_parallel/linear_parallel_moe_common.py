@@ -513,8 +513,8 @@ class MoeTestDate:
         if self.maxOutputSize > 0:
             self.cal_trunc(EP)
         if coc_dtype_desc in [CoCDataTypeDesc.FP16FP16_FP32_FP16, CoCDataTypeDesc.BF16BF16_FP32_BF16]:
-            a_np = self.matrix_a.numpy().astype(np.float32)
-            b_np = self.matrix_b.numpy().astype(np.float32)
+            a_np = self.matrix_a.to(torch.float32).numpy().astype(np.float32)
+            b_np = self.matrix_b.to(torch.float32).numpy().astype(np.float32)
             result_np = np.matmul(a_np, b_np)
             matrix_c_out = torch.from_numpy(result_np).to(l0c_dtype)
             # matrix_c_out = torch.matmul(self.matrix_a.to(l0c_dtype), self.matrix_b.to(l0c_dtype))
@@ -553,8 +553,8 @@ class MoeTestDate:
                     self.quant_scale_list.append(quant_scale_alltoall[ep_idx])
                 broadcast_quant_scale = quant_info.broadcast_quant_args(quant_scale, [self.input_info[0], self.input_info[2]])
 
-            a_np = self.matrix_a.numpy().astype(np.float32)
-            b_np = self.matrix_b.numpy().astype(np.float32)
+            a_np = self.matrix_a.to(torch.float32).numpy().astype(np.float32)
+            b_np = self.matrix_b.to(torch.float32).numpy().astype(np.float32)
             result_np = np.matmul(a_np, b_np)
             tmp_matrix_c = torch.from_numpy(result_np).to(l0c_dtype)
             matrix_c_out = ((tmp_matrix_c + broadcast_offset).to(torch.float32) * broadcast_scale).to(torch.float32)
