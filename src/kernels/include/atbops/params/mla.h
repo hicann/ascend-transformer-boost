@@ -53,6 +53,7 @@ struct MLA {
 
     std::vector<int32_t> qSeqLen;
     std::vector<int32_t> kvSeqLen;
+    std::vector<int32_t> maskUseStatus;
 
     int32_t isRing = 0;
     int32_t windowSize = 0;

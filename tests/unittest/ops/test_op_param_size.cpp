@@ -65,6 +65,7 @@ TEST(TestOpParamSize, TestOpParamCompatibility)
     EXPECT_EQ(sizeof(infer::TransposeParam), 296);
     EXPECT_EQ(sizeof(infer::UnpadParam), 8);
     EXPECT_EQ(sizeof(infer::WhereParam), 8);
+    EXPECT_EQ(sizeof(infer::MultiLatentAttentionParam), 64);
 
     EXPECT_EQ(sizeof(train::GenAttentionMaskParam), 304);
     EXPECT_EQ(sizeof(train::RopeGradParam), 32);

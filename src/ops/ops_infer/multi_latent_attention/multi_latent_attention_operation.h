@@ -39,6 +39,8 @@ private:
     Status QKVDimCheckPrefill(const SVector<TensorDesc> &inTensorDesc) const;
     Status QDimCheckPrefill(const SVector<TensorDesc> &inTensorDesc) const;
     Status KVDimCheckPrefill(const SVector<TensorDesc> &inTensorDesc) const;
+    Status DimCheckMaskUseStatus(const SVector<TensorDesc> &inTensorDesc, size_t idx) const;
+    Status DimCheckMTP(const SVector<TensorDesc> &inTensorDesc) const;
 
 private:
     infer::MultiLatentAttentionParam param_;

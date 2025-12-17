@@ -46,6 +46,7 @@ static const uint32_t IN_TENSOR_6 = 6;
 static const uint32_t IN_TENSOR_7 = 7;
 static const uint32_t DIM_2 = 2;
 static const uint32_t EM_BED_DIM_V = 128;
+static const int32_t MTP_TP1_HEAD_NUM = 128;
 } // namespace
 
 namespace atb {
@@ -60,6 +61,7 @@ Status CreateOperation(const infer::MultiLatentAttentionParam &opParam, Operatio
     if (operation == nullptr) {
         return ERROR_INVALID_PARAM;
     }
+    ATB_LOG(INFO) << "CreateOperation with MultiLatentAttentionParam: " << OpParamToJson(opParam);
     if (!GetSingleton<Config>().Is910B()) {
         ATB_LOG(ERROR) << "only support Atlas 800I A2/A3 Inference Product";
         return ERROR_INVALID_PARAM;
@@ -112,6 +114,20 @@ static bool ParamCheck(const infer::MultiLatentAttentionParam &opParam)
         (opParam.maskType != infer::MultiLatentAttentionParam::MaskType::UNDEFINED)) {
         ATB_LOG(ERROR) << "int8nz lse not support mask";
         return false;
+    }
+    if (opParam.maskUseStatusType <
+            infer::MultiLatentAttentionParam::MaskUseStatusType::MASK_USE_STATUS_TYPE_UNDEFINED ||
+        opParam.maskUseStatusType >= infer::MultiLatentAttentionParam::MaskUseStatusType::MASK_USE_STATUS_TYPE_MAX) {
+        ATB_LOG(ERROR)
+            << "MLA only support MASK_USE_STATUS_TYPE_UNDEFINED and MASK_USE_STATUS_TYPE_BATCH_MASK, but got: "
+            << opParam.maskUseStatusType;
+        return false;
+    }
+    if (opParam.maskUseStatusType == infer::MultiLatentAttentionParam::MaskUseStatusType::MASK_USE_STATUS_TYPE_BATCH_MASK) {
+        if (opParam.calcType != infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC_AND_RING) {
+            ATB_LOG(ERROR) << "MLA only supports maskUseStatus in mtp with ring (CALC_TYPE_SPEC_AND_RING), but got calcType: " << opParam.calcType;
+            return false;
+        }
     }
     return true;
 }
@@ -197,6 +213,10 @@ MultiLatentAttentionOperation::MultiLatentAttentionOperation(const infer::MultiL
     if (param_.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_PREFILL) {
         opIrKeyStr += "Prefill";
     }
+    if (param_.maskUseStatusType ==
+        infer::MultiLatentAttentionParam::MaskUseStatusType::MASK_USE_STATUS_TYPE_BATCH_MASK) {
+        opIrKeyStr += "MaskUseStatus";
+    }
     operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr(opIrKeyStr);
 }
 
@@ -214,10 +234,15 @@ uint32_t MultiLatentAttentionOperation::GetInputNum() const
     }
     if (param_.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC || param_.
                       calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC_AND_RING) {
-        intensorNumBase++;
+        // MTP
+        intensorNumBase++; // 1: qSeqlen
     }
     if (param_.cacheMode == infer::MultiLatentAttentionParam::CacheMode::INT8_NZCACHE) {
-        intensorNumBase += 2; // 2: qDescale kDescale
+        intensorNumBase += 2; // 2: qDescale, kDescale
+    }
+    if (param_.maskUseStatusType ==
+        infer::MultiLatentAttentionParam::MaskUseStatusType::MASK_USE_STATUS_TYPE_BATCH_MASK) {
+        intensorNumBase++; // 1: maskUseStatus
     }
     return intensorNumBase;
 }
@@ -487,6 +512,52 @@ Status MultiLatentAttentionOperation::DimCheckInt8NzLse(const SVector<TensorDesc
     return NO_ERROR;
 }
 
+Status MultiLatentAttentionOperation::DimCheckMaskUseStatus(const SVector<TensorDesc> &inTensorDesc, size_t idx) const
+{
+    if (inTensorDesc.at(idx).shape.dimNum == 0) {
+       return NO_ERROR;
+    }
+    if (inTensorDesc.at(idx).shape.dimNum != 1) { // 1: 1 dim, [batch]
+        ATB_LOG(ERROR) << GetLogPrefix()
+                       << "MTP tp1 or int8nz without tp1 need MaskUseStatus, but got invalid intensor dimNum at idx: "
+                       << idx << ", expect 1 but got: " << inTensorDesc.at(idx).shape.dimNum;
+        return ERROR_INVALID_TENSOR_DIM_NUM;
+    }
+    int64_t batch = inTensorDesc.at(CONTEXTLENS_INDEX).shape.dims[0];
+    if (inTensorDesc.at(idx).shape.dims[0] != batch) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "dim 0 of maskUseStatus(intensor" << idx << "), "
+                    << inTensorDesc.at(idx).shape.dims[0] << ", should be equal to dim0 of contextLens(intensor5), "
+                    << batch;
+        return ERROR_INVALID_TENSOR_DIM;
+    }
+    return NO_ERROR;
+}
+
+Status MultiLatentAttentionOperation::DimCheckMTP(const SVector<TensorDesc> &inTensorDesc) const
+{
+    size_t idx = IN_TENSOR_6;
+    if (param_.maskType != infer::MultiLatentAttentionParam::MaskType::UNDEFINED &&
+        param_.maskType != infer::MultiLatentAttentionParam::MaskType::MASK_TYPE_CAUSAL_MASK) {
+        ++idx; // 1: mask
+    }
+    Status st = DimCheckSpec(inTensorDesc, idx);
+    if (st != NO_ERROR) {
+        return st;
+    }
+    ++idx; // move to maskUseStatus
+    if (param_.cacheMode == infer::MultiLatentAttentionParam::CacheMode::INT8_NZCACHE) {
+        idx += 2; // 2: qDescale, kDescale
+    }
+    if (param_.maskUseStatusType ==
+            infer::MultiLatentAttentionParam::MaskUseStatusType::MASK_USE_STATUS_TYPE_BATCH_MASK &&
+        (param_.headNum == MTP_TP1_HEAD_NUM ||
+         param_.cacheMode == infer::MultiLatentAttentionParam::CacheMode::INT8_NZCACHE)) {
+        // MTP1场景下 tp1/非tp1且开启int8nz量化
+        return DimCheckMaskUseStatus(inTensorDesc, idx);
+    }
+    return NO_ERROR;
+}
+
 Status MultiLatentAttentionOperation::DimCheck(const SVector<TensorDesc> &inTensorDesc) const
 {
     if (inTensorDesc.at(0).shape.dimNum != 3 ||                  // 0: query 3: 3 dims
@@ -517,11 +588,18 @@ Status MultiLatentAttentionOperation::DimCheck(const SVector<TensorDesc> &inTens
     if (param_.cacheMode == infer::MultiLatentAttentionParam::CacheMode::KROPE_CTKV) {
         st = QKVDimCheck(inTensorDesc);
     }
-    if (param_.cacheMode == infer::MultiLatentAttentionParam::CacheMode::INT8_NZCACHE) {
+    else if (param_.cacheMode == infer::MultiLatentAttentionParam::CacheMode::INT8_NZCACHE) {
         st = QKVDimCheckInt8Nz(inTensorDesc);
     }
-    if (param_.cacheMode == infer::MultiLatentAttentionParam::CacheMode::NZCACHE) {
+    else if (param_.cacheMode == infer::MultiLatentAttentionParam::CacheMode::NZCACHE) {
         st = QKVDimCheckNz(inTensorDesc);
+    }
+    if (st != NO_ERROR) {
+        return st;
+    }
+    if (param_.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC ||
+        param_.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC_AND_RING) {
+        st = DimCheckMTP(inTensorDesc);
     }
     if (st != NO_ERROR) {
         return st;
@@ -532,18 +610,11 @@ Status MultiLatentAttentionOperation::DimCheck(const SVector<TensorDesc> &inTens
         param_.cacheMode == infer::MultiLatentAttentionParam::CacheMode::INT8_NZCACHE) {
         size_t idx = IN_TENSOR_6;
         if (param_.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC_AND_RING) {
-            st = DimCheckSpec(inTensorDesc, idx);
-            if (st != NO_ERROR) {
-                return st;
-            }
             ++idx;
         }
         st = DimCheckInt8Nz(inTensorDesc, idx);
-        if (st != NO_ERROR) {
-            return st;
-        }
     }
-    return NO_ERROR;
+    return st;
 }
 
 Status MultiLatentAttentionOperation::InTensorDimCheckPrefill(const SVector<TensorDesc> &inTensorDesc) const
