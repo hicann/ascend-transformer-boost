@@ -28,10 +28,21 @@ void MultiLatentAttentionBinder::ParseParam(const nlohmann::json &paramJson)
             qSeqlen_.push_back(item.get<int32_t>());
         }
     }
+    maskUseStatus_.clear();
+    if (paramJson.contains("maskUseStatus")) {
+        for (auto item : paramJson["maskUseStatus"]) {
+            maskUseStatus_.push_back(item.get<int32_t>());
+        }
+    }
     isMask_ = false;
     if (paramJson.contains("maskType")) {
         if (paramJson["maskType"] != 0) {
             isMask_ = true;
+        }
+    }
+    if (paramJson.contains("cacheType")) {
+        if (paramJson["cacheType"] == 1) {
+            isInt8Nz_ = true;
         }
     }
 }
@@ -46,5 +57,13 @@ void MultiLatentAttentionBinder::BindTensor(atb::VariantPack &variantPack)
     }
     if (qSeqlen_.size() > 0) {
         variantPack.inTensors.at(qSeqlenTensorId).hostData = qSeqlen_.data();
+    }
+    uint32_t maskUseStatusId = qSeqlenTensorId + 1; // q,qr,kv,kvq,bolck,context,(mask),qseqlen,maskUseStatus
+    if (isInt8Nz_) {
+        maskUseStatusId += 2; // 2: qDescale, kDescale
+    }
+    if (maskUseStatus_.size() > 0) {
+        // temp array for convertion
+        variantPack.inTensors.at(maskUseStatusId).hostData = maskUseStatus_.data();
     }
 }

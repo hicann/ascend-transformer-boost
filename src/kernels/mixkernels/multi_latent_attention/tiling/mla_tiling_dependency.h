@@ -99,6 +99,7 @@ using MLAInfo = struct MLATilingParams {
     int32_t batch = 0;
     int32_t *kvSeqLen{nullptr};
     int32_t *qSeqLen{nullptr};
+    int32_t *maskUseStatus{nullptr};
     int32_t maskType = 0;
     int32_t totalTaskNum = 0;
     int32_t splitKVNum = 0;
