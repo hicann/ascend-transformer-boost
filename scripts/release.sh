@@ -58,8 +58,13 @@ function fn_build_cann_dependency()
     TIKCPP_DIR=$THIRD_PARTY_DIR/compiler/tikcpp
     [[ -d "$THIRD_PARTY_DIR/compiler" ]] && rm -rf $THIRD_PARTY_DIR/compiler
     mkdir -p $THIRD_PARTY_DIR/compiler
-    ln -s $ASCEND_HOME_PATH/compiler/ccec_compiler $CCEC_COMPILER_DIR
-    ln -s $ASCEND_HOME_PATH/compiler/tikcpp $TIKCPP_DIR
+    if [ -f "$ASCEND_HOME_PATH/compiler/ccec_compiler/bin/ccec" ]; then
+        ln -s $ASCEND_HOME_PATH/compiler/ccec_compiler $CCEC_COMPILER_DIR
+        ln -s $ASCEND_HOME_PATH/compiler/tikcpp $TIKCPP_DIR
+    else
+        ln -s $ASCEND_HOME_PATH/tools/ccec_compiler $CCEC_COMPILER_DIR
+        ln -s $ASCEND_HOME_PATH/tools/tikcpp $TIKCPP_DIR
+    fi
 }
 
 function fn_build_nlohmann_json()
@@ -249,18 +254,21 @@ function fn_build_tbe_dependency()
         echo "Failed to find api"
         exit 1
     fi
-    if [ ! -d "$API_DIR/lib" ];then
-        echo "Failed to find $API_DIR/lib"
+    if [ ! -d "$API_DIR/include/adv_api" ];then
+        echo "Failed to find $API_DIR/include/adv_api"
         exit 1
     fi
     rm -rf $API_DIR/tiling
-    cp -r $API_DIR/lib $API_DIR/tiling
+    cp -r $API_DIR/include/adv_api $API_DIR/tiling
     if [ ! -d "$CANN_OPS_DIR" ];then
         echo "Failed to find cann-ops-adv"
         exit 1
     fi
     cp -r $CODE_ROOT/src/kernels/tbe_adapter/stubs/include/canndev $THIRD_PARTY_DIR
     cp -r $CODE_ROOT/src/kernels/tbe_adapter/stubs/include/api $THIRD_PARTY_DIR
+    set +e
+    ln -s $API_DIR/impl $THIRD_PARTY_DIR/impl
+    set -e
     if [ ! -d "$METADEF_DIR" ];then
         echo "Failed to find metadef"
         exit 1
