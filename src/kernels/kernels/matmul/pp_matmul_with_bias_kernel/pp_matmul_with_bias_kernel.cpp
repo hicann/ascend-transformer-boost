@@ -26,26 +26,14 @@ public:
 
     bool CanSupport(const LaunchParam &launchParam) const override
     {
-        MKI_CHECK(PlatformInfo::Instance().GetPlatformType() == PlatformType::ASCEND_910B, "Platform not support.",
-                     return false);
-        MKI_CHECK(launchParam.GetInTensorCount() == 3, "Check inTensor count failed.", return false);
-        MKI_CHECK(launchParam.GetOutTensorCount() == 1, "Check outTensor count failed.", return false);
-
+        MKI_CHECK(CheckPlatformAndTwoInputs(launchParam), "Initial check failed for PpMatmulWithBiasKernel.", return false);
         const auto &descA = launchParam.GetInTensor(0).desc;
-        const auto &descB = launchParam.GetInTensor(1).desc;
         const auto &descBias = launchParam.GetInTensor(2).desc;
         const auto &descC = launchParam.GetOutTensor(0).desc;
 
-        MKI_CHECK(descA.format == TENSOR_FORMAT_ND, "Tensor format is invalid.", return false);
-        MKI_CHECK(descA.dtype == TENSOR_DTYPE_BF16 || descA.dtype == TENSOR_DTYPE_FLOAT16,
-                     "Tensor dtype is invalid.", return false);
-        MKI_CHECK(descB.format == TENSOR_FORMAT_ND, "Tensor format is invalid.", return false);
-        MKI_CHECK(descB.dtype == TENSOR_DTYPE_BF16 || descB.dtype == TENSOR_DTYPE_FLOAT16,
-                     "Tensor dtype is invalid.", return false);
         MKI_CHECK(descBias.format == TENSOR_FORMAT_ND, "Tensor format is invalid.", return false);
         MKI_CHECK(descBias.dtype == TENSOR_DTYPE_FLOAT, "Tensor dtype is invalid.", return false);
 
-        MKI_CHECK(descA.dtype == descB.dtype, "Input dtype must be the same.", return false);
         MKI_CHECK(descA.dtype == descC.dtype, "Output dtype must be the same as input dtype.", return false);
         MKI_CHECK(descC.format == TENSOR_FORMAT_ND, "Tensor format is invalid.", return false);
         return true;

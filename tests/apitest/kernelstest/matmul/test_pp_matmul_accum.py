@@ -271,6 +271,50 @@ class TestPpMatmulAccum(op_test.OpTest):
             [self.bat_A.half(), self.bat_B.half(), self.bat_C.float()],
             [2],
         )
+    
+    @op_test.only_910b
+    def testcase_matmul_accum_atomic_negative1(self):
+        bsize, msize, ksize, nsize = 1, 28, 8192, 3072
+        ta, tb = False, False
+        self.set_param(
+            "MatMulOperation",
+            {
+                "transposeA": ta,
+                "transposeB": tb,
+                "oriShape": [msize, ksize, nsize],
+                "matmulType": MATMUL_ACCUM_ATOMIC,
+            },
+        )
+        self.set_input_formats([self.format_nd, self.format_nd, self.format_nd])
+        self.set_output_formats([self.format_nd])
+        self.__gen_test_data((bsize, msize, ksize, nsize), ta, tb, torch.bfloat16)
+        with self.assertRaises(AssertionError):
+            self.execute(
+                [self.bat_A.bfloat16(), self.bat_B.half(), self.bat_C.float()],
+                [2],
+            )
+    
+    @op_test.only_910b
+    def testcase_matmul_accum_atomic_negative2(self):
+        bsize, msize, ksize, nsize = 1, 28, 8192, 3072
+        ta, tb = False, False
+        self.set_param(
+            "MatMulOperation",
+            {
+                "transposeA": ta,
+                "transposeB": tb,
+                "oriShape": [msize, ksize, nsize],
+                "matmulType": MATMUL_ACCUM_ATOMIC,
+            },
+        )
+        self.set_input_formats([self.format_nd, self.format_nd, self.format_nd])
+        self.set_output_formats([self.format_nd])
+        self.__gen_test_data((bsize, msize, ksize, nsize), ta, tb, torch.bfloat16)
+        with self.assertRaises(AssertionError):
+            self.execute(
+                [self.bat_A.float(), self.bat_B.float(), self.bat_C.float()],
+                [2],
+            )
 
 
 if __name__ == "__main__":

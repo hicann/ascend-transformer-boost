@@ -14,6 +14,7 @@
 #include <mki/launch_param.h>
 #include <mki/kernel_info.h>
 #include <mki/utils/status/status.h>
+#include "matmul_info_common.h"
 
 namespace AsdOps {
 using namespace Mki;
@@ -26,18 +27,7 @@ template <typename T = uint32_t> inline T Max(const T a, const T b) { return a >
 
 template <typename T = uint32_t> inline T Min(const T a, const T b) { return a < b ? a : b; }
 
-struct MatMulInfoNd {
-    uint32_t batchSize{0};
-    uint32_t m{0};                  // 实际输入的 m
-    uint32_t n{0};                  // 实际输入的 n
-    uint32_t k{0};                  // 实际输入的 k
-    bool transA{0};                 // false: 0, true: 1
-    bool transB{0};                 // false: 0, true: 1
-    bool biasFlag{0};               // false: 0, true: 1
-    bool isInt8{0};                 // 是否 int8融合
-    float inDtype{2};
-    float outDtype{4};
-    uint32_t formatSema{0};         // "FRACTAL_NZ": 0, "ND": 1
+struct MatMulInfoNd : public MatMulInfoCommon {
 };
 
 struct OpShapeNd {

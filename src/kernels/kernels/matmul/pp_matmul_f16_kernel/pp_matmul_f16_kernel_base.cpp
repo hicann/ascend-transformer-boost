@@ -10,17 +10,15 @@
 #include "pp_matmul_f16_kernel_base.h"
 
 namespace AsdOps {
-class PpMatMulF16Kernel : public PpMatMulF16KernelBase {
-public:
-    explicit PpMatMulF16Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
-        : PpMatMulF16KernelBase(kernelName, handle)
-    {
-    }
+// 实现 GetTilingSize
+uint64_t PpMatMulF16KernelBase::GetTilingSize(const LaunchParam &launchParam) const {
+    (void)launchParam;
+    constexpr uint32_t CONST_256 = 256;
+    return Round<CONST_256>(sizeof(PpMatmulTilingData));
+}
 
-    bool CanSupport(const LaunchParam &launchParam) const override
-    {
-        return CheckAsdOpsND(launchParam, 2); // 输入参数数量为2
-    }
-};
-REG_KERNEL_BASE(PpMatMulF16Kernel);
-} // namespace AsdOps
+// 实现 InitImpl
+Status PpMatMulF16KernelBase::InitImpl(const LaunchParam &launchParam) {
+    return PpMatmulTiling(launchParam, kernelInfo_);
+}
+}

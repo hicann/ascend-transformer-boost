@@ -14,34 +14,37 @@
 #include "tbe_tiling_runner.h"
 
 namespace AsdOps {
+MatMulDescParams ExtractMatMulParams(const OpParam::MatMul &opParam, const LaunchParam &launchParam) {
+    MatMulDescParams params = {
+        launchParam.GetInTensor(0).desc, launchParam.GetInTensor(1).desc, launchParam.GetOutTensor(0).desc,
+        opParam.oriShape[0], opParam.oriShape[1], opParam.oriShape[2]
+    };
+    return params;
+}
+
 Status MatMulNzTiling(const std::string &kernelName, const LaunchParam &launchParam, KernelInfo &kernelInfo,
                       const BinHandle &binHandle)
 {
     auto opParam = AnyCast<OpParam::MatMul>(launchParam.GetParam());
-    const TensorDesc &tensorDescA = launchParam.GetInTensor(0).desc;
-    const TensorDesc &tensorDescB = launchParam.GetInTensor(1).desc;
-    const TensorDesc &tensorDescOut = launchParam.GetOutTensor(0).desc;
     MKI_CHECK(opParam.oriShape.size() == 3, "size of oriShape is invalid",
-                 return Status::FailStatus(ERROR_INVALID_VALUE)); // oriShape包含m,k,n这3个参数
-    int64_t m = opParam.oriShape[0];
-    int64_t k = opParam.oriShape[1];
-    int64_t n = opParam.oriShape[2];
-    SVector<int64_t> oriShapeA = {m, k};
+        return Status::FailStatus(ERROR_INVALID_VALUE));
+    MatMulDescParams params = ExtractMatMulParams(opParam, launchParam);
+    SVector<int64_t> oriShapeA = {params.m, params.k};
     if (opParam.transposeA) {
-        oriShapeA = {k, m};
+        oriShapeA = {params.k, params.m};
     }
-    SVector<int64_t> oriShapeB = {k, n};
+    SVector<int64_t> oriShapeB = {params.k, params.n};
     if (opParam.transposeB) {
-        oriShapeB = {n, k};
+        oriShapeB = {params.n, params.k};
     }
-    SVector<int64_t> oriShapeOut = {m, n};
+    SVector<int64_t> oriShapeOut = {params.m, params.n};
 
     auto runner = AsdOpsGeRt::TbeTilingRunner()
                       .SetName("MatMulV2")
                       .SetKernelName(kernelName)
-                      .AddInput(tensorDescA.dtype, tensorDescA.format, oriShapeA)
-                      .AddInput(tensorDescB.dtype, tensorDescB.format, oriShapeB)
-                      .AddOutput(tensorDescOut.dtype, tensorDescOut.format, oriShapeOut)
+                      .AddInput(params.tensorDescA.dtype, params.tensorDescA.format, oriShapeA)
+                      .AddInput(params.tensorDescB.dtype, params.tensorDescB.format, oriShapeB)
+                      .AddOutput(params.tensorDescOut.dtype, params.tensorDescOut.format, oriShapeOut)
                       .AddAttrBool(opParam.transposeA)
                       .AddAttrBool(opParam.transposeB)
                       .AddAttrInt64(0); // 0x40 is high precision
@@ -52,30 +55,25 @@ Status BatchMatMulNzTiling(const std::string &kernelName, const LaunchParam &lau
                            const BinHandle &binHandle)
 {
     auto opParam = AnyCast<OpParam::MatMul>(launchParam.GetParam());
-    const TensorDesc &tensorDescA = launchParam.GetInTensor(0).desc;
-    const TensorDesc &tensorDescB = launchParam.GetInTensor(1).desc;
-    const TensorDesc &tensorDescOut = launchParam.GetOutTensor(0).desc;
     MKI_CHECK(opParam.oriShape.size() == 3, "size of oriShape is invalid",
-                 return Status::FailStatus(ERROR_INVALID_VALUE)); // oriShape包含m,k,n这3个参数
-    int64_t m = opParam.oriShape[0];
-    int64_t k = opParam.oriShape[1];
-    int64_t n = opParam.oriShape[2];
-    SVector<int64_t> oriShapeA = {tensorDescA.dims[0], m, k};
+        return Status::FailStatus(ERROR_INVALID_VALUE));
+    MatMulDescParams params = ExtractMatMulParams(opParam, launchParam);
+    SVector<int64_t> oriShapeA = {params.tensorDescA.dims[0], params.m, params.k};
     if (opParam.transposeA) {
-        oriShapeA = {tensorDescA.dims[0], k, m};
+        oriShapeA = {params.tensorDescA.dims[0], params.k, params.m};
     }
-    SVector<int64_t> oriShapeB = {tensorDescB.dims[0], k, n};
+    SVector<int64_t> oriShapeB = {params.tensorDescB.dims[0], params.k, params.n};
     if (opParam.transposeB) {
-        oriShapeB = {tensorDescB.dims[0], n, k};
+        oriShapeB = {params.tensorDescB.dims[0], params.n, params.k};
     }
-    SVector<int64_t> oriShapeOut = {m, n};
+    SVector<int64_t> oriShapeOut = {params.m, params.n};
 
     auto runner = AsdOpsGeRt::TbeTilingRunner()
                       .SetName("BatchMatMulV2")
                       .SetKernelName(kernelName)
-                      .AddInput(tensorDescA.dtype, tensorDescA.format, oriShapeA)
-                      .AddInput(tensorDescB.dtype, tensorDescB.format, oriShapeB)
-                      .AddOutput(tensorDescOut.dtype, tensorDescOut.format, oriShapeOut)
+                      .AddInput(params.tensorDescA.dtype, params.tensorDescA.format, oriShapeA)
+                      .AddInput(params.tensorDescB.dtype, params.tensorDescB.format, oriShapeB)
+                      .AddOutput(params.tensorDescOut.dtype, params.tensorDescOut.format, oriShapeOut)
                       .AddAttrBool(opParam.transposeA)
                       .AddAttrBool(opParam.transposeB)
                       .AddAttrInt64(0); // 0x40 is high precision

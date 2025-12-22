@@ -7,14 +7,7 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
-#include <mki/base/kernel_base.h>
-#include <mki_loader/op_register.h>
-#include <mki/utils/log/log.h>
-#include <mki/utils/platform/platform_info.h>
-#include "asdops/params/params.h"
-#include "kernels/matmul/tiling/tiling_data.h"
-#include "kernels/matmul/tiling/pp_matmul_tiling.h"
-#include "kernels/matmul/common/common_tiling.h"
+#include "kernels/matmul/common/common_include.h"
 
 namespace AsdOps {
 using namespace Mki;
