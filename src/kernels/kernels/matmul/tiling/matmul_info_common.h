@@ -7,20 +7,23 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
-#include "pp_matmul_f16_kernel_base.h"
+ 
+#ifndef MATMUL_INFO_COMMON_H
+#define MATMUL_INFO_COMMON_H
 
 namespace AsdOps {
-class PpMatMulF16Kernel : public PpMatMulF16KernelBase {
-public:
-    explicit PpMatMulF16Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
-        : PpMatMulF16KernelBase(kernelName, handle)
-    {
-    }
-
-    bool CanSupport(const LaunchParam &launchParam) const override
-    {
-        return CheckAsdOpsND(launchParam, 2); // 输入参数数量为2
-    }
+struct MatMulInfoCommon {
+    uint32_t batchSize{0};
+    uint32_t m{0};                  // 实际输入的 m
+    uint32_t n{0};                  // 实际输入的 n
+    uint32_t k{0};                  // 实际输入的 k
+    bool transA{0};                 // false: 0, true: 1
+    bool transB{0};                 // false: 0, true: 1
+    bool biasFlag{0};               // false: 0, true: 1
+    bool isInt8{0};                 // 是否 int8融合
+    float inDtype{2};
+    float outDtype{4};
+    uint32_t formatSema{0};         // "FRACTAL_NZ": 0, "ND": 1
 };
-REG_KERNEL_BASE(PpMatMulF16Kernel);
-} // namespace AsdOps
+}
+#endif

@@ -7,6 +7,7 @@ set(matmul_srcs
     ${CMAKE_CURRENT_LIST_DIR}/pp_matmul_bf16_kernel/pp_matmul_bf16_kernel.cpp
     ${CMAKE_CURRENT_LIST_DIR}/pp_matmul_bf16_nd_nz_nd_kernel/pp_matmul_bf16_nd_nz_nd_kernel.cpp
     ${CMAKE_CURRENT_LIST_DIR}/pp_matmul_f16_mix_kernel/pp_matmul_f16_mix_kernel.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/pp_matmul_f16_kernel/pp_matmul_f16_kernel_base.cpp
     ${CMAKE_CURRENT_LIST_DIR}/pp_matmul_f16_kernel/pp_matmul_f16_kernel.cpp
     ${CMAKE_CURRENT_LIST_DIR}/pp_matmul_f16_opt_kernel/pp_matmul_f16_opt_kernel.cpp
     ${CMAKE_CURRENT_LIST_DIR}/pp_matmul_i8_kernel/pp_matmul_i8_kernel.cpp

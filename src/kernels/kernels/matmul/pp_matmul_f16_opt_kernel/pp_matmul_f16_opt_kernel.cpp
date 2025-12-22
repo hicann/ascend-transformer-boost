@@ -7,21 +7,15 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
-#include <mki/base/kernel_base.h>
-#include <mki_loader/op_register.h>
-#include <mki/utils/log/log.h>
-#include <mki/utils/platform/platform_info.h>
-#include "asdops/params/params.h"
-#include "kernels/matmul/tiling/tiling_data.h"
-#include "kernels/matmul/tiling/pp_matmul_tiling.h"
-#include "kernels/matmul/common/common_tiling.h"
+#include "kernels/matmul/common/common_include.h"
+#include "kernels/matmul/pp_matmul_f16_kernel/pp_matmul_f16_kernel_base.h"
 
 namespace AsdOps {
 using namespace Mki;
-class PpMatMulF16OptKernel : public KernelBase {
+class PpMatMulF16OptKernel : public PpMatMulF16KernelBase {
 public:
     explicit PpMatMulF16OptKernel(const std::string &kernelName, const BinHandle *handle) noexcept
-        : KernelBase(kernelName, handle)
+        : PpMatMulF16KernelBase(kernelName, handle)
     {
     }
 
@@ -50,18 +44,6 @@ public:
         }
 
         return true;
-    }
-
-    uint64_t GetTilingSize(const LaunchParam &launchParam) const override
-    {
-        (void)launchParam;
-        constexpr uint32_t CONST_256 = 256;
-        return Round<CONST_256>(sizeof(PpMatmulTilingData));
-    }
-
-    Status InitImpl(const LaunchParam &launchParam) override
-    {
-        return PpMatmulTiling(launchParam, kernelInfo_);
     }
 };
 REG_KERNEL_BASE(PpMatMulF16OptKernel);

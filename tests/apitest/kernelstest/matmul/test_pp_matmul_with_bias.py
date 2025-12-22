@@ -262,6 +262,50 @@ class TestPpMatmulF16(op_test.OpTest):
             [self.bat_A.bfloat16(), self.bat_B.bfloat16(), self.bat_bias.float()],
             [torch.zeros(self.bat_C.shape).bfloat16()],
         )
+    
+    @op_test.only_910b
+    def testcase_matmul_with_bias_nn_negative1(self):
+        self.trans_A, self.trans_B = False, False
+        bsize, msize, ksize, nsize = 1, 167, 3072, 1024
+        self.set_param(
+            "MatMulOperation",
+            {
+                "transposeA": self.trans_A,
+                "transposeB": self.trans_B,
+                "oriShape": [msize, ksize, nsize],
+                "matmulType": MATMUL_WITH_BIAS,
+            },
+        )
+        self.set_input_formats([self.format_nd, self.format_nd, self.format_nd])
+        self.set_output_formats([self.format_nd])
+        self.__gen_test_data((bsize, msize, ksize, nsize))
+        with self.assertRaises(AssertionError):
+            self.execute(
+                [self.bat_A.half(), self.bat_B.bfloat16(), self.bat_bias.float()],
+                [torch.zeros(self.bat_C.shape).half()],
+            )
+    
+    @op_test.only_910b
+    def testcase_matmul_with_bias_nn_negative2(self):
+        self.trans_A, self.trans_B = False, False
+        bsize, msize, ksize, nsize = 1, 167, 3072, 1024
+        self.set_param(
+            "MatMulOperation",
+            {
+                "transposeA": self.trans_A,
+                "transposeB": self.trans_B,
+                "oriShape": [msize, ksize, nsize],
+                "matmulType": MATMUL_WITH_BIAS,
+            },
+        )
+        self.set_input_formats([self.format_nd, self.format_nd])
+        self.set_output_formats([self.format_nd])
+        self.__gen_test_data((bsize, msize, ksize, nsize))
+        with self.assertRaises(AssertionError):
+            self.execute(
+                [self.bat_A.half(), self.bat_B.half()],
+                [torch.zeros(self.bat_C.shape).half()],
+            )
 
 
 if __name__ == "__main__":

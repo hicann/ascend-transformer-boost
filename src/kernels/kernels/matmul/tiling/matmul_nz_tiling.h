@@ -21,6 +21,14 @@ Status MatMulNzTiling(const std::string &kernelName, const LaunchParam &launchPa
                       const BinHandle &binHandle);
 Status BatchMatMulNzTiling(const std::string &kernelName, const LaunchParam &launchParam, KernelInfo &kernelInfo,
                            const BinHandle &binHandle);
+struct MatMulDescParams {
+    const TensorDesc& tensorDescA;
+    const TensorDesc& tensorDescB;
+    const TensorDesc& tensorDescOut;
+    int64_t m;
+    int64_t k;
+    int64_t n;
+};
 } // namespace AsdOps
 
 #endif
