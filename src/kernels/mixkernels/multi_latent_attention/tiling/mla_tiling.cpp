@@ -129,6 +129,7 @@ Status GetMLANdInfo(const LaunchParam &launchParam, MLAInfo &mmInfo,
     mmInfo.tor = param.tor;
     mmInfo.kvSeqLen = param.kvSeqLen.data();
     mmInfo.qSeqLen = param.qSeqLen.data();
+    mmInfo.maskUseStatus = param.maskUseStatus.data();
     param.kvHead = param.kvHead <= 0 ? param.headSize : param.kvHead;
     mmInfo.batch = static_cast<int32_t>(param.kvSeqLen.size());
     mmInfo.kvHeads = param.kvHead;

@@ -43,4 +43,30 @@ bool MultiLatentAttentionVariantPackParam::BuildFromTensor(const SVector<Mki::Te
     }
     return true;
 }
+
+bool MultiLatentAttentionVariantPackParam::BuildMaskUseStatusFromTensor(const SVector<Mki::Tensor> &inTensors,
+                                                                        size_t maskUseStatusId, bool needMaskUseStatus,
+                                                                        size_t batch)
+{
+    maskUseStatus.clear();
+    if (maskUseStatusId >= inTensors.size() || !needMaskUseStatus) {
+        ATB_LOG(INFO) << "maskUseStatusTensor not given, skip build from host tensor";
+        return true;
+    }
+    maskUseStatus.resize(batch);
+    const Mki::Tensor &maskUseStatusTensor = inTensors.at(maskUseStatusId);
+    bool isHostDataNull = maskUseStatusTensor.hostData == nullptr;
+    if (isHostDataNull) {
+        ATB_LOG(WARN) << "maskUseStatusTensor required but not given in hostData, use default all true setting";
+        for (size_t i = 0; i < batch; ++i) {
+            maskUseStatus[i] = 1;
+        }
+        return true;
+    }
+    int32_t *maskUseStatusHostData = (int32_t *)maskUseStatusTensor.hostData;
+    for (size_t i = 0; i < batch; ++i) {
+        maskUseStatus[i] = maskUseStatusHostData[i];
+    }
+    return true;
+}
 } // namespace atb

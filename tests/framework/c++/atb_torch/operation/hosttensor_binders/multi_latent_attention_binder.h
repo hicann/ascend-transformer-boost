@@ -23,7 +23,9 @@ public:
 private:
     std::vector<int32_t> contextLens_;
     std::vector<int32_t> qSeqlen_;
+    std::vector<int32_t> maskUseStatus_;
     bool isMask_ = false;
+    bool isInt8Nz_ = false;
 };
 
 #endif

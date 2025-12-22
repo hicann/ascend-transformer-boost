@@ -301,14 +301,19 @@ void GetNdMLAMtpTilingTP1(const MLAInfo &mmInfo, uint32_t &blockDim, uint32_t *t
         int32_t batchIdx = mmInfo.batchList[seqIdx].batchIdx;
         int32_t kvSeqlen = mmInfo.batchList[seqIdx].kvSeqlen;
         int32_t beginQ = mmInfo.batchList[seqIdx].startQIdx;
-        int32_t curKvSeq = kvSeqlen - qSeqLen;
+        int32_t curBatchMask = mmInfo.maskUseStatus == nullptr ? 1 : *(mmInfo.maskUseStatus + batchIdx);
+        int32_t curKvSeq = curBatchMask == 1 ? kvSeqlen - qSeqLen : kvSeqlen;
         for (int32_t qSeq = 0; qSeq < qSeqLen; qSeq += maxQPerJob) {
-            if (totalTaskNum <= static_cast<int32_t>(blockDim) && (prevTaskNum % static_cast<int32_t>(blockDim) == 0)) {
+            if ((totalTaskNum <= static_cast<int32_t>(blockDim) &&
+                 (prevTaskNum % static_cast<int32_t>(blockDim) == 0)) ||
+                curBatchMask == 0) {
                 maxQPerJob = NUM1;
             }
             int32_t tilingOffset = TILING_HEAD_SIZE + TILING_PARA_SIZE_TP1 * prevTaskNum;
             int32_t curQLen = ((qSeqLen - qSeq) > maxQPerJob) ? maxQPerJob : (qSeqLen - qSeq);
-            curKvSeq += curQLen;
+            if (curBatchMask == 1) {
+                curKvSeq += curQLen;
+            }
             tilingParam[tilingOffset] = static_cast<uint32_t>(batchIdx);
             tilingParam[tilingOffset + NUM1] = static_cast<uint32_t>(beginQ) + static_cast<uint32_t>(qSeq);
             tilingParam[tilingOffset + NUM2] = static_cast<uint32_t>(curKvSeq);
