@@ -67,19 +67,20 @@ HcclReduceOp GetAllReduceType(const std::string &allReduceType)
     }
 }
 
-const std::unordered_map<HcclResult, atb::Status> hcclResultToStatusMap = {
-    {HcclResult::HCCL_SUCCESS, atb::NO_ERROR},
-    {HcclResult::HCCL_E_PARA, atb::ERROR_INVALID_PARAM},
-    {HcclResult::HCCL_E_MEMORY, atb::ERROR_OUT_OF_DEVICE_MEMORY},
+const std::unordered_map<HcclResult, Status> hcclResultToStatusMap = {
+    {HcclResult::HCCL_SUCCESS, NO_ERROR},
+    {HcclResult::HCCL_E_PARA, ERROR_INVALID_PARAM},
+    {HcclResult::HCCL_E_MEMORY, ERROR_OUT_OF_DEVICE_MEMORY},
+    {static_cast<HcclResult>(24), ERROR_OUT_OF_DEVICE_MEMORY}, // 24: HcclResult::HCCL_E_OOM
 };
 
-atb::Status ConvertHcclResultToStatus(const HcclResult hcclResult)
+Status ConvertHcclResultToStatus(const HcclResult hcclResult)
 {
     auto it = hcclResultToStatusMap.find(hcclResult);
     if (it != hcclResultToStatusMap.end()) {
         return it->second;
     }
-    return atb::ERROR_HCCL_FAIL;
+    return ERROR_HCCL_FAIL;
 }
 
 } // namespace atb
