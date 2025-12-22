@@ -19,7 +19,7 @@
 #include "common/util/error_manager/error_manager.h"
 #include "graph/operator.h"
 #include "graph/node.h"
-#include "toolchain/slog.h"
+#include "dlog_pub.h"
 #include "base/err_msg.h"
 
 
