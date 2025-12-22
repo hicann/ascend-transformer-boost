@@ -130,7 +130,7 @@ Status LcalRunner::SetupImpl(RunnerVariantPack &runnerVariantPack)
     if (lcalErrorCode_ == Lcal::LCAL_SUCCESS) {
         return NO_ERROR;
     }
-    if (lcalErrorCode_ == Lcal::OUT_OF_DEVICE_MEMORY) {
+    if (lcalErrorCode_ == Lcal::LCAL_ERROR_OUT_OF_MEMORY) {
         ATB_LOG(ERROR) << "error code:" << ERROR_OUT_OF_DEVICE_MEMORY
                        << ", out of NPU memory! Please check if the memory is enough.";
         return ERROR_OUT_OF_DEVICE_MEMORY;

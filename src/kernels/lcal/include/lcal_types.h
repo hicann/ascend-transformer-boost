@@ -22,7 +22,6 @@ constexpr int LCAL_ERROR_INTERNAL = -4;
 constexpr int LCAL_ERROR_TIMEOUT = -5;
 constexpr int LCAL_ERROR_OUT_OF_MEMORY = -6;
 constexpr int LCAL_ERROR_NOT_FOUND = -7;
-constexpr int OUT_OF_DEVICE_MEMORY = -8;
 constexpr int64_t LCAL_INVALID_VALUE = -1;
 
 // shared buffer size，这里要和collectives.cce文件中的常量联动修改！！！
