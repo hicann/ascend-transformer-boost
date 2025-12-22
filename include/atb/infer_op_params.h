@@ -2932,7 +2932,7 @@ struct MultiLatentAttentionParam {
         CALC_TYPE_UNDEFINED = 0, // 默认值
         CALC_TYPE_SPEC,          // 支持传入大于1的qseqlen
         CALC_TYPE_RING,          // ringAttention
-        CALC_TYPE_SPEC_AND_RING,          // 支持传入大于1的qseqlen ringAttention
+        CALC_TYPE_SPEC_AND_RING, // 支持传入大于1的qseqlen ringAttention
         CALC_TYPE_PREFILL,       // 全量场景
     };
     //!
@@ -2962,9 +2962,23 @@ struct MultiLatentAttentionParam {
     //!
     uint32_t windowSize = 0;
     //!
+    //! \enum MaskUseStatusType
+    //!
+    //! \brief maskUseStatus类型
+    //!
+    enum MaskUseStatusType : int {
+        MASK_USE_STATUS_TYPE_UNDEFINED = 0, //!< 默认值，不使用
+        MASK_USE_STATUS_TYPE_BATCH_MASK,    //!< 使用maskUseStatus控制每batch的mask是否被使用
+        MASK_USE_STATUS_TYPE_MAX //!< maskUseStatus类型边界值，仅用于判断是否出界，所有情况不能取该值。
+    };
+    //!
+    //! \brief 指定计算时是否使用mask
+    //!
+    MaskUseStatusType maskUseStatusType = MASK_USE_STATUS_TYPE_UNDEFINED;
+    //!
     //! \brief 预留参数
     //!
-    uint8_t rsv[36] = {0};
+    uint8_t rsv[32] = {0};
 };
 
 //!

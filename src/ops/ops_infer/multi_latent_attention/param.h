@@ -20,8 +20,11 @@ namespace atb {
 struct MultiLatentAttentionVariantPackParam {
     std::vector<int32_t> contextLens;
     std::vector<int32_t> qSeqlen;
+    std::vector<int32_t> maskUseStatus;
     bool BuildFromTensor(const SVector<Mki::Tensor> &inTensors, size_t contextLensTensorId, size_t qSeqlenTensorId,
                          bool needQLens);
+    bool BuildMaskUseStatusFromTensor(const SVector<Mki::Tensor> &inTensors, size_t maskUseStatusId,
+                                      bool needMaskUseStatus, size_t batch);
 };
 } // namespace atb
 #endif

@@ -799,6 +799,7 @@ template <> nlohmann::json OpParamToJson(const infer::MultiLatentAttentionParam 
     multiLatentAttentionParamJson["calcType"] = opParam.calcType;
     multiLatentAttentionParamJson["cacheMode"] = opParam.cacheMode;
     multiLatentAttentionParamJson["windowSize"] = opParam.windowSize;
+    multiLatentAttentionParamJson["maskUseStatusType"] = opParam.maskUseStatusType;
     return multiLatentAttentionParamJson;
 }
 

@@ -16,6 +16,7 @@ static const uint32_t IN_TENSOR_NUM_BASE = 6;
 static const uint32_t OUT_TENSOR_NUM_BASE = 1;
 static const uint32_t CONTEXTLENS_INDEX = 5;
 static const uint32_t QSEQLEN_INDEX = 6;
+static const int32_t MTP_TP1_HEAD_NUM = 128;
 } // namespace
 namespace atb {
 MultiLatentAttentionOpsRunner::MultiLatentAttentionOpsRunner(const infer::MultiLatentAttentionParam &param)
@@ -34,15 +35,18 @@ Status MultiLatentAttentionOpsRunner::SetupKernelGraph(const OpsTensorPack &opsT
     std::size_t inTensorSize = IN_TENSOR_NUM_BASE;
     std::size_t outTensorSize = OUT_TENSOR_NUM_BASE;
     bool needMask = param_.maskType != infer::MultiLatentAttentionParam::MaskType::UNDEFINED;
-    bool needQLens = param_.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC || param_.
-                     calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC_AND_RING;
+    bool needQLens = param_.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC ||
+                     param_.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC_AND_RING;
     bool isInt8Nz = param_.cacheMode == infer::MultiLatentAttentionParam::CacheMode::INT8_NZCACHE;
-    bool isRing = param_.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_RING || param_.
-                  calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC_AND_RING;
+    bool isRing = param_.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_RING ||
+                  param_.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC_AND_RING;
+    bool needMaskUseStatus = param_.maskUseStatusType ==
+                             infer::MultiLatentAttentionParam::MaskUseStatusType::MASK_USE_STATUS_TYPE_BATCH_MASK;
 
     inTensorSize += needMask ? 1 : 0;
     inTensorSize += needQLens ? 1 : 0;
     inTensorSize += isInt8Nz ? 2 : 0; // 2: qDescale kDescale
+    inTensorSize += needMaskUseStatus ? 1 : 0; // 1: maskUseStatus
     kernelGraph_.inTensors.resize(inTensorSize);
     int inTensorStart = 0;
     Mki::Tensor &query = kernelGraph_.inTensors.at(inTensorStart++);
@@ -57,6 +61,8 @@ Status MultiLatentAttentionOpsRunner::SetupKernelGraph(const OpsTensorPack &opsT
     (void)qLens;
     Mki::Tensor *qkDescale = isInt8Nz ? &kernelGraph_.inTensors.at(inTensorStart++) : &nullTensor_;
     Mki::Tensor *pvDescale = isInt8Nz ? &kernelGraph_.inTensors.at(inTensorStart++) : &nullTensor_;
+    Mki::Tensor *MaskUseStatus = needMaskUseStatus ? &kernelGraph_.inTensors.at(inTensorStart++) : &nullTensor_;
+    (void)MaskUseStatus;
 
     outTensorSize += isRing ? 1 : 0;
     kernelGraph_.outTensors.resize(outTensorSize);
@@ -88,11 +94,31 @@ Status MultiLatentAttentionOpsRunner::ModifyKernelGraph(const OpsTensorPack &ops
     if (param_.maskType != infer::MultiLatentAttentionParam::MaskType::UNDEFINED) {
         qSeqlenIdxBase++;
     }
-    bool needQLens = param_.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC || param_.
-                     calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC_AND_RING;
+    bool needQLens = param_.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC ||
+                     param_.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC_AND_RING;
+    bool needMask = param_.maskType != infer::MultiLatentAttentionParam::MaskType::UNDEFINED &&
+                    param_.maskType != infer::MultiLatentAttentionParam::MaskType::MASK_TYPE_CAUSAL_MASK;
+    bool needMaskUseStatus = param_.maskUseStatusType ==
+                             infer::MultiLatentAttentionParam::MaskUseStatusType::MASK_USE_STATUS_TYPE_BATCH_MASK;
     bool ret = newParam_.BuildFromTensor(opsTensorPack.inTensors, CONTEXTLENS_INDEX, qSeqlenIdxBase, needQLens);
     if (!ret) {
         ATB_LOG(ERROR) << GetLogPrefix() << " build param from host tensor fail";
+        return ERROR_INVALID_PARAM;
+    }
+    size_t idx = 6;
+    if (needMask) {
+        idx++; // 1: mask
+    }
+    if (needQLens) {
+        idx++; // 1: qSeqlen
+    }
+    if (param_.cacheMode == infer::MultiLatentAttentionParam::CacheMode::INT8_NZCACHE) {
+        idx += 2; // 2: qDescale, kDescale
+    }
+    size_t batch = opsTensorPack.inTensors.at(CONTEXTLENS_INDEX).desc.dims[0];
+    ret = newParam_.BuildMaskUseStatusFromTensor(opsTensorPack.inTensors, idx, needMaskUseStatus, batch);
+    if (!ret) {
+        ATB_LOG(ERROR) << GetLogPrefix() << " build maskUseStatus param from host tensor fail";
         return ERROR_INVALID_PARAM;
     }
     AtbOps::OpParam::MLA asdParam;
@@ -102,6 +128,7 @@ Status MultiLatentAttentionOpsRunner::ModifyKernelGraph(const OpsTensorPack &ops
     asdParam.kvHead = param_.kvHeadNum;
     asdParam.kvSeqLen = newParam_.contextLens;
     asdParam.qSeqLen = newParam_.qSeqlen;
+    asdParam.maskUseStatus = newParam_.maskUseStatus;
     asdParam.isRing = param_.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_RING || param_.
                       calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC_AND_RING;
     if (param_.maskType == infer::MultiLatentAttentionParam::MaskType::MASK_TYPE_SPEC) {

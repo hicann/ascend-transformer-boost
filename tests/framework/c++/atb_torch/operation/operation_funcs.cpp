@@ -11,6 +11,7 @@
 #include <nlohmann/json.hpp>
 #include <functional>
 #include "atb/utils/log.h"
+#include "atb/utils/param_to_json.h"
 #include "atb/infer_op_params.h"
 #include "atb/train_op_params.h"
 #include "chatglm6b/layer/chatglm6blayer_encoder_operation.h"
@@ -2323,10 +2324,10 @@ static atb::Status MultiLatentAttentionOperationCreate(const nlohmann::json &par
     if (paramJson.contains("windowSize")) {
         param.windowSize = atb::infer::MultiLatentAttentionParam::MaskType(paramJson["windowSize"].get<int32_t>());
     }
-    ATB_LOG(INFO) << "PagedAttentionOperationCreate headNum:" << param.headNum << ", scale:" << param.qkScale
-                  << ", kvHeadNum:" << param.kvHeadNum << ", maskType:" << param.maskType
-                  << ", calcType:" << param.calcType << ", cacheMode:" << param.cacheMode
-                  << ", windowSize:" << param.windowSize;
+    if (paramJson.contains("maskUseStatusType")) {
+        param.maskUseStatusType = paramJson["maskUseStatusType"].get<atb::infer::MultiLatentAttentionParam::MaskUseStatusType>();
+    }
+    ATB_LOG(INFO) << "MLAOperationCreate: " << atb::OpParamToJson(param);
     if (paramJson.contains("rsv")) {
         for (size_t i = 0; i < paramJson["rsv"].size(); i++) {
             param.rsv[i] = paramJson["rsv"].at(i).get<int8_t>();
