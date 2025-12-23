@@ -19,7 +19,11 @@
 #include "common/util/error_manager/error_manager.h"
 #include "graph/operator.h"
 #include "graph/node.h"
-#include "dlog_pub.h"
+#if defined(HAVE_DLOG)
+    #include <dlog_pub.h>
+#else
+    #include <toolchain/slog.h>
+#endif
 #include "base/err_msg.h"
 
 

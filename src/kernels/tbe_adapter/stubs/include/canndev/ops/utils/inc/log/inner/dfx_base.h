@@ -20,7 +20,11 @@
 #include <unistd.h>
 #include <sys/syscall.h>
 #include <securec.h>
-#include <dlog_pub.h>
+#if defined(HAVE_DLOG)
+    #include <dlog_pub.h>
+#else
+    #include <toolchain/slog.h>
+#endif
 #include <base/err_msg.h>
 #include <exe_graph/runtime/tiling_context.h>
 #include <exe_graph/runtime/tiling_parse_context.h>
