@@ -48,15 +48,14 @@ function fn_build_googletest()
         return 0
     fi
     cd $THIRD_PARTY_DIR
-    [[ ! -d "googletest" ]] && git clone --branch v1.13.0 --depth 1 https://github.com/google/googletest.git
+    [[ ! -d "googletest" ]] && git clone --branch v1.14.0 --depth 1 https://github.com/google/googletest.git
     cd googletest
-    sed -i '34d' CMakeLists.txt
     rm -rf build && mkdir build && cd build
     if [ "$USE_CXX11_ABI" == "ON" ]
     then
-        sed -i '33 a add_compile_definitions(_GLIBCXX_USE_CXX11_ABI=1)' ../CMakeLists.txt
+        sed -i '21 a add_compile_definitions(_GLIBCXX_USE_CXX11_ABI=1)' ../CMakeLists.txt
     else
-        sed -i '33 a add_compile_definitions(_GLIBCXX_USE_CXX11_ABI=0)' ../CMakeLists.txt
+        sed -i '21 a add_compile_definitions(_GLIBCXX_USE_CXX11_ABI=0)' ../CMakeLists.txt
     fi
     cmake .. -DCMAKE_INSTALL_PREFIX=$THIRD_PARTY_DIR/googletest -DCMAKE_SKIP_RPATH=TRUE -DCMAKE_CXX_FLAGS="-fPIC"
     cmake --build . --parallel $(nproc)
@@ -87,9 +86,9 @@ function fn_build_doxygen()
     fi
     cd $THIRD_PARTY_DIR
     if [ ! -d "$THIRD_PARTY_DIR/doxygen" ]; then
-        [[ ! -f "doxygen-1.9.3.src.tar.gz" ]] && wget --no-check-certificate https://github.com/doxygen/doxygen/releases/download/Release_1_9_3/doxygen-1.9.3.src.tar.gz
-        tar -xzvf doxygen-1.9.3.src.tar.gz
-        mv doxygen-1.9.3 doxygen
+        [[ ! -f "doxygen-1.9.6.src.tar.gz" ]] && wget --no-check-certificate https://github.com/doxygen/doxygen/releases/download/Release_1_9_6/doxygen-1.9.6.src.tar.gz
+        tar -xzvf doxygen-1.9.6.src.tar.gz
+        mv doxygen-1.9.6 doxygen
     fi
     cd doxygen
     rm -rf build && mkdir build && cd build
@@ -217,7 +216,7 @@ function fn_build_pybind11()
         return 0
     fi
     cd $THIRD_PARTY_DIR
-    git clone --branch v2.10.3 --depth 1 https://github.com/pybind/pybind11.git
+    git clone --branch v2.13.6 --depth 1 https://github.com/pybind/pybind11.git
 }
 
 function fn_build_secodefuzz()
