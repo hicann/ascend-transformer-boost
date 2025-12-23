@@ -19,6 +19,12 @@ set(OPS_THIRD_PARTY_DIR "${PROJECT_SOURCE_DIR}/3rdparty")
 set(MKI_PACKAGE_DIR "${OPS_THIRD_PARTY_DIR}/mki")
 set(MKI_SCRIPT_DIR "${MKI_PACKAGE_DIR}/scripts")
 
+set(DLOG_HEADER_PATH "$ENV{ASCEND_HOME_PATH}/pkg_inc/base/dlog_pub.h")
+if (EXISTS "${DLOG_HEADER_PATH}")
+    message(STATUS "Found dlog_pub.h, use HAVE_DLOG")
+    add_compile_definitions(HAVE_DLOG)
+endif()
+
 if(USE_ASCENDC_DUMP)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DUSE_ASCENDC_DUMP")
 endif()

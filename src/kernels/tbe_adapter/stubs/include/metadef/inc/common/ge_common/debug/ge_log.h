@@ -11,7 +11,11 @@
 #define ASCEND_OPS_STUB_GE_LOG_H
 
 #include <mki/utils/log/log.h>
-#include <dlog_pub.h>
+#if defined(HAVE_DLOG)
+    #include <dlog_pub.h>
+#else
+    #include <toolchain/slog.h>
+#endif
 #include "ge_error_codes.h"
 #include "common/util/error_manager/error_manager.h"
 #include "external/ge_common/ge_api_error_codes.h"
