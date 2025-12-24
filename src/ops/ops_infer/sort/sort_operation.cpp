@@ -54,7 +54,11 @@ OPERATION_PARAM_FUNCS(SortOperation, infer::SortParam)
 
 SortOperation::SortOperation(const infer::SortParam &param) : OperationBase("SortOperation"), param_(param)
 {
-    operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("SortOperation");
+    if (GetSingleton<Config>().Is910B() || Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+        operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("SortOperationA2and950");
+    } else {
+        operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("SortOperation");
+    }
 }
 
 SortOperation::~SortOperation() {}
@@ -86,10 +90,6 @@ Status SortOperation::InferShapeImpl(const SVector<TensorDesc> &inTensorDescs,
 Status SortOperation::InferShapeCheckImpl(const SVector<TensorDesc> &inTensorDescs) const
 {
     const TensorDesc &xTensorDesc = inTensorDescs.at(0);
-    if (!GetSingleton<Config>().Is910B() && xTensorDesc.dtype == ACL_FLOAT) {
-        ATB_LOG(ERROR) << "SortOperation of the float type supports only the Atlas 800 A2 inference products.";
-        return ERROR_INVALID_TENSOR_DTYPE;
-    }
     Status status = ParamCheckImpl(xTensorDesc);
     if (status != NO_ERROR) {
         return status;
