@@ -156,7 +156,7 @@ Status LinearParallelLcocRunner::SetupImpl(RunnerVariantPack &runnerVariantPack)
     int ret = lcoc_->SetParam(lcalType_, {}, coCParamDesc);
     if (ret != 0) {
         ATB_LOG(ERROR) << GetLogPrefix() << "SetParam failed, ret : " << ret;
-        return ERROR_RT_FAIL;
+        return ConvertLcclResultToStatus(ret);
     }
     return NO_ERROR;
 }
@@ -217,7 +217,7 @@ Status LinearParallelLcocRunner::LaunchKernel(Lcal::CoCInputPkg inputPkg, Lcal::
     }
     if (ret != Lcal::LCAL_SUCCESS) {
         ATB_LOG(ERROR) << GetLogPrefix() << "Lcoc error: " << ret;
-        return ERROR_RT_FAIL;
+        return ConvertLcclResultToStatus(ret);
     }
     return NO_ERROR;
 }

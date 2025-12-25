@@ -14,6 +14,7 @@
 #include <acl/acl.h>
 #include "atb/utils/config.h"
 #include "atb/utils/comm_pool.h"
+#include "atb/utils/common_utils.h"
 #include "atb/utils/singleton.h"
 #include "atb/utils/operation_register.h"
 
@@ -133,8 +134,9 @@ Status LcalRunner::SetupImpl(RunnerVariantPack &runnerVariantPack)
     if (lcalErrorCode_ == Lcal::LCAL_ERROR_OUT_OF_MEMORY) {
         ATB_LOG(ERROR) << "error code:" << ERROR_OUT_OF_DEVICE_MEMORY
                        << ", out of NPU memory! Please check if the memory is enough.";
-        return ERROR_OUT_OF_DEVICE_MEMORY;
+        return ConvertLcclResultToStatus(lcalErrorCode_);
     }
     return ERROR_RT_FAIL;
 }
+
 } // namespace atb
