@@ -45,5 +45,6 @@ std::string GenerateOperationName(const std::string &opType, const std::vector<i
 HcclDataType GetHcclDtype(const aclDataType dtype);
 HcclReduceOp GetAllReduceType(const std::string &allReduceType);
 atb::Status ConvertHcclResultToStatus(const HcclResult hcclResult);
+atb::Status ConvertLcclResultToStatus(const int lcclResult);
 } // namespace atb
 #endif

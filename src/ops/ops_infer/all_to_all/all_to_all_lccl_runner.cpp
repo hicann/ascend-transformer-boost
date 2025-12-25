@@ -51,11 +51,11 @@ Status AllToAllLcclRunner::ExecuteImpl(RunnerVariantPack &runnerVariantPack)
     }
     if (ret == Lcal::LCAL_ERROR_PARA_CHECK_FAIL) {
         ATB_LOG(ERROR) << "ret: " << ret << " LCCL_PARALLEL should be 0 or fasle";
-        return ERROR_INVALID_SINGLE_OPERATION_PARAM;
+        return ConvertLcclResultToStatus(ret);
     }
     if (ret != 0) {
         ATB_LOG(ERROR) << "lccl AlltoAll Execute failed, LcclResult:" << ret;
-        return ERROR_RT_FAIL;
+        return ConvertLcclResultToStatus(ret);
     }
     return NO_ERROR;
 }

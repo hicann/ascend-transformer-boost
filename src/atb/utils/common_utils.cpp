@@ -12,6 +12,7 @@
 #include <sstream>
 #include <atb/utils/log.h>
 #include <unordered_map>
+#include "lccl.h"
 namespace atb {
 std::string GenerateOperationName(const std::string &opType, const std::vector<int64_t> &ids)
 {
@@ -81,6 +82,21 @@ Status ConvertHcclResultToStatus(const HcclResult hcclResult)
         return it->second;
     }
     return ERROR_HCCL_FAIL;
+}
+
+const std::unordered_map<int, Status> lcclResultToStatusMap = {
+    {Lcal::LCAL_SUCCESS, NO_ERROR},
+    {Lcal::LCAL_ERROR_PARA_CHECK_FAIL, ERROR_INVALID_SINGLE_OPERATION_PARAM},
+    {Lcal::LCAL_ERROR_OUT_OF_MEMORY, ERROR_OUT_OF_DEVICE_MEMORY},
+};
+
+Status ConvertLcclResultToStatus(const int lcclResult)
+{
+    auto it = lcclResultToStatusMap.find(lcclResult);
+    if (it != lcclResultToStatusMap.end()) {
+        return it->second;
+    }
+    return ERROR_RT_FAIL;
 }
 
 } // namespace atb
