@@ -201,6 +201,29 @@ template <> Status CreateOperation(const infer::LinearParam &opParam, Operation 
             ATB_LOG(ERROR) << "Load aclnn function failed, please check your CANN version.";
             return ERROR_CANN_ERROR;
         }
+        if (opParam.matmulType == infer::LinearParam::MATMUL_UNDEFINED) {
+            if (opParam.enAccum) {
+                ATB_LOG(ERROR) << "On 950, enAccum should be false";
+                return ERROR_INVALID_PARAM;
+            }
+            if (opParam.outDataType != ACL_DT_UNDEFINED) {
+                ATB_LOG(ERROR) << "On 950, outDataType should be ACL_DT_UNDEFINED";
+                return ERROR_INVALID_PARAM;
+            }
+            if (opParam.quantMode != infer::LinearParam::QUANT_UNDEFINED) {
+                ATB_LOG(ERROR) << "On 950, quantMode should be QUANT_UNDEFINED";
+                return ERROR_INVALID_PARAM;
+            }
+        } else {
+            ATB_LOG(ERROR) << "On 950, matmulType should be MATMUL_UNDEFINED";
+            return ERROR_INVALID_PARAM;
+        }
+        *operation = new (std::nothrow) LinearOperation(opParam);
+        if (*operation == nullptr) {
+            ATB_LOG(ERROR) << "failed to new operation";
+            return ERROR_OUT_OF_HOST_MEMORY;
+        }
+        return NO_ERROR;
     }
     ExternalError error;
     error.errorType = ERROR_INVALID_PARAM;
@@ -666,8 +689,16 @@ bool LinearOperation::XWeightDimNumCheck(const TensorDesc &xTensorDesc, const Te
                                       ", inTensor1 dimNum = ", weightTensorDesc.shape.dimNum);
         ATB_LOG(ERROR) << GetLogPrefix() << error;
         return false;
-    } else if (!PerTokenXWeightDimNumCheck(xTensorDesc, weightTensorDesc)) {
+    }
+    if (!PerTokenXWeightDimNumCheck(xTensorDesc, weightTensorDesc)) {
         return false;
+    }
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+        if (xTensorDesc.shape.dimNum == DIM_NUM_3 && weightTensorDesc.shape.dimNum == DIM_NUM_3 && param_.hasBias) {
+            ATB_LOG(ERROR) << GetLogPrefix() << 
+                "On 950, if hasBias is true, inTensor0 and inTensor1 dim num should not be 3 at the same time";
+            return false;
+        }
     }
     return true;
 }
