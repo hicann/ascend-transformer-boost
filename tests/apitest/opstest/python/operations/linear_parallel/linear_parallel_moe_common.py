@@ -433,10 +433,12 @@ class MoeTestDate:
                 for j in range(loop):
                     st = j * pValue * 256
                     ed = min(self.k, (j + 1) * pValue * 256)
-                    matrix_c_j = torch.matmul(self.matrix_a_i_list[ep_idx][:,:,st:ed].to(torch.float32), self.matrix_b[:,st:ed,:].to(torch.float32))
+                    matrix_c_j_temp = np.matmul(self.matrix_a_i_list[ep_idx][:,:,st:ed].to(torch.float32).numpy().astype(np.float32), self.matrix_b[:,st:ed,:].to(torch.float32).numpy().astype(np.float32))
+                    matrix_c_j = torch.from_numpy(matrix_c_j_temp)
                     matrix_c_j_low = matrix_c_j.to(output_dtype)
                     matrix_c_low = matrix_c_low + matrix_c_j_low
-                matrix_c = torch.matmul(self.matrix_a_i_list[ep_idx].to(l0c_dtype), self.matrix_b.to(l0c_dtype))
+                matrix_c_temp = np.matmul(self.matrix_a_i_list[ep_idx].to(torch.float32).numpy().astype(np.float32), self.matrix_b.to(torch.float32).numpy().astype(np.float32))
+                matrix_c = torch.from_numpy(matrix_c_temp)
                 self.matrix_c_list.append(matrix_c)
                 self.matrix_c_low_list.append(matrix_c_low)
 
@@ -474,13 +476,14 @@ class MoeTestDate:
                 for j in range(loop):
                     st = j * pValue * 256
                     ed = min(self.k, (j + 1) * pValue * 256)
-                    matrix_c_j = torch.matmul(self.matrix_a_i_list[ep_idx][:,:,st:ed].to(torch.float32), self.matrix_b[:,st:ed,:].to(torch.float32))
+                    matrix_c_j_temp = np.matmul(self.matrix_a_i_list[ep_idx][:,:,st:ed].to(torch.float32).numpy().astype(np.float32), self.matrix_b[:,st:ed,:].to(torch.float32).numpy().astype(np.float32))
+                    matrix_c_j = torch.from_numpy(matrix_c_j_temp)
                     matrix_c_j = (matrix_c_j * broadcast_scale)
                     matrix_c_j_low = matrix_c_j.to(output_dtype)
                     matrix_c_low = matrix_c_low + matrix_c_j_low
                 matrix_c_low = matrix_c_low.to(torch.float32)
-                matrix_c = torch.matmul(self.matrix_a_i_list[ep_idx].to(torch.float32), self.matrix_b.to(torch.float32)).to(l0c_dtype)
-                
+                matrix_c_temp = np.matmul(self.matrix_a_i_list[ep_idx].to(torch.float32).numpy().astype(np.float32), self.matrix_b.to(torch.float32).numpy().astype(np.float32))
+                matrix_c = torch.from_numpy(matrix_c_temp).to(l0c_dtype)
                 matrix_c = ((matrix_c + broadcast_offset).to(torch.float32) * broadcast_scale)
                 # matrix_c_low = ((matrix_c_low + broadcast_offset).to(torch.float32) * broadcast_scale)
                 if quant_info.dequant_granularity is QuantGranularity.PER_TOKEN:
