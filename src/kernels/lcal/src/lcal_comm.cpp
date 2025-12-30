@@ -333,14 +333,19 @@ int LcalComm::Init()
     }
 
     MKI_LOG(DEBUG) << "Prepare to InitCommMem localRankSize_ -> " << localRankSize_ << ", localRank_ -> " << localRank_;
-    if (InitCommMem() != LCAL_SUCCESS) {
+    ret = InitCommMem();
+    if (ret != LCAL_SUCCESS) {
         MKI_LOG(ERROR) << "InitCommMem failed!";
-        return LCAL_ERROR_INTERNAL;
+        return ret;
     }
     MKI_LOG(DEBUG) << "InitCommMem " << rank_ << "/" << rankSize_ << ", localRank_ : " << localRank_ <<
             ", localRankSize_ : " << localRankSize_ << " success";
 
-    SyncCommArgs();
+    ret = SyncCommArgs();
+    if (ret != LCAL_SUCCESS) {
+        MKI_LOG(ERROR) << "SyncCommArgs failed!";
+        return ret;
+    }
     MKI_LOG(INFO) << "LcalCommInit " << rank_ << "/" << rankSize_ << " success and extraFlag:" << commArgs_.extraFlag <<
         " commArgs_.localRank : " << commArgs_.localRank << " commArgs_.localRankSize : " << commArgs_.localRankSize;
     inited_ = true;
@@ -377,7 +382,11 @@ int LcalComm::InitThread(const std::string &uid)
         }
         uid_ = uid;
     }
-    InitMem();
+    auto ret = InitMem();
+    if (ret != LCAL_SUCCESS) {
+        MKI_LOG(ERROR) << "InitMem failed!";
+        return ret;
+    }
     g_localPeerMemMap[uid][rank_] = peerMem_[rank_];
 
     auto start = high_resolution_clock::now();
@@ -395,7 +404,11 @@ int LcalComm::InitThread(const std::string &uid)
     }
     localRank_ = rank_;
     localRankSize_ = rankSize_;
-    SyncCommArgs();
+    ret = SyncCommArgs();
+    if (ret != LCAL_SUCCESS) {
+        MKI_LOG(ERROR) << "SyncCommArgs failed!";
+        return ret;
+    }
     MKI_LOG(INFO) << "Lccl init multi thread " << rank_ << "/" << rankSize_ << " success, uid:" << uid;
     inited_ = true;
     return LCAL_SUCCESS;
