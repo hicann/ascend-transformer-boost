@@ -37,7 +37,7 @@ int LcalCommInitRankLocal(int rankSize, int rank, LcalCommPtr *comm)
     int ret = c->Init();
     if (ret != LCAL_SUCCESS) {
         MKI_LOG(ERROR) << "lccl init failed!";
-        return LCAL_ERROR_INTERNAL;
+        return ret;
     }
     return LCAL_SUCCESS;
 }
@@ -51,7 +51,7 @@ int LcalGetUniqueId(LcalUniqueId *uniqueId, int commDomain)
     int res = BootstrapGetUniqueId(reinterpret_cast<struct LcalBootstrapHandle &>(uniqueId), commDomain);
     if (res != LCAL_SUCCESS) {
         MKI_LOG(ERROR) << "lcal BootstrapGetUniqueId failed!";
-        return LCAL_ERROR_INTERNAL;
+        return res;
     }
     return LCAL_SUCCESS;
 }
@@ -72,7 +72,7 @@ int LcalCommInitRank(LcalUniqueId commId, int rankSize, int rank, LcalCommPtr *c
     int ret = c->Init();
     if (ret != LCAL_SUCCESS) {
         MKI_LOG(ERROR) << "lccl init failed!";
-        return LCAL_ERROR_INTERNAL;
+        return ret;
     }
     return LCAL_SUCCESS;
 }
@@ -104,7 +104,7 @@ int LcalCommInitRankWithCustDomainSize(int commDomain, int bufferSize, int rankS
     int ret = c->Init();
     if (ret != LCAL_SUCCESS) {
         MKI_LOG(ERROR) << "lccl init failed!";
-        return LCAL_ERROR_INTERNAL;
+        return ret;
     }
     return LCAL_SUCCESS;
 }
