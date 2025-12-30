@@ -306,7 +306,10 @@ class CumsumOperation(DataGen):
     @staticmethod
     def golden(in_tensors, op_params):
         json_data = json.loads(op_params)
-        golden_result = np.cumsum(in_tensors[0].float(), axis = json_data['axes'][0])
+        if in_tensors[0].dtype == torch.bfloat16:
+            golden_result = np.cumsum(in_tensors[0].float(), axis = json_data['axes'][0])
+        else:
+            golden_result = np.cumsum(in_tensors[0], axis = json_data['axes'][0])
         return [golden_result]
 
     @staticmethod
