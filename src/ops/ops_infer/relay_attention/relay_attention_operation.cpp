@@ -51,6 +51,11 @@ template <> Status CreateOperation(const infer::RelayAttentionParam &opParam, Op
                        << "and the value of headNum must be an integer multiple of kvHeadNum.";
         return ERROR_INVALID_PARAM;
     }
+    if (opParam.kvHeadNum == 0 && opParam.headNum > MAX_KVHEADNUM) {
+        ATB_LOG(ERROR) << "If kvHeadNum equals 0, it indicates that kvHeadNum is equal to headNum, "
+                       << "and in this case, the value range of headNum is from 1 to 8.";
+        return ERROR_INVALID_PARAM;
+    }
     if (opParam.maskType != infer::RelayAttentionParam::MASK_TYPE_UNDEFINED) {
         ATB_LOG(ERROR) << "maskType should be set as MASK_TYPE_UNDEFINED!";
         return ERROR_INVALID_PARAM;
