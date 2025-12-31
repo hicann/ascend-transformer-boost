@@ -28,6 +28,8 @@ static const int32_t ROTARY_COEFF_TWO = 2;
 static const int32_t ROTARY_COEFF_FOUR = 4;
 static const int32_t PARAM_COS = 2;
 static const int32_t PARAM_SIN = 3;
+static const int32_t MAX_HEAD_SIZE = 4096;
+static const int32_t MIN_HEAD_SIZE = 16;
 
 template <> Status CreateOperation(const infer::RopeParam &opParam, Operation **operation)
 {
@@ -147,6 +149,20 @@ Status RopeOperation::DimCheck(const SVector<TensorDesc> &inTensorDescs) const
                        << "Q : " << TensorUtil::TensorDescToString(inTensorDescs.at(0))
                        << ", K: " << TensorUtil::TensorDescToString(inTensorDescs.at(1));
         return ERROR_INVALID_TENSOR_SIZE;
+    }
+
+    if (inTensorDescs.at(2).shape.dims[1] > MAX_HEAD_SIZE || inTensorDescs.at(3).shape.dims[1] > MAX_HEAD_SIZE) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "head_size or head_size / 2 must be less than or equal to 4096!"
+                       << "cos.dims[1]: " << inTensorDescs.at(2).shape.dims[1]
+                       << "sin.dims[1]: " << inTensorDescs.at(3).shape.dims[1];
+        return ERROR_INVALID_TENSOR_DIM;
+    }
+
+    if (inTensorDescs.at(2).shape.dims[1] < MIN_HEAD_SIZE || inTensorDescs.at(3).shape.dims[1] < MIN_HEAD_SIZE) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "head_size or head_size / 2 must be greater than or equal to 16!"
+                       << "cos.dims[1]: " << inTensorDescs.at(2).shape.dims[1]
+                       << "sin.dims[1]: " << inTensorDescs.at(3).shape.dims[1];
+        return ERROR_INVALID_TENSOR_DIM;
     }
 
     if (inTensorDescs.at(2).shape.dims[0] != inTensorDescs.at(3).shape.dims[0] || // index: 2, 3
