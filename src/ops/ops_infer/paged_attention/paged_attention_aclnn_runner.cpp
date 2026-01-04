@@ -24,10 +24,11 @@ static const int BLOCK_TABLE_ACLNN_TENSOR_IDX = 14;
 static const int KEY_ANTIQUANT_SCALE_ACLNN_TENSOR_IDX = 17;
 static const int VALUE_ANTIQUANT_SCALE_ACLNN_TENSOR_IDX = 19;
 static const int ATTENTION_OUT_ACLNN_TENSOR_IDX = 0;
-} // namespace
+}  // namespace
 
 namespace atb {
-AclnnFusedInferAttentionScoreV3GetWorkspaceSizeFunc PagedAttentionAclnnRunner::aclnnFusedInferAttentionScoreV3GetWorkspaceSizeFunc_ = nullptr;
+AclnnFusedInferAttentionScoreV3GetWorkspaceSizeFunc
+    PagedAttentionAclnnRunner::aclnnFusedInferAttentionScoreV3GetWorkspaceSizeFunc_ = nullptr;
 AclnnFusedInferAttentionScoreV3Func PagedAttentionAclnnRunner::aclnnFusedInferAttentionScoreV3Func_ = nullptr;
 
 PagedAttentionAclnnRunner::PagedAttentionAclnnRunner(const infer::PagedAttentionParam &param)
@@ -39,7 +40,8 @@ PagedAttentionAclnnRunner::PagedAttentionAclnnRunner(const infer::PagedAttention
     InitAclnnParam();
 }
 
-PagedAttentionAclnnRunner::~PagedAttentionAclnnRunner() {}
+PagedAttentionAclnnRunner::~PagedAttentionAclnnRunner()
+{}
 
 Status PagedAttentionAclnnRunner::LoadAclnnFuncs()
 {
@@ -47,9 +49,10 @@ Status PagedAttentionAclnnRunner::LoadAclnnFuncs()
     if (aclnnFusedInferAttentionScoreV3GetWorkspaceSizeFunc_ && aclnnFusedInferAttentionScoreV3Func_) {
         return NO_ERROR;
     }
-    return LoadFromSharedObjectFile(
-        "aclnnFusedInferAttentionScoreV3GetWorkspaceSize", "aclnnFusedInferAttentionScoreV3",
-        aclnnFusedInferAttentionScoreV3GetWorkspaceSizeFunc_, aclnnFusedInferAttentionScoreV3Func_);
+    return LoadFromSharedObjectFile("aclnnFusedInferAttentionScoreV3GetWorkspaceSize",
+        "aclnnFusedInferAttentionScoreV3",
+        aclnnFusedInferAttentionScoreV3GetWorkspaceSizeFunc_,
+        aclnnFusedInferAttentionScoreV3Func_);
 }
 
 Status PagedAttentionAclnnRunner::BuildAclnnVariantPack(const RunnerVariantPack &runnerVariantPack)
@@ -78,7 +81,7 @@ Status PagedAttentionAclnnRunner::BuildAclnnVariantPack(const RunnerVariantPack 
     if (st != NO_ERROR) {
         return st;
     }
-    st = CreateActualSeqLengthKvAclIntArray();
+    st = CreateActualSeqLengthsKvAclIntArray();
     if (st != NO_ERROR) {
         return st;
     }
@@ -124,14 +127,50 @@ aclnnStatus PagedAttentionAclnnRunner::SetAclNNWorkspaceExecutor()
         return ERROR_INVALID_PARAM;
     }
     aclOpExecutor *rawExecutePtr = aclnnExecutor_.get();
-    aclnnStatus ret = aclnnFusedInferAttentionScoreV3GetWorkspaceSizeFunc_(
-        query, key, value, nullptr, nullptr, nullptr, actualSeqLengthsKv_, nullptr, nullptr, nullptr, nullptr, nullptr,
-        nullptr, nullptr, blockTable, nullptr, nullptr, keyAntiquantScale, nullptr, valueAntiquantScale, nullptr,
-        nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, aclnnParam_.numHeads, aclnnParam_.scaleValue,
-        aclnnParam_.preTokens, aclnnParam_.nextTokens, inputLayout.get(), aclnnParam_.numKeyValueHeads,
-        aclnnParam_.sparseMode, aclnnParam_.innerPrecise, aclnnParam_.blockSize, aclnnParam_.antiquantMode,
-        aclnnParam_.softmaxLseFlag, aclnnParam_.keyAntiquantMode, aclnnParam_.valueAntiquantMode, attentionOut, nullptr,
-        &(atbVariantPack_.workspaceBufferSize), &rawExecutePtr);
+    aclnnStatus ret = aclnnFusedInferAttentionScoreV3GetWorkspaceSizeFunc_(query,
+        key,
+        value,
+        nullptr,  // pseShift
+        nullptr,  // attenMask
+        nullptr,  // actualSeqLengths
+        actualSeqLengthsKv_,
+        nullptr,  // deqScale1
+        nullptr,  // quantScale1
+        nullptr,  // deqScale2
+        nullptr,  // quantScale2
+        nullptr,  // quantOffset2
+        nullptr,  // antiquantScale
+        nullptr,  // antiquantOffset
+        blockTable,
+        nullptr,  // queryPaddingSize
+        nullptr,  // kvPaddingSize
+        keyAntiquantScale,
+        nullptr,  // keyAntiquantOffset
+        valueAntiquantScale,
+        nullptr,  // valueAntiquantOffset
+        nullptr,  // keySharedPrefix
+        nullptr,  // valueSharedPrefix
+        nullptr,  // actualSharedPrefixLen
+        nullptr,  // queryRope
+        nullptr,  // keyRope
+        nullptr,  // keyRopeAntiquantScale
+        aclnnParam_.numHeads,
+        aclnnParam_.scaleValue,
+        aclnnParam_.preTokens,
+        aclnnParam_.nextTokens,
+        inputLayout.get(),
+        aclnnParam_.numKeyValueHeads,
+        aclnnParam_.sparseMode,
+        aclnnParam_.innerPrecise,
+        aclnnParam_.blockSize,
+        aclnnParam_.antiquantMode,
+        aclnnParam_.softmaxLseFlag,
+        aclnnParam_.keyAntiquantMode,
+        aclnnParam_.valueAntiquantMode,
+        attentionOut,
+        nullptr,  // softmaxLse
+        &(atbVariantPack_.workspaceBufferSize),
+        &rawExecutePtr);
     aclnnExecutor_ = std::shared_ptr<aclOpExecutor>(rawExecutePtr, [this](aclOpExecutor *ptr) {
         if (ptr && executorRepeatable_) {
             aclDestroyAclOpExecutor(ptr);
@@ -168,14 +207,15 @@ Status PagedAttentionAclnnRunner::LaunchAclnnKernel()
 
 void PagedAttentionAclnnRunner::GetTensorNum()
 {
-    aclInTensorNum_ = 4; // 4: query, key, value, blockTable
+    aclInTensorNum_ = 4;  // 4: query, key, value, blockTable
     if (param_.quantType == infer::PagedAttentionParam::QuantType::TYPE_DEQUANT_FUSION) {
-        aclInTensorNum_ += 2; // 2: keyAntiquantScale, valueAntiquantScale
+        aclInTensorNum_ += 2;  // 2: keyAntiquantScale, valueAntiquantScale
     }
     aclOutTensorNum_ = 1;
-    aclInTensorListNum_ = 2; // 2: key, value
+    aclInTensorListNum_ = 2;  // 2: key, value
     aclOutTensorListNum_ = 0;
-    ATB_LOG(INFO) << GetLogPrefix() << "aclInTensorNum: " << aclInTensorNum_ << ", aclOutTensorNum: " << aclOutTensorNum_;
+    ATB_LOG(INFO) << GetLogPrefix() << "aclInTensorNum: " << aclInTensorNum_
+                  << ", aclOutTensorNum: " << aclOutTensorNum_;
 }
 
 void PagedAttentionAclnnRunner::InitTensorIndex()
@@ -216,15 +256,21 @@ Status PagedAttentionAclnnRunner::CreateQueryAclnnTensor()
     std::shared_ptr<AclNNTensor> aclnnTensorPtr = InitAclnnTensor(atbTensor, QUERY_ACLNN_TENSOR_IDX);
     Dims storageShape = atbTensor.desc.shape;
     Dims viewShape;
-    viewShape.dimNum = 4; // 4: [B, S, N, D]
+    viewShape.dimNum = 4;  // 4: [B, S, N, D]
     viewShape.dims[0] = storageShape.dims[0];
     viewShape.dims[1] = 1;
-    viewShape.dims[2] = storageShape.dims[1]; // 2: N(head_num)
-    viewShape.dims[3] = storageShape.dims[2]; // 3: D(head_size); 2: head_size
+    viewShape.dims[2] = storageShape.dims[1];  // 2: N(head_num)
+    viewShape.dims[3] = storageShape.dims[2];  // 3: D(head_size); 2: head_size
     aclnnTensorPtr->strides = GetCopyTensorStride(viewShape);
-    aclnnTensorPtr->tensor =
-        aclCreateTensor(viewShape.dims, viewShape.dimNum, atbTensor.desc.dtype, aclnnTensorPtr->strides.data(), 0,
-                        atbTensor.desc.format, storageShape.dims, storageShape.dimNum, atbTensor.deviceData);
+    aclnnTensorPtr->tensor = aclCreateTensor(viewShape.dims,
+        viewShape.dimNum,
+        atbTensor.desc.dtype,
+        aclnnTensorPtr->strides.data(),
+        0,
+        atbTensor.desc.format,
+        storageShape.dims,
+        storageShape.dimNum,
+        atbTensor.deviceData);
     if (!aclnnTensorPtr->tensor) {
         ATB_LOG(ERROR) << GetLogPrefix() << "query aclCreateTensor failed";
         return ERROR_INTERNAL_ERROR;
@@ -242,14 +288,20 @@ Status PagedAttentionAclnnRunner::CreateKeyAclnnTensorList()
     Dims storageShape = atbTensor.desc.shape;
     aclnnParam_.blockSize = storageShape.dims[1];
     Dims viewShape;
-    viewShape.dimNum = 3; // [B, S, H]
+    viewShape.dimNum = 3;  // [B, S, H]
     viewShape.dims[0] = storageShape.dims[0];
     viewShape.dims[1] = storageShape.dims[1];
-    viewShape.dims[2] = storageShape.dims[2] * storageShape.dims[3]; // 2: H(hidden_size); 2: head_num; 3: head_size
+    viewShape.dims[2] = storageShape.dims[2] * storageShape.dims[3];  // 2: H(hidden_size); 2: head_num; 3: head_size
     aclnnTensorPtr->strides = GetCopyTensorStride(viewShape);
-    aclnnTensorPtr->tensor =
-        aclCreateTensor(viewShape.dims, viewShape.dimNum, atbTensor.desc.dtype, aclnnTensorPtr->strides.data(), 0,
-                        atbTensor.desc.format, storageShape.dims, storageShape.dimNum, atbTensor.deviceData);
+    aclnnTensorPtr->tensor = aclCreateTensor(viewShape.dims,
+        viewShape.dimNum,
+        atbTensor.desc.dtype,
+        aclnnTensorPtr->strides.data(),
+        0,
+        atbTensor.desc.format,
+        storageShape.dims,
+        storageShape.dimNum,
+        atbTensor.deviceData);
     if (!aclnnTensorPtr->tensor) {
         ATB_LOG(ERROR) << GetLogPrefix() << "key aclCreateTensor failed";
         return ERROR_INTERNAL_ERROR;
@@ -277,11 +329,17 @@ Status PagedAttentionAclnnRunner::CreateValueAclnnTensorList()
     viewShape.dimNum = 3;
     viewShape.dims[0] = storageShape.dims[0];
     viewShape.dims[1] = storageShape.dims[1];
-    viewShape.dims[2] = storageShape.dims[2] * storageShape.dims[3]; // 2: H(hidden_size); 2: head_num; 3: head_size
+    viewShape.dims[2] = storageShape.dims[2] * storageShape.dims[3];  // 2: H(hidden_size); 2: head_num; 3: head_size
     aclnnTensorPtr->strides = GetCopyTensorStride(viewShape);
-    aclnnTensorPtr->tensor =
-        aclCreateTensor(viewShape.dims, viewShape.dimNum, atbTensor.desc.dtype, aclnnTensorPtr->strides.data(), 0,
-                        atbTensor.desc.format, storageShape.dims, storageShape.dimNum, atbTensor.deviceData);
+    aclnnTensorPtr->tensor = aclCreateTensor(viewShape.dims,
+        viewShape.dimNum,
+        atbTensor.desc.dtype,
+        aclnnTensorPtr->strides.data(),
+        0,
+        atbTensor.desc.format,
+        storageShape.dims,
+        storageShape.dimNum,
+        atbTensor.deviceData);
     if (!aclnnTensorPtr->tensor) {
         ATB_LOG(ERROR) << GetLogPrefix() << "value aclCreateTensor failed";
         return ERROR_INTERNAL_ERROR;
@@ -306,9 +364,15 @@ Status PagedAttentionAclnnRunner::CreateBlockTableAclnnTensor()
     std::shared_ptr<AclNNTensor> aclnnTensorPtr = InitAclnnTensor(atbTensor, BLOCK_TABLE_ACLNN_TENSOR_IDX);
     Dims viewShape = atbTensor.desc.shape;
     aclnnTensorPtr->strides = GetCopyTensorStride(viewShape);
-    aclnnTensorPtr->tensor = aclCreateTensor(
-        viewShape.dims, viewShape.dimNum, atbTensor.desc.dtype, aclnnTensorPtr->strides.data(), 0,
-        atbTensor.desc.format, atbTensor.desc.shape.dims, atbTensor.desc.shape.dimNum, atbTensor.deviceData);
+    aclnnTensorPtr->tensor = aclCreateTensor(viewShape.dims,
+        viewShape.dimNum,
+        atbTensor.desc.dtype,
+        aclnnTensorPtr->strides.data(),
+        0,
+        atbTensor.desc.format,
+        atbTensor.desc.shape.dims,
+        atbTensor.desc.shape.dimNum,
+        atbTensor.deviceData);
     if (!aclnnTensorPtr->tensor) {
         ATB_LOG(ERROR) << GetLogPrefix() << "blockTable aclCreateTensor failed";
         return ERROR_INTERNAL_ERROR;
@@ -318,9 +382,9 @@ Status PagedAttentionAclnnRunner::CreateBlockTableAclnnTensor()
     return NO_ERROR;
 }
 
-Status PagedAttentionAclnnRunner::CreateActualSeqLengthKvAclIntArray()
+Status PagedAttentionAclnnRunner::CreateActualSeqLengthsKvAclIntArray()
 {
-    ATB_LOG(INFO) << "PagedAttentionAclnnRunner::CreateActualSeqLengthKvAclIntArray";
+    ATB_LOG(INFO) << "PagedAttentionAclnnRunner::CreateActualSeqLengthsKvAclIntArray";
     Tensor atbTensor = atbVariantPack_.inTensors.at(atbInTensorIndex_++);
     if (atbTensor.hostData == nullptr) {
         ATB_LOG(ERROR) << "contextLen tensor host data is null";
@@ -335,7 +399,7 @@ Status PagedAttentionAclnnRunner::CreateActualSeqLengthKvAclIntArray()
         actualSeqLengthsKv_ = nullptr;
     }
     SVector<int32_t> contextLensInt32;
-    uint64_t dataSize = atbTensor.dataSize / 4; // 4: int32 size
+    uint64_t dataSize = atbTensor.dataSize / 4;  // 4: int32 size
     contextLensInt32.reserve(dataSize);
     contextLensInt32.resize(dataSize);
     if (memcpy_s(contextLensInt32.data(), atbTensor.dataSize, atbTensor.hostData, atbTensor.dataSize) != 0) {
@@ -363,13 +427,19 @@ Status PagedAttentionAclnnRunner::CreateKeyAntiquantScaleAclnnTensor()
     std::shared_ptr<AclNNTensor> aclnnTensorPtr = InitAclnnTensor(atbTensor, KEY_ANTIQUANT_SCALE_ACLNN_TENSOR_IDX);
     Dims storageShape = atbTensor.desc.shape;
     Dims viewShape;
-    viewShape.dimNum = 2; // 2: [1, H]
+    viewShape.dimNum = 2;  // 2: [1, H]
     viewShape.dims[0] = 1;
     viewShape.dims[1] = storageShape.dims[0];
     aclnnTensorPtr->strides = GetCopyTensorStride(viewShape);
-    aclnnTensorPtr->tensor =
-        aclCreateTensor(viewShape.dims, viewShape.dimNum, atbTensor.desc.dtype, aclnnTensorPtr->strides.data(), 0,
-                        atbTensor.desc.format, storageShape.dims, storageShape.dimNum, atbTensor.deviceData);
+    aclnnTensorPtr->tensor = aclCreateTensor(viewShape.dims,
+        viewShape.dimNum,
+        atbTensor.desc.dtype,
+        aclnnTensorPtr->strides.data(),
+        0,
+        atbTensor.desc.format,
+        storageShape.dims,
+        storageShape.dimNum,
+        atbTensor.deviceData);
     if (!aclnnTensorPtr->tensor) {
         ATB_LOG(ERROR) << GetLogPrefix() << "keyAntiquantScale aclCreateTensor failed";
         return ERROR_INTERNAL_ERROR;
@@ -386,13 +456,19 @@ Status PagedAttentionAclnnRunner::CreateValueAntiquantScaleAclnnTensor()
     std::shared_ptr<AclNNTensor> aclnnTensorPtr = InitAclnnTensor(atbTensor, VALUE_ANTIQUANT_SCALE_ACLNN_TENSOR_IDX);
     Dims storageShape = atbTensor.desc.shape;
     Dims viewShape;
-    viewShape.dimNum = 2; // 2: [1, H]
+    viewShape.dimNum = 2;  // 2: [1, H]
     viewShape.dims[0] = 1;
     viewShape.dims[1] = storageShape.dims[0];
     aclnnTensorPtr->strides = GetCopyTensorStride(viewShape);
-    aclnnTensorPtr->tensor =
-        aclCreateTensor(viewShape.dims, viewShape.dimNum, atbTensor.desc.dtype, aclnnTensorPtr->strides.data(), 0,
-                        atbTensor.desc.format, storageShape.dims, storageShape.dimNum, atbTensor.deviceData);
+    aclnnTensorPtr->tensor = aclCreateTensor(viewShape.dims,
+        viewShape.dimNum,
+        atbTensor.desc.dtype,
+        aclnnTensorPtr->strides.data(),
+        0,
+        atbTensor.desc.format,
+        storageShape.dims,
+        storageShape.dimNum,
+        atbTensor.deviceData);
     if (!aclnnTensorPtr->tensor) {
         ATB_LOG(ERROR) << GetLogPrefix() << "valueAntiquantScale aclCreateTensor failed";
         return ERROR_INTERNAL_ERROR;
@@ -409,15 +485,21 @@ Status PagedAttentionAclnnRunner::CreateAttentionOutAclnnTensor()
     std::shared_ptr<AclNNTensor> aclnnTensorPtr = InitAclnnTensor(atbTensor, ATTENTION_OUT_ACLNN_TENSOR_IDX);
     Dims storageShape = atbTensor.desc.shape;
     Dims viewShape;
-    viewShape.dimNum = 4; // 4: [B, S, N, D]
+    viewShape.dimNum = 4;  // 4: [B, S, N, D]
     viewShape.dims[0] = storageShape.dims[0];
     viewShape.dims[1] = 1;
-    viewShape.dims[2] = storageShape.dims[1]; // 2: N(head_num)
-    viewShape.dims[3] = storageShape.dims[2]; // 3: D(head_size); 2: head_size
+    viewShape.dims[2] = storageShape.dims[1];  // 2: N(head_num)
+    viewShape.dims[3] = storageShape.dims[2];  // 3: D(head_size); 2: head_size
     aclnnTensorPtr->strides = GetCopyTensorStride(viewShape);
-    aclnnTensorPtr->tensor =
-        aclCreateTensor(viewShape.dims, viewShape.dimNum, atbTensor.desc.dtype, aclnnTensorPtr->strides.data(), 0,
-                        atbTensor.desc.format, storageShape.dims, storageShape.dimNum, atbTensor.deviceData);
+    aclnnTensorPtr->tensor = aclCreateTensor(viewShape.dims,
+        viewShape.dimNum,
+        atbTensor.desc.dtype,
+        aclnnTensorPtr->strides.data(),
+        0,
+        atbTensor.desc.format,
+        storageShape.dims,
+        storageShape.dimNum,
+        atbTensor.deviceData);
     if (!aclnnTensorPtr->tensor) {
         ATB_LOG(ERROR) << GetLogPrefix() << "attentionOut aclCreateTensor failed";
         return ERROR_INTERNAL_ERROR;
@@ -437,4 +519,4 @@ std::shared_ptr<AclNNTensor> PagedAttentionAclnnRunner::InitAclnnTensor(Tensor a
 }
 
 REG_RUNNER_TYPE(PagedAttentionAclnnRunner);
-} // namespace atb
+}  // namespace atb

@@ -373,8 +373,9 @@ bool ParamCheck91095(const infer::SelfAttentionParam &opParam)
     }
     if (opParam.maskType != infer::SelfAttentionParam::MaskType::MASK_TYPE_UNDEFINED &&
         opParam.maskType != infer::SelfAttentionParam::MaskType::MASK_TYPE_NORM &&
+        opParam.maskType != infer::SelfAttentionParam::MaskType::MASK_TYPE_ALIBI &&
         opParam.maskType != infer::SelfAttentionParam::MaskType::MASK_TYPE_NORM_COMPRESS) {
-        ATB_LOG(ERROR) << "91095 only supports undefined and norm mask.";
+        ATB_LOG(ERROR) << "91095 only supports undefined/alibi/norm mask.";
         return false;
     }
     if (opParam.kvcacheCfg != infer::SelfAttentionParam::KvCacheCfg::K_CACHE_V_CACHE) {
@@ -482,10 +483,15 @@ uint32_t SelfAttentionOperation::Bools2Int(bool hasScale, bool hasKV, bool hasMa
 void SelfAttentionOperation::InitPaEncoderOpIni()
 {
     if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
-        operationIr_ = 
-            param_.maskType == infer::SelfAttentionParam::MASK_TYPE_UNDEFINED ?
-                GetSingleton<AtbOperationIrCfg>().GetOperationIr("SelfAttentionOperationPAEncoderTND950") :
-                GetSingleton<AtbOperationIrCfg>().GetOperationIr("SelfAttentionOperationPAEncodermaskTND950");
+        std::string operationIr950 = "SelfAttentionOperation950PAEncoder";
+        if (param_.maskType == infer::SelfAttentionParam::MASK_TYPE_NORM ||
+            param_.maskType == infer::SelfAttentionParam::MASK_TYPE_NORM_COMPRESS) {
+            operationIr950 += "MaskNORM";
+        }
+        if (param_.maskType == infer::SelfAttentionParam::MASK_TYPE_ALIBI) {
+            operationIr950 += "MaskALIBI";
+        }
+        operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr(operationIr950);
         return;
     }
     if (param_.scaleType == infer::SelfAttentionParam::SCALE_TYPE_LOGN) {

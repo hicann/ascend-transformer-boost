@@ -8,15 +8,15 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
-#ifndef SELF_ATTENTION_ACLNN_RUNNER_H
-#define SELF_ATTENTION_ACLNN_RUNNER_H
+#ifndef ATB_SELF_ATTENTION_ACLNN_RUNNER_H
+#define ATB_SELF_ATTENTION_ACLNN_RUNNER_H
 
 #include <string>
 #include "atb/infer_op_params.h"
 #include "atb/runner/aclnn_runner.h"
 
-using AclnnFusedInferAttentionScoreV3GetWorkspaceSizeFunc = aclnnStatus (*)(
-    const aclTensor *query, const aclTensorList *key, const aclTensorList *value, const aclTensor *pseShiftOptional,
+using AclnnFusedInferAttentionScoreV3GetWorkspaceSizeFunc = aclnnStatus (*)(const aclTensor *query,
+    const aclTensorList *key, const aclTensorList *value, const aclTensor *pseShiftOptional,
     const aclTensor *attenMaskOptional, const aclIntArray *actualSeqLengthsOptional,
     const aclIntArray *actualSeqLengthsKvOptional, const aclTensor *deqScale1Optional,
     const aclTensor *quantScale1Optional, const aclTensor *deqScale2Optional, const aclTensor *quantScale2Optional,
@@ -32,20 +32,19 @@ using AclnnFusedInferAttentionScoreV3GetWorkspaceSizeFunc = aclnnStatus (*)(
     int64_t sparseMode, int64_t innerPrecise, int64_t blockSize, int64_t antiquantMode, bool softmaxLseFlag,
     int64_t keyAntiquantMode, int64_t valueAntiquantMode, const aclTensor *attentionOut, const aclTensor *softmaxLse,
     uint64_t *workspaceSize, aclOpExecutor **executor);
-using AclnnFusedInferAttentionScoreV3Func = aclnnStatus (*)(void *workspace, uint64_t workspaceSize,
-                                                           aclOpExecutor *executor, const aclrtStream stream);
-
+using AclnnFusedInferAttentionScoreV3Func = aclnnStatus (*)(
+    void *workspace, uint64_t workspaceSize, aclOpExecutor *executor, const aclrtStream stream);
 
 namespace atb {
-struct AclnnSelfAttentionParam {
+struct AclnnFusedInferAttentionScoreV3Param {
     int64_t numHeads = 0;
     double scaleValue = 0.0;
     int64_t preTokens = 0;
     int64_t nextTokens = 0;
-    std::string inputLayout = "TND";
+    std::string inputLayoutStr = "TND";
     int64_t numKeyValueHeads = 0;
     int64_t sparseMode = 0;
-    int64_t innerPrecise = 0;
+    int64_t innerPrecise = 1;
     int64_t blockSize = 0;
     int64_t antiquantMode = 0;
     bool softmaxLseFlag = false;
@@ -61,26 +60,52 @@ public:
 
 protected:
     Status BuildAclnnVariantPack(const RunnerVariantPack &runnerVariantPack) override;
-    Status LaunchAclnnKernel() override;
     aclnnStatus SetAclNNWorkspaceExecutor() override;
+    Status LaunchAclnnKernel() override;
 
 private:
-    uint32_t GetInputNumAclnn() const;
-    uint32_t GetOutputNumAclnn() const;
-    atb::Status CreateAclnnInTensor(const RunnerVariantPack &runnerVariantPack);
-    atb::Status CreateAclnnInTensorList(const RunnerVariantPack &runnerVariantPack);
-    atb::Status CreateAclnnOutTensor(const RunnerVariantPack &runnerVariantPack);
-    atb::Status ParamTransfer(AclnnSelfAttentionParam &targetParam);
-    atb::Status ProcessSeqLengthTensor(const atb::Tensor tensor);
+    void GetTensorNum();
+    void InitTensorIndex();
+    void InitAclnnParam();
+    Status CreateQueryAclnnTensor();
+    Status CreateKeyAclnnTensorList();
+    Status CreateValueAclnnTensorList();
+    Status CreatePseShiftAclnnTensor();
+    Status CreateAttenMaskAclnnTensor();
+    Status CreateActualSeqLengthsAclIntArray();
+    Status CreateAttentionOutAclnnTensor();
+    std::shared_ptr<AclNNTensor> InitAclnnTensor(Tensor atbTensor, int aclnnTensorIndex);
+
+private:
     infer::SelfAttentionParam param_;
-    int64_t q_S_ = 0;
-    int64_t mask_S_ = 0;
-    std::vector<int> seqLencache_{};
-    std::vector<int64_t> seqLen_{};
+    size_t aclInTensorNum_ = 0;
+    size_t aclOutTensorNum_ = 0;
+    size_t aclInTensorListNum_ = 0;
+    size_t aclOutTensorListNum_ = 0;
+
+    size_t atbInTensorIndex_ = 0;
+    size_t aclInTensorIndex_ = 0;
+    size_t aclInTensorListIndex_ = 0;
+    size_t atbOutTensorIndex_ = 0;
+    size_t aclOutTensorIndex_ = 0;
+    size_t aclOutTensorListIndex_ = 0;
+
+    size_t queryAclTensorIndex_ = 0;
+    size_t keyAclTensorListIndex_ = 0;
+    size_t valueAclTensorListIndex_ = 0;
+    size_t pseShiftAclTensorIndex_ = 0;
+    size_t attenMaskAclTensorIndex_ = 0;
+    size_t attentionOutAclTensorIndex_ = 0;
+
+    int64_t batch_ = 0;
+    int64_t qSeqLen_ = 0;
+
     aclIntArray *actualSeqLengths_ = nullptr;
+
+    AclnnFusedInferAttentionScoreV3Param aclnnParam_;
+
     static AclnnFusedInferAttentionScoreV3GetWorkspaceSizeFunc aclnnFusedInferAttentionScoreV3GetWorkspaceSizeFunc_;
     static AclnnFusedInferAttentionScoreV3Func aclnnFusedInferAttentionScoreV3Func_;
 };
-} // namespace atb
-
-#endif
+}  // namespace atb
+#endif  // ATB_SELF_ATTENTION_ACLNN_RUNNER_H

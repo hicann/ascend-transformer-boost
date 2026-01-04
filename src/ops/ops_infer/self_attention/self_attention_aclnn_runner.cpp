@@ -1,3 +1,5 @@
+
+
 /*
  * Copyright (c) 2024-2025 Huawei Technologies Co., Ltd.
  * This file is a part of the CANN Open Software.
@@ -18,312 +20,205 @@
 #include "acl/acl.h"
 
 namespace {
-static const int DIM0 = 0;
-static const int DIM1 = 1;
-static const int DIM2 = 2;
-static const int DIM3 = 3;
-static const int BASE_INPUT_NUM = 3;
-static const int OUTPUT_NUM = 1;
-static const int OUTPUT_NUM_ACLNN = 2;
-static const int TENSORLIST_NUM = 2;
-static const size_t ATB_MASK_INDEX = 3;
-static const int ACLNN_PSEDHIFT_INDEX = 3;
-static const int ACLNN_MASK_INDEX = 4;
 static const int64_t INT_MAX_VALUE = 2147483647;
-static const int64_t COMPRESS_MASK_SHAPE = 2048;
-static const int SEQLEN_INDEX = 3;
-}
+
+static const int QUERY_ACLNN_TENSOR_IDX = 0;
+static const int KEY_ACLNN_TENSOR_IDX = 1;
+static const int VALUE_ACLNN_TENSOR_IDX = 2;
+static const int PSE_SHIFT_ACLNN_TENSOR_IDX = 3;
+static const int ATTEN_MASK_ACLNN_TENSOR_IDX = 4;
+static const int ATTENTION_OUT_ACLNN_TENSOR_IDX = 0;
+}  // namespace
 
 namespace atb {
 
-AclnnFusedInferAttentionScoreV3GetWorkspaceSizeFunc SelfAttentionAclnnRunner::aclnnFusedInferAttentionScoreV3GetWorkspaceSizeFunc_ = nullptr;
+AclnnFusedInferAttentionScoreV3GetWorkspaceSizeFunc
+    SelfAttentionAclnnRunner::aclnnFusedInferAttentionScoreV3GetWorkspaceSizeFunc_ = nullptr;
 AclnnFusedInferAttentionScoreV3Func SelfAttentionAclnnRunner::aclnnFusedInferAttentionScoreV3Func_ = nullptr;
-
 
 SelfAttentionAclnnRunner::SelfAttentionAclnnRunner(const infer::SelfAttentionParam &opParam)
     : AclnnRunner("SelfAttentionAclnnRunner"), param_(opParam)
 {
-    ATB_LOG(INFO) << GetLogPrefix() << "SelfAttentionAclnnRunner::SelfAttentionAclnnRunner called";
+    ATB_LOG(INFO) << GetLogPrefix() << "SelfAttentionAclnnRunner::SelfAttentionAclnnRunner";
+
+    GetTensorNum();
+    InitAclnnParam();
 }
 
-SelfAttentionAclnnRunner::~SelfAttentionAclnnRunner() {}
-
-Status SelfAttentionAclnnRunner::BuildAclnnVariantPack(const RunnerVariantPack &runnerVariantPack)
-{
-    ATB_LOG(INFO) << GetLogPrefix() << "BuildAclnnVariantPack";
-    ATB_LOG(INFO) << GetLogPrefix() << "variantPack: " << runnerVariantPack.ToString();
-    this->atbVariantPack_ = runnerVariantPack;
-    Status ret = NO_ERROR;
-    ret = CreateAclnnInTensor(runnerVariantPack);
-    if (ret != 0) {
-        ATB_LOG(ERROR) << "SelfAttentionAclnnRunner CreateAclnnInTensor fail";
-        return ret;
-    }
-
-    ret = CreateAclnnInTensorList(runnerVariantPack);
-    if (ret != 0) {
-        ATB_LOG(ERROR) << "SelfAttentionAclnnRunner CreateAclnnInTensorList fail";
-        return ret;
-    }
-
-    ret = CreateAclnnOutTensor(runnerVariantPack);
-    if (ret != 0) {
-        ATB_LOG(ERROR) << "SelfAttentionAclnnRunner CreateAclNNOutTensorVariantPack fail";
-        return ret;
-    }
-
-    return NO_ERROR;
-}
-
-uint32_t SelfAttentionAclnnRunner::GetInputNumAclnn() const
-{
-    int inputNum = BASE_INPUT_NUM;
-    if (param_.maskType != infer::SelfAttentionParam::MASK_TYPE_UNDEFINED) {
-        inputNum++;
-    }
-    return inputNum; // SelfAttention入参个数
-}
-
-uint32_t SelfAttentionAclnnRunner::GetOutputNumAclnn() const
-{
-    return OUTPUT_NUM_ACLNN; // FIA出参个数
-}
-
-Status SelfAttentionAclnnRunner::CreateAclnnInTensor(const RunnerVariantPack &runnerVariantPack)
-{
-    q_S_ = runnerVariantPack.inTensors.at(0).desc.shape.dims[0] /
-           runnerVariantPack.inTensors.at(runnerVariantPack.inTensors.size() - 1).desc.shape.dims[0];
-    ATB_LOG(INFO) << "Q_s: " << q_S_;
-    bool needMask = (param_.maskType != infer::SelfAttentionParam::MASK_TYPE_UNDEFINED);
-    if (needMask) {
-        mask_S_ = runnerVariantPack.inTensors[ATB_MASK_INDEX].desc.shape.dims[1]; // 1:[b,qs,kvs]:qs; [qs,kvs]:kvs
-        ATB_LOG(INFO) << "Mask_S: " << mask_S_;
-    }
-    this->aclnnVariantPack_.aclInTensors.reserve(GetInputNumAclnn());
-    this->aclnnVariantPack_.aclInTensors.resize(GetInputNumAclnn());
-    Status ret = NO_ERROR;
-    int actualSeqLenIndex = SEQLEN_INDEX;
-    int maskIndex = -1;
-    if (param_.maskType != infer::SelfAttentionParam::MASK_TYPE_UNDEFINED) {
-        actualSeqLenIndex++;
-        maskIndex = ATB_MASK_INDEX;
-    }
-    for (size_t i = 0; i < this->aclnnVariantPack_.aclInTensors.size(); ++i) {
-        ATB_LOG(INFO) << GetLogPrefix() << "SelfAttentionAclnnRunner::BuildAclnnVariantPack inTensor index: " << i;
-        int index = i;
-        if (index == maskIndex) {
-            index = ACLNN_MASK_INDEX;
-        }
-        std::shared_ptr<AclNNTensor> aclnnTensorPtr = std::make_shared<AclNNTensor>();
-        Tensor atbTensor = runnerVariantPack.inTensors.at(i);
-        aclnnTensorPtr->atbTensor = atbTensor;
-        aclnnTensorPtr->strides = GetCopyTensorStride(atbTensor.desc.shape);
-        ret = CallAclCreateTensor(atbTensor.desc.shape, atbTensor.desc.shape, atbTensor, aclnnTensorPtr,
-                                  atbTensor.desc.dtype);
-        if (ret != NO_ERROR) {
-            ATB_LOG(ERROR) << GetLogPrefix() << "create aclTensor by aclCreateTensor failed!";
-            return ret;
-        }
-        aclnnTensorPtr->tensorIdx = static_cast<int>(index);
-        bool reallyNoNeedMask = (param_.maskType != infer::SelfAttentionParam::MASK_TYPE_UNDEFINED && q_S_ == 1);
-        aclnnTensorPtr->needUpdateTensorDataPtr = (reallyNoNeedMask && i == ATB_MASK_INDEX) ? false : true;
-        this->aclnnVariantPack_.aclInTensors.at(i) = aclnnTensorPtr;
-    }
-    ret = ProcessSeqLengthTensor(runnerVariantPack.inTensors.at(actualSeqLenIndex));
-    if (ret != NO_ERROR) {
-        return ret;
-    }
-    return NO_ERROR;
-}
-
-Status SelfAttentionAclnnRunner::CreateAclnnInTensorList(const RunnerVariantPack &runnerVariantPack)
-{
-    int kvTensorNum = 1;
-    int tensorListOffset = 1;
-    this->aclnnVariantPack_.aclInTensorList.reserve(TENSORLIST_NUM);
-    this->aclnnVariantPack_.aclInTensorList.resize(TENSORLIST_NUM);
-    Status ret = NO_ERROR;
-    for (size_t i = 0; i < this->aclnnVariantPack_.aclInTensorList.size(); ++i) {
-        std::shared_ptr<AclNNTensor> aclnnTensorPtr = std::make_shared<AclNNTensor>();
-        Tensor atbTensor = runnerVariantPack.inTensors.at(i + tensorListOffset);
-        aclnnTensorPtr->atbTensor = atbTensor;
-        aclnnTensorPtr->strides = GetCopyTensorStride(atbTensor.desc.shape);
-        ret = CallAclCreateTensor(atbTensor.desc.shape, atbTensor.desc.shape, atbTensor, aclnnTensorPtr,
-                                  atbTensor.desc.dtype);
-        if (ret != NO_ERROR) {
-            ATB_LOG(ERROR) << GetLogPrefix() << "create aclTensor by aclCreateTensor failed!";
-            return ret;
-        }
-        aclnnTensorPtr->tensorIdx = static_cast<int>(i);
-        aclnnTensorPtr->needUpdateTensorDataPtr = true;
-
-        aclTensor *aclTensorKV = aclnnTensorPtr->tensor;
-        if (aclTensorKV == nullptr) {
-            ATB_LOG(ERROR) << " InTensor aclCreateTensor index " << std::to_string(i) << " fail";
-            return ERROR_INTERNAL_ERROR;
-        }
-        aclTensor *tensorsOfKV[kvTensorNum];
-        tensorsOfKV[0] = aclTensorKV;
-        auto tensorValueList = aclCreateTensorList(tensorsOfKV, kvTensorNum);
-        this->aclnnVariantPack_.aclInTensorList[i] = tensorValueList;
-    }
-    return NO_ERROR;
-}
-
-Status SelfAttentionAclnnRunner::CreateAclnnOutTensor(const RunnerVariantPack &runnerVariantPack)
-{
-    this->aclnnVariantPack_.aclOutTensors.reserve(GetOutputNumAclnn());
-    this->aclnnVariantPack_.aclOutTensors.resize(GetOutputNumAclnn());
-    Status ret = NO_ERROR;
-    std::shared_ptr<AclNNTensor> aclnnTensorPtr = std::make_shared<AclNNTensor>();
-    ATB_LOG(INFO) << GetLogPrefix() << "SelfAttentionAclnnRunner::BuildAclnnVariantPack outTensor index: " << 0;
-    Tensor atbTensor = runnerVariantPack.outTensors.at(0);
-    aclnnTensorPtr->atbTensor = atbTensor;
-    aclnnTensorPtr->strides = GetCopyTensorStride(atbTensor.desc.shape);
-    ret = CallAclCreateTensor(atbTensor.desc.shape, atbTensor.desc.shape, atbTensor, aclnnTensorPtr,
-                              atbTensor.desc.dtype);
-    if (ret != NO_ERROR) {
-        ATB_LOG(ERROR) << GetLogPrefix() << "create aclTensor by aclCreateTensor failed!";
-        return ret;
-    }
-    aclnnTensorPtr->tensorIdx = static_cast<int>(0);
-    aclnnTensorPtr->needUpdateTensorDataPtr = true;
-    this->aclnnVariantPack_.aclOutTensors.at(0) = aclnnTensorPtr;
-    this->aclnnVariantPack_.aclOutTensors.at(1) = aclnnTensorPtr;
-    return NO_ERROR;
-}
-
-Status SelfAttentionAclnnRunner::ProcessSeqLengthTensor(const Tensor tensor)
-{
-    ATB_LOG(INFO) << " ProcessSeqLengthTensor start";
-    int dataSize = tensor.dataSize / 4; // 4: int32 size
-    if (seqLencache_.size() == 0) {
-        seqLencache_.reserve(dataSize);
-        seqLencache_.resize(dataSize);
-        seqLen_.reserve(dataSize);
-        seqLen_.resize(dataSize);
-    }
-    if (tensor.hostData == nullptr) {
-        ATB_LOG(ERROR) << "Host data is null";
-        return ERROR_INVALID_TENSOR_ADDR;
-    }
-    if (memcpy_s(seqLencache_.data(), dataSize * 4, tensor.hostData, dataSize * 4) != 0) { // 4: int32 size
-        ATB_LOG(ERROR) << " Get seqLen failed.";
-        return ERROR_INTERNAL_ERROR;
-    }
-    for (int j = 0; j < dataSize; ++j) {
-        if (j == 0) {
-            seqLen_[j] = static_cast<int64_t>(seqLencache_[j]);
-        } else {
-            seqLen_[j] = static_cast<int64_t>(seqLencache_[j]) + seqLen_[j - 1]; // from seqLen to prefixsum seqlen
-        }
-    }
-    if (actualSeqLengths_ != nullptr) {
-        aclnnStatus ret = aclDestroyIntArray(actualSeqLengths_);
-        if (ret != ACL_SUCCESS) {
-            ATB_LOG(ERROR) << GetLogPrefix() << "actualSeqLengths_ aclDestroyIntArray failed";
-            return ERROR_INTERNAL_ERROR;
-        }
-        actualSeqLengths_ = nullptr;
-    }
-    actualSeqLengths_ = aclCreateIntArray(static_cast<int64_t *>(seqLen_.data()), dataSize);
-    if (actualSeqLengths_ == nullptr) {
-        ATB_LOG(ERROR) << "actualSeqLengths_ aclCreateIntArray failed!";
-        return ERROR_INTERNAL_ERROR;
-    }
-    return NO_ERROR;
-}
+SelfAttentionAclnnRunner::~SelfAttentionAclnnRunner()
+{}
 
 Status SelfAttentionAclnnRunner::LoadMethod()
 {
     ATB_LOG(INFO) << "SelfAttentionAclnnRunner::LoadMethod";
+
     if (aclnnFusedInferAttentionScoreV3GetWorkspaceSizeFunc_ && aclnnFusedInferAttentionScoreV3Func_) {
         return NO_ERROR;
     }
-    return LoadFromSharedObjectFile(
-        "aclnnFusedInferAttentionScoreV3GetWorkspaceSize", "aclnnFusedInferAttentionScoreV3",
-        aclnnFusedInferAttentionScoreV3GetWorkspaceSizeFunc_, aclnnFusedInferAttentionScoreV3Func_);
+    return LoadFromSharedObjectFile("aclnnFusedInferAttentionScoreV3GetWorkspaceSize",
+        "aclnnFusedInferAttentionScoreV3",
+        aclnnFusedInferAttentionScoreV3GetWorkspaceSizeFunc_,
+        aclnnFusedInferAttentionScoreV3Func_);
+}
+
+Status SelfAttentionAclnnRunner::BuildAclnnVariantPack(const RunnerVariantPack &runnerVariantPack)
+{
+    ATB_LOG(INFO) << GetLogPrefix() << "SelfAttentionAclnnRunner::BuildAclnnVariantPack, runnerVariantPack: "
+                  << runnerVariantPack.ToString();
+
+    atbVariantPack_ = runnerVariantPack;
+    InitTensorIndex();
+    size_t seqLenIndex = 0;
+    if (param_.maskType != infer::SelfAttentionParam::MASK_TYPE_UNDEFINED) {
+        seqLenIndex = 4;
+    } else {
+        seqLenIndex = 3;
+    }
+    batch_ = atbVariantPack_.inTensors.at(seqLenIndex)
+                 .desc.shape.dims[atbVariantPack_.inTensors.at(seqLenIndex).desc.shape.dimNum - 1];
+    aclnnVariantPack_.aclInTensors.reserve(aclInTensorNum_);
+    aclnnVariantPack_.aclInTensors.resize(aclInTensorNum_);
+    aclnnVariantPack_.aclInTensorList.reserve(aclInTensorListNum_);
+    aclnnVariantPack_.aclInTensorList.resize(aclInTensorListNum_);
+    Status st = CreateQueryAclnnTensor();
+    if (st != NO_ERROR) {
+        return st;
+    }
+    st = CreateKeyAclnnTensorList();
+    if (st != NO_ERROR) {
+        return st;
+    }
+    st = CreateValueAclnnTensorList();
+    if (st != NO_ERROR) {
+        return st;
+    }
+    if (qSeqLen_ != 1) {
+        switch (param_.maskType) {
+            case infer::SelfAttentionParam::MASK_TYPE_ALIBI:
+                st = CreatePseShiftAclnnTensor();
+                if (st != NO_ERROR) {
+                    return st;
+                }
+                break;
+            case infer::SelfAttentionParam::MASK_TYPE_NORM:
+            case infer::SelfAttentionParam::MASK_TYPE_NORM_COMPRESS:
+                st = CreateAttenMaskAclnnTensor();
+                if (st != NO_ERROR) {
+                    return st;
+                }
+                break;
+            default:
+                break;
+        }
+    } else if (param_.maskType != infer::SelfAttentionParam::MASK_TYPE_UNDEFINED) {
+        atbInTensorIndex_++;
+    }
+    st = CreateActualSeqLengthsAclIntArray();
+    if (st != NO_ERROR) {
+        return st;
+    }
+
+    aclnnVariantPack_.aclOutTensors.reserve(aclOutTensorNum_);
+    aclnnVariantPack_.aclOutTensors.resize(aclOutTensorNum_);
+    aclnnVariantPack_.aclOutTensorList.reserve(aclOutTensorListNum_);
+    aclnnVariantPack_.aclOutTensorList.resize(aclOutTensorListNum_);
+    return CreateAttentionOutAclnnTensor();
 }
 
 aclnnStatus SelfAttentionAclnnRunner::SetAclNNWorkspaceExecutor()
 {
-    ATB_LOG(INFO) << GetLogPrefix() << "aclnn FusedInferAttentionScoreV3 setup start.";
-    ATB_LOG(INFO) << " aclInTensors size: " << this->aclnnVariantPack_.aclInTensors.size()
-                  << ", aclOutTensors size: " << this->aclnnVariantPack_.aclOutTensors.size();
+    ATB_LOG(INFO) << GetLogPrefix() << "SelfAttentionAclnnRunner::SetAclNNWorkspaceExecutor";
 
-    aclOpExecutor *rawExecutePtr = this->aclnnExecutor_.get();
-    ATB_LOG(INFO) << GetLogPrefix() << "&(this->aclnnExecutor_): " << &(this->aclnnExecutor_)
-                  << ", addr of this->aclnnExecutor_: " << this->aclnnExecutor_
-                  << ", raw ptr from it: " << rawExecutePtr
-                  << ", then take the address of the raw ptr: " << &rawExecutePtr;
-
-    ATB_LOG(INFO) << GetLogPrefix() << "workspaceSize addr: " << &(this->atbVariantPack_.workspaceBufferSize);
-    AclnnSelfAttentionParam aclnnFIAParam;
-    auto ret = ParamTransfer(aclnnFIAParam);
-    if (ret != ErrorType::NO_ERROR) {
-        ATB_LOG(ERROR) << " ParamTransfer failed, ret: " << std::to_string(ret);
-        return ret;
+    aclTensor *query = aclnnVariantPack_.aclInTensors.at(queryAclTensorIndex_)->tensor;
+    aclTensorList *key = aclnnVariantPack_.aclInTensorList.at(keyAclTensorListIndex_);
+    aclTensorList *value = aclnnVariantPack_.aclInTensorList.at(valueAclTensorListIndex_);
+    aclTensor *pseShift = nullptr;
+    aclTensor *attenMask = nullptr;
+    if (qSeqLen_ != 1) {
+        if (param_.maskType == infer::SelfAttentionParam::MASK_TYPE_ALIBI) {
+            pseShift = aclnnVariantPack_.aclInTensors.at(pseShiftAclTensorIndex_)->tensor;
+        }
+        if (param_.maskType == infer::SelfAttentionParam::MASK_TYPE_NORM ||
+            param_.maskType == infer::SelfAttentionParam::MASK_TYPE_NORM_COMPRESS) {
+            attenMask = aclnnVariantPack_.aclInTensors.at(attenMaskAclTensorIndex_)->tensor;
+        }
     }
-    auto layerOut = std::make_unique<char[]>(aclnnFIAParam.inputLayout.length() + 1);
-    errno_t result =
-        strcpy_s(layerOut.get(), aclnnFIAParam.inputLayout.length() + 1, aclnnFIAParam.inputLayout.c_str());
-    if (result != 0) {
-        ATB_LOG(ERROR) << " inputLayout init failed, ret:" << result;
+
+    aclTensor *attentionOut = aclnnVariantPack_.aclOutTensors.at(attentionOutAclTensorIndex_)->tensor;
+
+    std::string inputLayoutStr = aclnnParam_.inputLayoutStr;
+    auto inputLayout = std::make_unique<char[]>(inputLayoutStr.length() + 1);
+    errno_t err = strcpy_s(inputLayout.get(), inputLayoutStr.length() + 1, inputLayoutStr.c_str());
+    if (err != 0) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "inputLayout strcpy_s failed";
         return ERROR_INVALID_PARAM;
     }
-    bool needMask = (param_.maskType != infer::SelfAttentionParam::MASK_TYPE_UNDEFINED && q_S_ != 1);
+    aclOpExecutor *rawExecutePtr = aclnnExecutor_.get();
 
-    aclnnStatus aclnnRet = aclnnFusedInferAttentionScoreV3GetWorkspaceSizeFunc_(
-        this->aclnnVariantPack_.aclInTensors.at(0)->tensor,                                   // queryTensor
-        this->aclnnVariantPack_.aclInTensorList.at(0),                                        // tensorKeyList
-        this->aclnnVariantPack_.aclInTensorList.at(1),                                        // tensorValueList
-        nullptr,                                                                              // pseShift
-        needMask ? this->aclnnVariantPack_.aclInTensors.at(ATB_MASK_INDEX)->tensor : nullptr, // attenMask
-        actualSeqLengths_,                                                                    // actualSeqLengths
-        actualSeqLengths_,                                                                    // actualSeqLengthsKv
-        nullptr,                                                                              // deqScale1
-        nullptr,                                                                              // quantScale1
-        nullptr,                                                                              // deqScale2
-        nullptr,                                                                              // quantScale2
-        nullptr,                                                                              // quantOffset2
-        nullptr,                                                                              // antiquantScale
-        nullptr,                                                                              // antiquantOffset
-        nullptr,                                                                              // blockTable
-        nullptr,                                                                              // queryPaddingSize
-        nullptr,                                                                              // kvPaddingSize
-        nullptr,                                                                              // keyAntiquantScale
-        nullptr,                                                                              // keyAntiquantOffset
-        nullptr,                                                                              // valueAntiquantScale
-        nullptr,                                                                              // valueAntiquantOffset
-        nullptr,                                                                              // keySharedPrefix
-        nullptr,                                                                              // valueSharedPrefix
-        nullptr,                                                                              // actualSharedPrefixLen
-        nullptr,                                                                              // queryRope
-        nullptr,                                                                              // keyRope
-        nullptr,                                                                              // keyRopeAntiquantScale
-        aclnnFIAParam.numHeads, aclnnFIAParam.scaleValue, aclnnFIAParam.preTokens, aclnnFIAParam.nextTokens,
-        layerOut.get(), aclnnFIAParam.numKeyValueHeads, aclnnFIAParam.sparseMode, aclnnFIAParam.innerPrecise,
-        aclnnFIAParam.blockSize, aclnnFIAParam.antiquantMode, aclnnFIAParam.softmaxLseFlag,
-        aclnnFIAParam.keyAntiquantMode, aclnnFIAParam.valueAntiquantMode,
-        this->aclnnVariantPack_.aclOutTensors.at(0)->tensor, // outTensor
-        this->aclnnVariantPack_.aclOutTensors.at(1)->tensor, // nullptr
-        &(this->atbVariantPack_.workspaceBufferSize), &rawExecutePtr);
-    this->aclnnExecutor_ = std::shared_ptr<aclOpExecutor>(rawExecutePtr, [this](aclOpExecutor *ptr) {
-        if (ptr && this->executorRepeatable_) { // 可复用时才手动销毁aclOpExecutor
+    aclnnStatus ret = aclnnFusedInferAttentionScoreV3GetWorkspaceSizeFunc_(query,
+        key,
+        value,
+        pseShift,
+        attenMask,
+        actualSeqLengths_,
+        actualSeqLengths_,  // actualSeqLengthsKv
+        nullptr,            // deqScale1
+        nullptr,            // quantScale1
+        nullptr,            // deqScale2
+        nullptr,            // quantScale2
+        nullptr,            // quantOffset2
+        nullptr,            // antiquantScale
+        nullptr,            // antiquantOffset
+        nullptr,            // blockTable
+        nullptr,            // queryPaddingSize
+        nullptr,            // kvPaddingSize
+        nullptr,            // keyAntiquantScale
+        nullptr,            // keyAntiquantOffset
+        nullptr,            // valueAntiquantScale
+        nullptr,            // valueAntiquantOffset
+        nullptr,            // keySharedPrefix
+        nullptr,            // valueSharedPrefix
+        nullptr,            // actualSharedPrefixLen
+        nullptr,            // queryRope
+        nullptr,            // keyRope
+        nullptr,            // keyRopeAntiquantScale
+        aclnnParam_.numHeads,
+        aclnnParam_.scaleValue,
+        aclnnParam_.preTokens,
+        aclnnParam_.nextTokens,
+        inputLayout.get(),
+        aclnnParam_.numKeyValueHeads,
+        aclnnParam_.sparseMode,
+        aclnnParam_.innerPrecise,
+        aclnnParam_.blockSize,
+        aclnnParam_.antiquantMode,
+        aclnnParam_.softmaxLseFlag,
+        aclnnParam_.keyAntiquantMode,
+        aclnnParam_.valueAntiquantMode,
+        attentionOut,
+        nullptr,  // softmaxLse
+        &(atbVariantPack_.workspaceBufferSize),
+        &rawExecutePtr);
+    aclnnExecutor_ = std::shared_ptr<aclOpExecutor>(rawExecutePtr, [this](aclOpExecutor *ptr) {
+        if (ptr && executorRepeatable_) {
             aclDestroyAclOpExecutor(ptr);
         }
     });
-    ATB_LOG(INFO) << GetLogPrefix() << "workspaceSize: " << this->atbVariantPack_.workspaceBufferSize;
-    return aclnnRet;
+    if (ret == ACL_SUCCESS) {
+        ATB_LOG(INFO) << GetLogPrefix() << "workspaceSize: " << atbVariantPack_.workspaceBufferSize;
+    } else {
+        ATB_LOG(ERROR) << GetLogPrefix() << "SetAclNNWorkspaceExecutor failed, ret: " << ret;
+    }
+    return ret;
 }
 
 Status SelfAttentionAclnnRunner::LaunchAclnnKernel()
 {
-    ATB_LOG(INFO) << GetLogPrefix() << "LaunchAclnnKernel execute start.";
-    aclrtStream executeStream = GetExecuteStream(this->atbVariantPack_.context);
-    aclnnStatus ret = aclnnFusedInferAttentionScoreV3Func_(this->atbVariantPack_.workspaceBuffer,
-                                                                  this->atbVariantPack_.workspaceBufferSize,
-                                                                  this->aclnnExecutor_.get(), executeStream);
+    ATB_LOG(INFO) << GetLogPrefix() << "SelfAttentionAclnnRunner::LaunchAclnnKernel";
+
+    aclrtStream executeStream = GetExecuteStream(atbVariantPack_.context);
+    aclnnStatus ret = aclnnFusedInferAttentionScoreV3Func_(
+        atbVariantPack_.workspaceBuffer, atbVariantPack_.workspaceBufferSize, aclnnExecutor_.get(), executeStream);
     if (actualSeqLengths_ != nullptr) {
         aclnnStatus ret = aclDestroyIntArray(actualSeqLengths_);
         if (ret != ACL_SUCCESS) {
@@ -332,45 +227,346 @@ Status SelfAttentionAclnnRunner::LaunchAclnnKernel()
         }
         actualSeqLengths_ = nullptr;
     }
-    if (ret != ACL_SUCCESS) {
-        ATB_LOG(ERROR) << GetLogPrefix() << "Atb aclnn op kernel launch failed with return value: " << ret;
-        return ERROR_CANN_ERROR;
+    if (ret == ACL_SUCCESS) {
+        return NO_ERROR;
     }
-    ATB_LOG(INFO) << GetLogPrefix() << "LaunchAclnnKernel execute success.";
+    ATB_LOG(ERROR) << GetLogPrefix() << "LaunchAclnnKernel failed, ret: " << ret;
+    return ERROR_CANN_ERROR;
+}
+
+void SelfAttentionAclnnRunner::GetTensorNum()
+{
+    aclInTensorNum_ = 3;  // 1: query, key, value
+    if (param_.maskType == infer::SelfAttentionParam::MASK_TYPE_ALIBI) {
+        aclInTensorNum_ += 1;  // 1: pseShift
+    }
+    if (param_.maskType == infer::SelfAttentionParam::MASK_TYPE_NORM ||
+        param_.maskType == infer::SelfAttentionParam::MASK_TYPE_NORM_COMPRESS) {
+        aclInTensorNum_ += 1;  // 1: attenMask
+    }
+    aclOutTensorNum_ = 1;
+    aclInTensorListNum_ = 2;  // 2: key, value
+}
+
+void SelfAttentionAclnnRunner::InitTensorIndex()
+{
+    atbInTensorIndex_ = 0;
+    aclInTensorIndex_ = 0;
+    aclInTensorListIndex_ = 0;
+    atbOutTensorIndex_ = 0;
+    aclOutTensorIndex_ = 0;
+    aclOutTensorListIndex_ = 0;
+
+    queryAclTensorIndex_ = 0;
+    keyAclTensorListIndex_ = 0;
+    valueAclTensorListIndex_ = 0;
+    pseShiftAclTensorIndex_ = 0;
+    attenMaskAclTensorIndex_ = 0;
+    attentionOutAclTensorIndex_ = 0;
+}
+
+void SelfAttentionAclnnRunner::InitAclnnParam()
+{
+    aclnnParam_.numHeads = param_.headNum;
+    aclnnParam_.scaleValue = param_.qkScale;
+    aclnnParam_.preTokens = INT_MAX_VALUE;
+    aclnnParam_.nextTokens = INT_MAX_VALUE;
+    if (param_.inputLayout == infer::TYPE_BSND) {
+        aclnnParam_.inputLayoutStr = "TND";
+    } else if (param_.inputLayout == infer::TYPE_BNSD) {
+        aclnnParam_.inputLayoutStr = "BNSD";
+    }
+    aclnnParam_.numKeyValueHeads = param_.kvHeadNum == 0 ? param_.headNum : param_.kvHeadNum;
+    aclnnParam_.sparseMode = 0;
+}
+
+Status SelfAttentionAclnnRunner::CreateQueryAclnnTensor()
+{
+    ATB_LOG(INFO) << "SelfAttentionAclnnRunner::CreateQueryAclnnTensor";
+
+    Tensor atbTensor = atbVariantPack_.inTensors.at(atbInTensorIndex_++);
+    std::shared_ptr<AclNNTensor> aclnnTensorPtr = InitAclnnTensor(atbTensor, QUERY_ACLNN_TENSOR_IDX);
+    Dims storageShape = atbTensor.desc.shape;
+    qSeqLen_ = storageShape.dims[0] / batch_;
+    Dims viewShape;
+    if (param_.maskType == infer::SelfAttentionParam::MASK_TYPE_ALIBI) {
+        viewShape.dimNum = 4;  // 4: [B, S, N, D]
+        viewShape.dims[0] = batch_;
+        viewShape.dims[1] = storageShape.dims[0] / batch_;
+        viewShape.dims[2] = param_.headNum;
+        if (storageShape.dimNum == 2) {
+            viewShape.dims[3] = storageShape.dims[1] / param_.headNum;
+        } else if (storageShape.dimNum == 3) {
+            viewShape.dims[3] = storageShape.dims[2];  // 3: D(head_size); 2: head_size
+        }
+        aclnnParam_.inputLayoutStr = "BSND";
+    } else {
+        viewShape.dimNum = storageShape.dimNum;
+        for (uint64_t i = 0; i < viewShape.dimNum; i++) {
+            viewShape.dims[i] = storageShape.dims[i];
+        }
+    }
+    aclnnTensorPtr->strides = GetCopyTensorStride(viewShape);
+    aclnnTensorPtr->tensor = aclCreateTensor(viewShape.dims,
+        viewShape.dimNum,
+        atbTensor.desc.dtype,
+        aclnnTensorPtr->strides.data(),
+        0,
+        atbTensor.desc.format,
+        storageShape.dims,
+        storageShape.dimNum,
+        atbTensor.deviceData);
+    if (!aclnnTensorPtr->tensor) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "query aclCreateTensor failed";
+        return ERROR_INTERNAL_ERROR;
+    }
+    aclnnVariantPack_.aclInTensors.at(aclInTensorIndex_) = aclnnTensorPtr;
+    queryAclTensorIndex_ = aclInTensorIndex_++;
     return NO_ERROR;
 }
 
-Status SelfAttentionAclnnRunner::ParamTransfer(AclnnSelfAttentionParam &targetParam)
+Status SelfAttentionAclnnRunner::CreateKeyAclnnTensorList()
 {
-    targetParam.numHeads = param_.headNum;
-    targetParam.scaleValue = param_.qkScale;
-    targetParam.preTokens = INT_MAX_VALUE;
-    targetParam.nextTokens = INT_MAX_VALUE;
-    std::string inputLayoutStr;
-    switch (param_.inputLayout) {
-        case infer::InputLayout::TYPE_BSND:
-            inputLayoutStr = "TND";
-            break;
-        case infer::InputLayout::TYPE_BNSD:
-            inputLayoutStr = "BNSD";
-            break;
-        default:
-            ATB_LOG(ERROR) << "91095 only supports BSND.";
-            return ERROR_INVALID_PARAM;
+    ATB_LOG(INFO) << "SelfAttentionAclnnRunner::CreateKeyAclnnTensorList";
+    Tensor atbTensor = atbVariantPack_.inTensors.at(atbInTensorIndex_++);
+    std::shared_ptr<AclNNTensor> aclnnTensorPtr = InitAclnnTensor(atbTensor, KEY_ACLNN_TENSOR_IDX);
+    Dims storageShape = atbTensor.desc.shape;
+    Dims viewShape;
+    if (param_.maskType == infer::SelfAttentionParam::MASK_TYPE_ALIBI) {
+        viewShape.dimNum = 4;  // 4: [B, S, N, D]
+        viewShape.dims[0] = batch_;
+        viewShape.dims[1] = storageShape.dims[0] / batch_;
+        viewShape.dims[2] = param_.kvHeadNum;
+        if (storageShape.dimNum == 2) {
+            viewShape.dims[3] = storageShape.dims[1] / param_.kvHeadNum;
+        } else if (storageShape.dimNum == 3) {
+            viewShape.dims[3] = storageShape.dims[2];  // 3: D(head_size); 2: head_size
+        }
+    } else {
+        viewShape.dimNum = storageShape.dimNum;
+        for (uint64_t i = 0; i < viewShape.dimNum; i++) {
+            viewShape.dims[i] = storageShape.dims[i];
+        }
     }
-    targetParam.inputLayout = inputLayoutStr;
-    targetParam.numKeyValueHeads = param_.kvHeadNum == 0 ? param_.headNum : param_.kvHeadNum;
-    bool needComMask = (param_.maskType != infer::SelfAttentionParam::MASK_TYPE_UNDEFINED && q_S_ != 1 &&
-                        mask_S_ == COMPRESS_MASK_SHAPE && param_.isTriuMask != 0);
-    targetParam.sparseMode = needComMask ? 2 : 0; // 2: mask mode: leftUpCausal
-    targetParam.innerPrecise = 1;
-    targetParam.blockSize = 0;
-    targetParam.antiquantMode = 0;
-    targetParam.softmaxLseFlag = false;
-    targetParam.keyAntiquantMode = 0;
-    targetParam.valueAntiquantMode = 0;
+    aclnnTensorPtr->strides = GetCopyTensorStride(viewShape);
+    aclnnTensorPtr->tensor = aclCreateTensor(viewShape.dims,
+        viewShape.dimNum,
+        atbTensor.desc.dtype,
+        aclnnTensorPtr->strides.data(),
+        0,
+        atbTensor.desc.format,
+        storageShape.dims,
+        storageShape.dimNum,
+        atbTensor.deviceData);
+    if (!aclnnTensorPtr->tensor) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "key aclCreateTensor failed";
+        return ERROR_INTERNAL_ERROR;
+    }
+    aclnnVariantPack_.aclInTensors.at(aclInTensorIndex_) = aclnnTensorPtr;
+    aclTensor *keyTensors[1] = {aclnnTensorPtr->tensor};
+    auto keyTensorList = aclCreateTensorList(keyTensors, 1);
+    if (keyTensorList) {
+        aclnnVariantPack_.aclInTensorList.at(aclInTensorListIndex_) = keyTensorList;
+        keyAclTensorListIndex_ = aclInTensorListIndex_++;
+        aclInTensorIndex_++;
+        return NO_ERROR;
+    }
+    ATB_LOG(ERROR) << GetLogPrefix() << "key aclCreateTensorList failed";
+    return ERROR_INTERNAL_ERROR;
+}
+
+Status SelfAttentionAclnnRunner::CreateValueAclnnTensorList()
+{
+    ATB_LOG(INFO) << "SelfAttentionAclnnRunner::CreateValueAclnnTensorList";
+    Tensor atbTensor = atbVariantPack_.inTensors.at(atbInTensorIndex_++);
+    std::shared_ptr<AclNNTensor> aclnnTensorPtr = InitAclnnTensor(atbTensor, VALUE_ACLNN_TENSOR_IDX);
+    Dims storageShape = atbTensor.desc.shape;
+    Dims viewShape;
+    if (param_.maskType == infer::SelfAttentionParam::MASK_TYPE_ALIBI) {
+        viewShape.dimNum = 4;  // 4: [B, S, N, D]
+        viewShape.dims[0] = batch_;
+        viewShape.dims[1] = storageShape.dims[0] / batch_;
+        viewShape.dims[2] = param_.kvHeadNum;
+        if (storageShape.dimNum == 2) {
+            viewShape.dims[3] = storageShape.dims[1] / param_.kvHeadNum;
+        } else if (storageShape.dimNum == 3) {
+            viewShape.dims[3] = storageShape.dims[2];  // 3: D(head_size); 2: head_size
+        }
+    } else {
+        viewShape.dimNum = storageShape.dimNum;
+        for (uint64_t i = 0; i < viewShape.dimNum; i++) {
+            viewShape.dims[i] = storageShape.dims[i];
+        }
+    }
+    aclnnTensorPtr->strides = GetCopyTensorStride(viewShape);
+    aclnnTensorPtr->tensor = aclCreateTensor(viewShape.dims,
+        viewShape.dimNum,
+        atbTensor.desc.dtype,
+        aclnnTensorPtr->strides.data(),
+        0,
+        atbTensor.desc.format,
+        storageShape.dims,
+        storageShape.dimNum,
+        atbTensor.deviceData);
+    if (!aclnnTensorPtr->tensor) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "value aclCreateTensor failed";
+        return ERROR_INTERNAL_ERROR;
+    }
+    aclnnVariantPack_.aclInTensors.at(aclInTensorIndex_) = aclnnTensorPtr;
+    aclTensor *valueTensors[1] = {aclnnTensorPtr->tensor};
+    auto valueTensorList = aclCreateTensorList(valueTensors, 1);
+    if (valueTensorList) {
+        aclnnVariantPack_.aclInTensorList.at(aclInTensorListIndex_) = valueTensorList;
+        valueAclTensorListIndex_ = aclInTensorListIndex_++;
+        aclInTensorIndex_++;
+        return NO_ERROR;
+    }
+    ATB_LOG(ERROR) << GetLogPrefix() << "value aclCreateTensorList failed";
+    return ERROR_INTERNAL_ERROR;
+}
+
+Status SelfAttentionAclnnRunner::CreatePseShiftAclnnTensor()
+{
+    ATB_LOG(INFO) << "SelfAttentionAclnnRunner::CreatePseShiftAclnnTensor";
+    Tensor atbTensor = atbVariantPack_.inTensors.at(atbInTensorIndex_++);
+    std::shared_ptr<AclNNTensor> aclnnTensorPtr = InitAclnnTensor(atbTensor, PSE_SHIFT_ACLNN_TENSOR_IDX);
+    Dims storageShape = atbTensor.desc.shape;
+    aclnnTensorPtr->strides = GetCopyTensorStride(storageShape);
+    aclnnTensorPtr->tensor = aclCreateTensor(storageShape.dims,
+        storageShape.dimNum,
+        atbTensor.desc.dtype,
+        aclnnTensorPtr->strides.data(),
+        0,
+        atbTensor.desc.format,
+        storageShape.dims,
+        storageShape.dimNum,
+        atbTensor.deviceData);
+    if (!aclnnTensorPtr->tensor) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "pseShift aclCreateTensor failed";
+        return ERROR_INTERNAL_ERROR;
+    }
+    aclnnVariantPack_.aclInTensors.at(aclInTensorIndex_) = aclnnTensorPtr;
+    pseShiftAclTensorIndex_ = aclInTensorIndex_++;
     return NO_ERROR;
+}
+
+Status SelfAttentionAclnnRunner::CreateAttenMaskAclnnTensor()
+{
+    ATB_LOG(INFO) << "SelfAttentionAclnnRunner::CreateAttenMaskAclnnTensor";
+    Tensor atbTensor = atbVariantPack_.inTensors.at(atbInTensorIndex_++);
+    std::shared_ptr<AclNNTensor> aclnnTensorPtr = InitAclnnTensor(atbTensor, ATTEN_MASK_ACLNN_TENSOR_IDX);
+    Dims storageShape = atbTensor.desc.shape;
+    if (qSeqLen_ != 1 && storageShape.dims[1] == 2048 && param_.isTriuMask) {
+        aclnnParam_.sparseMode = 2;  // leftUpCausal mask
+    }
+    aclnnTensorPtr->strides = GetCopyTensorStride(storageShape);
+    aclnnTensorPtr->tensor = aclCreateTensor(storageShape.dims,
+        storageShape.dimNum,
+        atbTensor.desc.dtype,
+        aclnnTensorPtr->strides.data(),
+        0,
+        atbTensor.desc.format,
+        storageShape.dims,
+        storageShape.dimNum,
+        atbTensor.deviceData);
+    if (!aclnnTensorPtr->tensor) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "attenMask aclCreateTensor failed";
+        return ERROR_INTERNAL_ERROR;
+    }
+    aclnnVariantPack_.aclInTensors.at(aclInTensorIndex_) = aclnnTensorPtr;
+    attenMaskAclTensorIndex_ = aclInTensorIndex_++;
+    return NO_ERROR;
+}
+
+Status SelfAttentionAclnnRunner::CreateActualSeqLengthsAclIntArray()
+{
+    ATB_LOG(INFO) << "SelfAttentionAclnnRunner::CreateActualSeqLengthsAclIntArray";
+    Tensor atbTensor = atbVariantPack_.inTensors.at(atbInTensorIndex_++);
+    if (atbTensor.hostData == nullptr) {
+        ATB_LOG(ERROR) << "contextLen tensor host data is null";
+        return ERROR_INVALID_TENSOR_ADDR;
+    }
+    if (actualSeqLengths_) {
+        aclnnStatus ret = aclDestroyIntArray(actualSeqLengths_);
+        if (ret != ACL_SUCCESS) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "actualSeqLengths aclDestroyIntArray failed";
+            return ERROR_INTERNAL_ERROR;
+        }
+        actualSeqLengths_ = nullptr;
+    }
+    SVector<int32_t> contextLensInt32;
+    uint64_t dataSize = atbTensor.dataSize / 4;  // 4: int32 size
+    contextLensInt32.reserve(dataSize);
+    contextLensInt32.resize(dataSize);
+    if (memcpy_s(contextLensInt32.data(), atbTensor.dataSize, atbTensor.hostData, atbTensor.dataSize) != 0) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "contextLens memcpy_s failed";
+        return ERROR_INTERNAL_ERROR;
+    }
+    std::vector<int64_t> contextLensInt64;
+    contextLensInt64.reserve(dataSize);
+    contextLensInt64.resize(dataSize);
+    contextLensInt64.at(0) = static_cast<int64_t>(contextLensInt32.at(0));
+    for (uint64_t i = 1; i < dataSize; i++) {
+        contextLensInt64.at(i) = static_cast<int64_t>(contextLensInt32.at(i)) + contextLensInt64.at(i - 1);
+    }
+    actualSeqLengths_ = aclCreateIntArray(contextLensInt64.data(), dataSize);
+    if (actualSeqLengths_) {
+        return NO_ERROR;
+    }
+    ATB_LOG(ERROR) << "actualSeqLengths_ aclCreateIntArray failed!";
+    return ERROR_INTERNAL_ERROR;
+}
+
+Status SelfAttentionAclnnRunner::CreateAttentionOutAclnnTensor()
+{
+    ATB_LOG(INFO) << "SelfAttentionAclnnRunner::CreateAttentionOutAclnnTensor";
+    Tensor atbTensor = atbVariantPack_.outTensors.at(atbOutTensorIndex_++);
+    std::shared_ptr<AclNNTensor> aclnnTensorPtr = InitAclnnTensor(atbTensor, ATTENTION_OUT_ACLNN_TENSOR_IDX);
+    Dims storageShape = atbTensor.desc.shape;
+    Dims viewShape;
+    if (param_.maskType == infer::SelfAttentionParam::MASK_TYPE_ALIBI) {
+        viewShape.dimNum = 4;  // 4: [B, S, N, D]
+        viewShape.dims[0] = batch_;
+        viewShape.dims[1] = storageShape.dims[0] / batch_;
+        viewShape.dims[2] = param_.headNum;
+        if (storageShape.dimNum == 2) {
+            viewShape.dims[3] = storageShape.dims[1] / param_.headNum;
+        } else if (storageShape.dimNum == 3) {
+            viewShape.dims[3] = storageShape.dims[2];  // 3: D(head_size); 2: head_size
+        }
+    } else {
+        viewShape.dimNum = storageShape.dimNum;
+        for (uint64_t i = 0; i < viewShape.dimNum; i++) {
+            viewShape.dims[i] = storageShape.dims[i];
+        }
+    }
+    aclnnTensorPtr->strides = GetCopyTensorStride(viewShape);
+    aclnnTensorPtr->tensor = aclCreateTensor(viewShape.dims,
+        viewShape.dimNum,
+        atbTensor.desc.dtype,
+        aclnnTensorPtr->strides.data(),
+        0,
+        atbTensor.desc.format,
+        storageShape.dims,
+        storageShape.dimNum,
+        atbTensor.deviceData);
+    if (!aclnnTensorPtr->tensor) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "attentionOut aclCreateTensor failed";
+        return ERROR_INTERNAL_ERROR;
+    }
+    aclnnVariantPack_.aclOutTensors.at(aclOutTensorIndex_) = aclnnTensorPtr;
+    attentionOutAclTensorIndex_ = aclOutTensorIndex_++;
+    return NO_ERROR;
+}
+
+std::shared_ptr<AclNNTensor> SelfAttentionAclnnRunner::InitAclnnTensor(Tensor atbTensor, int aclnnTensorIndex)
+{
+    std::shared_ptr<AclNNTensor> aclnnTensorPtr = std::make_shared<AclNNTensor>();
+    aclnnTensorPtr->atbTensor = atbTensor;
+    aclnnTensorPtr->tensorIdx = aclnnTensorIndex;
+    aclnnTensorPtr->needUpdateTensorDataPtr = true;
+    return aclnnTensorPtr;
 }
 
 REG_RUNNER_TYPE(SelfAttentionAclnnRunner);
-} // namespace atb
+}  // namespace atb
