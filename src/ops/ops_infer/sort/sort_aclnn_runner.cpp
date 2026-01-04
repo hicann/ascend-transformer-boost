@@ -31,7 +31,10 @@ SortAclnnRunner::SortAclnnRunner(const infer::SortParam &param) : AclnnRunner("S
     ATB_LOG(INFO) << GetLogPrefix() << "SortAclnnRunner::SortAclnnRunner created";
 }
 
-SortAclnnRunner::~SortAclnnRunner() {}
+SortAclnnRunner::~SortAclnnRunner()
+{
+    aclrtFree(castWorkspaceBuffer_);
+}
 
 Status SortAclnnRunner::BuildAclnnVariantPack(const RunnerVariantPack &runnerVariantPack)
 {
@@ -129,7 +132,13 @@ aclnnStatus SortAclnnRunner::SetAclNNWorkspaceExecutor()
         }
     });
     if (ret != ACL_SUCCESS) {
-        ATB_LOG(DEBUG) << GetLogPrefix() << "aclnnCastGetWorkspaceSize failed!";
+         ATB_LOG(ERROR) << GetLogPrefix() << "aclnnCastGetWorkspaceSize failed!";
+        return ret;
+    }
+
+    ret = aclrtMalloc(&this->castWorkspaceBuffer_, this->castworkspacesize_, ACL_MEM_MALLOC_HUGE_FIRST);
+    if (ret != ACL_SUCCESS) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "aclrt malloc failed!";
         return ret;
     }
     ATB_LOG(INFO) << GetLogPrefix() << "workspaceSize: " << this->castworkspacesize_;
@@ -150,7 +159,7 @@ Status SortAclnnRunner::LaunchAclnnKernel()
     }
 
     aclrtStream castExecuteStream = GetExecuteStream(this->atbVariantPack_.context);
-    ret = SortAclnnRunner::aclnnCastExecuteFunc_(this->atbVariantPack_.workspaceBuffer,
+    ret = SortAclnnRunner::aclnnCastExecuteFunc_(this->castWorkspaceBuffer_,
                                                          this->castworkspacesize_,
                                                          this->aclnnCastExecutor_.get(), castExecuteStream);
     if (ret != ACL_SUCCESS) {
