@@ -43,6 +43,7 @@ private:
 
     std::shared_ptr<AclNNTensor> indices_;
     uint64_t castworkspacesize_;
+    void* castWorkspaceBuffer_;
     std::shared_ptr<aclOpExecutor> aclnnCastExecutor_;
 };
 } // namespace atb
