@@ -47,8 +47,8 @@ public:
 
 protected:
     Status BuildAclnnVariantPack(const RunnerVariantPack &runnerVariantPack) override;
-    Status LaunchAclnnKernel() override;
     aclnnStatus SetAclNNWorkspaceExecutor() override;
+    Status LaunchAclnnKernel() override;
 
 private:
     void GetTensorNum();
@@ -58,7 +58,7 @@ private:
     Status CreateKeyAclnnTensorList();
     Status CreateValueAclnnTensorList();
     Status CreateBlockTableAclnnTensor();
-    Status CreateActualSeqLengthKvAclIntArray();
+    Status CreateActualSeqLengthsKvAclIntArray();
     Status CreateKeyAntiquantScaleAclnnTensor();
     Status CreateValueAntiquantScaleAclnnTensor();
     Status CreateAttentionOutAclnnTensor();
