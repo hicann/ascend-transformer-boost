@@ -10,8 +10,10 @@
 
 #include "gather_operation.h"
 #include <cmath>
-#include "atb/utils/log.h"
+#include <mki/utils/platform/platform_info.h>
+#include "gather_aclnn_runner.h"
 #include "gather_ops_runner.h"
+#include "atb/utils/log.h"
 #include "atb/utils/tensor_check.h"
 #include "atb/utils/param_to_json.h"
 #include "atb/operation/atb_operation_ir_cfg.h"
@@ -28,6 +30,12 @@ template <> Status CreateOperation(const infer::GatherParam &opParam, Operation 
         return ERROR_INVALID_PARAM;
     }
     OP_PARAM_RSV_CHECK(opParam);
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+        if (GatherAclnnRunner::LoadAclnnFuncs() != NO_ERROR) {
+            ATB_LOG(ERROR) << "Load aclnn function failed, please check your CANN version.";
+            return ERROR_CANN_ERROR;
+        }
+    }
     if (opParam.axis < 0 || opParam.batchDims < 0) {
         ATB_LOG(ERROR) << "param_.axis and param_.batchdims should >= 0";
         return ERROR_INVALID_PARAM;
@@ -137,6 +145,9 @@ Status GatherOperation::ParamCheck(const TensorDesc &xTensorDesc, const TensorDe
 std::shared_ptr<Runner> GatherOperation::CreateRunner(Context &context) const
 {
     (void)context;
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+        return std::make_shared<GatherAclnnRunner>(param_);
+    }
     return std::make_shared<GatherOpsRunner>(param_);
 }
 
