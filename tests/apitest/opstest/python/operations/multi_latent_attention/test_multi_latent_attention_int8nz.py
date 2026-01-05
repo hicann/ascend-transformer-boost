@@ -20,7 +20,8 @@ import torch.nn.functional as F
 import torch_npu
 sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
 import operation_test
-from precision_calcu import *
+
+from precision_calcu import compare_cv
 
 class TestPagedAttentionMLA(operation_test.OperationTest):
     def shape_nd_to_nz(self, shape, dtype='torch.float16'):
@@ -191,7 +192,7 @@ class TestPagedAttentionMLA(operation_test.OperationTest):
         sim_sub = torch.exp(sim_sub)
         row_sum = torch.sum(sim_sub, dim=-1, keepdim=True)
         row_maxp = torch.max(sim_sub, dim=-1, keepdim=True)[0]
-        scale = row_maxp.type(torch.float32) / 127
+        scale = row_maxp.type(torch.float32) / 127.0
         sim_int8 = sim_sub / scale
         soft_res = sim_int8.type(torch.float16)
         soft_res = torch.round(soft_res).type(torch.int8)
@@ -317,7 +318,6 @@ class TestPagedAttentionMLA(operation_test.OperationTest):
         return out, out_high, sim_out, lse, lse_high
 
     def ref_single_query_cached_kv_attention(self,
-            sim,
             output,
             true_out,
             lse,
@@ -330,7 +330,9 @@ class TestPagedAttentionMLA(operation_test.OperationTest):
             mask_dim = 4,
             mask_data_type = torch.bfloat16,
             query_rope = None,
-            key_cache_rope = None
+            key_cache_rope = None,
+            batch_list = None,
+            qk_scale = 0
     ) -> None:
         mask_index_coff = 1
         if self.compressHead:
@@ -355,7 +357,10 @@ class TestPagedAttentionMLA(operation_test.OperationTest):
             print("\rcalc golden, batch: %d"%i,end="")
             block_table = block_tables[i]
             for j in range(self.q_seqlen):
-                context_len = int(context_lens[i]) + j - self.q_seqlen + 1
+                if batch_list and batch_list[i] == 0:
+                    context_len = int(context_lens[i])
+                else:
+                    context_len = int(context_lens[i]) + j - self.q_seqlen + 1
                 if context_len == 0:
                     continue
 
@@ -384,7 +389,10 @@ class TestPagedAttentionMLA(operation_test.OperationTest):
                 if self.is_quant_flag:
                     keys_rope = torch.stack(keys_rope, axis=0)
                 values = torch.stack(values, axis=0)
-                scale = np.float32(1.0 / (self.head_size_qk ** 0.5))
+                if qk_scale == 0:
+                    scale = np.float32(1.0 / (self.head_size_qk ** 0.5))
+                else:
+                    scale = qk_scale
                 if mask_dim == 4:
                     out, out_high, sim_out, lse_i, lse_high = self.ref_masked_attention(q, keys, values, scale, mask[i, :, :, :context_len], mask_data_type, q_rope, keys_rope)
                     out = out.reshape(num_heads, head_size_vo)
@@ -451,10 +459,10 @@ class TestPagedAttentionMLA(operation_test.OperationTest):
             block_size_calc = KV_SEQLEN_SLICE_512
         return block_size_calc
 
-    def calc_data(self, num_tokens, num_heads, kv_heads, head_size_qk, head_size_vo, block_size, num_blocks, k_seqlen,\
-                  dtype, mask_dim = 0, mask_data_type = torch.bfloat16,\
-                  dynamic_batch = False, dynamic_seqlen = None, is_int8_flag = False, has_bias = False,
-                  compressHead = False, is_kv_combined = True, is_nz_in = False, is_quant_flag = False, q_seqlen = 1, fa_block_size = 128):
+    def calc_data(self, num_tokens, num_heads, kv_heads, head_size_qk, head_size_vo, block_size, num_blocks, k_seqlen,
+                  dtype, mask_dim = 0, mask_data_type = torch.bfloat16, dynamic_batch = False, dynamic_seqlen = None,
+                  is_int8_flag = False, has_bias = False, compressHead = False, is_kv_combined = True, is_nz_in = False,
+                  is_quant_flag = False, q_seqlen = 1, fa_block_size = 128, batch_list = None, qk_scale = 0):
         self.num_heads = num_heads
         self.kv_heads = kv_heads
         self.num_tokens = num_tokens
@@ -588,9 +596,7 @@ class TestPagedAttentionMLA(operation_test.OperationTest):
         ref_output = torch.zeros(shape_out, dtype = mask_data_type)
         true_out = torch.zeros(shape_out, dtype = torch.float32)
         lse = torch.zeros((num_tokens * q_seqlen, num_heads, 1), dtype = torch.float32)
-        sim = torch.zeros((num_tokens, num_heads * k_seqlen), dtype=torch.float32)
         self.ref_single_query_cached_kv_attention(
-            sim,
             ref_output,
             true_out,
             lse,
@@ -603,7 +609,9 @@ class TestPagedAttentionMLA(operation_test.OperationTest):
             mask_dim,
             mask_data_type,
             query_rope,
-            key_cache_rope
+            key_cache_rope,
+            batch_list,
+            qk_scale
         )
         if self.is_quant_flag:
             self.q_split1, self.q_split2 = query, query_rope
@@ -642,13 +650,14 @@ class TestPagedAttentionMLA(operation_test.OperationTest):
         return [golden_out]
 
     def golden_compare(self, out_tensors, golden_tensors):
+        result_double = compare_cv(self.true_out.npu(), golden_tensors[0].npu(), out_tensors[0].npu())
         result_old = self.compare_output_data(out_tensors[0].npu(), golden_tensors[0].npu(), [0.001, 0.001, 0.005, 0.005])
         lse_double = True
         lse_old = True
         if self.is_ring:
             lse_double = compare_cv(golden_tensors[1].npu(), golden_tensors[1].npu(), out_tensors[1].npu())
             lse_old = self.compare_output_data(out_tensors[1].npu(), golden_tensors[1].npu(), [0.001, 0.001, 0.005, 0.005])
-        return (result_old) and (lse_double or lse_old)
+        return (result_double or result_old) and (lse_double or lse_old)
 
     def test_mla_split_quant_nz(self):
         if not operation_test.get_soc_version() == 'Ascend910B':
@@ -1310,6 +1319,52 @@ class TestPagedAttentionMLA(operation_test.OperationTest):
                                  torch.tensor(self.q_seqlen_list).int().npu(),
                                  torch.tensor(self.de_scale1_fp32).npu(),
                                  torch.tensor(self.de_scale2_fp32).npu()])
+
+    def test_mla_split_tp1_batch_mask_free(self):
+        if not operation_test.get_soc_version() == 'Ascend910B':
+            print("this testcase only supports Ascend910B")
+            return
+        # q heads 128, hvheads 1, tp1
+        num_heads = 128
+        kv_heads = 1
+        
+        num_tokens = 2
+        # mtp1
+        q_seqlen = 2
+        block_size = 128
+        head_size_qk = 576
+        head_size_vo = 512
+        num_blocks = 64
+        k_seqlen = 256
+        # model normalized scale value
+        tor = 0.137
+        mask_dim = 0
+        dtype = torch.float16
+        is_kv_combined = True
+        is_nz_in = True
+        is_quant_flag = True
+        self.is_ring = 1
+        
+        batch_list = [1, 0]
+        qseqlen_list = [q_seqlen] * num_tokens
+        
+        self.calc_data(num_tokens, num_heads, kv_heads, head_size_qk, head_size_vo, block_size, num_blocks, k_seqlen, dtype, mask_dim, dtype,
+                        is_kv_combined=is_kv_combined, is_nz_in=is_nz_in, is_quant_flag=is_quant_flag, q_seqlen=q_seqlen, batch_list=batch_list, qk_scale=tor)
+
+        OP_NAME = "MultiLatentAttentionOperation"
+        PARAM = json.dumps({"headNum": num_heads, "qkScale":tor, "kvHeadNum":kv_heads, "maskType": 0, "cacheMode": 2, "calcType": 3, "maskUseStatusType": 1})
+        RUN_PARAM = json.dumps({"contextLens": self.contex_lens.tolist(), "qSeqlen": qseqlen_list, "maskUseStatus": batch_list})
+        self.execute_with_param(OP_NAME, PARAM, RUN_PARAM,
+                                [self.q_split1.npu(),
+                                 self.q_split2.npu(),
+                                 torch_npu.npu_format_cast(torch.tensor(self.key_cache_split1).contiguous().npu(), 29),
+                                 torch_npu.npu_format_cast(torch.tensor(self.key_cache_split2).contiguous().npu(), 29),
+                                 torch.tensor(self.block_tables).int().npu(),
+                                 torch.tensor(self.contex_lens).int().npu(),
+                                 torch.tensor(qseqlen_list).int().npu(),
+                                 torch.tensor(self.de_scale1_fp32).npu(),
+                                 torch.tensor(self.de_scale2_fp32).npu(),
+                                 torch.tensor(batch_list).int().npu()])
 
 if __name__ == '__main__':
     unittest.main()
