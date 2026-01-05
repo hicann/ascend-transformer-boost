@@ -47,6 +47,7 @@ static const uint32_t IN_TENSOR_7 = 7;
 static const uint32_t DIM_2 = 2;
 static const uint32_t EM_BED_DIM_V = 128;
 static const int32_t MTP_TP1_HEAD_NUM = 128;
+static const int32_t DECODER_BLOCK_SIZE = 128;
 } // namespace
 
 namespace atb {
@@ -324,8 +325,9 @@ Status MultiLatentAttentionOperation::QKVDimCheck(const SVector<TensorDesc> &inT
     int64_t numTokens = inTensorDesc.at(0).shape.dims[0];
     int64_t numBlocks = inTensorDesc.at(KVCACHE_INDEX).shape.dims[0];
     int64_t blockSize = inTensorDesc.at(KVCACHE_INDEX).shape.dims[1];
-    if (blockSize > 128) { // 128 : maxblocksize
-        ATB_LOG(ERROR) << GetLogPrefix() << "blockSize shoule <= 128";
+    if (blockSize != DECODER_BLOCK_SIZE) { // decoder blockSize
+        ATB_LOG(ERROR) << GetLogPrefix() << "decoder blockSize should be " << DECODER_BLOCK_SIZE << ", but got "
+                       << blockSize;
         return ERROR_INVALID_TENSOR_DIM;
     }
     if (inTensorDesc.at(1).shape.dims[0] != numTokens) {
@@ -367,8 +369,9 @@ Status MultiLatentAttentionOperation::QKVDimCheckNz(const SVector<TensorDesc> &i
     int64_t numTokens = inTensorDesc.at(0).shape.dims[0];
     int64_t numBlocks = inTensorDesc.at(KVCACHE_INDEX).shape.dims[0];
     int64_t blockSize = inTensorDesc.at(KVCACHE_INDEX).shape.dims[2]; // 2: dim 2
-    if (blockSize > 128) {                                            // 128 : maxblocksize
-        ATB_LOG(ERROR) << GetLogPrefix() << "blockSize shoule <= 128";
+    if (blockSize != DECODER_BLOCK_SIZE) { // decoder blockSize
+        ATB_LOG(ERROR) << GetLogPrefix() << "decoder blockSize should be " << DECODER_BLOCK_SIZE << ", but got "
+                       << blockSize;
         return ERROR_INVALID_TENSOR_DIM;
     }
     if (inTensorDesc.at(1).shape.dims[0] != numTokens) {
@@ -412,8 +415,9 @@ Status MultiLatentAttentionOperation::QKVDimCheckInt8Nz(const SVector<TensorDesc
     int64_t numTokens = inTensorDesc.at(0).shape.dims[0];
     int64_t numBlocks = inTensorDesc.at(KVCACHE_INDEX).shape.dims[0];
     int64_t blockSize = inTensorDesc.at(KVCACHE_INDEX).shape.dims[2]; // 2: dim 2
-    if (blockSize > 128) {                                            // 128 : maxblocksize
-        ATB_LOG(ERROR) << GetLogPrefix() << "blockSize shoule <= 128";
+    if (blockSize != DECODER_BLOCK_SIZE) { // decoder blockSize
+        ATB_LOG(ERROR) << GetLogPrefix() << "decoder blockSize should be " << DECODER_BLOCK_SIZE << ", but got "
+                       << blockSize;
         return ERROR_INVALID_TENSOR_DIM;
     }
     if (inTensorDesc.at(1).shape.dims[0] != numTokens) {
