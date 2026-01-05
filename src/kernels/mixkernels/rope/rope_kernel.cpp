@@ -18,6 +18,8 @@
 
 static constexpr uint32_t TENSOR_INPUT_NUM = 5;
 static constexpr uint32_t TENSOR_OUTPUT_NUM = 2;
+static constexpr uint32_t MAX_HEAD_DIM = 4096;
+static constexpr uint32_t MIN_HEAD_DIM = 16;
 
 namespace AtbOps {
 using namespace Mki;
@@ -85,6 +87,8 @@ public:
             && launchParam.GetInTensor(DIM_1).desc.dims[DIM_1] % headdim == 0,
             "hiddenSizeQ, hiddenSizeK should be an integer multiple of headdim",
             return false);
+        MKI_CHECK(headdim <= MAX_HEAD_DIM,"headdim should be less than or equal to " + std::to_string(MAX_HEAD_DIM),return false);
+        MKI_CHECK(headdim >= MIN_HEAD_DIM,"headdim should be greater than or equal to " + std::to_string(MIN_HEAD_DIM),return false);
         return RopeDtypeCheck(launchParam, TENSOR_DTYPE_FLOAT16) || RopeDtypeCheck(launchParam, TENSOR_DTYPE_BF16);
     }
 
