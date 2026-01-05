@@ -161,9 +161,10 @@ Status RopeTiling(const LaunchParam &launchParam, KernelInfo &kernelInfo)
     if (!ret.Ok()) {
         return Status::FailStatus(ERROR_INVALID_VALUE);
     }
+    uint32_t headDimAlign_ = ((tilingDataPtr->headDim + ELE_NUM_FP16 - 1) / ELE_NUM_FP16) * ELE_NUM_FP16;
     uint64_t sysWorkspaceSize =
-        static_cast<uint64_t>(REMAIN_SPACE) +
-        static_cast<uint64_t>(TOTAL_OFFSET) * tilingDataPtr->realCore * tilingDataPtr->hiddenSizeQ * sizeof(uint16_t) +
+        static_cast<uint64_t>(REMAIN_SPACE) + 
+        static_cast<uint64_t>(TOTAL_OFFSET) * tilingDataPtr->realCore * tilingDataPtr->headNumQ  * headDimAlign_ * sizeof(uint16_t) +
         static_cast<uint64_t>(tilingDataPtr->ntokens) * tilingDataPtr->headDim * NUM_COSIN * sizeof(uint16_t);
     uint64_t syncWorkspaceSize = tilingDataPtr->realCore * BLOCK_BYTE;
     kernelInfo.GetScratchSizes() = {sysWorkspaceSize, syncWorkspaceSize};
