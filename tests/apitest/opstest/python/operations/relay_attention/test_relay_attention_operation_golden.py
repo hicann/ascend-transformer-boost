@@ -140,10 +140,10 @@ class TestFlashAttention():
         for i in range(self.sharedGroupsCount):
             self.kShare_list.append(np.random.uniform(-1.0, 1.0, size=(self.max_seq, kv_head * self.embeddim)))
             self.vShare_list.append(np.random.uniform(-1.0, 1.0, size=(self.max_seq, kv_head * self.embeddimv)))
-        self.k = torch.Tensor(self.k_list).to(data_type).cpu()
-        self.v = torch.Tensor(self.v_list).to(data_type).cpu()
-        self.kshare = torch.Tensor(self.kShare_list).to(data_type).cpu()
-        self.vshare = torch.Tensor(self.vShare_list).to(data_type).cpu()
+        self.k = torch.Tensor(np.array(self.k_list)).to(data_type).cpu()
+        self.v = torch.Tensor(np.array(self.v_list)).to(data_type).cpu()
+        self.kshare = torch.Tensor(np.array(self.kShare_list)).to(data_type).cpu()
+        self.vshare = torch.Tensor(np.array(self.vShare_list)).to(data_type).cpu()
         # self.k = torch.cat(self.k_list, 1).cpu()
         # self.v = torch.cat(self.v_list, 1).cpu()
         # self.kshare = torch.cat(self.kShare_list, 1).cpu()
@@ -539,7 +539,7 @@ class TestFlashAttention():
         # logging.debug(f"k shape: {self.kshare.shape}")
         # logging.debug(f"v shape: {self.vshare.shape}")
         # logging.debug(f"mask shape: {self.mask.shape}")
-        attention_out = np.zeros_like(self.q)
+        # attention_out = np.zeros_like(self.q)
         # self.execute([self.q, self.k, self.v, self.kshare, self.vshare, torch.tensor([], dtype=data_type)],
         #                 [torch.tensor(attention_out).half()])
         self.mask = self.q
