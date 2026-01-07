@@ -86,7 +86,6 @@ std::string CumsumToJson(const Any &asdOpsParam)
     paramsJson["axis"] = SVectorToVector(specificParam.axis);
     paramsJson["exclusive"] = specificParam.exclusive;
     paramsJson["reverse"] = specificParam.reverse;
-    paramsJson["deterministic"] = specificParam.deterministic;
 
     return paramsJson.dump();
 }

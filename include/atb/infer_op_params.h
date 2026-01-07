@@ -178,15 +178,9 @@ struct CumsumParam {
     //!
     bool reverse = false;
     //!
-    //! \brief 确定性计算开关，默认为false.
-    //!
-    //! \note true：开启确定性计算 false：关闭确定性计算
-    //!
-    bool deterministic = false;
-    //!
     //! \brief 预留参数
     //!
-    uint8_t rsv[10] = {0};
+    uint8_t rsv[14] = {0};
 };
 
 //!

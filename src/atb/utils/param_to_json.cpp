@@ -145,7 +145,6 @@ template <> nlohmann::json OpParamToJson(const infer::CumsumParam &opParam)
     paramsJson["axes"] = SVectorToVector(opParam.axes);
     paramsJson["exclusive"] = opParam.exclusive;
     paramsJson["reverse"] = opParam.reverse;
-    paramsJson["deterministic"] = opParam.deterministic;
 
     return paramsJson;
 }

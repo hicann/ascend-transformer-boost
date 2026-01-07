@@ -800,7 +800,6 @@ PYBIND11_MODULE(_C, m)
         .def_readwrite("axes", &CumsumParam::axes)
         .def_readwrite("exclusive", &CumsumParam::exclusive)
         .def_readwrite("reverse", &CumsumParam::reverse)
-        .def_readwrite("deterministic", &CumsumParam::deterministic)
         .def_property(
             "axes",
             [](CumsumParam &param) -> std::vector<int64_t> {
