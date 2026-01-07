@@ -49,6 +49,9 @@ Status QuantF16Tiling(const LaunchParam &launchParam, KernelInfo &kernelInfo)
     OP_TILING_CHECK_STATUS_RETURN(ret);
     MKI_CHECK(tilingDataPtr->firstDimPerTimes != 0, "tilingData firstDimPerTimes is invalid",
         return Status::FailStatus(ERROR_INVALID_VALUE, "tilingData firstDimPerTimes is invalid"));
+    MKI_CHECK(tilingDataPtr->firstDimPerTimes * quantPtrCon.numCol <= quantPtrCon.maxUbSize / 4,
+        "tilingData firstDimPerTimes or numCol is invalid",
+        return Status::FailStatus(ERROR_INVALID_VALUE, "tilingData firstDimPerTimes or numCol is invalid"));
     tilingDataPtr->quantMin = -128; // default int8 min is -128
     const char *quantMinSetPtr = Mki::GetEnv("ASDOPS_QUANT_MIN_NEG_127");
     if (quantMinSetPtr != nullptr && strcmp(quantMinSetPtr, "1") == 0) {
