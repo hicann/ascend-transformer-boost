@@ -388,9 +388,6 @@ static atb::Status CumsumOperationCreate(const nlohmann::json &paramJson, atb::O
     if (paramJson.contains("reverse")) {
         param.reverse = paramJson["reverse"].get<bool>();
     }
-    if (paramJson.contains("deterministic")) {
-        param.reverse = paramJson["deterministic"].get<bool>();
-    }
     if (paramJson.contains("rsv")) {
         for (size_t i = 0; i < paramJson["rsv"].size(); i++) {
             param.rsv[i] = paramJson["rsv"].at(i).get<int8_t>();

@@ -39,7 +39,6 @@ CumsumOpsRunner::CumsumOpsRunner(const infer::CumsumParam &param)
     AsdOps::OpParam::Cumsum asdParam;
     asdParam.exclusive = param_.exclusive;
     asdParam.reverse = param_.reverse;
-    asdParam.deterministic = param_.deterministic;
     for (std::size_t i = 0; i < param_.axes.size(); ++i) {
         asdParam.axis.push_back(param_.axes[i]);
     }
