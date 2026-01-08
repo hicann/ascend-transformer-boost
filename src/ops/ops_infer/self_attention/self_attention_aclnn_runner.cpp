@@ -431,9 +431,23 @@ Status SelfAttentionAclnnRunner::CreatePseShiftAclnnTensor()
     Tensor atbTensor = atbVariantPack_.inTensors.at(atbInTensorIndex_++);
     std::shared_ptr<AclNNTensor> aclnnTensorPtr = InitAclnnTensor(atbTensor, PSE_SHIFT_ACLNN_TENSOR_IDX);
     Dims storageShape = atbTensor.desc.shape;
-    aclnnTensorPtr->strides = GetCopyTensorStride(storageShape);
-    aclnnTensorPtr->tensor = aclCreateTensor(storageShape.dims,
-        storageShape.dimNum,
+    Dims viewShape;
+    viewShape.dimNum = 4;  // 4: [batch, headNum, maxSeqLen, maxSeqLen]
+    if (storageShape.dimNum == 4) {
+        viewShape.dims[0] = storageShape.dims[0];
+        viewShape.dims[1] = storageShape.dims[1];
+        viewShape.dims[2] = storageShape.dims[2];  // 2: maxSeqLen
+        viewShape.dims[3] = storageShape.dims[3];  // 3: maxSeqLen
+    }
+    if (storageShape.dimNum == 3) {
+        viewShape.dims[0] = 1;
+        viewShape.dims[1] = storageShape.dims[0];
+        viewShape.dims[2] = storageShape.dims[1];  // 2: maxSeqLen
+        viewShape.dims[3] = storageShape.dims[2];  // 3: maxSeqLen
+    }
+    aclnnTensorPtr->strides = GetCopyTensorStride(viewShape);
+    aclnnTensorPtr->tensor = aclCreateTensor(viewShape.dims,
+        viewShape.dimNum,
         atbTensor.desc.dtype,
         aclnnTensorPtr->strides.data(),
         0,
@@ -494,7 +508,7 @@ Status SelfAttentionAclnnRunner::CreateActualSeqLengthsAclIntArray()
         }
         actualSeqLengths_ = nullptr;
     }
-    SVector<int32_t> contextLensInt32;
+    std::vector<int32_t> contextLensInt32;
     uint64_t dataSize = atbTensor.dataSize / 4;  // 4: int32 size
     contextLensInt32.reserve(dataSize);
     contextLensInt32.resize(dataSize);
@@ -507,7 +521,11 @@ Status SelfAttentionAclnnRunner::CreateActualSeqLengthsAclIntArray()
     contextLensInt64.resize(dataSize);
     contextLensInt64.at(0) = static_cast<int64_t>(contextLensInt32.at(0));
     for (uint64_t i = 1; i < dataSize; i++) {
-        contextLensInt64.at(i) = static_cast<int64_t>(contextLensInt32.at(i)) + contextLensInt64.at(i - 1);
+        if (aclnnParam_.inputLayoutStr == "TND") {
+            contextLensInt64.at(i) = static_cast<int64_t>(contextLensInt32.at(i)) + contextLensInt64.at(i - 1);
+        } else {
+            contextLensInt64.at(i) = static_cast<int64_t>(contextLensInt32.at(i));
+        }
     }
     actualSeqLengths_ = aclCreateIntArray(contextLensInt64.data(), dataSize);
     if (actualSeqLengths_) {

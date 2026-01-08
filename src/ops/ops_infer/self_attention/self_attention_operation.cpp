@@ -1101,8 +1101,9 @@ bool SelfAttentionOperation::InferShapeInTensorDimCheckImpl(
         ATB_LOG(ERROR) << GetLogPrefix() << "The kvHeadNum does not match, please check.";
         return false;
     }
-    if (param_.maskType != atb::infer::SelfAttentionParam::MASK_TYPE_UNDEFINED && inTensorDesc[3].shape.dimNum == 3) {
-        if (inTensorDesc[3].shape.dims[0] != inTensorDesc[4].shape.dims[0]) {
+    if (param_.maskType == atb::infer::SelfAttentionParam::MASK_TYPE_NORM ||
+        param_.maskType == atb::infer::SelfAttentionParam::MASK_TYPE_NORM_COMPRESS) {
+        if (inTensorDesc[3].shape.dimNum == 3 && inTensorDesc[3].shape.dims[0] != inTensorDesc[4].shape.dims[0]) {
             ATB_LOG(ERROR) << GetLogPrefix() << "The batch does not match, please check.";
             return false;
         }
