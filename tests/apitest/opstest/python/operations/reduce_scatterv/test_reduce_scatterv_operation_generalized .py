@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2024 Huawei Technologies Co., Ltd.
+# Copyright (c) 2025 Huawei Technologies Co., Ltd.
 # This program is free software, you can redistribute it and/or modify it under the terms and conditions of
 # CANN Open Software License Agreement Version 2.0 (the "License").
 # Please refer to the License for details. You may not use this file except in compliance with the License.
@@ -16,7 +16,6 @@ import socket
 import random
 import threading
 from time import sleep
-import numpy as np
 import torch
 import torch_npu
 import torch.distributed as dist
@@ -24,7 +23,7 @@ import torch.multiprocessing as mp
 from multiprocessing import Process, set_start_method
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
-import tests.high_level_test.operation_test as operation_test  # NOQA: E402
+import operation_test
 import itertools
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "../../"))
@@ -43,46 +42,33 @@ LIB_PATH = os.path.join(ATB_HOME_PATH, "lib/libatb.so")
 torch.classes.load_library(LIBTORCH_PATH)
 
 
-def main_worker(rank, world_size, random_seed, recvout, inTensors, inTensorDtype,sendcount, senddisp,
-                reduceType, intensorOperation,low,high):
-        # init process group
+def main_worker(rank, world_size, reduceType, inTensors, sendCounts, sdispls, recvCount, y):
         torch_npu.npu.set_device(rank)
         print(f'Process {rank} started, using device npu:{rank}.')
-        # init reduce_scatterv_operation
-        op_name = "ReduceScatterVOperation"
-        reduce_scatterv_operation = torch.classes.OperationTorch.OperationTorch(
-            "ReduceScatterVOperation")
-        torch.manual_seed(random_seed)
-        # y用来推导outputshape，recvout[rank]为几长度就为几
-        y = ((high - low) * torch.rand(recvout[rank]) + low).type(torch.float16)
-        # print("y",y)
-        gold_outtensor = []
-        # 计算goldTensor,获取到发送的值
-        for j in range(len(recvout)):
-            gold_outtensor.append((intensorOperation.flatten()[senddisp[j][j]:sendcount[j][j] + senddisp[j][j]]))
-        # print("gold_outtensor",gold_outtensor)
-        # 将goldtensor转化为（recvout[rank]*dim[1]）的二维数组
-        GoldenTensors=(torch.cat((gold_outtensor[rank], torch.zeros((recvout[rank] * len(inTensors[rank][0]) - len(gold_outtensor[rank])), dtype=inTensorDtype)),dim=0)).reshape(recvout[rank], len(inTensors[rank][0]))
-        # print("GoldenTensors",GoldenTensors)
-        acl_param = json.dumps({"rank": rank, "rankSize": world_size, "sendCounts": sendcount[rank],
-                                "sdispls": senddisp[rank], "recvCount": recvout[rank], "rankRoot": 0, "backend": "hccl",
-                                "reduceType": reduceType})
-        run_param = json.dumps({"sendCounts": sendcount[rank], "sdispls": senddisp[rank], "recvCount": recvout[rank]})
-        host_list = [sendcount[rank], senddisp[rank], [recvout[rank]]]
-        host_tensors = [np.array(tensor) for tensor in host_list]
-        host_tensors = [torch.from_numpy(tensor).to(torch.int64) for tensor in host_tensors]
-        host_tensors = [tensor.npu() for tensor in host_tensors]
+        reduce_scatterv_operation = torch.classes.OperationTorch.OperationTorch("ReduceScatterVOperation")
+        acl_param = json.dumps({"rank": rank, "rankSize": world_size, "rankRoot": 0, "backend": "hccl", "reduceType": reduceType,
+                                "sendCounts": sendCounts, "sdispls": sdispls, "recvCount": recvCount[rank][0]})
+        run_param = json.dumps({"sendCounts": sendCounts, "sdispls": sdispls, "recvCount": recvCount[rank][0]})
         reduce_scatterv_operation.set_param(acl_param)
         reduce_scatterv_operation.set_varaintpack_param(run_param)
-        acl_out_tensor = reduce_scatterv_operation.execute(
-            [inTensors[rank].npu(), host_tensors[0], host_tensors[1], host_tensors[2], y.npu()])[0]
-        flat_tensor = acl_out_tensor.flatten()
-        flat_tensor[recvout[rank]:] = torch.tensor(0, dtype=inTensorDtype)
-        acl_out_tensor = flat_tensor.reshape(acl_out_tensor.shape)
-        # print("acl_out_tensor",acl_out_tensor)
+        acl_out_tensor = reduce_scatterv_operation.execute([inTensors[rank].npu(), torch.tensor(sendCounts).npu(), torch.tensor(sdispls).npu(), torch.tensor(recvCount[rank]).npu(), y[rank].npu()])[0]
         torch.npu.synchronize()
-        # assert result
-        assert golden_compare(acl_out_tensor.cpu(), GoldenTensors)
+
+        result = inTensors[0].clone()
+        if reduceType == 'sum':
+            for i in range(1, len(inTensors)):
+                result += inTensors[i]
+
+        elif reduceType == 'max':
+            for i in range(1,len(inTensors)):
+                result = torch.max(result,inTensors[i])
+
+        elif reduceType == "min":
+            for i in range(1,len(inTensors)):
+                result = torch.min(result,inTensors[i])
+
+        gold_outtensor = result.narrow(0, sdispls[rank] // inTensors[0].shape[1], sendCounts[rank] // inTensors[0].shape[1])
+        assert golden_compare(acl_out_tensor.cpu(), gold_outtensor)
 
 
 def golden_compare(out_tensor, golden_out_tensor, rtol=0.001, atol=0.001):
@@ -106,63 +92,58 @@ def log(out_tensor, golden_out_tensor, filename):
 
 class reduce_scatterv_operationTest(operation_test.OperationTest):
     def test_reduce_scatterv_operation(self):
-        # 指定维度和shape
-        shapes = [32, 64, 128, 256, 512, 1024]
-        dims = list(itertools.combinations(shapes, 2))
+        if not operation_test.get_soc_version() == 'Ascend910B':
+            print("this testcase only supports Ascend910B")
+            return
+        # 指定shape
+        shape = [13107, 256, 1]
+        dims = list(itertools.combinations(shape, 2))
         # 指定卡数
-        world_sizes = [2]
+        world_sizes = [8]
         # 指定reduceType
         reduceTypes = ['max', 'min', 'sum']
-        # reduceTypes=['sum']
-        low = -100
-        high = 100
+        low = 1
+        high = 17
         # 指定intensor数据格式
-        inTensorDtypes = [torch.int8, torch.float16]
-        # inTensorDtypes=[torch.int8]
-        for dim in dims:
-            for world_size in world_sizes:
-                for reduceType in reduceTypes:
-                    for inTensorDtype in inTensorDtypes:
-                            print(
-                                "-----------------------------------------------" + f"dim:{dim},world_size:{world_size},reduceType:{reduceType},inTensorDtype:{inTensorDtype}")
-                            # 生成param recvout、sendcount、senddisp
-                            recvout = np.random.randint(1, 8, size=[world_size]).tolist()
-                            print("recvout", recvout)
-                            sendcount = [recvout] * world_size
-                            print("sendcount", sendcount)
-                            senddisp = np.zeros([world_size, world_size]).tolist()
-                            for i in range(len(sendcount)):
-                                for j in range(len(sendcount[i])):
-                                    if j == 0:
-                                        senddisp[i][j] = 0
-                                    else:
-                                        senddisp[i][j] = sendcount[i][j - 1] + senddisp[i][j - 1]
-                            print("senddisp", senddisp)
+        inTensorDtypes = [torch.int8, torch.float16, torch.bfloat16]
+        
+        for reduceType in reduceTypes:
+            for inTensorDtype in inTensorDtypes:
+                for world_size in world_sizes:
+                    for dim in dims:
+                        print("-----------------------------------------------" + f"reduceType:{reduceType}, inTensorDtype:{inTensorDtype}, world_size:{world_size}, dim:{dim}")
+                        if dim[0] >= world_size:
                             # 生成inTensors
+                            inTensor = torch.randint(low, high, dim, dtype=inTensorDtype)
                             inTensors = []
+                            for _ in range(world_size):
+                                inTensors.append(inTensor)
+                            # 生成sendCounts
+                            sendCounts = [dim[0] // world_size * dim[1]] * world_size
+                            sendCounts[0] += dim[0] % world_size * dim[1]
+                            # 生成sdispls
+                            sdispls = [0] * world_size
+                            for i in range(1, world_size):
+                                sdispls[i] = sdispls[i - 1] + sendCounts[i - 1]
+                            # 生成recvCount
+                            recvCount = [[sendCounts[i]] for i in range(world_size)]
+                            # 生成y
+                            y = []
                             for i in range(world_size):
-                                inTensors.append(((high - low) * torch.rand(dim) + low).type(inTensorDtype))
-                            # print("inTensors",inTensors)
-                            # 根据reducetype进行计算，获取到计算后的outtensor(intensorOperation)
-                            if reduceType == 'sum':
-                                    intensorOperation =torch.sum(torch.stack(inTensors),dim=0)[0].to(inTensorDtype)
-                            elif reduceType == 'max':
-                                    intensorOperation =torch.max(torch.stack(inTensors),dim=0)[0]
-                            elif reduceType == "min":
-                                intensorOperation =torch.min(torch.stack(inTensors),dim=0)[0]
-                            # print("intensorOperation",intensorOperation)
-                            random_seed = 123
+                                y.append(((high - low) * torch.rand(sendCounts[i] // dim[1]) + low).type(torch.float16))
+
+                            print("sendCounts: \n", sendCounts)
+                            print("sdispls: \n", sdispls)
+                            print("recvCount: \n", recvCount)
+                            print("y: \n", y)
                             set_start_method('spawn', force=True)
                             process_list = []
                             for i in range(world_size):
-                                p = Process(target=main_worker, args=(
-                                    i, world_size, random_seed, recvout, inTensors, inTensorDtype,sendcount,
-                                    senddisp,
-                                    reduceType, intensorOperation,low,high))
+                                p = Process(target=main_worker, args=(i, world_size, reduceType, inTensors, sendCounts, sdispls, recvCount, y))
                                 p.start()
                                 process_list.append(p)
 
-                            for i in process_list:
+                            for _ in process_list:
                                 p.join()
 
 

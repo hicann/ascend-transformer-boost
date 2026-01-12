@@ -1507,10 +1507,10 @@ class ReduceScatterOperation(DataGen):
         json_data = json.loads(op_params)
         rank = json_data['rank']
         rankSize = json_data['rankSize']
-        low = float(data_gen_ranges.split(',')[0])
-        high = float(data_gen_ranges.split(',')[1])
+        low = 1
+        high = 17
         ReduceScatterOperation.intensors = []
-        intensor_cpu = ((high - low) * torch.rand(shape) + low).type(dtype_dict[datatype])
+        intensor_cpu = torch.randint(low, high, shape, dtype=dtype_dict[datatype])
         for _ in range(rankSize):
             ReduceScatterOperation.intensors.append(intensor_cpu)
         intensor_npu = ReduceScatterOperation.intensors[rank].clone().npu()
@@ -1576,6 +1576,10 @@ class ReduceScatterOperation(DataGen):
 
     @staticmethod
     def get_op_type(op_params):
+        json_data = json.loads(op_params)
+        reduceType = json_data['reduceType']
+        if reduceType == "sum" or reduceType == "prod":
+            return OpTypes.CV_FUSION
         return OpTypes.MOVE
 
 class AllToAllVOperation(DataGen):
