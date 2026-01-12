@@ -1476,6 +1476,107 @@ class AllReduceOperation(DataGen):
             return OpTypes.COMPUTE_QUANT
         return OpTypes.COMPUTE_FLOAT
 
+class ReduceScatterVOperation(DataGen):
+    @staticmethod
+    def random(shape, datatype, format, data_gen_ranges, op_params):
+        random_seed = 0
+        torch.manual_seed(random_seed)
+        json_data = json.loads(op_params)
+        rank = json_data['rank']
+        rankSize = json_data['rankSize']
+        low = 1
+        high = 17
+        ReduceScatterVOperation.intensors = []
+        intensor_cpu = torch.randint(low, high, shape, dtype=dtype_dict[datatype])
+        for _ in range(rankSize):
+            ReduceScatterVOperation.intensors.append(intensor_cpu)
+        intensor_npu = ReduceScatterVOperation.intensors[rank].clone().npu()
+        return torch_npu.npu_format_cast(intensor_npu, format_dict[format])
+    
+    @staticmethod
+    def customize(shapes, i, datatype, format, data_gen_ranges, op_params) -> torch.Tensor:
+        json_data = json.loads(op_params)
+        rank = json_data['rank']
+        rankSize = json_data['rankSize']
+        if i == 1:
+            return torch.full(shapes[i], torch.numel(ReduceScatterVOperation.intensors[0]) // rankSize, dtype=torch.int64).npu()
+        elif i == 2:
+            if len(shapes[i]) != 1 or shapes[i][0] != rankSize:
+                return torch.full(shapes[i], torch.numel(ReduceScatterVOperation.intensors[0]), dtype=torch.int64).npu()
+            return torch.numel(ReduceScatterVOperation.intensors[0]) // rankSize * torch.arange(rankSize, dtype=torch.int64).npu()
+        elif i == 3:
+            return torch.full(shapes[i], torch.numel(ReduceScatterVOperation.intensors[0]) // rankSize, dtype=torch.int64).npu()
+        elif i == 4:
+            return torch.full(shapes[i], 0, dtype=torch.float16).npu()
+        else:
+            raise ValueError("Index Error")
+        
+    @staticmethod
+    def case_preprocess(op_params, operation, input_tensor_list):
+        host_tensor_dict = {}
+        host_tensor_dict["sendCounts"] = input_tensor_list[1].tolist()
+        host_tensor_dict["sdispls"] = input_tensor_list[2].tolist()
+        host_tensor_dict["recvCount"] = input_tensor_list[3].tolist()[0]
+        
+        run_param = json.dumps(host_tensor_dict)
+        operation.set_varaintpack_param(run_param)
+    
+    @staticmethod
+    def load_tensor_from_file(intensor_file, i, op_params) -> torch.Tensor:
+        bin = TensorBinFile(intensor_file)
+        intensor_npu = bin.get_tensor()
+        ReduceScatterVOperation.intensors = []
+        json_data = json.loads(op_params)
+        rankSize = json_data['rankSize']
+        for i in range(rankSize):
+            ReduceScatterVOperation.intensors.append(intensor_npu.cpu())
+        return intensor_npu
+
+    def sum_cal(inTensors,rank,rankSize):
+        result = inTensors[0].clone()
+        for i in range(1, len(inTensors)):
+            result += inTensors[i]
+        chunks = torch.split(result,int(inTensors[0].shape[0]/rankSize))
+        return [chunks[rank]]
+
+    def max_cal(inTensors,rank,rankSize):
+        result = inTensors[0]
+        for i in range(1,len(inTensors)):
+            result = torch.max(result,inTensors[i])
+        chunks = torch.split(result,int(inTensors[0].shape[0]/rankSize))
+        return [chunks[rank]]
+
+    def min_cal(inTensors,rank,rankSize):
+        result = inTensors[0]
+        for i in range(1,len(inTensors)):
+            result = torch.min(result,inTensors[i])
+        chunks = torch.split(result,int(inTensors[0].shape[0]/rankSize))
+        return [chunks[rank]]
+
+    @staticmethod
+    def golden(in_tensors, op_params):
+        json_data = json.loads(op_params)
+        rank = json_data['rank']
+        rankSize = json_data['rankSize']
+        reduceType = json_data['reduceType']
+        backend = json_data['backend']
+        logging.debug("backend: %s, reduceType: %s", backend, reduceType)
+
+        if reduceType == "sum":
+           return ReduceScatterVOperation.sum_cal(ReduceScatterVOperation.intensors,rank,rankSize)
+        elif reduceType == "max":
+            return ReduceScatterVOperation.max_cal(ReduceScatterVOperation.intensors,rank,rankSize)
+        elif reduceType == "min":
+            return ReduceScatterVOperation.min_cal(ReduceScatterVOperation.intensors,rank,rankSize)
+
+    @staticmethod
+    def get_op_type(op_params):
+        json_data = json.loads(op_params)
+        reduceType = json_data['reduceType']
+        if reduceType == "sum":
+            return OpTypes.CV_FUSION
+        return OpTypes.MOVE
+
 class ReduceScatterOperation(DataGen):
     @staticmethod
     def random(shape, datatype, format, data_gen_ranges, op_params):
@@ -1707,6 +1808,51 @@ class AllGatherVOperation(DataGen):
             AllGatherVOperation.intensors.append(intensor)
         intensor = AllGatherVOperation.intensors[rank].clone().npu()
         return torch_npu.npu_format_cast(intensor, format_dict[format])
+    
+    @staticmethod
+    def customize(shapes, i, datatype, format, data_gen_ranges, op_params) -> torch.Tensor:
+        json_data = json.loads(op_params)
+        rankSize = json_data['rankSize']
+        if i == 1:
+            return torch.full(shapes[i], torch.numel(AllGatherVOperation.intensors[0]), dtype=torch.int64).npu()
+        elif i == 2:
+            return torch.full(shapes[i], torch.numel(AllGatherVOperation.intensors[0]), dtype=torch.int64).npu()
+        elif i == 3:
+            if len(shapes[i]) != 1 or shapes[i][0] != rankSize:
+                return torch.full(shapes[i], torch.numel(AllGatherVOperation.intensors[0]), dtype=torch.int64).npu()
+            return torch.numel(AllGatherVOperation.intensors[0]) * torch.arange(rankSize, dtype=torch.int64).npu()
+        elif i == 4:
+            return torch.full(shapes[i], 0, dtype=torch.float16).npu()
+        else:
+            raise ValueError("Index Error")
+
+    @staticmethod
+    def case_preprocess(op_params, operation, input_tensor_list):
+        os.environ["HCCL_DETERMINISTIC"]="true"
+
+        host_tensor_dict = {}
+        host_tensor_dict["sendCount"] = input_tensor_list[1].tolist()[0]
+        host_tensor_dict["recvCounts"] = input_tensor_list[2].tolist()
+        host_tensor_dict["rdispls"] = input_tensor_list[3].tolist()
+
+        run_param = json.dumps(host_tensor_dict)
+        operation.set_varaintpack_param(run_param)
+
+    @staticmethod
+    def load_tensor_from_file(intensor_file, i, op_params) -> torch.Tensor:
+        bin = TensorBinFile(intensor_file)
+        intensor_npu = bin.get_tensor()
+        AllGatherVOperation.intensors = []
+        json_data = json.loads(op_params)
+        rankSize = json_data['rankSize']
+        for i in range(rankSize):
+            AllGatherVOperation.intensors.append(intensor_npu.cpu())
+        return intensor_npu
+
+    @staticmethod
+    def golden(in_tensors, op_params):
+        golden_result = torch.cat(AllGatherVOperation.intensors, dim=0)
+        return [golden_result.cpu()]
 
     @staticmethod
     def get_op_type(op_params):
