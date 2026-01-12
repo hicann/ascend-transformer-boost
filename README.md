@@ -3,7 +3,7 @@
 🔥 [2025/09] Ascend Transformer Boost项目首次上线。
 ## 一、什么是ATB
 ### ATB介绍
-Ascend Transformer Boost（下文简称为ATB加速库）加速库是一款高效、可靠的加速库，基于华为Ascend AI处理器，专门为Transformer模型的训练和推理而设计。  
+Ascend Transformer Boost加速库（下文简称为ATB加速库）是一款高效、可靠的加速库，基于华为Ascend AI处理器，专门为Transformer模型的训练和推理而设计。  
 ### 软件架构
 ![架构图](docs/images/架构图.png)  
 ATB的架构图如上图所示，其接口功能主要分成三部分：
@@ -64,8 +64,8 @@ ATB 版本提供双向兼容能力，向前向后兼容一年内的版本。
 离线安装时，请单击[获取链接](https://www.hiascend.com/developer/download/community/result?module=cann)下载CANN软件包，并上传到安装环境任意路径。
 #### 安装CANN
 ```shell
-chmod +x Ascend-cann-toolkit_8.2.RC1_linux-$(arch).run
-./Ascend-cann-toolkit_8.2.RC1_linux-$(arch).run --install
+chmod +x Ascend-cann-toolkit_${VERSION}_linux-$(arch).run  # 其中${VERSION}表示对应的CANN版本，如8.2.RC1
+./Ascend-cann-toolkit_${VERSION}_linux-$(arch).run --install
 ```
 #### 安装后配置
 配置环境变量脚本set_env.sh，当前安装路径以${HOME}/Ascend为例。
@@ -76,6 +76,13 @@ source ${HOME}/Ascend/ascend-toolkit/set_env.sh
 ```sh
 pip3 install attrs cython 'numpy>=1.19.2,<=1.24.0' decorator sympy cffi pyyaml pathlib2 psutil protobuf==3.20.0 scipy requests absl-py --user
 ```
+#### 安装Kernels算子包
+安装前需已安装配套版本的Toolkit并配置环境变量
+```shell
+chmod +x Ascend-cann-kernels-${VERSION}_linux-$(arch).run  #安装Kernels算子包
+./Ascend-cann-kernels-${VERSION}_linux-$(arch).run --install
+```  
+
 ### CANN详细安装指南 
 开发者可访问[昇腾文档-昇腾社区](https://www.hiascend.com/document)->CANN社区版->软件安装，查看CANN软件安装引导，根据机器环境、操作系统和业务场景选择后阅读详细安装步骤。
 
@@ -139,6 +146,11 @@ y = torch.randn(2, 3, dtype=torch.float16).npu()
 outputs = op.forward([x, y]) 
 torch.npu.synchronize()
 ```
+如需查看调用结果，可以打印第一个输出：
+```Python
+result=outputs[0].cpu().numpy()
+print(result)
+```
 
 代码编写指导可访问[算子使用指导（ATB Python API）-昇腾社区](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/850alpha001/acce/ascendtb/ascendtb_0077.html)。
 
@@ -193,7 +205,12 @@ CHECK_STATUS(aclrtDestroyStream(stream));
 CHECK_STATUS(DestroyContext(context)); // context，全局资源，后释放
 CHECK_STATUS(aclFinalize());
 ```
-文件编译说明：进入`example/op_demo/faupdate`，执行`bash build.sh`完成编译和执行。  
+文件编译说明：进入`example/op_demo/faupdate`，执行`bash build.sh`完成编译和执行。
+
+出现以下提示即为成功：
+```sh
+faupdate demo success!
+```  
 代码编写指导：可访问[单算子-昇腾社区](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/850alpha001/acce/ascendtb/ascendtb_0046.html)。
 
 #### 样例安全声明
@@ -202,9 +219,10 @@ CHECK_STATUS(aclFinalize());
 ATB不推荐用户直接将样例作为业务代码，也不保证此种做法的安全性。若用户将`example`中的示例代码应用在自身的真实业务场景中且发生了安全问题，则由用户自行承担。
 
 ### 日志和环境变量说明
+- 加速库日志请参考
+  **[日志与调试](https://gitcode.com/cann/ascend-transformer-boost/blob/master/docs/%E6%97%A5%E5%BF%97%E4%B8%8E%E8%B0%83%E8%AF%95.md)**；
 - 加速库日志现在已经部分适配CANN日志，环境变量说明请参考
   **[CANN社区版文档/环境变量参考](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/83RC1alpha002/maintenref/envvar/envref_07_0119.html)**；
-- ASCEND_MODULE_LOG_LEVEL请使用OP设置加速库。
 
 ## 四、自定义算子开发
 您可参考以下文档进行自定义算子的开发：
