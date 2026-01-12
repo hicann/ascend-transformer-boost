@@ -12,6 +12,7 @@
 #include "atb/utils/config.h"
 #include "all_gatherv_hccl_runner.h"
 #include "atb/utils/tensor_check.h"
+#include "atb/utils/tensor_util.h"
 #include "atb/utils/operation_util.h"
 #include "atb/utils/log.h"
 #include "atb/utils/param_to_json.h"
@@ -20,10 +21,16 @@
 #include "atb/operation/op_param_funcs.h"
 
 namespace {
+static const int NUM_2 = 2;
+
 bool ParamCheck(const atb::infer::AllGatherVParam &opParam)
 {
     if (opParam.backend != "hccl") {
         ATB_LOG(ERROR) << "backend is " << opParam.backend << "backend must be hccl";
+        return false;
+    }
+    if (opParam.rankSize < NUM_2) {
+        ATB_LOG(ERROR) << "AllGatherV ranksize must be larger than 1, current ranksize: " << opParam.rankSize;
         return false;
     }
     if (atb::OperationUtil::DistributedInitCheck<atb::infer::AllGatherVParam>(opParam) != atb::NO_ERROR) {
@@ -36,14 +43,27 @@ bool ParamCheck(const atb::infer::AllGatherVParam &opParam)
 
 namespace atb {
 
-static const int32_t IN_TENSOR_NUM = 5;
-static const int32_t OUT_TENSOR_NUM = 1;
+static const uint32_t IN_TENSOR_NUM = 5;
+static const uint32_t OUT_TENSOR_NUM = 1;
+
+static const uint32_t IN_TENSOR_0 = 0;
+static const uint32_t IN_TENSOR_1 = 1;
+static const uint32_t IN_TENSOR_2 = 2;
+static const uint32_t IN_TENSOR_3 = 3;
+static const uint32_t IN_TENSOR_4 = 4;
+
+static const uint32_t OUT_TENSOR_0 = 0;
+
+static const uint32_t DIM_0 = 0;
+static const uint32_t DIM_1 = 1;
+
+static const uint32_t DIM_NUM_1 = 1;
+static const uint32_t DIM_NUM_2 = 2;
 
 OPERATION_PARAM_FUNCS(AllGatherVOperation, infer::AllGatherVParam)
 
 AllGatherVOperation::AllGatherVOperation(const infer::AllGatherVParam &param)
-    : OperationBase("AllGatherVOperation"),
-      param_(param)
+    : OperationBase("AllGatherVOperation"), param_(param)
 {
     operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("AllGatherVOperation");
 }
@@ -63,25 +83,38 @@ uint32_t AllGatherVOperation::GetOutputNum() const
 Status AllGatherVOperation::InferShapeImpl(const SVector<TensorDesc> &inTensorDescs,
                                            SVector<TensorDesc> &outTensorDescs) const
 {
-    outTensorDescs.at(0) = inTensorDescs.at(0);
-    outTensorDescs.at(0).shape.dimNum = inTensorDescs.at(0).shape.dimNum;
-    outTensorDescs.at(0).shape.dims[0] =  inTensorDescs.at(4).shape.dims[0]; // 4: y
-    for (uint64_t i = 1; i < inTensorDescs.at(0).shape.dimNum; ++i) {
-        // 将输入张量的尺寸赋值给输出张量对应的尺寸
-        outTensorDescs.at(0).shape.dims[i] = inTensorDescs.at(0).shape.dims[i];
-    }
+    outTensorDescs.at(OUT_TENSOR_0) = inTensorDescs.at(IN_TENSOR_0);
+    outTensorDescs.at(OUT_TENSOR_0).shape.dims[DIM_0] = inTensorDescs.at(IN_TENSOR_4).shape.dims[DIM_0];
     return NO_ERROR;
 }
 
 Status AllGatherVOperation::InferShapeCheckImpl(const SVector<TensorDesc> &inTensorDescs) const
 {
     if (atb::GetSingleton<atb::Config>().Is310P()) {
-        if (inTensorDescs.at(0).dtype == ACL_BF16) {
-            ATB_LOG(ERROR) << "310P not support bfloat16";
-            return ERROR_INVALID_PARAM;
+        if (inTensorDescs.at(IN_TENSOR_0).dtype == ACL_BF16) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "310P not support bfloat16";
+            return ERROR_INVALID_TENSOR_INI_MATCH;
         }
     }
-
+    if (inTensorDescs.at(IN_TENSOR_1).shape.dimNum != DIM_NUM_1 ||
+        inTensorDescs.at(IN_TENSOR_2).shape.dimNum != DIM_NUM_1 ||
+        inTensorDescs.at(IN_TENSOR_3).shape.dimNum != DIM_NUM_1 ||
+        inTensorDescs.at(IN_TENSOR_4).shape.dimNum != DIM_NUM_1) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "invalid inTensor dimNum";
+        return ERROR_INVALID_TENSOR_DIM_NUM;
+    }
+    if (inTensorDescs.at(IN_TENSOR_1).shape.dims[DIM_0] != 1) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "sendCount length must be equal to 1";
+        return ERROR_INVALID_TENSOR_DIM;
+    }
+    if (inTensorDescs.at(IN_TENSOR_2).shape.dims[DIM_0] != param_.rankSize) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "recvCounts length must be equal to ranksize";
+        return ERROR_INVALID_TENSOR_DIM;
+    }
+    if (inTensorDescs.at(IN_TENSOR_3).shape.dims[DIM_0] != param_.rankSize) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "rdispls length must be equal to ranksize";
+        return ERROR_INVALID_TENSOR_DIM;
+    }
     return NO_ERROR;
 }
 
@@ -97,13 +130,41 @@ int64_t CalculateTensorSize(const SVector<Tensor> &tensors)
 
 Status AllGatherVOperation::SetupCheckImpl(const SVector<Tensor> &inTensors, const SVector<Tensor> &outTensors) const
 {
+    SVector<TensorDesc> inTensorDescs;
+    for (size_t i = 0; i < inTensors.size(); ++i) {
+        inTensorDescs.push_back(inTensors.at(i).desc);
+    }
+    SVector<TensorDesc> outTensorDescs;
+    for (size_t i = 0; i < outTensors.size(); ++i) {
+        outTensorDescs.push_back(outTensors.at(i).desc);
+    }
+    if (atb::GetSingleton<atb::Config>().Is310P()) {
+        if (outTensorDescs.at(IN_TENSOR_0).dtype == ACL_BF16) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "310P not support bfloat16";
+            return ERROR_INVALID_TENSOR_INI_MATCH;
+        }
+    }
+    Status st = InferShapeCheckImpl(inTensorDescs);
+    if (st != NO_ERROR) {
+        return st;
+    }
+    if (outTensors.at(OUT_TENSOR_0).desc.shape.dimNum != inTensors.at(IN_TENSOR_0).desc.shape.dimNum) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "outTensor0 dimNum does must equal to inTensor0 dimNum";
+        return ERROR_INVALID_TENSOR_DIM_NUM;
+    }
+    Dims expectShape = inTensors.at(IN_TENSOR_0).desc.shape;
+    expectShape.dims[DIM_0] = inTensors.at(IN_TENSOR_4).desc.shape.dims[DIM_0];
+    if (!TensorUtil::TensorShapeEqual(outTensors.at(OUT_TENSOR_0).desc.shape, expectShape)) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "invalid outTensor0 shape";
+        return ERROR_INVALID_TENSOR_DIM;
+    }
     int64_t count = 0;
     int64_t* recvCounts = static_cast<int64_t*>(inTensors[2].hostData);
     int64_t* rdispls = static_cast<int64_t*>(inTensors[3].hostData);
     if (*(static_cast<int64_t *>(inTensors[1].hostData)) > (CalculateTensorSize(inTensors))) {
         ATB_LOG(ERROR) << "sendcount should be less than intensor total data length";
         return ERROR_INVALID_TENSOR_DIM;
-        }
+    }
     if ((param_.rankSize != inTensors.at(2).desc.shape.dims[0]) || // 2: recvcount
         (param_.rankSize != inTensors.at(3).desc.shape.dims[0])) { // 3: rdispls
         ATB_LOG(ERROR) << "recvcounts or recvdis length must be equal to ranksize";
@@ -172,4 +233,4 @@ nlohmann::json AllGatherVOperation::GetParamJson() const
 {
     return OpParamToJson(param_);
 }
-}  // namespace atb
+} // namespace atb
