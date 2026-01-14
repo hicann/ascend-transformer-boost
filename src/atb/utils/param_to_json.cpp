@@ -423,6 +423,7 @@ template <> nlohmann::json OpParamToJson(const infer::RmsNormParam &opParam)
     normParamJson["rstd"] = opParam.normParam.rstd;
     normParamJson["precisionMode"] = opParam.normParam.precisionMode;
     normParamJson["modelType"] = opParam.normParam.modelType;
+    normParamJson["dynamicQuantType"] = opParam.normParam.dynamicQuantType;
 
     nlohmann::json preNormParamJson;
     preNormParamJson["quantType"] = opParam.preNormParam.quantType;
