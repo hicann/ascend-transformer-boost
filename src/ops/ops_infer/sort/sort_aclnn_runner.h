@@ -41,9 +41,11 @@ private:
     static AclnnCastGetWorkspaceSizeFunc aclnnCastGetWorkspaceSizeFunc_;
     static AclnnCastExecuteFunc aclnnCastExecuteFunc_;
 
-    std::shared_ptr<AclNNTensor> indices_;
+    void CleanUp();
+    aclTensor *indices_;
     uint64_t castworkspacesize_;
-    void* castWorkspaceBuffer_;
+    void* castWorkspaceBuffer_ = nullptr;
+    void* indicesBuffer_ = nullptr;
     std::shared_ptr<aclOpExecutor> aclnnCastExecutor_;
 };
 } // namespace atb
