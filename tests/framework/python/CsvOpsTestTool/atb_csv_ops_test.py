@@ -113,10 +113,10 @@ class CsvOpsTest():
                             self.case_num.loc[case_index], self.case_name.loc[case_index], self.op_name.loc[case_index], args.operation_name)
             logging.info("")
             return False
-        if card_type == 'single_card' and op_name in ['AllGatherOperation', 'AllReduceOperation', 'BroadcastOperation', 'ReduceScatterOperation', 'LinearParallelOperation','AllToAllVOperation', 'AllToAllVV2Operation', 'AllToAllOperation']:
+        if card_type == 'single_card' and op_name in ['AllGatherOperation', 'AllGatherVOperation', 'AllReduceOperation', 'BroadcastOperation', 'ReduceScatterOperation', 'ReduceScatterVOperation', 'LinearParallelOperation','AllToAllVOperation', 'AllToAllVV2Operation', 'AllToAllOperation']:
             return False
         if card_type == 'multi_card':
-            if op_name not in ['AllGatherOperation', 'AllReduceOperation', 'BroadcastOperation', 'ReduceScatterOperation', 'LinearParallelOperation','AllToAllVOperation', 'AllToAllVV2Operation', 'AllToAllOperation']:
+            if op_name not in ['AllGatherOperation', 'AllGatherVOperation', 'AllReduceOperation', 'BroadcastOperation', 'ReduceScatterOperation', 'ReduceScatterVOperation', 'LinearParallelOperation','AllToAllVOperation', 'AllToAllVV2Operation', 'AllToAllOperation']:
                 return False
             elif self.args.world_size != json.loads(self.op_param.loc[case_index])['rankSize']:
                 logging.warning("CaseNum %d, Case %s will not run because args.world_size %s differs from testcase's rank_size %s",
@@ -821,9 +821,9 @@ class CsvOpsResult():
         op_name = data.loc[index, "OpName"].split('_')[0]
         if args.operation_name != '' and not re.search(op_name, args.operation_name, re.I):
             return False
-        if card_type == 'single_card' and op_name in ['AllGatherOperation', 'AllReduceOperation', 'BroadcastOperation', 'ReduceScatterOperation', 'LinearParallelOperation','AllToAllVOperation','AllToAllOperation', 'AllToAllVV2Operation']:
+        if card_type == 'single_card' and op_name in ['AllGatherOperation', 'AllGatherVOperation', 'AllReduceOperation', 'BroadcastOperation', 'ReduceScatterOperation', 'ReduceScatterVOperation', 'LinearParallelOperation','AllToAllVOperation','AllToAllOperation', 'AllToAllVV2Operation']:
             return False
-        if card_type == 'multi_card' and op_name not in ['AllGatherOperation', 'AllReduceOperation', 'BroadcastOperation', 'ReduceScatterOperation', 'LinearParallelOperation','AllToAllVOperation','AllToAllOperation', 'AllToAllVV2Operation']:
+        if card_type == 'multi_card' and op_name not in ['AllGatherOperation', 'AllGatherVOperation', 'AllReduceOperation', 'BroadcastOperation', 'ReduceScatterOperation', 'ReduceScatterVOperation', 'LinearParallelOperation','AllToAllVOperation','AllToAllOperation', 'AllToAllVV2Operation']:
             return False
         if args.test_type != '' and data.loc[index, "TestType"] != args.test_type:
             return False
@@ -982,7 +982,7 @@ class CsvOpsTestUtil:
             return single_card_cases_passed
         with open(input_file) as f:
             content = f.read()
-            if re.search("AllGatherOperation|AllReduceOperation|BroadcastOperation|ReduceScatterOperation|LinearParallelOperation|AllToAllVOperation|AllToAllOperation|AllToAllVV2Operation", content, re.I):
+            if re.search("AllGatherOperation|AllGatherVOperation|AllReduceOperation|BroadcastOperation|ReduceScatterOperation|ReduceScatterVOperation|LinearParallelOperation|AllToAllVOperation|AllToAllOperation|AllToAllVV2Operation", content, re.I):
                 if args.world_size <= 1:
                     args.world_size = 2
                 if soc_version == "Ascend310B":
