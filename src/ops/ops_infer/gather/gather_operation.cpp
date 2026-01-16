@@ -20,10 +20,19 @@
 #include "atb/utils/singleton.h"
 #include "atb/operation/op_param_funcs.h"
 
-namespace atb {
+namespace {
 static const uint32_t IN_TENSOR_COUNT = 2;
 static const uint32_t OUT_TENSOR_COUNT = 1;
 
+static const uint32_t IN_TENSOR_0 = 0;
+static const uint32_t IN_TENSOR_1 = 1;
+
+static const uint32_t OUT_TENSOR_0 = 0;
+
+static const uint32_t DIM_NUM_1 = 1;
+} // namespace
+
+namespace atb {
 template <> Status CreateOperation(const infer::GatherParam &opParam, Operation **operation)
 {
     if (operation == nullptr) {
@@ -110,16 +119,55 @@ Status GatherOperation::InferShapeCheckImpl(const SVector<TensorDesc> &inTensorD
     if (status != NO_ERROR) {
         return status;
     }
+    for (size_t i = 0; i < static_cast<size_t>(param_.batchDims); ++i) {
+        if (indicesTensorDesc.shape.dims[i] != xTensorDesc.shape.dims[i]) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "indicesTensor.dims[" << i <<"] doesn't match xTensor.dims[" << i
+                           << "]";
+            return ERROR_INVALID_TENSOR_DIM;
+        }
+    }
     return NO_ERROR;
 }
 
 Status GatherOperation::SetupCheckImpl(const SVector<Tensor> &inTensors, const SVector<Tensor> &outTensors) const
 {
-    const TensorDesc &xTensorDesc = inTensors.at(0).desc;
-    const TensorDesc &indicesTensorDesc = inTensors.at(1).desc;
-    Status status = ParamCheck(xTensorDesc, indicesTensorDesc);
-    if (status != NO_ERROR) {
-        return status;
+    SVector<TensorDesc> inTensorDescs;
+    for (size_t i = 0; i < inTensors.size(); ++i) {
+        inTensorDescs.push_back(inTensors.at(i).desc);
+    }
+    Status st = InferShapeCheckImpl(inTensorDescs);
+    if (st != NO_ERROR) {
+        return st;
+    }
+    const Dims xTensorShape = inTensors.at(IN_TENSOR_0).desc.shape;
+    const Dims indicesTensorShape = inTensors.at(IN_TENSOR_1).desc.shape;
+    const Dims outputTensorShape = outTensors.at(OUT_TENSOR_0).desc.shape;
+    if (outputTensorShape.dimNum !=
+        xTensorShape.dimNum + indicesTensorShape.dimNum - static_cast<size_t>(param_.batchDims) - DIM_NUM_1) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "invalid outputTensor.dimNum: " << outputTensorShape.dimNum;
+        return ERROR_INVALID_TENSOR_DIM_NUM;
+    }
+    size_t dimIdx = 0;
+    for (size_t i = 0; i < static_cast<size_t>(param_.axis); ++i, ++dimIdx) {
+        if (outputTensorShape.dims[dimIdx] != xTensorShape.dims[i]) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "outputTensor.dims[" << dimIdx <<"] doesn't match xTensor.dims[" << i
+                           << "]";
+            return ERROR_INVALID_TENSOR_DIM;
+        }
+    }
+    for (size_t i = static_cast<size_t>(param_.batchDims); i < indicesTensorShape.dimNum; ++i, ++dimIdx) {
+        if (outputTensorShape.dims[dimIdx] != indicesTensorShape.dims[i]) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "outputTensor.dims[" << dimIdx <<"] doesn't match indicesTensor.dims[" << i
+                           << "]";
+            return ERROR_INVALID_TENSOR_DIM;
+        }
+    }
+    for (size_t i = static_cast<size_t>(param_.axis) + DIM_NUM_1; i < xTensorShape.dimNum; ++i, ++dimIdx) {
+        if (outputTensorShape.dims[dimIdx] != xTensorShape.dims[i]) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "outputTensor.dims[" << dimIdx <<"] doesn't match xTensor.dims[" << i
+                           << "]";
+            return ERROR_INVALID_TENSOR_DIM;
+        }
     }
     ATB_LOG(DEBUG) << "outTensors size:" << outTensors.size();
     return NO_ERROR;
