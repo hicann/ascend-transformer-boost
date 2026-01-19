@@ -103,10 +103,11 @@ chmod +x Ascend-cann-kernels-${VERSION}_linux-$(arch).run  #安装Kernels算子�
     ```
    您可自行选择需要的分支。
  - 环境变量设置  
-    在编译前，需要安装nnal软件包（安装方法请查看[常见问题与回答](docs/常见问题与回答.md#run-package-usage)），并根据nnal安装路径设置环境变量：
+    在编译前，需要安装nnal软件包（安装方法请查看[常见问题与回答](docs/常见问题与回答.md#run-package-usage)），并根据nnal安装路径设置环境变量`ATB_BUILD_DEPENDENCY_PATH`：
     ```sh
-    source {install path}/nnal/atb/set_env.sh
+    export ATB_BUILD_DEPENDENCY_PATH={nnal install path}/nnal/atb/latest/atb/cxx_abi_{cxx_abi_version}
     ```
+    注：未设置将使用默认路径`/usr/local/Ascend/nnal/atb/latest/atb/cxx_abi_{cxx_abi_version}`  
  - 加速库编译  
     编译加速库，设置加速库环境变量：
     ```sh
