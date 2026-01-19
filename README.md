@@ -55,7 +55,7 @@ ascend-transformer-boost
 
 ## 二、环境构建
 ### 版本兼容性说明
-ATB的API保证前后一年的ABI兼容能力，在不涉及新功能的情况下，调用者升级一年内的ATB版本，不会出现兼容问题。
+ATB的API保证前后一年的ABI兼容能力，在不涉及新功能的情况下，调用者升级一年内的ATB版本，不会出现兼容问题。由于CANN出包目录调整，ATB 8.5版本以及主线分支必须匹配8.5或以上版本的toolkit包。
 ### 快速安装CANN软件
 本节提供快速安装CANN软件的示例命令，更多安装步骤请参考[详细安装指南](#cann详细安装指南)。
 
@@ -63,6 +63,7 @@ ATB的API保证前后一年的ABI兼容能力，在不涉及新功能的情况�
 在线安装和离线安装时，需确保已具备Python环境及pip3，当前CANN支持Python3.7.x至3.11.4版本。
 离线安装时，请单击[获取链接](https://www.hiascend.com/developer/download/community/result?module=cann)下载CANN软件包，并上传到安装环境任意路径。
 #### 安装CANN
+由于CANN出包目录调整，ATB 8.5版本以及主线分支必须匹配8.5或以上版本的toolkit包。
 ```shell
 chmod +x Ascend-cann-toolkit_${VERSION}_linux-$(arch).run  # 其中${VERSION}表示对应的CANN版本，如8.2.RC1
 ./Ascend-cann-toolkit_${VERSION}_linux-$(arch).run --install
@@ -76,11 +77,11 @@ source ${HOME}/Ascend/ascend-toolkit/set_env.sh
 ```sh
 pip3 install attrs cython 'numpy>=1.19.2,<=1.24.0' decorator sympy cffi pyyaml pathlib2 psutil protobuf==3.20.0 scipy requests absl-py --user
 ```
-#### 安装Kernels算子包
+#### 安装ops算子包
 安装前需已安装配套版本的Toolkit并配置环境变量
 ```shell
-chmod +x Ascend-cann-kernels-${VERSION}_linux-$(arch).run  #安装Kernels算子包
-./Ascend-cann-kernels-${VERSION}_linux-$(arch).run --install
+chmod +x Ascend-cann-${chip_type}-ops_${VERSION}_linux-$(arch).run  #其中${chip_type}表示昇腾产品类型，如A3
+./Ascend-cann-${chip_type}-ops_${VERSION}_linux-$(arch).run --install
 ```  
 
 ### CANN详细安装指南 
