@@ -116,11 +116,11 @@ Status SortAclnnRunner::BuildAclnnVariantPack(const RunnerVariantPack &runnerVar
 
     atb::SVector<int64_t> strides = GetCopyTensorStride(this->atbVariantPack_.outTensors.at(INDEX_ONE).desc.shape);
     Dims viewDims;
-    for (size_t i = 0; i < MAX_DIM; i++) {
+    
+    viewDims.dimNum = this->atbVariantPack_.outTensors.at(INDEX_ONE).desc.shape.dimNum;
+    for (size_t i = 0; i < viewDims.dimNum; i++) {
         viewDims.dims[i] = this->atbVariantPack_.outTensors.at(INDEX_ONE).desc.shape.dims[i];
     }
-    viewDims.dimNum = this->atbVariantPack_.outTensors.at(INDEX_ONE).desc.shape.dimNum;
-
 
     indices_ = aclCreateTensor(viewDims.dims, viewDims.dimNum, ACL_INT64, strides.data(), 0, 
                         this->atbVariantPack_.outTensors.at(INDEX_ONE).desc.format,
@@ -179,12 +179,6 @@ Status SortAclnnRunner::LaunchAclnnKernel()
         return ERROR_CANN_ERROR;
     }
 
-    ret = aclrtSynchronizeStream(executeStream);
-        if (ret != ACL_SUCCESS) {
-        ATB_LOG(ERROR) << GetLogPrefix() << "aclrtSynchronizeStream failed after aclnnTopK with return value: " << ret;
-        return ERROR_CANN_ERROR;
-    }
-
     
     // indices_->tensor holds the aclnnTopK return in INT64, we need aclnnCast to turn aclnn
     aclOpExecutor *rawCastExecutorPtr = this->aclnnCastExecutor_.get();
@@ -226,7 +220,12 @@ Status SortAclnnRunner::LaunchAclnnKernel()
         ATB_LOG(ERROR) << GetLogPrefix() << "Atb aclnn op kernel launch failed with return value: " << ret;
         return ERROR_CANN_ERROR;
     }
-
+    
+    ret = aclrtSynchronizeStream(executeStream);
+        if (ret != ACL_SUCCESS) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "aclrtSynchronizeStream failed after aclnnCast with return value: " << ret;
+        return ERROR_CANN_ERROR;
+    }
     ATB_LOG(INFO) << GetLogPrefix() << "LaunchAclnnKernel execute success.";
     CleanUp();
     return NO_ERROR;
