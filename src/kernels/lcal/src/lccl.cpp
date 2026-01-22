@@ -182,7 +182,8 @@ uint32_t GetReduceScatterBlockNum(uint32_t rankSize, int64_t dataSize, uint32_t 
     const bool isDbRing = (rankSize == a3SupportRankSize || rankSize == smallRankSize) &&
         (dataSize * smallRankSize > cceSmallDataSize && dataSize * smallRankSize <= a3BigDataSize);
 
-    if ((extraFlag & ExtraFlag::TOPO_910_93) != 0 && (rankSize > smallRankSize || isDbRing)) {
+    if ((extraFlag & ExtraFlag::TOPO_910_93) != 0 &&
+        ((rankSize > smallRankSize && rankSize % twoBlockNum == 0) || isDbRing)) {
         if (isDbRing) {
             return dbRingBlockNum;
         } else {

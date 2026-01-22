@@ -234,7 +234,8 @@ extern "C" __global__ __aicore__ void LcalReduceScatter_##type##suffix(KERNELS_A
     GET_IPC_MEM_ARGS(type); \
     if ((extraFlag & ExtraFlag::TOPO_PCIE) != 0) { \
         LcalReduceScatterBigDataWrite<type>(ALLREDUCE_ARGS_CALL(type)); \
-    } else if ((extraFlag & ExtraFlag::TOPO_910_93) != 0 && (rankSize > smallRankSize || isDbRing)) { \
+    } else if ((extraFlag & ExtraFlag::TOPO_910_93) != 0 && \
+        ((rankSize > smallRankSize && rankSize % quickOneshotRankSize == 0) || isDbRing)) { \
         if (isDbRing) { \
             CLASS_OP_LAUNCH(ReduceScatterHierarchyDoubleRing, type); \
         } else if (len * sizeof(type) <= SMALL_DATA_SIZE) { \
@@ -246,9 +247,9 @@ extern "C" __global__ __aicore__ void LcalReduceScatter_##type##suffix(KERNELS_A
         if (rankSize == quickOneshotRankSize && len * sizeof(type) < SIZE_OF_8M) { \
             LcalReduceScatterWrite<type>(ALLREDUCE_ARGS_CALL(type)); \
         }  else if (rankSize > quickOneshotRankSize && len * sizeof(type) < cceSmallDataSize){ \
-            LcalReduceScatter<type>(ALLREDUCE_ARGS_CALL(type)); \
+            LcalReduceScatter<type>(ALLREDUCE_ARGS_CALL_16P(type)); \
         } else { \
-            LcalReduceScatterBigData<type>(ALLREDUCE_ARGS_CALL(type)); \
+            LcalReduceScatterBigData<type>(ALLREDUCE_ARGS_CALL_16P(type)); \
         } \
     } \
     } \
