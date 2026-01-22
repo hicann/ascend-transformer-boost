@@ -51,14 +51,16 @@ __attribute__((always_inline)) inline __aicore__ void CpInputToBuffAndOutput(__u
 }
 
 template<typename T>
-__attribute__((always_inline)) inline __aicore__ void LcalReduceScatter(ALLREDUCE_ARGS_FUN(T))
+__attribute__((always_inline)) inline __aicore__ void LcalReduceScatter(ALLREDUCE_ARGS_FUN_16P(T))
 {
     DumpLcclLogInfo(dumpAddr, LogId::INIT, static_cast<Op>(op));
     const int64_t dataOffsetNum = GetLcalBlockNum() * 2 * MEM_DMA_UNIT_INT_NUM;
     const int64_t flagOffset1st = MEM_DMA_UNIT_INT_NUM * GetBlockIdx();
-    __gm__ T* buff[8] = {
+    __gm__ T* buff[16] = {
         buff0, buff1, buff2, buff3,
-        buff4, buff5, buff6, buff7
+        buff4, buff5, buff6, buff7,
+        buff8, buff9, buff10, buff11,
+        buff12, buff13, buff14, buff15
     };
     __ubuf__ T* inputUB[2] = {(__ubuf__ T*)(64), (__ubuf__ T*)(98304)};
     __ubuf__ int64_t* ctrlFlagsUB = (__ubuf__ int64_t*)(0);
