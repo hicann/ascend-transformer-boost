@@ -334,10 +334,11 @@ class CsvOpsTest():
     def run_one_case(self, index, times, output_file):
         logging.info("CaseNum " + str(self.case_num.loc[index]) + ", Case " + self.case_name.loc[index] + " times " + str(times) + " start...")
         self.index = index
-        self.create_op_result = self.torch_operation_setup()
-        logging.debug("create_op_result:%s", self.create_op_result)
-        if (not self.get_json_result(self.create_op_result, "C", times)):
-            return
+        if self.file_data.loc[self.index, 'Result'] != 'succ':
+            self.create_op_result = self.torch_operation_setup()
+            logging.debug("create_op_result:%s", self.create_op_result)
+            if (not self.get_json_result(self.create_op_result, "C", times)):
+                return
         self.api_data_reset(output_file)
 
         self.generate_input_tensors()
@@ -359,6 +360,7 @@ class CsvOpsTest():
         eval(case_postprocess_func)(self.op_param_str, self.operation, self.input_tensor_list, self.output_tensor_list)
 
         execute_result = self.operation.execute_sync(self.input_tensor_list, self.output_tensor_list, self.workspace_size)
+        logging.debug("execute_result:%s", execute_result)
         if (not self.get_json_result(execute_result, "E", times)):
             return
         if not self.args.skip_verify:
