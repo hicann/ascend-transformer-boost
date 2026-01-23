@@ -126,6 +126,7 @@ aclnnStatus SliceAclnnRunner::SetAclNNWorkspaceExecutor()
             ATB_LOG(ERROR) << GetLogPrefix() << "destroy aclIntArray steps failed!";
             return ret;
         }
+        stepsArray_ = nullptr;
     }
     if (axesArray_) {
         ret = aclDestroyIntArray(axesArray_);
@@ -133,6 +134,7 @@ aclnnStatus SliceAclnnRunner::SetAclNNWorkspaceExecutor()
             ATB_LOG(ERROR) << GetLogPrefix() << "destroy aclIntArray axes failed!";
             return ret;
         }
+        axesArray_ = nullptr;
     }
     if (startsArray_) {
         ret = aclDestroyIntArray(startsArray_);
@@ -140,6 +142,7 @@ aclnnStatus SliceAclnnRunner::SetAclNNWorkspaceExecutor()
             ATB_LOG(ERROR) << GetLogPrefix() << "destroy aclIntArray starts failed!";
             return ret;
         }
+        startsArray_ = nullptr;
     }
     if (endsArray_) {
         ret = aclDestroyIntArray(endsArray_);
@@ -147,6 +150,7 @@ aclnnStatus SliceAclnnRunner::SetAclNNWorkspaceExecutor()
             ATB_LOG(ERROR) << GetLogPrefix() << "destroy aclIntArray ends failed!";
             return ret;
         }
+        startsArray_ = nullptr;
     }
     stepsArray_ = aclCreateIntArray(steps, dimNum);
     axesArray_ = aclCreateIntArray(axes, dimNum);
@@ -187,6 +191,7 @@ Status SliceAclnnRunner::LaunchAclnnKernel()
             ATB_LOG(ERROR) << GetLogPrefix() << "destroy aclIntArray steps failed!";
             return ERROR_CANN_ERROR;
         }
+        stepsArray_ = nullptr;
     }
     if (axesArray_) {
         ret = aclDestroyIntArray(axesArray_);
@@ -194,6 +199,7 @@ Status SliceAclnnRunner::LaunchAclnnKernel()
             ATB_LOG(ERROR) << GetLogPrefix() << "destroy aclIntArray axes failed!";
             return ERROR_CANN_ERROR;
         }
+        axesArray_ = nullptr;
     }
     if (startsArray_) {
         ret = aclDestroyIntArray(startsArray_);
@@ -201,6 +207,7 @@ Status SliceAclnnRunner::LaunchAclnnKernel()
             ATB_LOG(ERROR) << GetLogPrefix() << "destroy aclIntArray starts failed!";
             return ERROR_CANN_ERROR;
         }
+        startsArray_ = nullptr;
     }
     if (endsArray_) {
         ret = aclDestroyIntArray(endsArray_);
@@ -208,6 +215,7 @@ Status SliceAclnnRunner::LaunchAclnnKernel()
             ATB_LOG(ERROR) << GetLogPrefix() << "destroy aclIntArray ends failed!";
             return ERROR_CANN_ERROR;
         }
+        endsArray_ = nullptr;
     }
     return NO_ERROR;
 }
