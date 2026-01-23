@@ -221,13 +221,7 @@ Status SortAclnnRunner::LaunchAclnnKernel()
         return ERROR_CANN_ERROR;
     }
     
-    ret = aclrtSynchronizeStream(executeStream);
-        if (ret != ACL_SUCCESS) {
-        ATB_LOG(ERROR) << GetLogPrefix() << "aclrtSynchronizeStream failed after aclnnCast with return value: " << ret;
-        return ERROR_CANN_ERROR;
-    }
     ATB_LOG(INFO) << GetLogPrefix() << "LaunchAclnnKernel execute success.";
-    CleanUp();
     return NO_ERROR;
 }
 
