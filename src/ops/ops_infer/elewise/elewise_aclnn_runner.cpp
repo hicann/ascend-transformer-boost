@@ -88,21 +88,35 @@ ElewiseAclnnRunner::ElewiseAclnnRunner(const infer::ElewiseParam &param)
 }
 
 ElewiseAclnnRunner::~ElewiseAclnnRunner() {
-    aclnnStatus ret = aclDestroyTensor(scaleTensor_);
-    if (ret != ACL_SUCCESS) {
-        ATB_LOG(ERROR) << GetLogPrefix() << "destroy scale tensor ERROR: " << ret;
+    aclnnStatus ret = ACL_SUCCESS;
+    if (scaleTensor_ != nullptr) {
+        ret = aclDestroyTensor(scaleTensor_);
+        if (ret != ACL_SUCCESS) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "destroy scale tensor ERROR: " << ret;
+        }
+        scaleTensor_ = nullptr;
     }
-    ret = aclDestroyTensor(offsetTensor_);
-    if (ret != ACL_SUCCESS) {
-        ATB_LOG(ERROR) << GetLogPrefix() << "destroy offset tensor ERROR: " << ret;
+    if (offsetTensor_ != nullptr) {
+        ret = aclDestroyTensor(offsetTensor_);
+        if (ret != ACL_SUCCESS) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "destroy offset tensor ERROR: " << ret;
+        }
+        offsetTensor_ = nullptr;
     }
-    aclError err = aclrtFree(scaleDeviceAddr_);
-    if (err != ACL_SUCCESS) {
-        ATB_LOG(ERROR) << GetLogPrefix() << "free scale device addr ERROR: " << err;
+    aclError err = ACL_SUCCESS;
+    if (scaleDeviceAddr_ != nullptr) {
+        err = aclrtFree(scaleDeviceAddr_);
+        if (err != ACL_SUCCESS) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "free scale device addr ERROR: " << err;
+        }
+        scaleDeviceAddr_ = nullptr;
     }
-    err = aclrtFree(offsetDeviceAddr_);
-    if (err != ACL_SUCCESS) {
-        ATB_LOG(ERROR) << GetLogPrefix() << "free offset device addr ERROR: " << err;
+    if (offsetDeviceAddr_ != nullptr) {
+        err = aclrtFree(offsetDeviceAddr_);
+        if (err != ACL_SUCCESS) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "free offset device addr ERROR: " << err;
+        }
+        offsetDeviceAddr_ = nullptr;
     }
 }
 
@@ -537,10 +551,11 @@ Status ElewiseAclnnRunner::LaunchAclnnKernel()
     }
     if (alpha_ != nullptr) {
         ret = aclDestroyScalar(alpha_);
-    }
-    if (ret != ACL_SUCCESS) {
-        ATB_LOG(ERROR) << GetLogPrefix() << "destroy scalar failed: " << ret;
-        return ERROR_CANN_ERROR;
+        if (ret != ACL_SUCCESS) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "destroy scalar failed: " << ret;
+            return ERROR_CANN_ERROR;
+        }
+        alpha_ = nullptr;
     }
     ATB_LOG(INFO) << GetLogPrefix() << "LaunchAclnnKernel execute success.";
     return NO_ERROR;
