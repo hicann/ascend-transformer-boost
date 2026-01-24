@@ -7,7 +7,7 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
- 
+
 #include <aclnn/opdev/op_errno.h>
 #include "atb/utils/aclnn_util.h"
 #include "atb/utils/log.h"
@@ -34,23 +34,16 @@ SortAclnnRunner::SortAclnnRunner(const infer::SortParam &param) : AclnnRunner("S
 
 void SortAclnnRunner::CleanUp() {
     aclnnStatus ret = 0;
-    if (castWorkspaceBuffer_ != nullptr) {
-        ret = aclrtFree(castWorkspaceBuffer_);
-        if (ret != ACL_SUCCESS) 
-            ATB_LOG(ERROR) << GetLogPrefix() << "free castWorkspaceBuffer_ failed with return value: " << ret;
-        castWorkspaceBuffer_ = nullptr;
-    }
-
     if (indices_ != nullptr) {
         ret = aclDestroyTensor(indices_);
-        if (ret != ACL_SUCCESS) 
+        if (ret != ACL_SUCCESS)
             ATB_LOG(ERROR) << GetLogPrefix() << "destroy indices_->tensor failed with return value: " << ret;
         indices_ = nullptr;
     }
 
     if (indicesBuffer_ != nullptr) {
         ret = aclrtFree(indicesBuffer_);
-        if (ret != ACL_SUCCESS) 
+        if (ret != ACL_SUCCESS)
             ATB_LOG(ERROR) << GetLogPrefix() << "free indicesBuffer_ failed with return value: " << ret;
         indicesBuffer_ = nullptr;
     }
@@ -107,29 +100,48 @@ Status SortAclnnRunner::BuildAclnnVariantPack(const RunnerVariantPack &runnerVar
 
 
     // temp buffer for indicesOut
-    ret = aclrtMalloc(&indicesBuffer_, this->atbVariantPack_.outTensors.at(INDEX_ONE).dataSize*INDEX_TWO, ACL_MEM_MALLOC_HUGE_FIRST);
-    if (ret != NO_ERROR) {
-        ATB_LOG(ERROR) << GetLogPrefix() << "indicesBuffer_ aclrtMalloc failed!";
-        CleanUp();
-        return ret;
-    }
+    if (indicesBufferSize_ != this->atbVariantPack_.outTensors.at(INDEX_ONE).dataSize * INDEX_TWO) {
+        if (indicesBuffer_ != nullptr) {
+            ret = aclrtFree(indicesBuffer_);
+            if (ret != ACL_SUCCESS) {
+                ATB_LOG(ERROR) << GetLogPrefix() << "free indicesBuffer_ failed with return value: " << ret;
+                CleanUp();
+                return ERROR_CANN_ERROR;
+            }
+            indicesBuffer_ = nullptr;
+        }
+        indicesBufferSize_ = this->atbVariantPack_.outTensors.at(INDEX_ONE).dataSize * INDEX_TWO;
+        ret = aclrtMalloc(&indicesBuffer_, indicesBufferSize_, ACL_MEM_MALLOC_HUGE_FIRST);
+        if (ret != ACL_SUCCESS) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "indicesBuffer_ aclrtMalloc failed!";
+            CleanUp();
+            return ret;
+        }
 
-    atb::SVector<int64_t> strides = GetCopyTensorStride(this->atbVariantPack_.outTensors.at(INDEX_ONE).desc.shape);
-    Dims viewDims;
-    
-    viewDims.dimNum = this->atbVariantPack_.outTensors.at(INDEX_ONE).desc.shape.dimNum;
-    for (size_t i = 0; i < viewDims.dimNum; i++) {
-        viewDims.dims[i] = this->atbVariantPack_.outTensors.at(INDEX_ONE).desc.shape.dims[i];
-    }
+        atb::SVector<int64_t> strides = GetCopyTensorStride(this->atbVariantPack_.outTensors.at(INDEX_ONE).desc.shape);
+        Dims viewDims;
 
-    indices_ = aclCreateTensor(viewDims.dims, viewDims.dimNum, ACL_INT64, strides.data(), 0, 
-                        this->atbVariantPack_.outTensors.at(INDEX_ONE).desc.format,
-                        viewDims.dims, viewDims.dimNum, indicesBuffer_);
-    if (indices_ == nullptr) {
-        ATB_LOG(ERROR) << GetLogPrefix() << "create int64 indices by aclCreateTensor failed!";
-        return atb::ERROR_INTERNAL_ERROR;
+        viewDims.dimNum = this->atbVariantPack_.outTensors.at(INDEX_ONE).desc.shape.dimNum;
+        for (size_t i = 0; i < viewDims.dimNum; i++) {
+            viewDims.dims[i] = this->atbVariantPack_.outTensors.at(INDEX_ONE).desc.shape.dims[i];
+        }
+        if (indices_ != nullptr) {
+            ret = aclDestroyTensor(indices_);
+            if (ret != ACL_SUCCESS) {
+                ATB_LOG(ERROR) << GetLogPrefix() << "destroy indices_->tensor failed with return value: " << ret;
+                CleanUp();
+                return ERROR_CANN_ERROR;
+            }
+            indices_ = nullptr;
+        }
+        indices_ = aclCreateTensor(viewDims.dims, viewDims.dimNum, ACL_INT64, strides.data(), 0,
+                                   this->atbVariantPack_.outTensors.at(INDEX_ONE).desc.format, viewDims.dims,
+                                   viewDims.dimNum, indicesBuffer_);
+        if (indices_ == nullptr) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "create int64 indices by aclCreateTensor failed!";
+            return atb::ERROR_INTERNAL_ERROR;
+        }
     }
-
     return atb::NO_ERROR;
 }
 
@@ -140,17 +152,17 @@ aclnnStatus SortAclnnRunner::SetAclNNWorkspaceExecutor()
     size_t inTensorStart = 0;
     aclTensor *x = this->aclnnVariantPack_.aclInTensors.at(inTensorStart++)->tensor; // self
     size_t outTensorStart = 0;
-    aclTensor *output = this->aclnnVariantPack_.aclOutTensors.at(outTensorStart++)->tensor;  // valueOut
-    
+    aclTensor *output = this->aclnnVariantPack_.aclOutTensors.at(outTensorStart++)->tensor; // valueOut
+
     int64_t k = static_cast<int64_t>(param_.num.at(0));
     int64_t dim = -1;
     bool largest = true;
     bool sorted = true;
-    aclnnStatus ret= 0;
+    aclnnStatus ret = 0;
 
     aclOpExecutor *rawExecutorPtr = this->aclnnExecutor_.get();
-    ret = SortAclnnRunner::aclnnGetWorkspaceSizeFunc_(
-        x, k, dim, largest, sorted, output, indices_, &(this->atbVariantPack_.workspaceBufferSize), &rawExecutorPtr);
+    ret = SortAclnnRunner::aclnnGetWorkspaceSizeFunc_(x, k, dim, largest, sorted, output, indices_,
+                                                      &(this->topkWorkspaceSize_), &rawExecutorPtr);
 
     this->aclnnExecutor_ = std::shared_ptr<aclOpExecutor>(rawExecutorPtr, [this](aclOpExecutor *ptr) {
         if (ptr && this->executorRepeatable_) { // 可复用时才手动销毁aclOpExecutor
@@ -161,30 +173,12 @@ aclnnStatus SortAclnnRunner::SetAclNNWorkspaceExecutor()
         ATB_LOG(DEBUG) << GetLogPrefix() << "aclnnGetWorkspaceSize failed!";
         return ret;
     }
-    ATB_LOG(INFO) << GetLogPrefix() << "workspaceSize: " << this->atbVariantPack_.workspaceBufferSize;
 
-    return ret;
-}
-
-Status SortAclnnRunner::LaunchAclnnKernel()
-{
-    ATB_LOG(INFO) << GetLogPrefix() << "LaunchAclnnKernel execute start.";
-
-    aclrtStream executeStream = GetExecuteStream(this->atbVariantPack_.context);
-    aclnnStatus ret = SortAclnnRunner::aclnnExecuteFunc_(this->atbVariantPack_.workspaceBuffer,
-                                                         this->atbVariantPack_.workspaceBufferSize,
-                                                         this->aclnnExecutor_.get(), executeStream);
-    if (ret != ACL_SUCCESS) {
-        ATB_LOG(ERROR) << GetLogPrefix() << "Atb aclnn op kernel launch failed with return value: " << ret;
-        return ERROR_CANN_ERROR;
-    }
-
-    
     // indices_->tensor holds the aclnnTopK return in INT64, we need aclnnCast to turn aclnn
     aclOpExecutor *rawCastExecutorPtr = this->aclnnCastExecutor_.get();
     aclTensor *out = this->aclnnVariantPack_.aclOutTensors.at(INDEX_ONE)->tensor; // indicesOut
-    ret = SortAclnnRunner::aclnnCastGetWorkspaceSizeFunc_(
-        indices_, ACL_INT32, out, &(this->castworkspacesize_), &rawCastExecutorPtr);
+    ret = SortAclnnRunner::aclnnCastGetWorkspaceSizeFunc_(indices_, ACL_INT32, out, &(this->castWorkspaceSize_),
+                                                          &rawCastExecutorPtr);
     if (ret != ACL_SUCCESS) {
         ATB_LOG(ERROR) << GetLogPrefix() << "aclnnCastGetWorkspaceSize failed!";
         return ret;
@@ -193,12 +187,11 @@ Status SortAclnnRunner::LaunchAclnnKernel()
     // setCastExecutorRepeatable same as the topkExecutorRepeatable, this is essential for cache to work
     if (this->executorRepeatable_) {
         ret = aclSetAclOpExecutorRepeatable(rawCastExecutorPtr);
-            if (ret != ACL_SUCCESS) {
+        if (ret != ACL_SUCCESS) {
             ATB_LOG(ERROR) << GetLogPrefix() << "Set Cast AclOpExecutorRepeatable failed!";
             return ret;
         }
     }
-
 
     this->aclnnCastExecutor_ = std::shared_ptr<aclOpExecutor>(rawCastExecutorPtr, [this](aclOpExecutor *ptr) {
         if (ptr && this->executorRepeatable_) { // 可复用时才手动销毁aclOpExecutor
@@ -206,23 +199,36 @@ Status SortAclnnRunner::LaunchAclnnKernel()
         }
     });
 
-    ret = aclrtMalloc(&this->castWorkspaceBuffer_, this->castworkspacesize_, ACL_MEM_MALLOC_HUGE_FIRST);
-    if (ret != ACL_SUCCESS) {
-        ATB_LOG(ERROR) << GetLogPrefix() << "castWorkSpaceBuffer_ aclrtMalloc failed!";
-        CleanUp();
-        return ret;
-    }
-    aclrtStream castExecuteStream = GetExecuteStream(this->atbVariantPack_.context);
-    ret = SortAclnnRunner::aclnnCastExecuteFunc_(this->castWorkspaceBuffer_,
-                                                         this->castworkspacesize_,
-                                                         this->aclnnCastExecutor_.get(), castExecuteStream);
+    this->atbVariantPack_.workspaceBufferSize = this->topkWorkspaceSize_ + this->castWorkspaceSize_;
+    ATB_LOG(INFO) << GetLogPrefix() << "workspaceSize: " << this->atbVariantPack_.workspaceBufferSize;
+    return ret;
+}
+
+Status SortAclnnRunner::LaunchAclnnKernel()
+{
+    ATB_LOG(INFO) << GetLogPrefix() << "LaunchAclnnKernel execute start.";
+    aclrtStream executeStream = GetExecuteStream(this->atbVariantPack_.context);
+    aclnnStatus ret = SortAclnnRunner::aclnnExecuteFunc_(
+        this->atbVariantPack_.workspaceBuffer, this->topkWorkspaceSize_, this->aclnnExecutor_.get(), executeStream);
     if (ret != ACL_SUCCESS) {
         ATB_LOG(ERROR) << GetLogPrefix() << "Atb aclnn op kernel launch failed with return value: " << ret;
         return ERROR_CANN_ERROR;
     }
-    
+    ret = SortAclnnRunner::aclnnCastExecuteFunc_(this->atbVariantPack_.workspaceBuffer + this->topkWorkspaceSize_,
+                                                 this->castWorkspaceSize_, this->aclnnCastExecutor_.get(),
+                                                 executeStream);
+    if (ret != ACL_SUCCESS) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "Atb aclnn op kernel launch failed with return value: " << ret;
+        return ERROR_CANN_ERROR;
+    }
+
     ATB_LOG(INFO) << GetLogPrefix() << "LaunchAclnnKernel execute success.";
     return NO_ERROR;
+}
+
+bool SortAclnnRunner::useCache()
+{
+    return false;
 }
 
 Status SortAclnnRunner::LoadMethod()

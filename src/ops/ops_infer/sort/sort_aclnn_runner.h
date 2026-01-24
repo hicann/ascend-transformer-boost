@@ -32,6 +32,7 @@ protected:
     Status BuildAclnnVariantPack(const RunnerVariantPack &runnerVariantPack) override;
     Status LaunchAclnnKernel() override;
     aclnnStatus SetAclNNWorkspaceExecutor() override;
+    virtual bool useCache() override;
 
 private:
     infer::SortParam param_;
@@ -42,10 +43,11 @@ private:
     static AclnnCastExecuteFunc aclnnCastExecuteFunc_;
 
     void CleanUp();
-    aclTensor *indices_;
-    uint64_t castworkspacesize_;
-    void* castWorkspaceBuffer_ = nullptr;
-    void* indicesBuffer_ = nullptr;
+    aclTensor *indices_ = nullptr;
+    void *indicesBuffer_ = nullptr;
+    uint64_t topkWorkspaceSize_ = 0;
+    uint64_t castWorkspaceSize_ = 0;
+    uint64_t indicesBufferSize_ = 0;
     std::shared_ptr<aclOpExecutor> aclnnCastExecutor_;
 };
 } // namespace atb
