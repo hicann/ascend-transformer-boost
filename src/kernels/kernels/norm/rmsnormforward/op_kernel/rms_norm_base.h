@@ -14,9 +14,6 @@
 
 using namespace AscendC;
 
-#if __CCE_AICORE__ != 220
-using bfloat16 = int16_t;
-#endif
 constexpr int32_t BUFFER_NUM = 1;  // tensor num for each queue
 constexpr int32_t NUM_PER_REP_FP32 = 64;  // ONE_REPEAT_BYTE_SIZE / sizeof(float);
 constexpr int32_t NUM_PER_BLK_FP32 = 8;
