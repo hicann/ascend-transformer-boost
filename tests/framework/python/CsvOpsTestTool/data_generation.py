@@ -4528,7 +4528,7 @@ class PagedAttentionOperation(DataGen):
             else:
                 needScale = True
         if needScale:
-            tensor = PagedAttentionOperation.custom_normalize(tensor)
+            tensor = PagedAttentionOperation.custom_normalize(tensor.cpu()).npu()
         return tensor
 
     @staticmethod
