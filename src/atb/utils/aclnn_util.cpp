@@ -296,4 +296,18 @@ int ConvertTensorToSeqLengths(atb::Tensor &tensor, aclIntArray *&actualSeqLength
     actualSeqLengths = aclCreateIntArray(static_cast<int64_t *>(seqLenCache.data()), dataSize);
     return atb::NO_ERROR;
 }
+
+std::shared_ptr<AclNNTensor> CreateAclnnTensor(Tensor atbTensor, int aclnnTensorIndex, Dims viewShape,
+                                            SVector<int64_t> strides)
+{
+    std::shared_ptr<AclNNTensor> aclnnTensorPtr = std::make_shared<AclNNTensor>();
+    aclnnTensorPtr->atbTensor = atbTensor;
+    aclnnTensorPtr->tensorIdx = aclnnTensorIndex;
+    aclnnTensorPtr->needUpdateTensorDataPtr = true;
+    aclnnTensorPtr->strides = strides;
+    aclnnTensorPtr->tensor = aclCreateTensor(
+        viewShape.dims, viewShape.dimNum, atbTensor.desc.dtype, aclnnTensorPtr->strides.data(), 0,
+        atbTensor.desc.format, atbTensor.desc.shape.dims, atbTensor.desc.shape.dimNum, atbTensor.deviceData);
+    return aclnnTensorPtr;
+}
 } // namespace atb

@@ -91,6 +91,9 @@ std::shared_ptr<AclNNTensor> CreateTensor(atb::Tensor atbTensor, int tensorIdx);
 
 int ConvertTensorToSeqLengths(atb::Tensor &tensor, aclIntArray *&actualSeqLengths);
 
+std::shared_ptr<AclNNTensor> CreateAclnnTensor(Tensor atbTensor, int aclnnTensorIndex, Dims viewShape,
+                                               SVector<int64_t> strides);
+
 /// Load GetWorkSpaceSize and Execute func from aclnn .so file.
 ///
 /// \param workSpaceSizeFuncName The name of first symbol to load.

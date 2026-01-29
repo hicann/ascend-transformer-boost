@@ -12,11 +12,16 @@
 #include "atb/infer_op_params.h"
 #include "atb/runner/aclnn_runner.h"
 
-using SplitTensorFuncType = aclnnStatus (*)(const aclTensor *, uint64_t, int64_t, aclTensorList *, uint64_t *,
-                                            aclOpExecutor **);
-using SplitWithSizeFuncType = aclnnStatus (*)(const aclTensor *, aclIntArray *, int64_t, aclTensorList *, uint64_t *,
-                                              aclOpExecutor **);
-using ExecuteFuncType = aclnnStatus (*)(void *, uint64_t, aclOpExecutor *, aclrtStream);
+using AclnnSplitTensorGetWorkspaceSizeFunc = aclnnStatus (*)(const aclTensor *self, uint64_t splitSections, int64_t dim,
+                                                             aclTensorList *out, uint64_t *workspaceSize,
+                                                             aclOpExecutor **executor);
+using AclnnSplitTensorFunc = aclnnStatus (*)(void *workspace, uint64_t workspaceSize, aclOpExecutor *executor,
+                                             aclrtStream stream);
+using AclnnSplitWithSizeGetWorkspaceSizeFunc = aclnnStatus (*)(const aclTensor *self, aclIntArray *splitSize,
+                                                               int64_t dim, aclTensorList *out, uint64_t *workspaceSize,
+                                                               aclOpExecutor **executor);
+using AclnnSplitWithSizeFunc = aclnnStatus (*)(void *workspace, uint64_t workspaceSize, aclOpExecutor *executor,
+                                               aclrtStream stream);
 
 namespace atb {
 class SplitAclnnRunner : public AclnnRunner {
@@ -29,19 +34,36 @@ protected:
     Status BuildAclnnVariantPack(const RunnerVariantPack &runnerVariantPack) override;
     aclnnStatus SetAclNNWorkspaceExecutor() override;
     Status LaunchAclnnKernel() override;
-    void AssignFunc();
+
+private:
+    void GetTensorNum();
+    void InitTensorIndex();
+    Status CreateSelfAclnnTensor();
+    Status CreateOutAclnnTensorList();
+    aclnnStatus CreateSplitSizeAclIntArray();
 
 private:
     infer::SplitParam param_;
+
     bool splitWithSize_ = false;
-    aclIntArray *splitSizeArray_ = nullptr;
 
-    static SplitTensorFuncType splitGetWorkspaceSizeFunc_;
-    static ExecuteFuncType splitExecuteFunc_;
-    static SplitWithSizeFuncType splitWithSizeGetWorkspaceSizeFunc_;
-    static ExecuteFuncType splitWithSizeExecuteFunc_;
+    size_t aclInTensorNum_ = 0;
+    size_t aclOutTensorListNum_ = 0;
 
-    ExecuteFuncType executeFunc_ = nullptr;
+    size_t atbInTensorIndex_ = 0;
+    size_t aclInTensorIndex_ = 0;
+    size_t atbOutTensorIndex_ = 0;
+    size_t aclOutTensorListIndex_ = 0;
+
+    size_t selfAclTensorIndex_ = 0;
+    size_t outAclTensorListIndex_ = 0;
+
+    aclIntArray *splitSize_ = nullptr;
+
+    static AclnnSplitTensorGetWorkspaceSizeFunc aclnnSplitTensorGetWorkspaceSizeFunc_;
+    static AclnnSplitTensorFunc aclnnSplitTensorFunc_;
+    static AclnnSplitWithSizeGetWorkspaceSizeFunc aclnnSplitWithSizeGetWorkspaceSizeFunc_;
+    static AclnnSplitWithSizeFunc aclnnSplitWithSizeFunc_;
 };
 } // namespace atb
 #endif // ATB_SPLIT_ACLNN_RUNNER_H

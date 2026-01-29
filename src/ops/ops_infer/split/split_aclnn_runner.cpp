@@ -14,169 +14,219 @@
 #include "atb/utils/operation_register.h"
 
 namespace {
-static const uint32_t IN_TENSOR_NUM = 1;
+static const int SELF_ACLNN_TENSOR_IDX = 0;
+static const int OUT_ACLNN_TENSOR_LIST_IDX = 0;
 } // namespace
 
 namespace atb {
-
-SplitTensorFuncType SplitAclnnRunner::splitGetWorkspaceSizeFunc_ = nullptr;
-ExecuteFuncType SplitAclnnRunner::splitExecuteFunc_ = nullptr;
-SplitWithSizeFuncType SplitAclnnRunner::splitWithSizeGetWorkspaceSizeFunc_ = nullptr;
-ExecuteFuncType SplitAclnnRunner::splitWithSizeExecuteFunc_ = nullptr;
+AclnnSplitTensorGetWorkspaceSizeFunc SplitAclnnRunner::aclnnSplitTensorGetWorkspaceSizeFunc_ = nullptr;
+AclnnSplitTensorFunc SplitAclnnRunner::aclnnSplitTensorFunc_ = nullptr;
+AclnnSplitWithSizeGetWorkspaceSizeFunc SplitAclnnRunner::aclnnSplitWithSizeGetWorkspaceSizeFunc_ = nullptr;
+AclnnSplitWithSizeFunc SplitAclnnRunner::aclnnSplitWithSizeFunc_ = nullptr;
 
 SplitAclnnRunner::SplitAclnnRunner(const infer::SplitParam &param) : AclnnRunner("SplitAclnnRunner"), param_(param)
 {
-    ATB_LOG(INFO) << GetLogPrefix() << "SplitAclnnRunner::SplitAclnnRunner created";
-    AssignFunc();
+    ATB_LOG(INFO) << GetLogPrefix() << "SplitAclnnRunner::SplitAclnnRunner";
+
+    splitWithSize_ = param_.splitSizes.size() > 0;
+    GetTensorNum();
 }
 
-SplitAclnnRunner::~SplitAclnnRunner() {}
+SplitAclnnRunner::~SplitAclnnRunner()
+{
+    if (splitSize_) {
+        aclnnStatus ret = aclDestroyIntArray(splitSize_);
+        if (ret != ACLNN_SUCCESS) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "splitSize_ aclDestroyIntArray failed, ret: " << ret;
+        }
+        splitSize_ = nullptr;
+    }
+}
+
+Status SplitAclnnRunner::LoadAclnnFuncs()
+{
+    ATB_LOG(INFO) << "SplitAclnnRunner::LoadAclnnFuncs";
+
+    Status st = NO_ERROR;
+    if (!aclnnSplitWithSizeGetWorkspaceSizeFunc_ || !aclnnSplitWithSizeFunc_) {
+        st = LoadFromSharedObjectFile("aclnnSplitWithSizeGetWorkspaceSize", "aclnnSplitWithSize",
+                                      aclnnSplitWithSizeGetWorkspaceSizeFunc_, aclnnSplitWithSizeFunc_);
+        if (st != NO_ERROR) {
+            return st;
+        }
+    }
+    if (!aclnnSplitTensorGetWorkspaceSizeFunc_ || !aclnnSplitTensorFunc_) {
+        st = LoadFromSharedObjectFile("aclnnSplitTensorGetWorkspaceSize", "aclnnSplitTensor",
+                                      aclnnSplitTensorGetWorkspaceSizeFunc_, aclnnSplitTensorFunc_);
+        if (st != NO_ERROR) {
+            return st;
+        }
+    }
+    return NO_ERROR;
+}
 
 Status SplitAclnnRunner::BuildAclnnVariantPack(const RunnerVariantPack &runnerVariantPack)
 {
-    ATB_LOG(INFO) << GetLogPrefix() << "BuildAclnnVariantPack";
-    ATB_LOG(INFO) << GetLogPrefix() << "variantPack: " << runnerVariantPack.ToString();
+    ATB_LOG(INFO) << GetLogPrefix()
+                  << "SplitAclnnRunner::BuildAclnnVariantPack, runnerVariantPack: " << runnerVariantPack.ToString();
     atbVariantPack_ = runnerVariantPack;
-    Status ret = NO_ERROR;
-    // x
-    aclnnVariantPack_.aclInTensors.reserve(IN_TENSOR_NUM);
-    aclnnVariantPack_.aclInTensors.resize(IN_TENSOR_NUM);
-    for (size_t i = 0; i < aclnnVariantPack_.aclInTensors.size(); ++i) {
-        std::shared_ptr<AclNNTensor> aclnnTensorPtr = std::make_shared<AclNNTensor>();
-        atb::Tensor atbTensor = runnerVariantPack.inTensors.at(i);
-        aclnnTensorPtr->atbTensor = atbTensor;
-        aclnnTensorPtr->strides = GetCopyTensorStride(atbTensor.desc.shape);
-        ret = CallAclCreateTensor(atbTensor.desc.shape, atbTensor.desc.shape, atbTensor, aclnnTensorPtr,
-                                  atbTensor.desc.dtype);
-        if (ret != NO_ERROR) {
-            ATB_LOG(ERROR) << GetLogPrefix() << "create aclTensor by aclCreateTensor failed!";
-            return ret;
-        }
-        aclnnTensorPtr->tensorIdx = static_cast<int>(i);
-        aclnnTensorPtr->needUpdateTensorDataPtr = true;
-        aclnnVariantPack_.aclInTensors[i] = aclnnTensorPtr;
+    InitTensorIndex();
+    aclnnVariantPack_.aclInTensors.reserve(aclInTensorNum_);
+    aclnnVariantPack_.aclInTensors.resize(aclInTensorNum_);
+    Status st = CreateSelfAclnnTensor();
+    if (st != NO_ERROR) {
+        return st;
     }
-
-    // output1, output2, output3(optional)
-    int32_t outTensorNum = param_.splitNum;
-    aclnnVariantPack_.aclOutTensors.reserve(outTensorNum);
-    aclnnVariantPack_.aclOutTensors.resize(outTensorNum);
-    std::vector<aclTensor *> outTensors = {};
-    for (size_t i = 0; i < aclnnVariantPack_.aclOutTensors.size(); ++i) {
-        std::shared_ptr<AclNNTensor> aclnnTensorPtr = std::make_shared<AclNNTensor>();
-        ATB_LOG(INFO) << GetLogPrefix() << "BuildAclnnVariantPack outTensor index: " << i;
-        atb::Tensor atbTensor = runnerVariantPack.outTensors.at(i);
-        aclnnTensorPtr->atbTensor = atbTensor;
-        aclnnTensorPtr->strides = GetCopyTensorStride(atbTensor.desc.shape);
-        ret = CallAclCreateTensor(atbTensor.desc.shape, atbTensor.desc.shape, atbTensor, aclnnTensorPtr,
-                                  atbTensor.desc.dtype);
-        if (ret != NO_ERROR) {
-            ATB_LOG(ERROR) << GetLogPrefix() << "create aclTensor by aclCreateTensor failed!";
-            return ret;
-        }
-        aclnnTensorPtr->tensorIdx = static_cast<int>(i);
-        // use tensorList
-        aclnnTensorPtr->tensorListidx = static_cast<int>(0);
-        aclnnTensorPtr->needUpdateTensorDataPtr = true;
-        aclnnVariantPack_.aclOutTensors[i] = aclnnTensorPtr;
-        outTensors.emplace_back(aclnnTensorPtr->tensor);
-    }
-    aclTensorList *outTensorList = aclCreateTensorList(outTensors.data(), outTensors.size());
-    aclnnVariantPack_.aclOutTensorList.push_back(outTensorList);
-    return atb::NO_ERROR;
-}
-
-void SplitAclnnRunner::AssignFunc()
-{
-    if (param_.splitSizes.size() != 0) {
-        executeFunc_ = SplitAclnnRunner::splitExecuteFunc_;
-        splitWithSize_ = true;
-    } else {
-        executeFunc_ = SplitAclnnRunner::splitWithSizeExecuteFunc_;
-    }
+    aclnnVariantPack_.aclOutTensorList.reserve(aclOutTensorListNum_);
+    aclnnVariantPack_.aclOutTensorList.resize(aclOutTensorListNum_);
+    return CreateOutAclnnTensorList();
 }
 
 aclnnStatus SplitAclnnRunner::SetAclNNWorkspaceExecutor()
 {
-    ATB_LOG(INFO) << GetLogPrefix() << "aclnn Split setup start.";
-    AssignFunc();
-    aclTensor *x = aclnnVariantPack_.aclInTensors.at(0)->tensor; // self
-    aclTensorList *outTensorList = aclnnVariantPack_.aclOutTensorList.at(0); // outTensorList
-    int32_t splitNum = param_.splitNum;
-    Dims xDims = aclnnVariantPack_.aclInTensors.at(0)->atbTensor.desc.shape;
-    int64_t dim = param_.splitDim;
-    if (dim < 0) {
-        dim += xDims.dimNum;
-    }
-    uint64_t splitSections = static_cast<uint64_t>(xDims.dims[dim] / splitNum);
+    ATB_LOG(INFO) << GetLogPrefix() << "SplitAclnnRunner::SetAclNNWorkspaceExecutor";
+    aclTensor *self = aclnnVariantPack_.aclInTensors.at(selfAclTensorIndex_)->tensor;
+    aclTensorList *out = aclnnVariantPack_.aclOutTensorList.at(outAclTensorListIndex_);
+    aclnnStatus ret = ACLNN_SUCCESS;
+    int64_t dim = static_cast<int64_t>(param_.splitDim);
     aclOpExecutor *rawExecutorPtr = aclnnExecutor_.get();
-    aclnnStatus ret = ACL_SUCCESS;
     if (splitWithSize_) {
-        size_t size = param_.splitSizes.size();
-        int64_t splitSizeData[size];
-        for (size_t i = 0; i < size; ++i) {
-            splitSizeData[i] = param_.splitSizes[i];
+        ret = CreateSplitSizeAclIntArray();
+        if (ret != ACLNN_SUCCESS) {
+            return ret;
         }
-        if (splitSizeArray_) {
-            ret = aclDestroyIntArray(splitSizeArray_);
-            if (ret != ACL_SUCCESS) {
-                return ret;
-            }
-            splitSizeArray_ = nullptr;
-        }
-        splitSizeArray_ = aclCreateIntArray(splitSizeData, size);
-        ret = splitWithSizeGetWorkspaceSizeFunc_(x, splitSizeArray_, dim, outTensorList,
-                                                       &(atbVariantPack_.workspaceBufferSize), &rawExecutorPtr);
+        ret = aclnnSplitWithSizeGetWorkspaceSizeFunc_(self, splitSize_, dim, out,
+                                                      &(atbVariantPack_.workspaceBufferSize), &rawExecutorPtr);
     } else {
-        ret = splitGetWorkspaceSizeFunc_(x, splitSections, dim, outTensorList,
-                                               &(atbVariantPack_.workspaceBufferSize), &rawExecutorPtr);
+        int32_t splitNum = param_.splitNum;
+        Dims selfShape = aclnnVariantPack_.aclInTensors.at(selfAclTensorIndex_)->atbTensor.desc.shape;
+        if (dim < 0) {
+            dim += selfShape.dimNum;
+        }
+        uint64_t splitSections = static_cast<uint64_t>(selfShape.dims[dim] / splitNum);
+        ret = aclnnSplitTensorGetWorkspaceSizeFunc_(self, splitSections, dim, out,
+                                                    &(atbVariantPack_.workspaceBufferSize), &rawExecutorPtr);
     }
+
     aclnnExecutor_ = std::shared_ptr<aclOpExecutor>(rawExecutorPtr, [this](aclOpExecutor *ptr) {
         if (ptr && executorRepeatable_) {
             aclDestroyAclOpExecutor(ptr);
         }
     });
-    if (ret != ACL_SUCCESS) {
-        ATB_LOG(ERROR) << GetLogPrefix() << "aclnnGetWorkspaceSize failed!";
-        return ret;
+    if (ret == ACLNN_SUCCESS) {
+        ATB_LOG(INFO) << GetLogPrefix() << "workspaceSize: " << atbVariantPack_.workspaceBufferSize;
+    } else {
+        ATB_LOG(ERROR) << GetLogPrefix() << "SetAclNNWorkspaceExecutor failed, ret: " << ret;
     }
-    ATB_LOG(INFO) << GetLogPrefix() << "workspaceSize: " << atbVariantPack_.workspaceBufferSize;
     return ret;
 }
 
 Status SplitAclnnRunner::LaunchAclnnKernel()
 {
-    ATB_LOG(INFO) << GetLogPrefix() << "LaunchAclnnKernel execute start.";
-    AssignFunc();
+    ATB_LOG(INFO) << GetLogPrefix() << "SplitAclnnRunner::LaunchAclnnKernel";
     void *executeStream = GetExecuteStream(atbVariantPack_.context);
-    aclnnStatus ret =
-        executeFunc_(atbVariantPack_.workspaceBuffer, atbVariantPack_.workspaceBufferSize,
-                           aclnnExecutor_.get(), executeStream);
-    if (ret != ACL_SUCCESS) {
-        ATB_LOG(ERROR) << GetLogPrefix() << "Atb aclnn op kernel launch failed with return value: " << ret;
-        return ERROR_CANN_ERROR;
+    aclnnStatus ret = ACLNN_SUCCESS;
+    if (splitWithSize_) {
+        ret = aclnnSplitWithSizeFunc_(atbVariantPack_.workspaceBuffer, atbVariantPack_.workspaceBufferSize,
+                                      aclnnExecutor_.get(), executeStream);
+    } else {
+        ret = aclnnSplitTensorFunc_(atbVariantPack_.workspaceBuffer, atbVariantPack_.workspaceBufferSize,
+                                    aclnnExecutor_.get(), executeStream);
     }
-    ATB_LOG(INFO) << GetLogPrefix() << "LaunchAclnnKernel execute success.";
-    if (splitSizeArray_) {
-        if (aclDestroyIntArray(splitSizeArray_) != ACL_SUCCESS) {
-            return ERROR_CANN_ERROR;
-        }
-        splitSizeArray_ = nullptr;
+    if (ret == ACLNN_SUCCESS) {
+        return NO_ERROR;
     }
+    ATB_LOG(ERROR) << GetLogPrefix() << "LaunchAclnnKernel failed, ret: " << ret;
+    return ERROR_CANN_ERROR;
+}
+
+void SplitAclnnRunner::GetTensorNum()
+{
+    aclInTensorNum_ = 1;      // self
+    aclOutTensorListNum_ = 1; // out
+}
+
+void SplitAclnnRunner::InitTensorIndex()
+{
+    atbInTensorIndex_ = 0;
+    aclInTensorIndex_ = 0;
+    atbOutTensorIndex_ = 0;
+    aclOutTensorListIndex_ = 0;
+
+    selfAclTensorIndex_ = 0;
+    outAclTensorListIndex_ = 0;
+}
+
+Status SplitAclnnRunner::CreateSelfAclnnTensor()
+{
+    ATB_LOG(INFO) << GetLogPrefix() << "SplitAclnnRunner::CreateSelfAclnnTensor";
+    Tensor atbTensor = atbVariantPack_.inTensors.at(atbInTensorIndex_++);
+    SVector<int64_t> strides = GetCopyTensorStride(atbTensor.desc.shape);
+    std::shared_ptr<AclNNTensor> aclnnTensorPtr =
+        CreateAclnnTensor(atbTensor, SELF_ACLNN_TENSOR_IDX, atbTensor.desc.shape, strides);
+    if (!aclnnTensorPtr->tensor) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "self aclCreateTensor failed";
+        return ERROR_INTERNAL_ERROR;
+    }
+    aclnnVariantPack_.aclInTensors.at(aclInTensorIndex_) = aclnnTensorPtr;
+    selfAclTensorIndex_ = aclInTensorIndex_++;
     return NO_ERROR;
 }
 
-Status SplitAclnnRunner::LoadAclnnFuncs()
+Status SplitAclnnRunner::CreateOutAclnnTensorList()
 {
-    ATB_LOG(INFO) << "SplitAclnnRunner LoadAclnnFuncs";
-    Status status = LoadFromSharedObjectFile("aclnnSplitWithSizeGetWorkspaceSize", "aclnnSplitWithSize",
-                                             SplitAclnnRunner::splitWithSizeGetWorkspaceSizeFunc_,
-                                             SplitAclnnRunner::splitWithSizeExecuteFunc_);
-    if (status != NO_ERROR) {
-        return status;
+    ATB_LOG(INFO) << GetLogPrefix() << "SplitAclnnRunner::CreateOutAclnnTensorList";
+
+    std::vector<aclTensor *> outTensors;
+    size_t outTensorNum = atbVariantPack_.outTensors.size();
+    outTensors.reserve(outTensorNum);
+    outTensors.resize(outTensorNum);
+
+    for (size_t i = 0; i < outTensorNum; i++) {
+        Tensor atbTensor = atbVariantPack_.outTensors.at(atbOutTensorIndex_++);
+        SVector<int64_t> strides = GetCopyTensorStride(atbTensor.desc.shape);
+        std::shared_ptr<AclNNTensor> aclnnTensorPtr =
+            CreateAclnnTensor(atbTensor, OUT_ACLNN_TENSOR_LIST_IDX, atbTensor.desc.shape, strides);
+        if (!aclnnTensorPtr->tensor) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "out aclCreateTensor failed";
+            return ERROR_INTERNAL_ERROR;
+        }
+        outTensors.at(i) = aclnnTensorPtr->tensor;
     }
-    return LoadFromSharedObjectFile("aclnnSplitTensorGetWorkspaceSize", "aclnnSplitTensor",
-                                    SplitAclnnRunner::splitGetWorkspaceSizeFunc_, SplitAclnnRunner::splitExecuteFunc_);
+    aclTensorList *outTensorList = aclCreateTensorList(outTensors.data(), outTensors.size());
+    if (outTensorList) {
+        aclnnVariantPack_.aclOutTensorList.at(aclOutTensorListIndex_) = outTensorList;
+        outAclTensorListIndex_ = aclOutTensorListIndex_++;
+        return NO_ERROR;
+    }
+    ATB_LOG(ERROR) << GetLogPrefix() << "out aclCreateTensorList failed";
+    return ERROR_INTERNAL_ERROR;
+}
+
+aclnnStatus SplitAclnnRunner::CreateSplitSizeAclIntArray()
+{
+    ATB_LOG(INFO) << GetLogPrefix() << "SplitAclnnRunner::CreateSplitSizeAclIntArray";
+
+    if (splitSize_) {
+        aclnnStatus ret = aclDestroyIntArray(splitSize_);
+        if (ret != ACLNN_SUCCESS) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "splitSize_ aclDestroyIntArray failed, ret: " << ret;
+            return ret;
+        }
+        splitSize_ = nullptr;
+    }
+    std::vector<int64_t> splitSizeVec;
+    splitSizeVec.reserve(param_.splitSizes.size());
+    splitSizeVec.resize(param_.splitSizes.size());
+    for (size_t i = 0; i < splitSizeVec.size(); i++) {
+        splitSizeVec.at(i) = static_cast<int64_t>(param_.splitSizes.at(i));
+    }
+    splitSize_ = aclCreateIntArray(splitSizeVec.data(), splitSizeVec.size());
+    if (splitSize_) {
+        return ACLNN_SUCCESS;
+    }
+    ATB_LOG(ERROR) << "splitSize_ aclCreateIntArray failed!";
+    return ACLNN_ERR_INNER;
 }
 
 REG_RUNNER_TYPE(SplitAclnnRunner);
