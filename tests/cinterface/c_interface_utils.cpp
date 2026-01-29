@@ -43,8 +43,10 @@ aclnnStatus Destroy(atb::Context **context, aclrtStream *stream)
 aclnnStatus CreateInOutData(size_t num, uint8_t **inoutHost, uint8_t **inoutDevice, size_t *inoutSize)
 {
     for (size_t i = 0; i < num; i++) {
-        aclrtMallocHost((void **)(&(inoutHost[i])), inoutSize[i]);
-        aclrtMalloc((void **)(&(inoutDevice[i])), inoutSize[i], ACL_MEM_MALLOC_HUGE_FIRST);
+        if (inoutSize[i] > 0) {
+            aclrtMallocHost((void **)(&(inoutHost[i])), inoutSize[i]);
+            aclrtMalloc((void **)(&(inoutDevice[i])), inoutSize[i], ACL_MEM_MALLOC_HUGE_FIRST);
+        }
     }
     return ACL_ERROR_NONE;
 }
