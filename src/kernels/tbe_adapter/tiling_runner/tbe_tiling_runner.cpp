@@ -32,7 +32,7 @@
 #include "kernel_run_context_builder.h"
 #include "platform/platform_infos_def.h"
 #include "register/op_impl_registry_base.h"
-#include "runtime_attrs_def.h"
+#include "base/runtime/runtime_attrs_def.h"
 
 namespace {
 const std::vector<std::string> CORE_TYPE_VEC {
