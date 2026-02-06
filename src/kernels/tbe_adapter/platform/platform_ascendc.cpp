@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Huawei Technologies Co., Ltd.
+ * Copyright (c) 2026 Huawei Technologies Co., Ltd.
  * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
  * CANN Open Software License Agreement Version 2.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
@@ -11,6 +11,7 @@
 #include <mutex>
 #include <csignal>
 #include <tiling/platform/platform_ascendc.h>
+#include <tiling/platform/platform_ascendc_log.h>
 #include <mki/utils/assert/assert.h>
 #include <mki/utils/log/log.h>
 #include <mki/utils/rt/rt.h>
@@ -25,6 +26,7 @@ const static uint32_t WORKSPACE_SIZE = 2 * 1024 * 1024;
 const static uint32_t MIX_AIC_AIV_RATION_910B1 = 2;
 const static uint32_t CUBE_GROUP_WORKSPACE_SIZE_910B = 1 * 1024 * 1024;
 const static uint32_t GROUP_BARRIER_WORKSPACE_SIZE_910B = 1 * 1024 * 1024;
+const static std::string LABEL_VERSION = "version";
 const static std::string STR_VERSION = "version";
 const static std::string STR_SOC_INFO = "SoCInfo";
 const static std::string SHORT_SOC_VERSION = "Short_SoC_version";
@@ -33,12 +35,15 @@ const static std::string STR_SPLIT_VAL = "CubeCore,VectorCore";
 const static std::string STR_CORE_CNT_CUB = "cube_core_cnt";
 const static std::string STR_CORE_CNT_VEC = "vector_core_cnt";
 const static std::string STR_CORE_CNT_AICORE = "ai_core_cnt";
+const static std::string NPU_ARCH = "NpuArch";
 const static std::map<std::string, SocVersion> CONVERT_MAP = {
+    {"Ascend310", SocVersion::ASCEND310},
     {"Ascend310P", SocVersion::ASCEND310P},
     {"Ascend310B", SocVersion::ASCEND310B},
     {"Ascend910", SocVersion::ASCEND910},
     {"Ascend910B", SocVersion::ASCEND910B},
     {"Ascend910_93", SocVersion::ASCEND910B},
+    {"Ascend950", SocVersion::ASCEND950}
 };
 
 namespace {
@@ -129,6 +134,29 @@ SocVersion PlatformAscendC::GetSocVersion(void) const
     MKI_LOG(ERROR) << "get platform failed, convertMap do not find soc " << socVersionStr << " version";
     return SocVersion::RESERVED_VERSION;
 }
+
+NpuArch PlatformAscendC::GetCurNpuArch(void) const
+{
+    std::string npuArchStr;
+    bool ret = GetPlatFormInfo()->GetPlatformResWithLock(LABEL_VERSION, NPU_ARCH, npuArchStr);
+    if (!ret) {
+        PF_LOGE("platform do not support get npu arch!");
+        return NpuArch::DAV_RESV;
+    }
+    int32_t npuArchInt = 0;
+    try {
+        npuArchInt = std::atoi(npuArchStr.c_str());
+    } catch (...) {
+        PF_LOGE("npu str to int failed, NpuArch str is %s", npuArchStr.c_str());
+        return NpuArch::DAV_RESV;
+    }
+    if (npuArchInt <= 0) {
+        PF_LOGE("npu str to int failed, NpuArch str is %s", npuArchStr.c_str());
+        return NpuArch::DAV_RESV;
+    }
+    return static_cast<NpuArch>(npuArchInt);
+}
+
 void PlatformAscendC::GetCoreMemBw(const CoreMemType &memType, uint64_t &bwSize) const
 {
     const fe::LocalMemType localType = static_cast<fe::LocalMemType>(memType);

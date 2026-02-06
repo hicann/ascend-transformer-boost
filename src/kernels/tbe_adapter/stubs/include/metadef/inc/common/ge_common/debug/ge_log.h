@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Huawei Technologies Co., Ltd.
+ * Copyright (c) 2026 Huawei Technologies Co., Ltd.
  * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
  * CANN Open Software License Agreement Version 2.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
@@ -134,72 +134,15 @@ using Status = uint32_t;
 
 namespace ge {
 using Status = uint32_t;
-
-class GE_FUNC_VISIBILITY StatusFactory {
- public:
-  static StatusFactory *Instance() {
-    static StatusFactory instance;
-    return &instance;
-  }
-
-  void RegisterErrorNo(const uint32_t err, const std::string &desc) {
-    // Avoid repeated addition
-    if (err_desc_.find(err) != err_desc_.end()) {
-      return;
-    }
-    err_desc_[err] = desc;
-  }
-
-  void RegisterErrorNo(const uint32_t err, const char *const desc) {
-    if (desc == nullptr) {
-      return;
-    }
-    const std::string error_desc = desc;
-    if (err_desc_.find(err) != err_desc_.end()) {
-      return;
-    }
-    err_desc_[err] = error_desc;
-  }
-
-  std::string GetErrDesc(const uint32_t err) {
-    const auto iter_find = static_cast<const std::map<uint32_t, std::string>::const_iterator>(err_desc_.find(err));
-    if (iter_find == err_desc_.cend()) {
-      return "";
-    }
-    return iter_find->second;
-  }
-
-  AscendString GetErrDescV2(const uint32_t err) {
-    const auto iter_find = static_cast<const std::map<uint32_t, std::string>::const_iterator>(err_desc_.find(err));
-    if (iter_find == err_desc_.cend()) {
-      return AscendString("");
-    }
-    return AscendString(iter_find->second.c_str());
-  }
-
- protected:
-  StatusFactory() = default;
-  ~StatusFactory() = default;
-
- private:
-  std::map<uint32_t, std::string> err_desc_;
-};
-
-class GE_FUNC_VISIBILITY ErrorNoRegisterar {
- public:
-  ErrorNoRegisterar(const uint32_t err, const std::string &desc) noexcept {
-    StatusFactory::Instance()->RegisterErrorNo(err, desc);
-  }
-  ErrorNoRegisterar(const uint32_t err, const char *const desc) noexcept {
-    StatusFactory::Instance()->RegisterErrorNo(err, desc);
-  }
-  ~ErrorNoRegisterar() = default;
-};
+#ifndef GE_PARAM_INVALID_DEFINED
+#define GE_PARAM_INVALID_DEFINED
+constexpr uint32_t PARAM_INVALID = 2;
+#endif
 
 // System ID
-enum class InnSystemIdType { SYSID_GE = 8 };
+enum class InnSystemIdType : std::uint8_t { SYSID_GE = 8 };
 // Runtime location
-enum class InnLogRuntime {
+enum class InnLogRuntime : std::uint8_t {
   RT_HOST = 0b01,
   RT_DEVICE = 0b10,
 };
