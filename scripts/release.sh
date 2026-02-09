@@ -266,7 +266,6 @@ function fn_build_tbe_dependency()
     fi
     cp -r $CODE_ROOT/src/kernels/tbe_adapter/stubs/include/canndev $THIRD_PARTY_DIR
     cp -r $CODE_ROOT/src/kernels/tbe_adapter/stubs/include/api $THIRD_PARTY_DIR
-    cp -r $CODE_ROOT/src/kernels/tbe_adapter/stubs/include/air $THIRD_PARTY_DIR
     set +e
     ln -s $API_DIR/impl $THIRD_PARTY_DIR/impl
     set -e

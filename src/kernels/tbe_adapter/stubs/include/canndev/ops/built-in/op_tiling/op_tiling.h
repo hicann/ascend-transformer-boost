@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 Huawei Technologies Co., Ltd.
+ * Copyright (c) 2024 Huawei Technologies Co., Ltd.
  * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
  * CANN Open Software License Agreement Version 2.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
@@ -8,16 +8,20 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
-#ifndef ASCEND_OPS_STUB_GE_API_ERROR_CODES_H
-#define ASCEND_OPS_STUB_GE_API_ERROR_CODES_H
+#ifndef ASCEND_OPS_STUB_OP_TILING_H
+#define ASCEND_OPS_STUB_OP_TILING_H
 
-#include <cstdint>
-#include "graph/ascend_string.h"
+#include <cstdlib>
+#include <vector>
 
-namespace ge {
-constexpr uint32_t SUCCESS = 0;
-constexpr uint32_t FAILED = 1;
-constexpr uint32_t PARAM_INVALID = 2;
-} // namespace ge
+#include "register/op_tiling_info.h"
+#include "op_log.h"
+#include <mki/utils/env/env.h>
+
+using namespace std;
+
+namespace optiling {
+const static bool prof_switch = false;
+}
 
 #endif
