@@ -81,9 +81,6 @@ Status SortOperation::InferShapeImpl(const SVector<TensorDesc> &inTensorDescs,
     outTensorDescs.at(0).shape.dims[outTensorDescs.at(0).shape.dimNum - 1] = param_.num[0];
     outTensorDescs.at(1).shape.dims[outTensorDescs.at(0).shape.dimNum - 1] = param_.num[0];
     outTensorDescs.at(1).dtype = ACL_INT32;
-    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
-        outTensorDescs.at(1).dtype = ACL_INT64;
-    }
     return NO_ERROR;
 }
 
