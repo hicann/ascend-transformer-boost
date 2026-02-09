@@ -25,7 +25,7 @@ template <> Status CreateOperation(const infer::ConcatParam &opParam, Operation 
         return ERROR_INVALID_PARAM;
     }
     OP_PARAM_RSV_CHECK(opParam);
-    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
         Status status = ConcatAclnnRunner::LoadMethod();
         if (status != NO_ERROR) {
             return status;
@@ -42,8 +42,8 @@ template <> Status CreateOperation(const infer::ConcatParam &opParam, Operation 
 ConcatOperation::ConcatOperation(const infer::ConcatParam &param) : OperationBase("ConcatOperation"), param_(param)
 {
     ATB_LOG(INFO) << GetLogPrefix() << "ConcatParam concatDim: " << param.concatDim;
-    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
-        operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("ConcatOperationAscend91095");
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
+        operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("ConcatOperationAscend950");
         return;
     }
     operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("ConcatOperation");
@@ -132,7 +132,7 @@ std::shared_ptr<Runner> ConcatOperation::CreateRunner(Context &context) const
 {
     (void)context;
     ATB_LOG(INFO) << GetLogPrefix() << "create Concat AclnnRunner";
-    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
         return std::make_shared<ConcatAclnnRunner>(param_);
     }
     return std::make_shared<ConcatOpsRunner>(param_);

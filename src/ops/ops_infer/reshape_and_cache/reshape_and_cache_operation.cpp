@@ -105,7 +105,7 @@ ReshapeAndCacheOperation::ReshapeAndCacheOperation(const infer::ReshapeAndCacheP
     } else {
         operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("ReshapeAndCacheOperation");
     }
-    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
         operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("ReshapeAndCacheOperationAscend950");
     }
     ATB_LOG(INFO) << GetLogPrefix() << "ReshapeAndCacheParam compressType:" << param.compressType
@@ -238,7 +238,7 @@ Status ReshapeAndCacheOperation::DimCheck(const SVector<TensorDesc> &inTensorDes
         ATB_LOG(ERROR) << GetLogPrefix() << "blockSizes should be same";
         return ERROR_INVALID_TENSOR_DIM;
     }
-    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
         return KVCacheDimCheck910B(inTensorDescs);
     }
     return is910b_ ? KVCacheDimCheck910B(inTensorDescs) : KVCacheDimCheck310P(inTensorDescs);
@@ -402,7 +402,7 @@ Status ReshapeAndCacheOperation::KVCacheDimCheck310P(const SVector<TensorDesc> &
 std::shared_ptr<Runner> ReshapeAndCacheOperation::CreateRunner(Context &context) const
 {
     (void)context;
-    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
         ATB_LOG(INFO) << GetLogPrefix() << "create ReshapeAndCache AclnnRunner";
         return std::make_shared<ReshapeAndCacheAclnnRunner>(param_);
     }

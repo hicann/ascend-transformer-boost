@@ -116,20 +116,20 @@ def get_soc_version():
     device_name = torch.npu.get_device_name()
     if (re.search("Ascend910B", device_name, re.I) and len(device_name) > 10) or re.search("Ascend910_93", device_name, re.I):
         soc_version = "Ascend910B"
-    elif re.search("Ascend910_95", device_name, re.I):
-        soc_version = "Ascend910_95"
+    elif re.search("Ascend950", device_name, re.I):
+        soc_version = "Ascend950"
     elif re.search("Ascend310P", device_name, re.I):
         soc_version = "Ascend310P"
-    elif re.search("Ascend910_95", device_name, re.I):
-        soc_version = "Ascend910_95"
+    elif re.search("Ascend950", device_name, re.I):
+        soc_version = "Ascend950"
     elif (re.search("Ascend910ProB", device_name, re.I) or re.search("Ascend910B", device_name, re.I) or
     re.search("Ascend910PremiumA", device_name, re.I) or re.search("Ascend910ProA", device_name, re.I) or
     re.search("Ascend910A", device_name, re.I)):
         soc_version = "Ascend910A"
     elif (re.search("Ascend310B", device_name, re.I)):
         soc_version = "Ascend310B"
-    elif (re.search("Ascend910_95", device_name, re.I)):
-        soc_version = "Ascend910_95"
+    elif (re.search("Ascend950", device_name, re.I)):
+        soc_version = "Ascend950"
     else:
         logging.error("device_name {} is not supported".format(device_name))
         quit(1)
@@ -3618,7 +3618,7 @@ class RopeOperation(DataGen):
 
     @staticmethod
     def golden(in_tensors, op_params):
-        if get_soc_version() == "Ascend910_95":
+        if get_soc_version() == "Ascend950":
             return RopeOperation.RopeA5_gloden(in_tensors, op_params)
         json_data = json.loads(op_params)
         dtype = in_tensors[0].dtype
@@ -3845,7 +3845,7 @@ class ReshapeAndCacheOperation(DataGen):
                 block_offset = slot % block_size
 
                 token_key = key[j]
-                if ((soc_version == 'Ascend910B' or soc_version == 'Ascend910_95') and key_expect[0][0].shape == token_key.shape):
+                if ((soc_version == 'Ascend910B' or soc_version == 'Ascend950') and key_expect[0][0].shape == token_key.shape):
                     key_expect[block_index][block_offset] = token_key
 
             ret_data = key, key_cache, slot_mapping, key_expect
@@ -3867,7 +3867,7 @@ class ReshapeAndCacheOperation(DataGen):
         num_tokens_v = shapes[1][0]
         num_heads_v  = shapes[1][1]
         head_size_v = shapes[1][2]
-        if ((soc_version == 'Ascend910B' or soc_version == 'Ascend910_95') and ("kvCacheCfg" in json_data and  json_data["kvCacheCfg"] == 2)) or soc_version == 'Ascend310P':
+        if ((soc_version == 'Ascend910B' or soc_version == 'Ascend950') and ("kvCacheCfg" in json_data and  json_data["kvCacheCfg"] == 2)) or soc_version == 'Ascend310P':
             block_size = shapes[2][2]
         else:
             block_size = shapes[2][1]
@@ -3891,7 +3891,7 @@ class ReshapeAndCacheOperation(DataGen):
             slot_list = random.sample(range(range_min, num_slots), num_tokens_slots)
         slot_mapping = np.array(slot_list).astype(np.int32)
 
-        if soc_version == 'Ascend910B' or soc_version == 'Ascend910_95':
+        if soc_version == 'Ascend910B' or soc_version == 'Ascend950':
             key_cache = np.zeros((shapes[2][0], shapes[2][1], shapes[2][2], shapes[2][3])).astype(dtype)
             value_cache = np.zeros((shapes[3][0], shapes[3][1], shapes[3][2], shapes[3][3])).astype(dtype)
             key_expect = np.zeros((shapes[2][0], shapes[2][1], shapes[2][2], shapes[2][3])).astype(dtype)
@@ -3928,7 +3928,7 @@ class ReshapeAndCacheOperation(DataGen):
                 for v in range(num_heads_v * head_size_v // last_dim_v):
                     if (block_index < value_expect.shape[0] and block_offset < value_expect.shape[2] and value_expect.shape[3] == last_dim_v and v < value_expect.shape[1]):
                         value_expect[block_index][v][block_offset][:] = token_v[v * last_dim_v: v * last_dim_v + last_dim_v]
-            elif soc_version == 'Ascend910B' or soc_version == 'Ascend910_95': # 910B ND
+            elif soc_version == 'Ascend910B' or soc_version == 'Ascend950': # 910B ND
                 if key_expect[0][0].shape == token_key.shape:
                     key_expect[block_index][block_offset] = token_key
                 if value_expect[0][0].shape == token_v.shape:
@@ -3973,7 +3973,7 @@ class ReshapeAndCacheOperation(DataGen):
             data_type = in_tensors[0].dtype
             slot_mapping = in_tensors[2]
             soc_version = get_soc_version()
-            if soc_version == 'Ascend910B' or soc_version == 'Ascend910_95':
+            if soc_version == 'Ascend910B' or soc_version == 'Ascend950':
                 num_blocks, block_size, _, _ = in_tensors[1].shape # key_cache
                 key_expect = in_tensors[1]
                 for i, slot in enumerate(slot_mapping):
@@ -4017,7 +4017,7 @@ class ReshapeAndCacheOperation(DataGen):
                 for v in range(num_heads * v_head_size // last_dim_v):
                     value_expect_nz[block_index][v][block_offset][:] = token_v[v * last_dim_v: v * last_dim_v + last_dim_v]
             return [key_expect_nz, value_expect_nz]
-        elif soc_version == 'Ascend910B' or soc_version == 'Ascend910_95':
+        elif soc_version == 'Ascend910B' or soc_version == 'Ascend950':
             num_blocks, block_size, _, _ = in_tensors[2].shape # key_cache
             key_expect = in_tensors[2]
             value_expect = in_tensors[3]
@@ -4266,7 +4266,7 @@ class ElewiseOperation(DataGen):
         return [golden_result]
 
     def elewiseQuantPerChannel(in_tensors, op_params):
-        if  get_soc_version() == "Ascend910_95":
+        if  get_soc_version() == "Ascend950":
             json_data = json.loads(op_params)
             outType = json_data["outTensorType"]
             input_x = in_tensors[0].to(torch.float32).cpu().numpy().astype("float32")
@@ -4931,7 +4931,7 @@ class PagedAttentionOperation(DataGen):
         num_heads = query.shape[1]
         kv_heads = value_cache.shape[2]
 
-        if get_soc_version() == "Ascend910_95":
+        if get_soc_version() == "Ascend950":
             if key_cache.dtype == torch.float8_e5m2 or key_cache.dtype == torch.float8_e4m3fn:
                 key_cache = key_cache.to(torch.float16)
                 value_cache = value_cache.to(torch.float16)
@@ -5105,7 +5105,7 @@ class PagedAttentionOperation(DataGen):
                 if PagedAttentionOperation.in_tensors[j].shape[0] != 0:
                     tensor_count += 1
                     if tensor_count == i + 1:
-                        if get_soc_version() == "Ascend910_95":
+                        if get_soc_version() == "Ascend950":
                             cpu_tensor = PagedAttentionOperation.in_tensors[j].cpu().to(PagedAttentionOperation.trans_dtype(datatype))
                             PagedAttentionOperation.in_tensors[j] = cpu_tensor.npu()
                             PagedAttentionOperation.golden_tensors[j] = cpu_tensor.npu()
@@ -5113,14 +5113,14 @@ class PagedAttentionOperation(DataGen):
                             PagedAttentionOperation.in_tensors[j] = \
                                 PagedAttentionOperation.in_tensors[j].to(PagedAttentionOperation.trans_dtype(datatype))
                         return torch_npu.npu_format_cast(PagedAttentionOperation.in_tensors[j], format_dict[format])
-        if get_soc_version() == "Ascend910_95" and i == 0:
+        if get_soc_version() == "Ascend950" and i == 0:
             if hasattr(PagedAttentionOperation, 'in_tensors'):
                 delattr(PagedAttentionOperation, 'in_tensors')
             if hasattr(PagedAttentionOperation, 'golden_tensors'):
                 delattr(PagedAttentionOperation, 'golden_tensors')
         soc_version = get_soc_version()
         json_data = json.loads(op_params)
-        if soc_version == "Ascend910B" or soc_version == "Ascend910_95":
+        if soc_version == "Ascend910B" or soc_version == "Ascend950":
             is_NZ = False
         else:
             is_NZ = True
@@ -5177,7 +5177,7 @@ class PagedAttentionOperation(DataGen):
             head_size_v = json_data["mlaVHeadSize"]
             max_num_blocks_per_query = shapes[2][1]
             batch = shapes[3][0]
-        if soc_version == "Ascend910_95":
+        if soc_version == "Ascend950":
             max_seq_len = 32
         else:
             max_seq_len = 256
@@ -5232,7 +5232,7 @@ class PagedAttentionOperation(DataGen):
         if quantType == 1:
             q_range = 4
             kv_range = 4
-            if soc_version == "Ascend910_95":
+            if soc_version == "Ascend950":
                 if kv_dtype == "float8_e4m3fn" or kv_dtype == "float8_e5m2":
                     kv_dtype = np.float16
             else:
@@ -5398,7 +5398,7 @@ class PagedAttentionOperation(DataGen):
         PagedAttentionOperation.golden_tensors = golden_tensors
         PagedAttentionOperation.in_tensors = in_tensors
 
-        if soc_version == "Ascend910_95":
+        if soc_version == "Ascend950":
             in_tensor0_cpu = PagedAttentionOperation.in_tensors[0].cpu().to(PagedAttentionOperation.trans_dtype(datatype))
             PagedAttentionOperation.in_tensors[0] = in_tensor0_cpu.npu()
         else:
@@ -5437,7 +5437,7 @@ class PagedAttentionOperation(DataGen):
     @staticmethod
     def golden(in_tensors, op_params):
         json_data = json.loads(op_params)
-        if get_soc_version() == "Ascend910B" or get_soc_version() == "Ascend910_95":
+        if get_soc_version() == "Ascend910B" or get_soc_version() == "Ascend950":
             is_NZ = False
         else:
             is_NZ = True
@@ -5669,7 +5669,7 @@ class SelfAttentionOperation(DataGen):
             raise TypeError(f"Shape value must be int, got {type(current)} at {indices}")
         return int(current)
 
-    def calc_expect_func_91095(batch, seqlen, heads, embed, headDims_v, group_num=32, pseShiftFlag = False, is_mask = False):
+    def calc_expect_func_950(batch, seqlen, heads, embed, headDims_v, group_num=32, pseShiftFlag = False, is_mask = False):
         variate_seq = False
         is_decoder = False
         max_seq = 2048
@@ -5958,7 +5958,7 @@ class SelfAttentionOperation(DataGen):
     @staticmethod
     def customize(shapes, i, datatype, format, data_gen_ranges, op_params):
         json_data = json.loads(op_params)
-        if get_soc_version() == "Ascend910_95":
+        if get_soc_version() == "Ascend950":
             if i == 0:
                 try:
                     if "maskType" in json_data and json_data["maskType"] == 1:
@@ -5986,7 +5986,7 @@ class SelfAttentionOperation(DataGen):
                     pseShiftFlag = True
                 else:
                     pseShiftFlag = False
-                data = SelfAttentionOperation.calc_expect_func_91095(batch, seqlen, qhead, headDims, headDims_v, group_num=kv_head, pseShiftFlag = pseShiftFlag, is_mask = is_mask)
+                data = SelfAttentionOperation.calc_expect_func_950(batch, seqlen, qhead, headDims, headDims_v, group_num=kv_head, pseShiftFlag = pseShiftFlag, is_mask = is_mask)
                 param_seqlen = data[seqlen_index].tolist()
                 in_tensors = [torch.from_numpy(tensor) for tensor in data]
                 if datatype == "bf16":
@@ -6126,7 +6126,7 @@ class SelfAttentionOperation(DataGen):
     def zero(shape, datatype, format, data_gen_ranges, op_params):
         try:
             json_data = json.loads(op_params)
-            if get_soc_version() == "Ascend910_95":
+            if get_soc_version() == "Ascend950":
                 out_index = 4
                 if "maskType" in json_data and json_data["maskType"] == 1:
                     out_index += 1
@@ -6211,7 +6211,7 @@ class SelfAttentionOperation(DataGen):
         return score
 
     @staticmethod
-    def calc_golden_encoder_91095(q, k, v, pseshift_in, mask_in, seq_len, asdops_param):
+    def calc_golden_encoder_950(q, k, v, pseshift_in, mask_in, seq_len, asdops_param):
         q_offset = 0
         k_offset = 0
         v_offset = 0
@@ -6687,7 +6687,7 @@ class SelfAttentionOperation(DataGen):
                 if "pseShiftFlag" in json_data and json_data["pseShiftFlag"]:
                     pseShift = in_tensors[4]
             if mask is not None:
-                if get_soc_version() != "Ascend910B" and get_soc_version() != "Ascend910_95":
+                if get_soc_version() != "Ascend910B" and get_soc_version() != "Ascend950":
                     mask = mask.contiguous().permute(0, 2, 1, 3)
                     dim0, dim1, dim2, dim3 = mask.shape
                     mask = mask.contiguous().view(dim0, dim1, dim2*dim3)
@@ -6706,8 +6706,8 @@ class SelfAttentionOperation(DataGen):
                                 mask_padded[:, dim1_offset : dim1_offset + dim1, dim2_offset : dim2_offset + step ] = mask
                             mask = mask_padded[:, : dim1, : dim1]
             asdops_params = SelfAttentionOperation.get_asdops_param(q, k, v, mask, seq_len, op_params)
-            if get_soc_version() == "Ascend910_95":
-                return [SelfAttentionOperation.calc_golden_encoder_91095(q, k, v, pseShift, mask, seq_len, asdops_params).cpu()]
+            if get_soc_version() == "Ascend950":
+                return [SelfAttentionOperation.calc_golden_encoder_950(q, k, v, pseShift, mask, seq_len, asdops_params).cpu()]
             return [SelfAttentionOperation.calc_golden_encoder(q, k, v, mask, seq_len, asdops_params).cpu()]
         elif json_data["clampType"] == 1:
             layerid = int(in_tensors[8][0])

@@ -30,7 +30,7 @@ template <> Status CreateOperation(const infer::ReduceParam &opParam, Operation 
     }
     OP_PARAM_RSV_CHECK(opParam);
 
-    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
         if (ReduceAclnnRunner::LoadMethod() != NO_ERROR) {
             ATB_LOG(ERROR) << "Load aclnn function failed, please check your CANN version.";
             return ERROR_CANN_ERROR;
@@ -136,7 +136,7 @@ Status ReduceOperation::ParamCheck(TensorDesc inTensorDesc) const
 std::shared_ptr<Runner> ReduceOperation::CreateRunner(Context &context) const
 {
     (void)context;
-    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
         return std::make_shared<ReduceAclnnRunner>(param_);
     }
     return std::make_shared<ReduceOpsRunner>(param_);

@@ -67,7 +67,7 @@ def group_matmul(heads, group_num, A, B):
     return score
 
 
-def calc_expect_func_91095(batch, seqlen, heads, embed, headDims_v, group_num=32, pseShiftFlag = False, is_mask = False):
+def calc_expect_func_950(batch, seqlen, heads, embed, headDims_v, group_num=32, pseShiftFlag = False, is_mask = False):
     variate_seq = False
     is_decoder = False
     max_seq = 2048
@@ -190,10 +190,10 @@ def calc_expect_func_91095(batch, seqlen, heads, embed, headDims_v, group_num=32
     print("==> data generate return!")
     return ret_data
 
-if operation_test.get_soc_version() == 'Ascend910_95':
+if operation_test.get_soc_version() == 'Ascend950':
     kv_head = 32
-    # data = calc_expect_func_91095(16, 128, 32, 192, 128, group_num=kv_head, is_mask = True)
-    data = calc_expect_func_91095(1, 16, 2, 16, 16, group_num=2, is_mask = True)
+    # data = calc_expect_func_950(16, 128, 32, 192, 128, group_num=kv_head, is_mask = True)
+    data = calc_expect_func_950(1, 16, 2, 16, 16, group_num=2, is_mask = True)
     param_seqlen = data[4].tolist()
     in_tensors = [torch.from_numpy(tensor) for tensor in data]
     in_tensors = [tensor.npu() for tensor in in_tensors]
@@ -214,8 +214,8 @@ class TestFlashAttentionEncoderOperation(operation_test.OperationTest):
         return torch.allclose(out_tensor, golden_out_tensor, rtol=0.001, atol=0.001)
 
     def test(self):
-        if not operation_test.get_soc_version() == 'Ascend910_95':
-            print("this testcase only supports Ascend910_95")
+        if not operation_test.get_soc_version() == 'Ascend950':
+            print("this testcase only supports Ascend950")
             return
         self.execute_with_param(OP_NAME, PARAM, RUN_PARAM, [
             in_tensors[0], in_tensors[1], in_tensors[2], in_tensors[3], in_tensors[4]

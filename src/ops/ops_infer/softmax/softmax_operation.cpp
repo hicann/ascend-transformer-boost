@@ -29,7 +29,7 @@ template <> Status CreateOperation(const infer::SoftmaxParam &opParam, Operation
         return ERROR_INVALID_PARAM;
     }
     OP_PARAM_RSV_CHECK(opParam);
-    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
         Status status = SoftmaxAclnnRunner::LoadMethod();
         if (status != NO_ERROR) {
             ATB_LOG(ERROR) << "Load aclnnSoftmax func failed!";
@@ -112,7 +112,7 @@ Status SoftmaxOperation::ParamCheck(const TensorDesc &inTensorDesc) const
 std::shared_ptr<Runner> SoftmaxOperation::CreateRunner(Context &context) const
 {
     (void)context;
-    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
         return std::make_shared<SoftmaxAclnnRunner>(param_);
     }
     return std::make_shared<SoftmaxOpsRunner>(param_);

@@ -196,7 +196,7 @@ template <> Status CreateOperation(const infer::LinearParam &opParam, Operation 
         return ERROR_INVALID_PARAM;
     }
     OP_PARAM_RSV_CHECK(opParam);
-    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
         if (LinearAclnnRunner::LoadAclnnFuncs() != NO_ERROR) {
             ATB_LOG(ERROR) << "Load aclnn function failed, please check your CANN version.";
             return ERROR_CANN_ERROR;
@@ -284,7 +284,7 @@ LinearOperation::LinearOperation(const infer::LinearParam &param) : OperationBas
         }
     }
     operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr(opIrKey.str());
-    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
         if (param_.hasBias) {
             operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("LinearOperationMatmulWithBiasAscend950");
         } else {
@@ -363,7 +363,7 @@ Status LinearOperation::SetupCheckImpl(const SVector<Tensor> &inTensors, const S
 std::shared_ptr<Runner> LinearOperation::CreateRunner(Context &context) const
 {
     (void)context;
-    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
         return std::make_shared<LinearAclnnRunner>(param_);
     }
     return std::make_shared<LinearOpsRunner>(param_);
@@ -693,7 +693,7 @@ bool LinearOperation::XWeightDimNumCheck(const TensorDesc &xTensorDesc, const Te
     if (!PerTokenXWeightDimNumCheck(xTensorDesc, weightTensorDesc)) {
         return false;
     }
-    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
         if (xTensorDesc.shape.dimNum == DIM_NUM_3 && weightTensorDesc.shape.dimNum == DIM_NUM_3 && param_.hasBias) {
             ATB_LOG(ERROR) << GetLogPrefix() << 
                 "On 950, if hasBias is true, inTensor0 and inTensor1 dim num should not be 3 at the same time";
