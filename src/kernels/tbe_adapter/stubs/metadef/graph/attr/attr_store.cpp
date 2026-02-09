@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2026 Huawei Technologies Co., Ltd.
+ * Copyright (c) 2025 Huawei Technologies Co., Ltd.
  * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
  * CANN Open Software License Agreement Version 2.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
@@ -11,9 +11,8 @@
 #include "graph/attr_store.h"
 #include "attribute_group/attr_group_base.h"
 #include "attribute_group/attr_group_serialize.h"
-#include "common/checker.h"
+#include "checker.h"
 #include "common/ge_common/debug/ge_log.h"
-#include "common/util/error_manager/error_manager.h"
 
 namespace ge {
 const AttrId CONST_INVALID_ATTR_ID = GetAttrId(0xffffffffU, 0U);

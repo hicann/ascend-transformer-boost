@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2026 Huawei Technologies Co., Ltd.
+# Copyright (c) 2025 Huawei Technologies Co., Ltd.
 # This program is free software, you can redistribute it and/or modify it under the terms and conditions of
 # CANN Open Software License Agreement Version 2.0 (the "License").
 # Please refer to the License for details. You may not use this file except in compliance with the License.
@@ -22,27 +22,17 @@ set(TBE_TILING_DIR ${PROJECT_SOURCE_DIR}/3rdparty/canndev/ops/built-in/op_tiling
 set(TBE_OPS_DIR ${PROJECT_SOURCE_DIR}/3rdparty/canndev/ops)
 set(OPS_NN_DIR ${PROJECT_SOURCE_DIR}/3rdparty/ops-nn)
 set(OPS_BASE_DIR ${PROJECT_SOURCE_DIR}/3rdparty/opbase)
-set(OPS_MATH_DIR ${PROJECT_SOURCE_DIR}/3rdparty/ops-math)
 set(GE_DIR ${PROJECT_SOURCE_DIR}/3rdparty/air)
 
-# 迁移后算子源文件
 set(OPS_SOURCE
     ${OPS_NN_DIR}/index/scatter_elements_v2/op_host/scatter_elements_v2_tiling.cpp
     ${OPS_NN_DIR}/norm/layer_norm_v4/op_host/layer_norm_v4_tiling.cpp
     ${OPS_NN_DIR}/norm/layer_norm_v4/op_host/layer_norm_v4_tiling_base.cpp
-    ${OPS_MATH_DIR}/math/cumsum/op_host/arch35/cumsum_tiling_ascendc_arch35.cpp
-    ${OPS_MATH_DIR}/math/cumsum/op_host/arch35/cumsum_tiling_ascendc_int_arch35.cpp
-    ${OPS_MATH_DIR}/conversion/fill/op_host/arch35/fill_tiling_arch35.cpp
-    ${OPS_MATH_DIR}/conversion/tensor_move/op_host/arch35/tensor_move_tiling_arch35.cpp
-    ${OPS_MATH_DIR}/common/src/op_host/tiling_util.cpp
-    ${OPS_BASE_DIR}/src/op_common/atvoss/elewise/elewise_tiling.cpp
-    ${OPS_BASE_DIR}/src/op_common/log/log.cpp
 )
 
 if("${PACKAGE_COMPILE}" STREQUAL "ON" AND NOT "${LOCAL_RELEASE_COMPILE}" STREQUAL "ON")
     set(ASDOPS_METADEF_FILES
         ${METADEF_DIR}/base/any_value.cc
-        ${METADEF_DIR}/base/asc/tilingdata_base_impl.cc
         ${METADEF_DIR}/base/type/ascend_string_impl.cc
         ${METADEF_DIR}/base/utils/aligned_ptr.cc
         ${METADEF_DIR}/base/utils/type_utils_impl.cc
@@ -60,6 +50,7 @@ if("${PACKAGE_COMPILE}" STREQUAL "ON" AND NOT "${LOCAL_RELEASE_COMPILE}" STREQUA
         ${GE_DIR}/graph_metadef/register/op_binary_resource_manager.cc
         ${GE_DIR}/graph_metadef/register/tuning_bank_key_registry.cc
         ${GE_DIR}/graph_metadef/register/tuning_tiling_registry.cc
+        ${GE_DIR}/graph_metadef/register/ascendc/tilingdata_base.cc
         ${GE_DIR}/graph_metadef/third_party/transformer/src/expand_dimension.cc
         ${GE_DIR}/graph_metadef/third_party/transformer/src/transfer_shape_according_to_format.cc
         ${GE_DIR}/graph_metadef/third_party/transformer/src/transfer_shape_utils.cc
@@ -68,7 +59,6 @@ if("${PACKAGE_COMPILE}" STREQUAL "ON" AND NOT "${LOCAL_RELEASE_COMPILE}" STREQUA
 
     # Add tbe_tiling.cc here
     set(ASDOPS_TILING_FILES
-        ${TBE_TILING_DIR}/op_tiling_util.cc
         ${TBE_TILING_DIR}/auto_tiling_context.cc
         ${TBE_TILING_DIR}/auto_tiling_rt2.cc
         ${TBE_TILING_DIR}/broadcast_v3.cc
@@ -133,10 +123,14 @@ if("${PACKAGE_COMPILE}" STREQUAL "ON" AND NOT "${LOCAL_RELEASE_COMPILE}" STREQUA
         ${TBE_OPS_DIR}/conversion/as_strided/op_host/as_strided_tiling.cpp
         ${TBE_OPS_DIR}/conversion/as_strided/op_host/as_strided_tiling_arch35.cpp
         ${TBE_OPS_DIR}/math/cumsum/op_host/cumsum_tiling.cpp
+        # ${TBE_TILING_DIR}/runtime/cumsum_tiling.cc
+        ${TBE_OPS_DIR}/math/cumsum/op_host/cumsum_tiling_ascendc_arch35.cpp
+        ${TBE_OPS_DIR}/math/cumsum/op_host/cumsum_tiling_ascendc_int_arch35.cpp
         ${TBE_TILING_DIR}/runtime/concat_d.cc
         ${TBE_OPS_DIR}/conversion/concat/op_host/concat_tiling_arch35.cpp
         ${TBE_TILING_DIR}/runtime/expand.cc
         ${TBE_TILING_DIR}/runtime/elewise_tiling.cc
+        ${TBE_OPS_DIR}/conversion/fill/op_host/fill_tiling_arch35.cpp
         ${TBE_OPS_DIR}/index/gather_v2/op_host/gather_v2_tiling_arch35.cpp
         ${TBE_OPS_DIR}/index/gather_v2/op_host/gather_v2_tiling.cpp
         ${TBE_OPS_DIR}/index/inplace_index_add/op_host/inplace_index_add_tiling.cpp
@@ -149,12 +143,13 @@ if("${PACKAGE_COMPILE}" STREQUAL "ON" AND NOT "${LOCAL_RELEASE_COMPILE}" STREQUA
         ${TBE_OPS_DIR}/conversion/pack/op_host/pack_tiling_arch35.cpp
         ${TBE_OPS_DIR}/index/reverse_v2/op_host/reverse_v2_tiling.cpp
         ${TBE_OPS_DIR}/index/reverse_v2/op_host/reverse_v2_tiling_arch35.cpp
+        ${TBE_TILING_DIR}/runtime/tensor_move_tiling.cc
         ${TBE_TILING_DIR}/runtime/runtime2_util.cc
         ${TBE_OPS_DIR}/conversion/slice/op_host/slice_tiling.cpp
         ${TBE_OPS_DIR}/conversion/slice/op_host/slice_tiling_base.cpp
-        ${TBE_OPS_DIR}/conversion/strided_slice/op_host/strided_slice_tiling_arch35.cpp
+        ${TBE_TILING_DIR}/runtime/strided_slice_tiling.cc
         ${TBE_TILING_DIR}/runtime/top_k.cc
-        ${TBE_OPS_DIR}/math/top_k_v2/op_host/top_k_v2_tiling_arch35.cpp
+        ${TBE_TILING_DIR}/runtime/top_k_v2_tiling.cc
         ${TBE_TILING_DIR}/runtime/trans_data.cc
         ${TBE_TILING_DIR}/runtime/trans_data_negative_target_ntc.cc
         ${TBE_TILING_DIR}/runtime/trans_data_negative_target_tc_201.cc
@@ -162,14 +157,14 @@ if("${PACKAGE_COMPILE}" STREQUAL "ON" AND NOT "${LOCAL_RELEASE_COMPILE}" STREQUA
         ${TBE_TILING_DIR}/runtime/trans_data_positive_source_tc_1010.cc
         ${TBE_TILING_DIR}/runtime/trans_data_positive_source_tc_1011.cc
         ${TBE_TILING_DIR}/runtime/transdata_tiling.cc
-        ${TBE_OPS_DIR}/conversion/transpose/op_host/transpose_tiling.cpp
-        ${TBE_OPS_DIR}/conversion/transpose/op_host/transpose_tiling_arch35.cpp
+        ${TBE_TILING_DIR}/runtime/transpose.cc
+        ${TBE_TILING_DIR}/runtime/transpose_tiling.cc
         ${TBE_OPS_DIR}/conversion/depth_to_space/op_host/depth_to_space_tiling.cpp
-        ${TBE_OPS_DIR}/conversion/space_to_depth/op_host/space_to_depth_tiling.cpp
+        ${TBE_TILING_DIR}/runtime/space_to_depth_tiling.cc
         ${TBE_OPS_DIR}/conversion/view_copy/op_host/view_copy_tiling.cpp
         ${TBE_OPS_DIR}/conversion/view_copy/op_host/view_copy_tiling_arch35.cpp
         ${TBE_TILING_DIR}/runtime/runtime2_util.cc
-        ${TBE_OPS_DIR}/conversion/transpose/op_host/transpose_tiling_with_gather_arch35.cpp
+        ${TBE_TILING_DIR}/runtime/transpose_tiling_with_gather.cc
         ${TBE_TILING_DIR}/../fusion_pass/common/fp16_t.cc
         ${PROJECT_SOURCE_DIR}/3rdparty/canndev/ops/common/src/op_util.cc
         ${PROJECT_SOURCE_DIR}/3rdparty/canndev/ops/common/src/getcdim.cc
@@ -487,6 +482,10 @@ endif()
 if("${PACKAGE_COMPILE}" STREQUAL "ON" AND NOT "${LOCAL_RELEASE_COMPILE}" STREQUAL "ON")
     set(ASDOPS_INC_DIRS
         ${CMAKE_CURRENT_LIST_DIR}
+        ${CMAKE_CURRENT_LIST_DIR}/stubs/include
+        ${CMAKE_CURRENT_LIST_DIR}/stubs/include/metadef
+        ${CMAKE_CURRENT_LIST_DIR}/stubs/include/metadef/inc
+        ${CMAKE_CURRENT_LIST_DIR}/stubs/include/metadef/inc/graph
         ${CMAKE_CURRENT_LIST_DIR}/platform
         ${CMAKE_CURRENT_LIST_DIR}/platform/tiling
         ${KERNEL_TILING_DIR}
@@ -495,22 +494,18 @@ if("${PACKAGE_COMPILE}" STREQUAL "ON" AND NOT "${LOCAL_RELEASE_COMPILE}" STREQUA
         ${PROJECT_SOURCE_DIR}/3rdparty/canndev/ops
         ${PROJECT_SOURCE_DIR}/3rdparty/canndev/ops/conversion/fill/op_kernel
         ${PROJECT_SOURCE_DIR}/3rdparty/canndev/ops/common
-        ${PROJECT_SOURCE_DIR}/3rdparty/canndev/ops/common/inc
-        ${PROJECT_SOURCE_DIR}/3rdparty/canndev/ops/built-in/op_tiling
-        ${PROJECT_SOURCE_DIR}/3rdparty/canndev/ops/common/ophost_comm/op_tiling
+        ${PROJECT_SOURCE_DIR}/3rdparty/canndev/ops/common/inc 
         ${METADEF_DIR}/inc/external/graph
         ${GE_DIR}/graph_metadef
         ${GE_DIR}/inc/graph_metadef
         ${GE_DIR}/inc/graph_metadef/base/runtime
         ${GE_DIR}/graph_metadef/exe_graph/lowering
         ${GE_DIR}/base/metadef/pkg_inc/exe_graph/runtime
-        ${CMAKE_CURRENT_LIST_DIR}/stubs/include/metadef/inc/graph
         ${GE_DIR}/inc/graph_metadef/graph
         ${GE_DIR}/base/metadef/pkg_inc
         ${METADEF_DIR}
         ${METADEF_DIR}/pkg_inc
         ${METADEF_DIR}/inc
-        ${GE_DIR}/inc
         ${GE_DIR}/base/metadef/pkg_inc/common
         ${METADEF_DIR}/inc/exe_graph
         ${GE_DIR}/inc/graph_metadef/external
@@ -525,18 +520,14 @@ if("${PACKAGE_COMPILE}" STREQUAL "ON" AND NOT "${LOCAL_RELEASE_COMPILE}" STREQUA
         ${METADEF_DIR}/inc/common/ge_common/debug
         ${PROJECT_SOURCE_DIR}/3rdparty/canndev/ops/utils/inc
         ${PROJECT_SOURCE_DIR}/3rdparty/canndev/ops/built-in
+        ${PROJECT_SOURCE_DIR}/3rdparty/canndev/ops/built-in/op_tiling
         ${PROJECT_SOURCE_DIR}/3rdparty/canndev/ops/built-in/op_tiling/runtime
         ${PROJECT_SOURCE_DIR}/3rdparty/canndev/third_party/fwkacllib/inc
         ${PROJECT_SOURCE_DIR}/3rdparty/canndev/third_party/fwkacllib/inc/toolchain
         $ENV{ASCEND_HOME_PATH}/include
         $ENV{ASCEND_HOME_PATH}/include/tiling
-        $ENV{ASCEND_HOME_PATH}/${ARCH}-linux
         $ENV{ASCEND_HOME_PATH}/${ARCH}-linux/pkg_inc
         $ENV{ASCEND_HOME_PATH}/${ARCH}-linux/pkg_inc/base
-        ${CMAKE_CURRENT_LIST_DIR}/stubs/include
-        ${CMAKE_CURRENT_LIST_DIR}/stubs/include/metadef
-        ${CMAKE_CURRENT_LIST_DIR}/stubs/include/metadef/inc
-        ${PROJECT_SOURCE_DIR}/3rdparty/mki
     )
 else()
     set(ASDOPS_INC_DIRS
@@ -656,9 +647,7 @@ target_compile_definitions(ops_reuse_kernels PRIVATE OpSpace=AsdOps)
 # 部分算子源码使用的是迁移后的算子仓的源码，这部分代码新创建一个.o对象进行编译设置
 add_library(tbe_adapter_ops OBJECT ${OPS_SOURCE})
 target_include_directories(tbe_adapter_ops PRIVATE
-    ${CMAKE_CURRENT_LIST_DIR}
     ${CMAKE_CURRENT_LIST_DIR}/platform
-    ${CMAKE_CURRENT_LIST_DIR}/platform/tiling
     ${KERNEL_TILING_DIR}
     ${TILING_API_BASE_DIR}
     ${TILING_API_BASE_DIR}/tiling
@@ -669,7 +658,6 @@ target_include_directories(tbe_adapter_ops PRIVATE
     ${OPS_BASE_DIR}/pkg_inc/op_common
     ${OPS_BASE_DIR}/pkg_inc/op_common/op_host
     ${OPS_NN_DIR}/common/inc
-    ${OPS_MATH_DIR}/common/inc
     ${METADEF_DIR}/inc/external
     $ENV{ASCEND_HOME_PATH}/include
     $ENV{ASCEND_HOME_PATH}/include/tiling
@@ -699,7 +687,7 @@ add_library(tbe_adapter SHARED ${SOURCE_FILES} ${ASDOPS_METADEF_FILES} ${ASDOPS_
 target_compile_options(tbe_adapter PRIVATE -Wno-error) # For redefine of "dlog_error" in dlog_pub.h and slog.h
 add_dependencies(tbe_adapter GEN_KERNEL_TILING)
 target_include_directories(tbe_adapter PRIVATE ${ASDOPS_INC_DIRS})
-target_link_libraries(tbe_adapter PRIVATE mmpa c_sec ascendalog mix_reuse_kernels ops_reuse_kernels tbe_adapter_ops tiling_api)
+target_link_libraries(tbe_adapter PRIVATE mmpa c_sec ascendalog mix_reuse_kernels ops_reuse_kernels tbe_adapter_ops)
 
 add_definitions(-DLOG_CPP)
 
