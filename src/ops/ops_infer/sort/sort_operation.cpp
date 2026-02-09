@@ -30,7 +30,7 @@ static const int64_t SIXTEEN = 16;
 bool ParamCheck(const atb::infer::SortParam &opParam)
 {
     (void)opParam;
-    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
         if (opParam.num.size() != 1) {
             ATB_LOG(ERROR) << "ParamCheckImpl:param.num size should be 1.";
             return false;
@@ -54,7 +54,7 @@ OPERATION_PARAM_FUNCS(SortOperation, infer::SortParam)
 
 SortOperation::SortOperation(const infer::SortParam &param) : OperationBase("SortOperation"), param_(param)
 {
-    if (GetSingleton<Config>().Is910B() || Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+    if (GetSingleton<Config>().Is910B() || Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
         operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("SortOperationA2and950");
     } else {
         operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("SortOperation");
@@ -81,7 +81,7 @@ Status SortOperation::InferShapeImpl(const SVector<TensorDesc> &inTensorDescs,
     outTensorDescs.at(0).shape.dims[outTensorDescs.at(0).shape.dimNum - 1] = param_.num[0];
     outTensorDescs.at(1).shape.dims[outTensorDescs.at(0).shape.dimNum - 1] = param_.num[0];
     outTensorDescs.at(1).dtype = ACL_INT32;
-    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
         outTensorDescs.at(1).dtype = ACL_INT64;
     }
     return NO_ERROR;
@@ -136,7 +136,7 @@ Status SortOperation::ParamCheckImpl(const TensorDesc &xTensorDesc) const
 std::shared_ptr<Runner> SortOperation::CreateRunner(Context &context) const
 {
     (void)context;
-    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
         return std::make_shared<SortAclnnRunner>(param_);
     }
     return std::make_shared<SortOpsRunner>(param_);

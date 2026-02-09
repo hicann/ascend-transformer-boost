@@ -42,7 +42,7 @@ template <> Status CreateOperation(const infer::RopeParam &opParam, Operation **
         ATB_LOG(ERROR) << "failed to new operation";
         return ERROR_OUT_OF_HOST_MEMORY;
     }
-    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
         if (RopeAclnnRunner::LoadMethod() != NO_ERROR) {
             ATB_LOG(ERROR) << "Load aclnn function failed, please check your CANN version.";
             return ERROR_CANN_ERROR;
@@ -208,7 +208,7 @@ std::shared_ptr<Runner> RopeOperation::CreateRunner(Context &context) const
         ATB_LOG(DEBUG) << "context cast to contextBase failed!";
         return nullptr;
     }
-    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
         return std::make_shared<RopeAclnnRunner>(param_);
     }
     int64_t runnerTypeIdx = RunnerTypeRegister::GetRunnerTypeIdx("RopeOpsRunner");

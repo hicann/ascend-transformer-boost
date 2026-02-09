@@ -314,7 +314,7 @@ class TestFlashAttention(operation_test.OperationTest):
         self.q_max_seq = np.max(self.q_seqlen)
         self.kv_max_seq = np.max(self.kv_seqlen)
         q = torch.from_numpy(np.random.uniform(-5.0, 5.0, size=(self.q_ntokens, heads * self.embeddim)))
-        if operation_test.get_soc_version() == 'Ascend910_95':
+        if operation_test.get_soc_version() == 'Ascend950':
             q = torch.from_numpy(np.random.uniform(-5.0, 5.0, size=(self.q_ntokens, heads, self.embeddim)))            
 
         self.q = q.to(data_type)
@@ -889,7 +889,7 @@ class TestFlashAttention(operation_test.OperationTest):
             self.golden_out = ans_concat
             self.golden_out_true = ans_concat_true
         else:
-            if operation_test.get_soc_version() == 'Ascend910_95':
+            if operation_test.get_soc_version() == 'Ascend950':
                 self.golden_out = out.to(self.data_type)
                 self.golden_out_true = out_true.to(torch.float32)
             else:
@@ -901,7 +901,7 @@ class TestFlashAttention(operation_test.OperationTest):
         if self.no_cache:
             self.k = self.close_pack(self.k.to(torch.float32), kv_seqlen).to(self.data_type)
             self.v = self.close_pack(self.v.to(torch.float32), kv_seqlen).to(self.data_type)
-            if operation_test.get_soc_version() == 'Ascend910_95':
+            if operation_test.get_soc_version() == 'Ascend950':
                 self.k = self.k.reshape(self.k.shape[0], kv_head, self.k.shape[1] // kv_head)
                 self.v = self.v.reshape(self.v.shape[0], kv_head, self.v.shape[1] // kv_head)
             if self.fav3:
@@ -1945,8 +1945,8 @@ class TestFlashAttention(operation_test.OperationTest):
         PARAM = json.dumps({"headNum": heads, "qkScale": 1.0 / math.sqrt(1.0 * embeddim), "kvHeadNum": kv_head,
                             "calcType": 3, "maskType": 2, "isTriuMask": 1, "kernelType": 0})
         RUN_PARAM = json.dumps({"seqLen": param_seqlen})
-        if operation_test.get_soc_version() != 'Ascend910B' and operation_test.get_soc_version() != 'Ascend910_95':
-            print("this testcase only supports Ascend910B and Ascend910_95")
+        if operation_test.get_soc_version() != 'Ascend910B' and operation_test.get_soc_version() != 'Ascend950':
+            print("this testcase only supports Ascend910B and Ascend950")
             return
         self.execute_with_param(OP_NAME, PARAM, RUN_PARAM, [
             in_tensors[0], in_tensors[1], in_tensors[2], in_tensors[3], in_tensors[4]

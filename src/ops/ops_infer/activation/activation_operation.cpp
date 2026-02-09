@@ -49,7 +49,7 @@ template <> Status CreateOperation(const infer::ActivationParam &opParam, Operat
         }
         return ERROR_INVALID_PARAM;
     }
-    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
         if (opParam.activationType == atb::infer::ActivationType::ACTIVATION_SWISH ||
             opParam.activationType == atb::infer::ActivationType::ACTIVATION_SIGMOID) {
             Status status = ActivationAclnnRunner::LoadAclnnFunctions();
@@ -104,13 +104,13 @@ static Mki::OperationIr *GetOperationIrForActivation(const infer::ActivationType
     return nullptr;
 }
 
-static Mki::OperationIr *GetOperationIrForActivation91095(const infer::ActivationType activationType)
+static Mki::OperationIr *GetOperationIrForActivation950(const infer::ActivationType activationType)
 {
     switch (activationType) {
         case atb::infer::ActivationType::ACTIVATION_SIGMOID:
             return GetSingleton<AtbOperationIrCfg>().GetOperationIr("ActivationOperationSIGMOID");
         case atb::infer::ActivationType::ACTIVATION_SWISH:
-            return GetSingleton<AtbOperationIrCfg>().GetOperationIr("ActivationOperationSWISH91095");
+            return GetSingleton<AtbOperationIrCfg>().GetOperationIr("ActivationOperationSWISH950");
         case atb::infer::ActivationType::ACTIVATION_SWIGLU_FORWARD:
             return GetSingleton<AtbOperationIrCfg>().GetOperationIr("ActivationOperationSWIGLUFORWARD");
         default:
@@ -122,8 +122,8 @@ static Mki::OperationIr *GetOperationIrForActivation91095(const infer::Activatio
 ActivationOperation::ActivationOperation(const infer::ActivationParam &param)
     : OperationBase("ActivationOperation"), param_(param)
 {
-    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
-        operationIr_ = GetOperationIrForActivation91095(param_.activationType);
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
+        operationIr_ = GetOperationIrForActivation950(param_.activationType);
     } else {
         operationIr_ = GetOperationIrForActivation(param_.activationType);
     }
@@ -276,7 +276,7 @@ Status ActivationOperation::SetupCheckImpl(const SVector<Tensor> &inTensors, con
 std::shared_ptr<Runner> ActivationOperation::CreateRunner(Context &context) const
 {
     (void)context;
-    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
         if (param_.activationType == atb::infer::ActivationType::ACTIVATION_SWIGLU_FORWARD) {
             ATB_LOG(INFO) << GetLogPrefix() << "create SwigluForward AclnnRunner";
             return std::make_shared<SwigluForwardAclnnRunner>(param_);

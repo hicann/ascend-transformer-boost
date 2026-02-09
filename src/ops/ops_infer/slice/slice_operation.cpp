@@ -29,7 +29,7 @@ template <> Status CreateOperation(const infer::SliceParam &opParam, Operation *
         return ERROR_INVALID_PARAM;
     }
     OP_PARAM_RSV_CHECK(opParam);
-    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
         if (SliceAclnnRunner::LoadAclnnFuncs() != NO_ERROR) {
             ATB_LOG(ERROR) << "Load aclnn function failed, please check your CANN version.";
             return ERROR_CANN_ERROR;
@@ -173,7 +173,7 @@ Status SliceOperation::ParamCheck(TensorDesc inTensorDesc) const
 std::shared_ptr<Runner> SliceOperation::CreateRunner(Context &context) const
 {
     (void)context;
-    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
         return std::make_shared<SliceAclnnRunner>(param_);
     }
     return std::make_shared<SliceOpsRunner>(param_);

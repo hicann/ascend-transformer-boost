@@ -1035,20 +1035,20 @@ def get_device_properties():
     elif re.search("Ascend910_93", device_name, re.I):
         torch.npu.config.allow_internal_format = True
         soc_version = "Ascend910B"
-    elif re.search("Ascend910_95", device_name, re.I):
-        soc_version = "Ascend910_95"
+    elif re.search("Ascend950", device_name, re.I):
+        soc_version = "Ascend950"
     elif re.search("Ascend310P", device_name, re.I):
         soc_version = "Ascend310P"
-    elif re.search("Ascend910_95", device_name, re.I):
-        soc_version = "Ascend910_95"
+    elif re.search("Ascend950", device_name, re.I):
+        soc_version = "Ascend950"
     elif (re.search("Ascend910ProB", device_name, re.I) or re.search("Ascend910B", device_name, re.I) or
     re.search("Ascend910PremiumA", device_name, re.I) or re.search("Ascend910ProA", device_name, re.I) or
     re.search("Ascend910A", device_name, re.I)):
         soc_version = "Ascend910A"
     elif re.search("Ascend310B", device_name, re.I):
         soc_version = "Ascend310B"
-    elif re.search("Ascend910_95", device_name, re.I):
-        soc_version = "Ascend910_95"
+    elif re.search("Ascend950", device_name, re.I):
+        soc_version = "Ascend950"
     else:
         logging.error("device_name %s is not supported", device_name)
         quit(1)

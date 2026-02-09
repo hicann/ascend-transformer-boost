@@ -133,7 +133,7 @@ template <> Status CreateOperation(const infer::RmsNormParam &opParam, Operation
     OP_PARAM_RSV_CHECK(opParam.preNormParam);
     OP_PARAM_RSV_CHECK(opParam.postNormParam);
 
-    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
         if (AclnnAddRmsNormRunner::LoadMethod() != NO_ERROR) {
             ATB_LOG(ERROR) << "Load aclnn function failed, please check your CANN version.";
             return ERROR_CANN_ERROR;
@@ -169,7 +169,7 @@ template <> Status CreateOperation(const infer::RmsNormParam &opParam, Operation
 RmsNormOperation::RmsNormOperation(const infer::RmsNormParam &param) : OperationBase("RmsNormOperation"), param_(param)
 {
     is910b_ = GetSingleton<Config>().Is910B();
-    bool IS_950 = Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95;
+    bool IS_950 = Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950;
     if (param_.layerType == infer::RmsNormParam::RMS_NORM_NORM) {
         if (param_.normParam.quantType == infer::QUANT_UNQUANT) {
             operationIr_ =
@@ -485,13 +485,13 @@ std::shared_ptr<Runner> RmsNormOperation::CreateRunner(Context &context) const
 {
     (void)context;
     if (param_.layerType == infer::RmsNormParam::RMS_NORM_PRENORM
-        && Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+        && Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
         ATB_LOG(INFO) << GetLogPrefix() << "create AddRmsNorm AclnnRunner";
         return std::make_shared<AclnnAddRmsNormRunner>(param_);
     }
     if (param_.layerType == infer::RmsNormParam::RMS_NORM_NORM &&
         param_.normParam.quantType == infer::QUANT_UNQUANT &&
-        Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+        Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
         ATB_LOG(INFO) << GetLogPrefix() << "create RmsNorm AclnnRunner";
         return std::make_shared<RmsNormAclnnRunner>(param_);
     }

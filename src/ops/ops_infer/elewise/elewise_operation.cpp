@@ -41,7 +41,7 @@ template <> Status CreateOperation(const infer::ElewiseParam &opParam, Operation
         return ERROR_INVALID_PARAM;
     }
 
-    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
         if (opParam.elewiseType == infer::ElewiseParam::ElewiseType::ELEWISE_DYNAMIC_QUANT) {
             if (AclnnDynamicQuantRunner::LoadMethod() != NO_ERROR) {
                 ATB_LOG(ERROR) << "Load aclnn function failed, please check your CANN version.";
@@ -64,7 +64,7 @@ template <> Status CreateOperation(const infer::ElewiseParam &opParam, Operation
         ATB_LOG(ERROR) << "Elewise dequant only support Atlas 800I A2 inference product";
         return ERROR_INVALID_PARAM;
     }
-    if ((!GetSingleton<Config>().Is910B() && Mki::PlatformInfo::Instance().GetPlatformType() != Mki::PlatformType::ASCEND_910_95) &&
+    if ((!GetSingleton<Config>().Is910B() && Mki::PlatformInfo::Instance().GetPlatformType() != Mki::PlatformType::ASCEND_950) &&
         (opParam.elewiseType == infer::ElewiseParam::ElewiseType::ELEWISE_QUANT)) {
         ATB_LOG(ERROR) << "Elewise quant is not supported on this product series.";
         return ERROR_INVALID_PARAM;
@@ -95,7 +95,7 @@ template <> Status CreateOperation(const infer::ElewiseParam &opParam, Operation
 ElewiseOperation::ElewiseOperation(const infer::ElewiseParam &param) : OperationBase("ElewiseOperation"), param_(param)
 {
     bool IS_310B = GetSingleton<Config>().Is310B();
-    bool IS_950 = Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95;
+    bool IS_950 = Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950;
     static std::map<infer::ElewiseParam::ElewiseType, std::string> opIniTable = {
         {infer::ElewiseParam::ElewiseType::ELEWISE_CAST,
          IS_310B ? "ElewiseOperationCastAtlas200I500A2" : "ElewiseOperationCast"},
@@ -194,7 +194,7 @@ Status ElewiseOperation::InferShapeImpl(const SVector<TensorDesc> &inTensorDescs
         case infer::ElewiseParam::ELEWISE_CAST:
             return InferShapeImplCast(inTensorDescs, outTensorDescs);
         case infer::ElewiseParam::ELEWISE_QUANT:
-            if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+            if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
                 return InferShapeImplQuantAscend950(inTensorDescs, outTensorDescs);
             } else {
                 return InferShapeImplQuant(inTensorDescs, outTensorDescs);
@@ -445,10 +445,10 @@ std::shared_ptr<Runner> ElewiseOperation::CreateRunner(Context &context) const
 {
     (void)context;
     if (param_.elewiseType == infer::ElewiseParam::ElewiseType::ELEWISE_DYNAMIC_QUANT
-        && Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+        && Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
             return std::make_shared<AclnnDynamicQuantRunner>(param_);
     } else if (param_.elewiseType == infer::ElewiseParam::ElewiseType::ELEWISE_QUANT_PER_CHANNEL
-        && Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+        && Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
             return std::make_shared<AclnnAscendQuantRunner>(param_);
     }
     std::unordered_set<infer::ElewiseParam::ElewiseType> aclnnOpType = {
@@ -460,7 +460,7 @@ std::shared_ptr<Runner> ElewiseOperation::CreateRunner(Context &context) const
         infer::ElewiseParam::ElewiseType::ELEWISE_QUANT,      infer::ElewiseParam::ElewiseType::ELEWISE_SUB,
     };
     if (aclnnOpType.find(param_.elewiseType) != aclnnOpType.end() &&
-        Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+        Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
         return std::make_shared<ElewiseAclnnRunner>(param_);
     }
     return std::make_shared<ElewiseOpsRunner>(param_);

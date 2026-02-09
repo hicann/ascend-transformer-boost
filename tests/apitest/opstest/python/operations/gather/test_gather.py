@@ -66,8 +66,8 @@ class TestGatherOperation(operation_test.OperationTest):
                                       intensor1.npu()])
 
     def test_bfloat16(self):
-        if not operation_test.get_soc_version() == 'Ascend910B' and not operation_test.get_soc_version() == 'Ascend910_95':
-            print("this testcase only supports Ascend910B and Ascend910_95")
+        if not operation_test.get_soc_version() == 'Ascend910B' and not operation_test.get_soc_version() == 'Ascend950':
+            print("this testcase only supports Ascend910B and Ascend950")
             return True
         intensor0=torch.randn([3,5],dtype=torch.bfloat16)
         print(intensor0)
