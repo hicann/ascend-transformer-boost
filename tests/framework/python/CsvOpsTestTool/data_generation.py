@@ -5542,8 +5542,10 @@ class PagedAttentionOperation(DataGen):
             PagedAttentionOperation.golden_tensors[13].cpu(),
             PagedAttentionOperation.golden_tensors[14].cpu()
         )
-        delattr(PagedAttentionOperation, 'golden_tensors')
-        delattr(PagedAttentionOperation, 'in_tensors')
+        if hasattr(PagedAttentionOperation, 'in_tensors'):
+            delattr(PagedAttentionOperation, 'in_tensors')
+        if hasattr(PagedAttentionOperation, 'golden_tensors'):
+            delattr(PagedAttentionOperation, 'golden_tensors')
         return [ref_output.cpu()]
 
     @staticmethod
@@ -6676,16 +6678,25 @@ class SelfAttentionOperation(DataGen):
                 v = v.contiguous().view(dim0*dim1, dim2, dim3)
             mask = None
             seq_len = None
+            kv_seqLen_tesnor =None
             pseShift = None
             if json_data["maskType"] != 0:
                 mask = in_tensors[3]
                 seq_len = in_tensors[4]
+                batch = len(in_tensors[4])
+                kv_seqLen_tesnor = in_tensors[4]
                 if "pseShiftFlag" in json_data and json_data["pseShiftFlag"]:
                     pseShift = in_tensors[5]
             else:
                 seq_len = in_tensors[3]
+                batch = len(in_tensors[3])
+                kv_seqLen_tesnor = in_tensors[3]
                 if "pseShiftFlag" in json_data and json_data["pseShiftFlag"]:
                     pseShift = in_tensors[4]
+            kv_seqLen = kv_seqLen_tesnor.numpy()
+            max_seq = np.max(kv_seqLen)
+            heads = json_data['headNum']
+            kv_head = json_data['kvHeadNum'] if 'kvHeadNum' in json_data else json_data['headNum']
             if mask is not None:
                 if get_soc_version() != "Ascend910B" and get_soc_version() != "Ascend950":
                     mask = mask.contiguous().permute(0, 2, 1, 3)
@@ -6708,7 +6719,10 @@ class SelfAttentionOperation(DataGen):
             asdops_params = SelfAttentionOperation.get_asdops_param(q, k, v, mask, seq_len, op_params)
             if get_soc_version() == "Ascend950":
                 return [SelfAttentionOperation.calc_golden_encoder_950(q, k, v, pseShift, mask, seq_len, asdops_params).cpu()]
-            return [SelfAttentionOperation.calc_golden_encoder(q, k, v, mask, seq_len, asdops_params).cpu()]
+            out = SelfAttentionOperation.calc_golden_encoder(q, k, v, mask, seq_len, asdops_params)
+            ref_output = SelfAttentionOperation.calc_golden_encoder_new(heads, kv_head, in_tensors,
+                            batch, kv_seqLen, mask, asdops_params, op_params)
+            return [out,ref_output]
         elif json_data["clampType"] == 1:
             layerid = int(in_tensors[8][0])
             mixed_q = in_tensors[0]
