@@ -14,7 +14,7 @@ const uint32_t BATCH_SIZE = 1;   // 批处理大小
 const uint32_t NTOKENS = 4;      // TOKEN大小
 const uint32_t HIDDENSIZEQ = 16; // Q 隐藏层大小
 const uint32_t HIDDENSIZEK = 16; // K 隐藏层大小
-const uint32_t HEAD_SIZE = 8;    // 头大小
+const uint32_t HEAD_SIZE = 16;    // 头大小
 
 /**
  * @brief 创建一个rope operation
