@@ -17,8 +17,10 @@
 namespace {
 static const uint32_t IN_TENSOR_NUM = 1;
 static const uint32_t OUT_TENSOR_NUM = 2;
+static const uint32_t INDEX_ZERO = 0;
 static const uint32_t INDEX_ONE = 1;
 static const uint32_t INDEX_TWO = 2;
+static const uint32_t SIZE_TWO = 2;
 } // namespace
 
 namespace atb {
@@ -32,20 +34,14 @@ SortAclnnRunner::SortAclnnRunner(const infer::SortParam &param) : AclnnRunner("S
     ATB_LOG(INFO) << GetLogPrefix() << "SortAclnnRunner::SortAclnnRunner created";
 }
 
-void SortAclnnRunner::CleanUp() {
+void SortAclnnRunner::CleanUp()
+{
     aclnnStatus ret = 0;
     if (indices_ != nullptr) {
         ret = aclDestroyTensor(indices_);
         if (ret != ACL_SUCCESS)
             ATB_LOG(ERROR) << GetLogPrefix() << "destroy indices_->tensor failed with return value: " << ret;
         indices_ = nullptr;
-    }
-
-    if (indicesBuffer_ != nullptr) {
-        ret = aclrtFree(indicesBuffer_);
-        if (ret != ACL_SUCCESS)
-            ATB_LOG(ERROR) << GetLogPrefix() << "free indicesBuffer_ failed with return value: " << ret;
-        indicesBuffer_ = nullptr;
     }
 }
 
@@ -100,24 +96,8 @@ Status SortAclnnRunner::BuildAclnnVariantPack(const RunnerVariantPack &runnerVar
 
 
     // temp buffer for indicesOut
-    if (indicesBufferSize_ != this->atbVariantPack_.outTensors.at(INDEX_ONE).dataSize * INDEX_TWO) {
-        if (indicesBuffer_ != nullptr) {
-            ret = aclrtFree(indicesBuffer_);
-            if (ret != ACL_SUCCESS) {
-                ATB_LOG(ERROR) << GetLogPrefix() << "free indicesBuffer_ failed with return value: " << ret;
-                CleanUp();
-                return ERROR_CANN_ERROR;
-            }
-            indicesBuffer_ = nullptr;
-        }
-        indicesBufferSize_ = this->atbVariantPack_.outTensors.at(INDEX_ONE).dataSize * INDEX_TWO;
-        ret = aclrtMalloc(&indicesBuffer_, indicesBufferSize_, ACL_MEM_MALLOC_HUGE_FIRST);
-        if (ret != ACL_SUCCESS) {
-            ATB_LOG(ERROR) << GetLogPrefix() << "indicesBuffer_ aclrtMalloc failed!";
-            CleanUp();
-            return ret;
-        }
-
+    if (indicesBufferSize_ != this->atbVariantPack_.outTensors.at(INDEX_ONE).dataSize * SIZE_TWO) {
+        indicesBufferSize_ = this->atbVariantPack_.outTensors.at(INDEX_ONE).dataSize * SIZE_TWO;
         atb::SVector<int64_t> strides = GetCopyTensorStride(this->atbVariantPack_.outTensors.at(INDEX_ONE).desc.shape);
         Dims viewDims;
 
@@ -129,17 +109,16 @@ Status SortAclnnRunner::BuildAclnnVariantPack(const RunnerVariantPack &runnerVar
             ret = aclDestroyTensor(indices_);
             if (ret != ACL_SUCCESS) {
                 ATB_LOG(ERROR) << GetLogPrefix() << "destroy indices_->tensor failed with return value: " << ret;
-                CleanUp();
                 return ERROR_CANN_ERROR;
             }
             indices_ = nullptr;
         }
         indices_ = aclCreateTensor(viewDims.dims, viewDims.dimNum, ACL_INT64, strides.data(), 0,
                                    this->atbVariantPack_.outTensors.at(INDEX_ONE).desc.format, viewDims.dims,
-                                   viewDims.dimNum, indicesBuffer_);
+                                   viewDims.dimNum, nullptr);
         if (indices_ == nullptr) {
             ATB_LOG(ERROR) << GetLogPrefix() << "create int64 indices by aclCreateTensor failed!";
-            return atb::ERROR_INTERNAL_ERROR;
+            return ERROR_CANN_ERROR;
         }
     }
     return atb::NO_ERROR;
@@ -173,6 +152,11 @@ aclnnStatus SortAclnnRunner::SetAclNNWorkspaceExecutor()
         ATB_LOG(DEBUG) << GetLogPrefix() << "aclnnGetWorkspaceSize failed!";
         return ret;
     }
+    ret = aclSetAclOpExecutorRepeatable(rawExecutorPtr);
+    if (ret != ACL_SUCCESS) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "Set Topk AclOpExecutorRepeatable failed!";
+        return ret;
+    }
 
     // indices_->tensor holds the aclnnTopK return in INT64, we need aclnnCast to turn aclnn
     aclOpExecutor *rawCastExecutorPtr = this->aclnnCastExecutor_.get();
@@ -185,12 +169,10 @@ aclnnStatus SortAclnnRunner::SetAclNNWorkspaceExecutor()
     }
 
     // setCastExecutorRepeatable same as the topkExecutorRepeatable, this is essential for cache to work
-    if (this->executorRepeatable_) {
-        ret = aclSetAclOpExecutorRepeatable(rawCastExecutorPtr);
-        if (ret != ACL_SUCCESS) {
-            ATB_LOG(ERROR) << GetLogPrefix() << "Set Cast AclOpExecutorRepeatable failed!";
-            return ret;
-        }
+    ret = aclSetAclOpExecutorRepeatable(rawCastExecutorPtr);
+    if (ret != ACL_SUCCESS) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "Set Cast AclOpExecutorRepeatable failed!";
+        return ret;
     }
 
     this->aclnnCastExecutor_ = std::shared_ptr<aclOpExecutor>(rawCastExecutorPtr, [this](aclOpExecutor *ptr) {
@@ -199,7 +181,8 @@ aclnnStatus SortAclnnRunner::SetAclNNWorkspaceExecutor()
         }
     });
 
-    this->atbVariantPack_.workspaceBufferSize = this->topkWorkspaceSize_ + this->castWorkspaceSize_;
+    this->atbVariantPack_.workspaceBufferSize =
+        this->topkWorkspaceSize_ + this->castWorkspaceSize_ + this->indicesBufferSize_;
     ATB_LOG(INFO) << GetLogPrefix() << "workspaceSize: " << this->atbVariantPack_.workspaceBufferSize;
     return ret;
 }
@@ -208,15 +191,30 @@ Status SortAclnnRunner::LaunchAclnnKernel()
 {
     ATB_LOG(INFO) << GetLogPrefix() << "LaunchAclnnKernel execute start.";
     aclrtStream executeStream = GetExecuteStream(this->atbVariantPack_.context);
-    aclnnStatus ret = SortAclnnRunner::aclnnExecuteFunc_(
-        this->atbVariantPack_.workspaceBuffer, this->topkWorkspaceSize_, this->aclnnExecutor_.get(), executeStream);
+    aclnnStatus ret = ACL_SUCCESS;
+    ret = aclSetOutputTensorAddr(this->aclnnExecutor_.get(), INDEX_ONE, this->indices_,
+                                 this->atbVariantPack_.workspaceBuffer + this->topkWorkspaceSize_ +
+                                     this->castWorkspaceSize_);
+    if (ret != ACL_SUCCESS) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "aclSetOutputTensorAddr failed with return value: " << ret;
+        return ERROR_CANN_ERROR;
+    }
+    ret = aclSetInputTensorAddr(this->aclnnCastExecutor_.get(), INDEX_ZERO, this->indices_,
+                                this->atbVariantPack_.workspaceBuffer + this->topkWorkspaceSize_ +
+                                    this->castWorkspaceSize_);
+    if (ret != ACL_SUCCESS) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "aclSetInputTensorAddr failed with return value: " << ret;
+        return ERROR_CANN_ERROR;
+    }
+    ret = SortAclnnRunner::aclnnExecuteFunc_(this->atbVariantPack_.workspaceBuffer, this->topkWorkspaceSize_,
+                                             this->aclnnExecutor_.get(), executeStream);
     if (ret != ACL_SUCCESS) {
         ATB_LOG(ERROR) << GetLogPrefix() << "Atb aclnn op kernel launch failed with return value: " << ret;
         return ERROR_CANN_ERROR;
     }
-    ret = SortAclnnRunner::aclnnCastExecuteFunc_(this->atbVariantPack_.workspaceBuffer + this->topkWorkspaceSize_,
-                                                 this->castWorkspaceSize_, this->aclnnCastExecutor_.get(),
-                                                 executeStream);
+    ret =
+        SortAclnnRunner::aclnnCastExecuteFunc_(this->atbVariantPack_.workspaceBuffer + this->topkWorkspaceSize_,
+                                               this->castWorkspaceSize_, this->aclnnCastExecutor_.get(), executeStream);
     if (ret != ACL_SUCCESS) {
         ATB_LOG(ERROR) << GetLogPrefix() << "Atb aclnn op kernel launch failed with return value: " << ret;
         return ERROR_CANN_ERROR;
@@ -234,18 +232,21 @@ bool SortAclnnRunner::useCache()
 Status SortAclnnRunner::LoadMethod()
 {
     ATB_LOG(INFO) << "SortAclnnRunner LoadMethod";
-    if (SortAclnnRunner::aclnnGetWorkspaceSizeFunc_ != nullptr && SortAclnnRunner::aclnnExecuteFunc_ != nullptr
-    && SortAclnnRunner::aclnnCastGetWorkspaceSizeFunc_ != nullptr && SortAclnnRunner::aclnnCastExecuteFunc_ != nullptr) {
+    if (SortAclnnRunner::aclnnGetWorkspaceSizeFunc_ != nullptr && SortAclnnRunner::aclnnExecuteFunc_ != nullptr &&
+        SortAclnnRunner::aclnnCastGetWorkspaceSizeFunc_ != nullptr &&
+        SortAclnnRunner::aclnnCastExecuteFunc_ != nullptr) {
         return NO_ERROR;
     }
-    Status ret = LoadFromSharedObjectFile("aclnnTopkGetWorkspaceSize", "aclnnTopk",
-                                    SortAclnnRunner::aclnnGetWorkspaceSizeFunc_, SortAclnnRunner::aclnnExecuteFunc_);
+    Status ret =
+        LoadFromSharedObjectFile("aclnnTopkGetWorkspaceSize", "aclnnTopk", SortAclnnRunner::aclnnGetWorkspaceSizeFunc_,
+                                 SortAclnnRunner::aclnnExecuteFunc_);
     if (ret != NO_ERROR) {
         return ret;
     }
 
     return LoadFromSharedObjectFile("aclnnCastGetWorkspaceSize", "aclnnCast",
-                                    SortAclnnRunner::aclnnCastGetWorkspaceSizeFunc_, SortAclnnRunner::aclnnCastExecuteFunc_);
+                                    SortAclnnRunner::aclnnCastGetWorkspaceSizeFunc_,
+                                    SortAclnnRunner::aclnnCastExecuteFunc_);
 }
 
 REG_RUNNER_TYPE(SortAclnnRunner);
