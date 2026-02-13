@@ -44,7 +44,6 @@ private:
 
     void CleanUp();
     aclTensor *indices_ = nullptr;
-    void *indicesBuffer_ = nullptr;
     uint64_t topkWorkspaceSize_ = 0;
     uint64_t castWorkspaceSize_ = 0;
     uint64_t indicesBufferSize_ = 0;
