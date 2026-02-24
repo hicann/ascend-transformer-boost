@@ -416,8 +416,7 @@ class SplitOperation(DataGen):
             else:
                 return [torch.zeros_like(x) for x in in_tensors]
         else:
-            split_output = torch.chunk(in_tensors[0], chunks=json_data['splitNum'], dim=json_data['splitDim'])
-            golden_result = torch.stack(split_output)
+            golden_result = torch.chunk(in_tensors[0], chunks=json_data['splitNum'], dim=json_data['splitDim'])
         return golden_result
 
     @staticmethod
