@@ -190,22 +190,23 @@ private:
     {
         AscendC::LocalTensor<int32_t> int32BlkBuf = int32Buf_.Get<int32_t>();
         AscendC::LocalTensor<int32_t> selectRangeBlkBuf = selectRangeBlkBuf_.Get<int32_t>();
-        if (blockIdx_ != realCore_ - 1) {
-            uint32_t dynamicRoundAlign_ = DEFAULT_STRIDE * ((dynamicRound_ + DEFAULT_STRIDE - 1) / DEFAULT_STRIDE);
+        uint32_t dynamicRoundAlign_ = DEFAULT_STRIDE * ((dynamicRound_ + DEFAULT_STRIDE - 1) / DEFAULT_STRIDE);
+        uint32_t zSpace = (firstDim_ * sizeof(int32_t) + BLK_SIZE - 1) / BLK_SIZE * BLK_SIZE;
+        if (blockIdx_ != realCore_ - 1 && (blockIdx_ * nlCoreRun_ + dynamicRoundAlign_) * sizeof(int32_t) <= zSpace) {
             DataCopy(zGm_[static_cast<uint64_t>(blockIdx_) * nlCoreRun_], int32BlkBuf, dynamicRoundAlign_);
             DataCopy(selectRangeGm_[static_cast<uint64_t>(blockIdx_) * nlCoreRun_], selectRangeBlkBuf,
-                     dynamicRoundAlign_);
+                 dynamicRoundAlign_);
         }
         else {
-            uint32_t dynamicRoundAlign_ = dynamicRound_ / DEFAULT_STRIDE * DEFAULT_STRIDE;
-            if (dynamicRoundAlign_ > 0) {
+            uint32_t dynamicRoundFloor_ = dynamicRound_ / DEFAULT_STRIDE * DEFAULT_STRIDE;
+            if (dynamicRoundFloor_ > 0) {
                 DataCopy(zGm_[static_cast<uint64_t>(blockIdx_) * nlCoreRun_], int32BlkBuf, dynamicRound_);
                 DataCopy(selectRangeGm_[static_cast<uint64_t>(blockIdx_) * nlCoreRun_], selectRangeBlkBuf,
                          dynamicRound_);
             }
             AscendC::SetFlag<HardEvent::MTE3_S>(EVENT_ID0);
             AscendC::WaitFlag<HardEvent::MTE3_S>(EVENT_ID0);
-            for (int i = dynamicRoundAlign_; i < dynamicRound_; i++) {
+            for (int i = dynamicRoundFloor_; i < dynamicRound_; i++) {
                 zGm_(static_cast<uint64_t>(blockIdx_) * nlCoreRun_ + i) = int32BlkBuf.GetValue(i);
                 selectRangeGm_(static_cast<uint64_t>(blockIdx_) * nlCoreRun_ + i) = selectRangeBlkBuf.GetValue(i);
             }
