@@ -12,7 +12,7 @@
 
 #include "hardware.h"
 #include "kernel_operator.h"
-
+constexpr uint32_t DUP_REPEAT_SIZE = 256;
 /////////////////////////////////////////////////////
 // vcgadd
 /////////////////////////////////////////////////////
@@ -419,5 +419,13 @@ __aicore__ inline void cgmax_v(AscendC::LocalTensor<DType> dst,
                                const int32_t srcRepStride)
 {
     AscendC::BlockReduceMax<DType, false>(dst, src, repeat, 0, dstRepStride, srcBlkStride, srcRepStride);
+}
+
+template <ArchType ArchTag, typename DType>
+__aicore__ inline void dup_v(AscendC::LocalTensor<DType> dst,
+                             DType src1,
+                             const int32_t repeat)
+{
+    AscendC::Duplicate(dst, src1, repeat * DUP_REPEAT_SIZE / sizeof(DType));
 }
 #endif
