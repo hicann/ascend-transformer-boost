@@ -698,6 +698,81 @@ class TestFlashAttentionNz(op_test.OpTest):
         result_old = self.compare_output_data(out_tensors[0].half(), golden_tensors[0].half(), [0.001, 0.001, 0.003, 0.003, 0.005, 0.005])
         result_double = compare_cv(golden_tensors[0], self.golden_outhigh_pre, out_tensors[0].to(torch.float32))
         return result_old or result_double
+    
+    @op_test.only_310p
+    def test_flash_attention_case_encoder_mask_nocache_exp(self):
+        logging.debug("======================test flash attention nz encoder exp mix======================")
+        batch = 1
+        qkv_seq = 139
+        kv_head = 2      # kv_head num
+        heads = 14       # llama7b  hidden_size 4096
+        embeddim = 128
+        max_seq = 1280
+        tor = math.sqrt(1 / embeddim)
+        # mask_dim = 0
+        # mask_dim = 3
+        mask_dim = 2
+
+        OP_NAME = "UnpadFlashAttentionNzOperation"
+        OP_PARAM = {"type": 2005, "qSeqLen": [qkv_seq] * batch, "kvSeqLen": [qkv_seq] * batch, "headSize": heads, "tor": tor,
+                    "kvHead": kv_head, "maskType": 1, "precType": 3}
+        self.set_param(OP_NAME, OP_PARAM)
+        self.set_input_formats(
+            [self.format_nz, self.format_nz, self.format_nz, self.format_nd, self.format_nz, self.format_nd, self.format_nd])
+        self.set_output_formats([self.format_nz])
+
+        self.set_data_params()
+        self.calc_data_pa((batch, qkv_seq, heads, kv_head,
+                       embeddim, max_seq, mask_dim))
+
+        logging.debug("**********input shape***********")
+        logging.info(f"q shape: {self.q.shape}")
+        logging.debug(f"k shape: {self.k.shape}")
+        logging.debug(f"v shape: {self.v.shape}")
+        logging.debug(f"layer_id shape: {self.layer_id.shape}")
+        logging.debug(f"mask shape: {self.mask.shape}")
+
+        attention_out = np.zeros_like(self.q)
+        return self.execute([torch.tensor(self.q).half(), torch.tensor(self.k).half(), torch.tensor(self.v).half(),
+                            torch.tensor([]).int(), torch.tensor(self.mask).half(), torch.tensor([]).half(), torch.tensor([]).half()],
+                            [torch.tensor(attention_out).half()])
+
+    @op_test.only_310p
+    def test_flash_attention_case_encoder_mask_cache_exp(self):
+        logging.debug("======================test flash attention nz encoder exp mix cache======================")
+        batch = 10
+        qkv_seq = 257
+        kv_head = 4     # kv_head num
+        heads = 16       # llama7b  hidden_size 4096
+        embeddim = 128
+        max_seq = 1280
+        tor = math.sqrt(1 / embeddim)
+        mask_dim = 0
+
+        OP_NAME = "UnpadFlashAttentionNzOperation"
+        OP_PARAM = {"type": 17, "qSeqLen": [qkv_seq] * batch, "kvSeqLen": [qkv_seq] * batch, "headSize": heads, "tor": tor,
+                    "kvHead": kv_head, "maskType": 0, "precType": 3}
+        self.set_param(OP_NAME, OP_PARAM)
+        self.set_input_formats(
+            [self.format_nz, self.format_nz, self.format_nz, self.format_nd, self.format_nz, self.format_nd, self.format_nd])
+        self.set_output_formats([self.format_nz])
+
+        self.set_data_params()
+        self.calc_data((batch, qkv_seq, heads, kv_head,
+                       embeddim, max_seq, mask_dim))
+
+        logging.debug("**********input shape***********")
+        logging.info(f"q shape: {self.q.shape}")
+        logging.debug(f"k shape: {self.k.shape}")
+        logging.debug(f"v shape: {self.v.shape}")
+        logging.debug(f"layer_id shape: {self.layer_id.shape}")
+        logging.debug(f"mask shape: {self.mask.shape}")
+
+        attention_out = np.zeros_like(self.q)
+        return self.execute([torch.tensor(self.q).half(), torch.tensor(self.k).half(), torch.tensor(self.v).half(),
+                            torch.tensor(self.layer_id).int(), torch.tensor([]).half(), torch.tensor([]).half(), torch.tensor([]).half()],
+                            [torch.tensor(attention_out).half()])
+
     @op_test.only_310p
     def test_flash_attention_case_encoder_cache_with_left_alibi_mask(self):
         batch = 1

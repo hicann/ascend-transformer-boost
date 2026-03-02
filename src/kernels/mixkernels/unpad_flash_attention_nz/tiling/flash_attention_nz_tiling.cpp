@@ -26,10 +26,10 @@ inline void FlashAttentionNzLog(UnpadFlashAttentionNzInfo &mmInfo, const uint32_
     MKI_LOG(INFO) << "batch is: " << mmInfo.batchSize << " maxSeq is: " << mmInfo.maxSeqLen
                   << " head is: " << mmInfo.innerBatchSize << " embed is: " << mmInfo.embeddingSize
                   << " qSeq is: " << mmInfo.qSeq << " kvSeq is: " << mmInfo.kvSeq << " kvHeads is " << mmInfo.kvHeads
-                  << " qTokens is " << mmInfo.qTokens << " maskStride is " << mmInfo.maskStride << " isCache is "
+                  << " qTokens is " << mmInfo.qTokens << "kvToken is " << mmInfo.kvTokens << " isCache is "
                   << mmInfo.isCache << " headMaskStride is " << mmInfo.headMaskStride << " batchMaskStride is "
                   << mmInfo.batchMaskStride << " qTight is " << mmInfo.qTight << " longSeq is " << mmInfo.isLongSeq
-                  << " windowLen is " << mmInfo.windowLen << " cacheType is " <<mmInfo.cacheType;
+                  << " windowLen is " << mmInfo.windowLen << " cacheType is " <<mmInfo.cacheType << " prectype is " << mmInfo.precType;
     MKI_LOG(INFO) << "tiling is";
     for (uint32_t i = 0;
          i < static_cast<uint32_t>(GetNzRealCoreTilingOffset() + mmInfo.batchSize * NZ_REAL_CORE_TILING_SIZE); i++) {
@@ -251,6 +251,12 @@ Status FillFlashAttentionNzInfo(UnpadFlashAttentionNzInfo &mmInfo, const LaunchP
         mmInfo.maxSeqLen = static_cast<int32_t>(maxSeq);
         auto maxKVSeq = mmInfo.batchContinuous ? kCacheShape.at(DIM_3) : kCacheShape.at(DIM_1);
         mmInfo.maxKVSeqLen = static_cast<int32_t>(maxKVSeq);
+    }
+    if (param.type != OpParam::UnpadFlashAttentionNz::UNPAD_FLASH_ATTENTION_NZ_DECODER && mmInfo.precType == OpParam::UnpadFlashAttentionNz::PrecType::BMM1_FP16_EXP_M8V2) {
+        auto kShape = launchParam.GetInTensor(DIM_1).desc.dims;
+        mmInfo.kvTokens = kShape.at(DIM_2);
+    } else {
+        mmInfo.kvTokens = mmInfo.qTokens;
     }
     return Status::OkStatus();
 }

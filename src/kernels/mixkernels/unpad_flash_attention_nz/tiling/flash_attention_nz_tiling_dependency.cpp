@@ -50,6 +50,7 @@ const int32_t NZ_INDEX_22 = 22;
 const int32_t NZ_INDEX_23 = 23;
 const int32_t NZ_INDEX_48 = 48;
 const int32_t NZ_INDEX_49 = 49;
+const int32_t NZ_INDEX_50 = 50;
 const int32_t NZ_INDEX_117 = 117;
 const int32_t NZ_INDEX_118 = 118;
 const int32_t NZ_INDEX_119 = 119;
@@ -82,7 +83,7 @@ static const std::unordered_map<PlatformType, int> TILING_OFFSET_MAP{
 };
 static const std::unordered_map<PlatformType, uint32_t> TILING_KEY_INDEX_MAP{
     {PlatformType::ASCEND_910A, 180},
-    {PlatformType::ASCEND_310P, 49},
+    {PlatformType::ASCEND_310P, 50},
 };
 
 int32_t GetNzRealCoreTilingOffset() { return TILING_OFFSET_MAP.at(PlatformInfo::Instance().GetPlatformType()); }
@@ -198,10 +199,10 @@ Status FillTilingParamRealCore(const UnpadFlashAttentionNzInfo &mmInfo, const ui
             addrOffsets.addrQSeqOffset += mmInfo.qTight != 0 ? static_cast<uint64_t>(qSeqLen * NZ_BLOCK_SIZE)
                                                              : static_cast<uint64_t>(qSeqLenAligned * NZ_BLOCK_SIZE);
             addrOffsets.addrKSeqOffset +=
-                !mmInfo.isCache ? static_cast<uint64_t>(qSeqLen * NZ_BLOCK_SIZE)
+                !mmInfo.isCache ? static_cast<uint64_t>(kvSeqLen * NZ_BLOCK_SIZE)
                                 : static_cast<uint64_t>(mmInfo.maxSeqLen * mmInfo.kvHeads * mmInfo.embeddingSize);
             addrOffsets.addrVSeqOffset +=
-                !mmInfo.isCache ? static_cast<uint64_t>(qSeqLen * NZ_BLOCK_SIZE)
+                !mmInfo.isCache ? static_cast<uint64_t>(kvSeqLen * NZ_BLOCK_SIZE)
                                 : static_cast<uint64_t>(mmInfo.maxSeqLen * mmInfo.kvHeads * mmInfo.embeddingSize);
             addrOffsets.addrOSeqOffset += mmInfo.qTight != 0 ? static_cast<uint64_t>(qSeqLen * NZ_BLOCK_SIZE)
                                                              : static_cast<uint64_t>(qSeqLenAligned * NZ_BLOCK_SIZE);
@@ -241,6 +242,7 @@ void FillMmInfoTilingParam(const UnpadFlashAttentionNzInfo &mmInfo, uint32_t *ti
         tilingParam[NZ_INDEX_191] = mmInfo.isLongSeq;
     } else {
         tilingParam[NZ_INDEX_48] = mmInfo.dataDimOrder;
+        tilingParam[NZ_INDEX_49] = static_cast<uint32_t>(mmInfo.kvTokens);
         tilingParam[NZ_INDEX_118] = mmInfo.alibiLeftAlign;
         tilingParam[NZ_INDEX_119] = mmInfo.windowLen;
         tilingParam[NZ_INDEX_120] = mmInfo.cacheType;

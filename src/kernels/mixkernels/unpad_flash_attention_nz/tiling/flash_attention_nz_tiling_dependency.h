@@ -38,6 +38,7 @@ using UnpadFlashAttentionNzInfo = struct UnpadFlashAttentionNzTilingParams {
     int32_t maxSeqLen;
     int32_t maxKVSeqLen;
     int32_t qTokens;
+    int32_t kvTokens;
     int32_t kvHeads;
     int32_t *qSeq;  // q矩阵sequence length 序列，序列长度 = batch_size
     int32_t *kvSeq; // kv矩阵sequence length 序列，序列长度 = batch_size

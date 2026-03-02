@@ -43,6 +43,11 @@ constexpr int64_t UB_UINT8_LINE_SIZE = 1024;
 constexpr int64_t UB_FLOAT_LINE_SIZE = 256;
 constexpr int64_t UB_HALF_LINE_SIZE = 512;
 constexpr int32_t CUBE_UPDATE_O_ENABLED = 1;
+constexpr half CLIP_VAL = -15.0859375;
+constexpr float C_MIX_0 = 1;
+constexpr half C_MIX_1 = 0.12492632389959098;
+constexpr half C_MIX_2 = 0.007646947396369985;
+constexpr half C_MIX_3 = 0.00024482644572629384;
 
 enum AttentonMaskType {
     MASK_TYPE_NONE = 0,
@@ -52,7 +57,12 @@ enum AttentonMaskType {
     MASK_TYPE_SWA_NORM = 4,
     MASK_TYPE_SWA_COMPRESS = 5
 };
-enum PrecType { BMM1_FP16_EXP_FP32 = 0, BMM1_FP32_EXP_FP32 = 1, BMM2_ONLINE_SOFTMAX_FP16 = 4 };
+enum PrecType { 
+    BMM1_FP16_EXP_FP32 = 0, 
+    BMM1_FP32_EXP_FP32 = 1, 
+    BMM1_FP16_EXP_M8V2 = 3, 
+    BMM2_ONLINE_SOFTMAX_FP16 = 4 
+};
 __aicore__ inline void SyncStart()
 {
     SET_FLAG(M, MTE1, EVENT_ID0);
@@ -162,6 +172,12 @@ __aicore__ inline void UpdateExp(AscendC::LocalTensor<T> src, uint32_t repeat);
 
 template <>
 __aicore__ inline void UpdateExp<float, PrecType::BMM1_FP16_EXP_FP32>(AscendC::LocalTensor<float> src, uint32_t repeat)
+{
+    exp_v<ArchType::ASCEND_V200, float>(src, src, repeat, 1, 1, uint16_t(8), uint16_t(8));
+}
+
+template <>
+__aicore__ inline void UpdateExp<float, PrecType::BMM1_FP16_EXP_M8V2>(AscendC::LocalTensor<float> src, uint32_t repeat)
 {
     exp_v<ArchType::ASCEND_V200, float>(src, src, repeat, 1, 1, uint16_t(8), uint16_t(8));
 }
@@ -347,6 +363,128 @@ public:
                              (subMask << 40) + (subMask << 24) + (subMask << 8);
         SetVectorMask<int8_t>(0x0, maskValue);
     }
+    
+    __aicore__  void SoftmaxExpV8(
+                            AscendC::LocalTensor<half> src,
+                            AscendC::LocalTensor<half> tmp,
+                            AscendC::LocalTensor<float> src32,
+                            AscendC::LocalTensor<half> clip,
+                            uint32_t pSize)
+    {
+        max_v<ArchType::ASCEND_V200, half>(src, src, clip,
+                                        pSize / VECTOR_SIZE, // repeat
+                                        1,                             // dstBlockStride
+                                        1,                             // src0BlockStride
+                                        0,                             // src1BlockStride
+                                        8,                             // dstRepeatStride
+                                        8,                             // src0RepeatStride
+                                        0                              // src1RepeatStride
+        );
+        PIPE_BARRIER(V);
+
+        muls_v<ArchType::ASCEND_V200, half>(tmp, src, C_MIX_3,
+                                        pSize / VECTOR_SIZE, // repeat
+                                        1,                             // dstBlockStride
+                                        1,                             // src0BlockStride
+                                        8,                             // dstRepeatStride
+                                        8                             // src0RepeatStride
+        );
+        PIPE_BARRIER(V);
+
+        adds_v<ArchType::ASCEND_V200, half>(tmp, tmp, C_MIX_2,
+                                        pSize / VECTOR_SIZE, // repeat
+                                        1,                             // dstBlockStride
+                                        1,                             // src0BlockStride
+                                        8,                             // dstRepeatStride
+                                        8                             // src0RepeatStride
+        );
+        PIPE_BARRIER(V);
+
+        mul_v<ArchType::ASCEND_V200, half>(tmp, src, tmp,
+                                        pSize / VECTOR_SIZE, // repeat
+                                        1,                             // dstBlockStride
+                                        1,                             // src0BlockStride
+                                        1,                             // src1BlockStride
+                                        8,                             // dstRepeatStride
+                                        8,                             // src0RepeatStride
+                                        8                              // src1RepeatStride
+        );
+        PIPE_BARRIER(V);
+
+        adds_v<ArchType::ASCEND_V200, half>(tmp, tmp, C_MIX_1,
+                                        pSize / VECTOR_SIZE, // repeat
+                                        1,                             // dstBlockStride
+                                        1,                             // src0BlockStride
+                                        8,                             // dstRepeatStride
+                                        8                             // src0RepeatStride
+        );
+        PIPE_BARRIER(V);
+
+        mul_v<ArchType::ASCEND_V200, half>(src, src, tmp,
+                                        pSize / VECTOR_SIZE, // repeat
+                                        1,                             // dstBlockStride
+                                        1,                             // src0BlockStride
+                                        1,                             // src1BlockStride
+                                        8,                             // dstRepeatStride
+                                        8,                             // src0RepeatStride
+                                        8                              // src1RepeatStride
+        );
+        PIPE_BARRIER(V);
+
+        for (int32_t vconvIdx = 0; vconvIdx < 2; ++vconvIdx) {
+            conv_v<ArchType::ASCEND_V200, half, float>(src32[vconvIdx * pSize / 2],
+                                                    src[vconvIdx * pSize / 2],
+                                                    pSize / 2 / FLOAT_VECTOR_SIZE, // repeat    128*128/2/64=128
+                                                    1,                             // dstBlockStride
+                                                    1,                             // srcBlockStride
+                                                    uint16_t(8),                   // dstRepeatStride
+                                                    uint16_t(4)                    // srcRepeatStride
+            );
+        }
+        PIPE_BARRIER(V);
+
+        for (int32_t vIdx = 0; vIdx < 2; ++vIdx) {
+            adds_v<ArchType::ASCEND_V200, float>(src32[vIdx * pSize / 2], src32[vIdx * pSize / 2],
+                                            C_MIX_0,
+                                            pSize / 2 / FLOAT_VECTOR_SIZE, // repeat
+                                            1,                             // dstBlockStride
+                                            1,                             // src0BlockStride
+                                            8,                             // dstRepeatStride
+                                            8                             // src0RepeatStride
+            );
+        }
+        PIPE_BARRIER(V);
+
+        for (int32_t vmulIdx = 0; vmulIdx < 3; ++vmulIdx) {
+            for (int32_t vIdx = 0; vIdx < 2; ++vIdx) {
+                mul_v<ArchType::ASCEND_V200, float>(src32[vIdx * pSize / 2],
+                                                src32[vIdx * pSize / 2],
+                                                src32[vIdx * pSize / 2],
+                                                pSize / 2 / FLOAT_VECTOR_SIZE, // repeat
+                                                1,                             // dstBlockStride
+                                                1,                             // src0BlockStride
+                                                1,                             // src1BlockStride
+                                                8,                             // dstRepeatStride
+                                                8,                             // src0RepeatStride
+                                                8                              // src1RepeatStride
+                );
+                PIPE_BARRIER(V);
+            }
+            PIPE_BARRIER(V);
+        }
+        PIPE_BARRIER(V);
+
+        for (int32_t vconvIdx = 0; vconvIdx < 2; ++vconvIdx) {
+            conv_v<ArchType::ASCEND_V200, float, half>(src[vconvIdx * pSize / 2],
+                                                    src32[vconvIdx * pSize / 2],
+                                                    pSize / 2 / FLOAT_VECTOR_SIZE, // repeat
+                                                    1,                             // dstBlockStride
+                                                    1,                             // srcBlockStride
+                                                    4,                             // dstRepeatStride
+                                                    8                              // srcRepeatStride
+            );
+        }
+    }
     __aicore__ void ExpandToBlockHalf(AscendC::LocalTensor<half> dst_tensor, AscendC::LocalTensor<half> src_tensor,
                                       int32_t len)
     {
@@ -373,6 +511,17 @@ public:
             vector_dup((__ubuf__ float *)dst_tensor.GetPhyAddr() + rowIdx * 16, scale, 1, 1, 1, 8, 8);
         }
         PIPE_BARRIER(V);
+    }
+
+    __aicore__ void InitExpClipHalfMix()
+    {
+        __set_mask(BLOCK_SIZE);
+        dup_v<ArchType::ASCEND_V200, half>(
+                            ExpClipUbuf_tensor,
+                            CLIP_VAL,
+                            1
+        );
+        __set_mask(VECTOR_SIZE);
     }
 
 public:
@@ -411,6 +560,7 @@ public:
     const uint32_t tv_ubuf_offset = 5 * UB_UINT8_BLOCK_SIZE;
     const uint32_t go_ubuf_offset = 6 * UB_UINT8_BLOCK_SIZE;
     const uint32_t mask_ubuf_offset = DEC_UB_UINT8_BLOCK_SIZE * 8;
+    const uint32_t exp_clip_ub_offset = 4 * UB_UINT8_BLOCK_SIZE + 30 * UB_UINT8_LINE_SIZE;
 
     __cbuf__ uint8_t *l1qBufAddr;
     __cbuf__ uint8_t *l1kBufAddr;
@@ -446,7 +596,7 @@ public:
     AscendC::LocalTensor<half> toUbuf_tensor = buf.GetBuffer<BufferType::ASCEND_UB, half>(go_ubuf_offset);
     AscendC::LocalTensor<half> maskUbuf_tensor = buf.GetBuffer<BufferType::ASCEND_UB, half>(mask_ubuf_offset);
     AscendC::LocalTensor<half> logn_ub_tensor = buf.GetBuffer<BufferType::ASCEND_UB, half>(logn_ub_offset);
-
+    AscendC::LocalTensor<half> ExpClipUbuf_tensor = buf.GetBuffer<BufferType::ASCEND_UB, half>(exp_clip_ub_offset);
     AscendC::LocalTensor<half> l0aBuf_tensor = buf.GetBuffer<BufferType::ASCEND_L0A, half>(0);
     AscendC::LocalTensor<half> l0bBuf_tensor = buf.GetBuffer<BufferType::ASCEND_L0B, half>(0);
     AscendC::LocalTensor<float> l0cBuf_tensor = buf.GetBuffer<BufferType::ASCEND_L0C, float>(0);
