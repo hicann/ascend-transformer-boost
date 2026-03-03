@@ -13,7 +13,9 @@
 #include <mki/utils/platform/platform_info.h>
 #include "elewise_aclnn_runner.h"
 #include "elewise_ops_runner.h"
+#include "atb/utils/operation_util.h"
 #include "atb/utils/tensor_check.h"
+#include "atb/utils/tensor_util.h"
 #include "atb/utils/config.h"
 #include "atb/utils/param_to_json.h"
 #include "atb/operation/atb_operation_ir_cfg.h"
@@ -47,8 +49,7 @@ template <> Status CreateOperation(const infer::ElewiseParam &opParam, Operation
                 ATB_LOG(ERROR) << "Load aclnn function failed, please check your CANN version.";
                 return ERROR_CANN_ERROR;
             }
-        }
-        else if (opParam.elewiseType == infer::ElewiseParam::ElewiseType::ELEWISE_QUANT_PER_CHANNEL) {
+        } else if (opParam.elewiseType == infer::ElewiseParam::ElewiseType::ELEWISE_QUANT_PER_CHANNEL) {
             if (AclnnAscendQuantRunner::LoadMethod() != NO_ERROR) {
                 ATB_LOG(ERROR) << "Load aclnn function failed, please check your CANN version.";
                 return ERROR_CANN_ERROR;
@@ -64,7 +65,8 @@ template <> Status CreateOperation(const infer::ElewiseParam &opParam, Operation
         ATB_LOG(ERROR) << "Elewise dequant only support Atlas 800I A2 inference product";
         return ERROR_INVALID_PARAM;
     }
-    if ((!GetSingleton<Config>().Is910B() && Mki::PlatformInfo::Instance().GetPlatformType() != Mki::PlatformType::ASCEND_950) &&
+    if ((!GetSingleton<Config>().Is910B() &&
+         Mki::PlatformInfo::Instance().GetPlatformType() != Mki::PlatformType::ASCEND_950) &&
         (opParam.elewiseType == infer::ElewiseParam::ElewiseType::ELEWISE_QUANT)) {
         ATB_LOG(ERROR) << "Elewise quant is not supported on this product series.";
         return ERROR_INVALID_PARAM;
@@ -118,11 +120,10 @@ ElewiseOperation::ElewiseOperation(const infer::ElewiseParam &param) : Operation
         {infer::ElewiseParam::ElewiseType::ELEWISE_LESS, "ElewiseOperationLess"},
         {infer::ElewiseParam::ElewiseType::ELEWISE_GREATER, "ElewiseOperationGreater"},
         {infer::ElewiseParam::ElewiseType::ELEWISE_EQUAL, "ElewiseOperationEqual"},
-        {infer::ElewiseParam::ElewiseType::ELEWISE_QUANT_PER_CHANNEL, IS_950 ? "ElewiseOperationQuantPerChannel950":
-            "ElewiseOperationQuantPerChannel"},
+        {infer::ElewiseParam::ElewiseType::ELEWISE_QUANT_PER_CHANNEL, "ElewiseOperationQuantPerChannel"},
         {infer::ElewiseParam::ElewiseType::ELEWISE_DEQUANT_PER_CHANNEL, "ElewiseOperationDequantPerChannel"},
         {infer::ElewiseParam::ElewiseType::ELEWISE_DYNAMIC_QUANT,
-            IS_950 ? "ElewiseOperationDynamicQuant950":"ElewiseOperationDynamicQuant"},
+         IS_950 ? "ElewiseOperationDynamicQuant950" : "ElewiseOperationDynamicQuant"},
         {infer::ElewiseParam::ElewiseType::ELEWISE_TANH, "ElewiseOperationTanh"},
     };
     std::map<infer::ElewiseParam::ElewiseType, std::string>::const_iterator it = opIniTable.find(param_.elewiseType);
@@ -228,6 +229,84 @@ Status ElewiseOperation::InferShapeImpl(const SVector<TensorDesc> &inTensorDescs
     }
 }
 
+Status ElewiseOperation::InferShapeCheckImpl(const SVector<TensorDesc> &inTensorDescs) const
+{
+    const infer::ElewiseParam::ElewiseType type = param_.elewiseType;
+    const bool IS_950 = Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950;
+    switch (type) {
+        case infer::ElewiseParam::ELEWISE_QUANT_PER_CHANNEL:
+            if (IS_950) {
+                // 此处校验如果IN_TENSOR_1的维度不是全1，就要和IN_TENSOR_0的尾部维度完全一致
+                if ([](const Dims &shape) {
+                        for (size_t i = 0; i < shape.dimNum; ++i) {
+                            if (shape.dims[i] != 1) {
+                                return true;
+                            }
+                        }
+                        return false;
+                    }(inTensorDescs[TENSOR_IDX_ONE].shape)) {
+                    if (inTensorDescs[TENSOR_IDX_ZERO].shape.dimNum < inTensorDescs[TENSOR_IDX_ONE].shape.dimNum) {
+                        ATB_LOG(ERROR) << GetLogPrefix()
+                                       << "IN_TENSOR_0's dimNum should be greater than IN_TENSOR_1's dimNum";
+                        return ERROR_INVALID_TENSOR_DIM_NUM;
+                    }
+                    for (size_t i = 1; i <= inTensorDescs[TENSOR_IDX_ONE].shape.dimNum; ++i) {
+                        if (inTensorDescs[TENSOR_IDX_ZERO]
+                                .shape.dims[inTensorDescs[TENSOR_IDX_ZERO].shape.dimNum - i] !=
+                            inTensorDescs[TENSOR_IDX_ONE].shape.dims[inTensorDescs[TENSOR_IDX_ONE].shape.dimNum - i]) {
+                            ATB_LOG(ERROR) << GetLogPrefix() << "IN_TENSOR_0's dims["
+                                           << inTensorDescs[TENSOR_IDX_ZERO].shape.dimNum - i << "]: "
+                                           << inTensorDescs[TENSOR_IDX_ZERO]
+                                                  .shape.dims[inTensorDescs[TENSOR_IDX_ZERO].shape.dimNum - i]
+                                           << " should match IN_TENSOR_1's dims["
+                                           << inTensorDescs[TENSOR_IDX_ONE].shape.dimNum - i << "]: "
+                                           << inTensorDescs[TENSOR_IDX_ONE]
+                                                  .shape.dims[inTensorDescs[TENSOR_IDX_ONE].shape.dimNum - i];
+                            return ERROR_INVALID_TENSOR_DIM;
+                        }
+                    }
+                }
+                if (!TensorUtil::TensorShapeEqual(inTensorDescs[TENSOR_IDX_ONE].shape,
+                                                  inTensorDescs[TENSOR_IDX_TWO].shape)) {
+                    ATB_LOG(ERROR) << GetLogPrefix() << "IN_TENSOR_1's shape should match IN_TENSOR_2's shape";
+                    return ERROR_INVALID_TENSOR_DIM;
+                }
+            }
+            break;
+
+        default:
+            return NO_ERROR;
+    }
+    return NO_ERROR;
+}
+
+Status ElewiseOperation::SetupCheckImpl(const SVector<Tensor> &inTensors, const SVector<Tensor> &outTensors) const
+{
+    SVector<TensorDesc> inTensorDescs = {};
+    inTensorDescs.reserve(inTensors.size());
+    OperationUtil::InTensorsToInTensorDescs(inTensors, inTensorDescs);
+    Status st = InferShapeCheckImpl(inTensorDescs);
+    if (st != NO_ERROR) {
+        return st;
+    }
+    const infer::ElewiseParam::ElewiseType type = param_.elewiseType;
+    const bool IS_950 = Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950;
+    switch (type) {
+        case infer::ElewiseParam::ELEWISE_QUANT_PER_CHANNEL:
+            if (IS_950) {
+                if (!TensorUtil::TensorShapeEqual(inTensors[TENSOR_IDX_ZERO].desc.shape,
+                                                  outTensors[TENSOR_IDX_ZERO].desc.shape)) {
+                    ATB_LOG(ERROR) << GetLogPrefix() << "IN_TENSOR_1's shape should match IN_TENSOR_2's shape";
+                    return ERROR_INVALID_TENSOR_DIM;
+                }
+            }
+            break;
+        default:
+            return NO_ERROR;
+    }
+    return NO_ERROR;
+}
+
 Status ElewiseOperation::InferShapeImplCast(const SVector<TensorDesc> &inTensorDescs,
                                             SVector<TensorDesc> &outTensorDescs) const
 {
@@ -269,7 +348,8 @@ Status ElewiseOperation::InferShapeImplQuantAscend950(const SVector<TensorDesc> 
 {
     aclDataType dtype0 = inTensorDescs.at(TENSOR_IDX_ZERO).dtype;
     if ((dtype0 == ACL_FLOAT) || (dtype0 == ACL_FLOAT16) || (dtype0 == ACL_BF16)) {
-        outTensorDescs.at(TENSOR_IDX_ZERO).dtype = param_.outTensorType == ACL_DT_UNDEFINED ? ACL_INT8 : param_.outTensorType;
+        outTensorDescs.at(TENSOR_IDX_ZERO).dtype =
+            param_.outTensorType == ACL_DT_UNDEFINED ? ACL_INT8 : param_.outTensorType;
         return NO_ERROR;
     } else {
         ATB_LOG(WARN) << "ElewiseOperation InferShapeImplQuantAscend950: no matched input desc.";
@@ -289,14 +369,14 @@ Status ElewiseOperation::InferShapeImplDynamicQuant(const SVector<TensorDesc> &i
     if (dtype == ACL_FLOAT16) {
         if (GetSingleton<Config>().Is910B() && !InferShapeCheckDynamicQuant(inTensorDescs)) {
             ATB_LOG(ERROR) << "In Atlas 800I A2 inference product, ElewiseOperation InferShapeImplDynamicQuant:"
-                << " when the dtype of the first tensor is float16,"
-                << " the size of the last dimension does not exceed 26624.";
+                           << " when the dtype of the first tensor is float16,"
+                           << " the size of the last dimension does not exceed 26624.";
             return ERROR_INVALID_TENSOR_DIM;
         }
         if (!GetSingleton<Config>().Is910B() && !InferShapeCheckDynamicQuant310P(inTensorDescs)) {
             ATB_LOG(ERROR) << "In Atlas inference products, ElewiseOperation InferShapeImplDynamicQuant:"
-                << " when the dtype of the first tensor is float16,"
-                << " the size of the last dimension does not exceed 4096.";
+                           << " when the dtype of the first tensor is float16,"
+                           << " the size of the last dimension does not exceed 4096.";
             return ERROR_INVALID_TENSOR_DIM;
         }
         outTensorDescs.at(TENSOR_IDX_ZERO).dtype = ACL_INT8;
@@ -321,8 +401,7 @@ Status ElewiseOperation::InferShapeImplDynamicQuant(const SVector<TensorDesc> &i
         ATB_LOG(WARN) << "ElewiseOperation InferShapeImplDynamicQuant: inTensor only support FP16 and BF16 now.";
         return ERROR_INVALID_PARAM;
     }
-    if (param_.outTensorType == ACL_HIFLOAT8 ||
-        param_.outTensorType == ACL_FLOAT8_E5M2 ||
+    if (param_.outTensorType == ACL_HIFLOAT8 || param_.outTensorType == ACL_FLOAT8_E5M2 ||
         param_.outTensorType == ACL_FLOAT8_E4M3FN) {
         outTensorDescs.at(TENSOR_IDX_ZERO).dtype = param_.outTensorType;
     }
@@ -371,21 +450,9 @@ Status ElewiseOperation::InferShapeCommon(const SVector<TensorDesc> &inTensorDes
 Status ElewiseOperation::InferShapeImplQuantChannel(const SVector<TensorDesc> &inTensorDescs,
                                                     SVector<TensorDesc> &outTensorDescs) const
 {
-    aclDataType dtype0 = inTensorDescs.at(TENSOR_IDX_ZERO).dtype;   // x
-    aclDataType dtype1 = inTensorDescs.at(TENSOR_IDX_ONE).dtype;    // scale
-    aclDataType dtype2 = inTensorDescs.at(TENSOR_IDX_TWO).dtype;    // offset
-    if ((((dtype0 == ACL_FLOAT16) && (dtype1 == ACL_FLOAT16)) || ((dtype0 == ACL_BF16) && (dtype1 == ACL_BF16))) &&
-        (dtype2 == ACL_INT8)) {
-        outTensorDescs.at(TENSOR_IDX_ZERO).dtype = ACL_INT8;
-        return NO_ERROR;
-    } else if (param_.outTensorType == ACL_HIFLOAT8 || param_.outTensorType == ACL_FLOAT8_E4M3FN
-        || param_.outTensorType == ACL_FLOAT8_E5M2) {
-        outTensorDescs.at(TENSOR_IDX_ZERO).dtype = param_.outTensorType;
-        return NO_ERROR;
-    } else {
-        ATB_LOG(WARN) << "ElewiseOperation InferShapeImpl quant channel: no matched input desc.";
-        return ERROR_INVALID_PARAM;
-    }
+    (void)inTensorDescs;
+    outTensorDescs.at(TENSOR_IDX_ZERO).dtype = ACL_INT8;
+    return NO_ERROR;
 }
 
 Status ElewiseOperation::InferShapeImplDequantChannel(const SVector<TensorDesc> &inTensorDescs,
@@ -444,20 +511,20 @@ bool ElewiseOperation::InferShapeCheckDynamicQuant310P(const SVector<TensorDesc>
 std::shared_ptr<Runner> ElewiseOperation::CreateRunner(Context &context) const
 {
     (void)context;
-    if (param_.elewiseType == infer::ElewiseParam::ElewiseType::ELEWISE_DYNAMIC_QUANT
-        && Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
-            return std::make_shared<AclnnDynamicQuantRunner>(param_);
-    } else if (param_.elewiseType == infer::ElewiseParam::ElewiseType::ELEWISE_QUANT_PER_CHANNEL
-        && Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
-            return std::make_shared<AclnnAscendQuantRunner>(param_);
+    if (param_.elewiseType == infer::ElewiseParam::ElewiseType::ELEWISE_DYNAMIC_QUANT &&
+        Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
+        return std::make_shared<AclnnDynamicQuantRunner>(param_);
+    } else if (param_.elewiseType == infer::ElewiseParam::ElewiseType::ELEWISE_QUANT_PER_CHANNEL &&
+               Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
+        return std::make_shared<AclnnAscendQuantRunner>(param_);
     }
     std::unordered_set<infer::ElewiseParam::ElewiseType> aclnnOpType = {
-        infer::ElewiseParam::ElewiseType::ELEWISE_CAST,       infer::ElewiseParam::ElewiseType::ELEWISE_MULS,
-        infer::ElewiseParam::ElewiseType::ELEWISE_COS,        infer::ElewiseParam::ElewiseType::ELEWISE_SIN,
-        infer::ElewiseParam::ElewiseType::ELEWISE_ADD,        infer::ElewiseParam::ElewiseType::ELEWISE_LESS,
-        infer::ElewiseParam::ElewiseType::ELEWISE_MUL,        infer::ElewiseParam::ElewiseType::ELEWISE_GREATER,
-        infer::ElewiseParam::ElewiseType::ELEWISE_REALDIV,    infer::ElewiseParam::ElewiseType::ELEWISE_LOGICAL_NOT,
-        infer::ElewiseParam::ElewiseType::ELEWISE_QUANT,      infer::ElewiseParam::ElewiseType::ELEWISE_SUB,
+        infer::ElewiseParam::ElewiseType::ELEWISE_CAST,    infer::ElewiseParam::ElewiseType::ELEWISE_MULS,
+        infer::ElewiseParam::ElewiseType::ELEWISE_COS,     infer::ElewiseParam::ElewiseType::ELEWISE_SIN,
+        infer::ElewiseParam::ElewiseType::ELEWISE_ADD,     infer::ElewiseParam::ElewiseType::ELEWISE_LESS,
+        infer::ElewiseParam::ElewiseType::ELEWISE_MUL,     infer::ElewiseParam::ElewiseType::ELEWISE_GREATER,
+        infer::ElewiseParam::ElewiseType::ELEWISE_REALDIV, infer::ElewiseParam::ElewiseType::ELEWISE_LOGICAL_NOT,
+        infer::ElewiseParam::ElewiseType::ELEWISE_QUANT,   infer::ElewiseParam::ElewiseType::ELEWISE_SUB,
     };
     if (aclnnOpType.find(param_.elewiseType) != aclnnOpType.end() &&
         Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {

@@ -23,6 +23,8 @@ public:
 
 protected:
     Status InferShapeImpl(const SVector<TensorDesc> &inTensorDescs, SVector<TensorDesc> &outTensorDescs) const override;
+    Status InferShapeCheckImpl(const SVector<TensorDesc> &inTensorDescs) const override;
+    Status SetupCheckImpl(const SVector<Tensor> &inTensors, const SVector<Tensor> &outTensors) const override;
     Status InferShapeImplCast(const SVector<TensorDesc> &inTensorDescs, SVector<TensorDesc> &outTensorDescs) const;
     Status InferShapeImplQuant(const SVector<TensorDesc> &inTensorDescs, SVector<TensorDesc> &outTensorDescs) const;
     Status InferShapeImplQuantAscend950(const SVector<TensorDesc> &inTensorDescs, SVector<TensorDesc> &outTensorDescs) const;

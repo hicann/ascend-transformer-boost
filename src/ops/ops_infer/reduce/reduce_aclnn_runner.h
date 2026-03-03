@@ -33,6 +33,7 @@ protected:
     Status LaunchAclnnKernel() override;
     aclnnStatus SetAclNNWorkspaceExecutor() override;
     Status GetFunc();
+    virtual bool useCache() override;
 
 private:
     infer::ReduceParam param_;
