@@ -153,7 +153,7 @@ template <> Status CreateOperation(const infer::RmsNormParam &opParam, Operation
         ATB_LOG(ERROR) << "dynamicQuantType not support DYNAMIC_QUANT_ASYMMETRIC";
         return ERROR_INVALID_PARAM;
     }
-    Status status = RmsNormAclnnRunner::LoadMethod();
+    Status status = RmsNormAclnnRunner::LoadAclnnFuncs();
     if (status != NO_ERROR) {
         ATB_LOG(ERROR) << "Load Aclnn functions failed!";
         return ERROR_INVALID_PARAM;
