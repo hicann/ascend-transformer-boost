@@ -25,16 +25,35 @@ protected:
     Status BuildAclnnVariantPack(const RunnerVariantPack &runnerVariantPack) override;
     Status LaunchAclnnKernel() override;
     aclnnStatus SetAclNNWorkspaceExecutor() override;
+    virtual bool useCache() override;
 
 private:
+    void CleanUp();
     infer::ElewiseParam param_;
+    aclDataType scaleDatatype_ = ACL_FLOAT16;
+    aclTensor *scale_ = nullptr;
+    aclTensor *offset_ = nullptr;
+    uint64_t scaleBufferSize_ = 0;
+    uint64_t offsetBufferSize_ = 0;
+    uint64_t reciprocalWorkspaceSize_ = 0;
+    uint64_t castWorkspaceSize_ = 0;
+    uint64_t quantWorkspaceSize_ = 0;
+    std::shared_ptr<aclOpExecutor> aclnnReciprocalExecutor_;
+    std::shared_ptr<aclOpExecutor> aclnnCastExecutor_;
 
     // 对应aclnnop/aclnn_ascend_quant.h中的两段式接口
-    static aclnnStatus (*aclnnGetWorkspaceSizeFunc_)(
-    const aclTensor *, const aclTensor *, const aclTensor *, bool, char*,
-    int32_t, int32_t, const aclTensor *, uint64_t *, aclOpExecutor **);
+    static aclnnStatus (*aclnnGetWorkspaceSizeFunc_)(const aclTensor *, const aclTensor *, const aclTensor *, bool,
+                                                     char *, int32_t, int32_t, const aclTensor *, uint64_t *,
+                                                     aclOpExecutor **);
     static aclnnStatus (*aclnnExecuteFunc_)(void *, uint64_t, aclOpExecutor *, const aclrtStream);
-
+    // 对应aclnnop/aclnn_reciprocal.h中的两段式接口
+    static aclnnStatus (*aclnnReciprocalGetWorkspaceSizeFunc_)(const aclTensor *, aclTensor *, uint64_t *,
+                                                               aclOpExecutor **);
+    static aclnnStatus (*aclnnReciprocalExecuteFunc_)(void *, uint64_t, aclOpExecutor *, aclrtStream);
+    // 对应aclnnop/aclnn_cast.h中的两段式接口
+    static aclnnStatus (*aclnnCastGetWorkspaceSizeFunc_)(const aclTensor *, const aclDataType, aclTensor *, uint64_t *,
+                                                         aclOpExecutor **);
+    static aclnnStatus (*aclnnCastExecuteFunc_)(void *, uint64_t, aclOpExecutor *, aclrtStream);
 };
 } // namespace atb
 #endif

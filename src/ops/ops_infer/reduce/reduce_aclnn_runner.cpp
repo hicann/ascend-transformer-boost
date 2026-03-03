@@ -26,7 +26,7 @@ ReduceAclnnRunner::ExecuteFuncType ReduceAclnnRunner::aclnnReduceSumExecuteFunc_
 ReduceAclnnAmaxGetWorkspaceSizeFunc ReduceAclnnRunner::aclnnAmaxGetWorkspaceSizeFunc_ = nullptr;
 ReduceAclnnRunner::ExecuteFuncType ReduceAclnnRunner::aclnnAmaxExecuteFunc_ = nullptr;
 
-ReduceAclnnAminGetWorkspaceSizeFunc ReduceAclnnRunner::aclnnAminGetWorkspaceSizeFunc_  = nullptr;
+ReduceAclnnAminGetWorkspaceSizeFunc ReduceAclnnRunner::aclnnAminGetWorkspaceSizeFunc_ = nullptr;
 ReduceAclnnRunner::ExecuteFuncType ReduceAclnnRunner::aclnnAminExecuteFunc_ = nullptr;
 
 ReduceAclnnRunner::ReduceAclnnRunner(const infer::ReduceParam &param) : AclnnRunner("ReduceAclnnRunner"), param_(param)
@@ -41,6 +41,7 @@ ReduceAclnnRunner::~ReduceAclnnRunner()
         if (ret != ACL_SUCCESS) {
             ATB_LOG(ERROR) << GetLogPrefix() << "failed to destroy intArray, dim, with return value: " << ret;
         }
+        dims_ = nullptr;
     }
 }
 
@@ -102,7 +103,7 @@ aclnnStatus ReduceAclnnRunner::SetAclNNWorkspaceExecutor()
     aclTensor *x = xAclnnTensorPtr->tensor; // input
     aclDataType dtype = xAclnnTensorPtr->atbTensor.desc.dtype;
     // dims
-    int64_t dimsValue[param_.axis.size()];
+    std::vector<int64_t> dimsValue(param_.axis.size(), 0);
     for (size_t i = 0; i < param_.axis.size(); ++i) {
         dimsValue[i] = param_.axis[i];
     }
@@ -117,8 +118,9 @@ aclnnStatus ReduceAclnnRunner::SetAclNNWorkspaceExecutor()
             ATB_LOG(ERROR) << GetLogPrefix() << "failed to destrory intArray, dim";
             return ret;
         }
+        dims_ = nullptr;
     }
-    dims_ = aclCreateIntArray(dimsValue, static_cast<uint64_t>(param_.axis.size()));
+    dims_ = aclCreateIntArray(dimsValue.data(), static_cast<uint64_t>(param_.axis.size()));
     if (dims_ == nullptr) {
         ATB_LOG(ERROR) << GetLogPrefix() << "failed to create intArray, dim";
         return ACLNN_ERR_PARAM_INVALID;
@@ -129,9 +131,8 @@ aclnnStatus ReduceAclnnRunner::SetAclNNWorkspaceExecutor()
     bool keepDims = false;
     switch (param_.reduceType) {
         case atb::infer::ReduceParam::ReduceType::REDUCE_SUM:
-            ret = ReduceAclnnRunner::aclnnReduceSumGetWorkspaceSizeFunc_(x, dims_, keepDims, dtype, output,
-                                                                         &(this->atbVariantPack_.workspaceBufferSize),
-                                                                         &rawExecutorPtr);
+            ret = ReduceAclnnRunner::aclnnReduceSumGetWorkspaceSizeFunc_(
+                x, dims_, keepDims, dtype, output, &(this->atbVariantPack_.workspaceBufferSize), &rawExecutorPtr);
             break;
         case atb::infer::ReduceParam::ReduceType::REDUCE_MAX:
             ret = ReduceAclnnRunner::aclnnAmaxGetWorkspaceSizeFunc_(
@@ -145,7 +146,16 @@ aclnnStatus ReduceAclnnRunner::SetAclNNWorkspaceExecutor()
             ATB_LOG(ERROR) << GetLogPrefix()
                            << "expect reduceType to be one of REDUCE_MAX, REDUCE_MIN or REDUCE_SUM, but got: "
                            << param_.reduceType;
-            return ERROR_INVALID_PARAM;
+            return ACLNN_ERR_PARAM_INVALID;
+    }
+    if (ret != ACL_SUCCESS) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "aclnnGetWorkspaceSize failed!";
+        return ret;
+    }
+    ret = aclSetAclOpExecutorRepeatable(rawExecutorPtr);
+    if (ret != ACL_SUCCESS) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "Set AclOpExecutorRepeatable failed!";
+        return ret;
     }
     this->aclnnExecutor_ = std::shared_ptr<aclOpExecutor>(rawExecutorPtr, [this](aclOpExecutor *ptr) {
         if (ptr && this->executorRepeatable_) { // 可复用时才手动销毁aclOpExecutor
@@ -173,7 +183,7 @@ Status ReduceAclnnRunner::LaunchAclnnKernel()
                                    this->aclnnExecutor_.get(), executeStream);
     if (ret != ACL_SUCCESS) {
         ATB_LOG(ERROR) << GetLogPrefix() << "Atb aclnn op kernel launch failed with return value: " << ret;
-        return ACLNN_ERR_PARAM_INVALID;
+        return ERROR_CANN_ERROR;
     }
     ATB_LOG(INFO) << GetLogPrefix() << "LaunchAclnnKernel execute success.";
     return NO_ERROR;
@@ -198,6 +208,11 @@ Status ReduceAclnnRunner::GetFunc()
                            << param_.reduceType;
     }
     return ERROR_INVALID_PARAM;
+}
+
+bool ReduceAclnnRunner::useCache()
+{
+    return false;
 }
 
 Status ReduceAclnnRunner::LoadMethod()

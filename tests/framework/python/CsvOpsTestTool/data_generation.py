@@ -3452,19 +3452,13 @@ class ReduceOperation(DataGen):
         else:
             return [torch.sum(in_tensors[0], axis)]
     @staticmethod
-    def case_postprocess(op_params, operation, input_tensor_list, output_tensor_list):
-        ReduceOperation.in_tensors = input_tensor_list
-    @staticmethod
     def get_op_type(op_params):
         json_data = json.loads(op_params)
         if json_data["reduceType"] in [
             ReduceOperation.REDUCE_MAX,
             ReduceOperation.REDUCE_MIN
         ]:
-            if ReduceOperation.in_tensors[0].dtype == torch.int32:
-                return OpTypes.COMPUTE_INTEGER
-            else:
-                return OpTypes.COMPUTE_FLOAT
+            return OpTypes.MOVE
         else:
             return OpTypes.COMPUTE_FLOAT
 
@@ -4270,45 +4264,30 @@ class ElewiseOperation(DataGen):
         return [golden_result]
 
     def elewiseQuantPerChannel(in_tensors, op_params):
-        if  get_soc_version() == "Ascend950":
-            json_data = json.loads(op_params)
-            outType = json_data["outTensorType"]
-            input_x = in_tensors[0].to(torch.float32).cpu().numpy().astype("float32")
-            input_scale = in_tensors[1].to(torch.float32).cpu().numpy().astype("float32")
-            input_offset = in_tensors[2].to(torch.float32).cpu().numpy().astype("float32")
-            out = input_x * input_scale
-            if len(input_offset) != 0:
-                out = out + input_offset
-            out = np.round(out, 8)
-            if outType == 35:
-                out = torch.from_numpy(out).to(torch.float8_e5m2)
-            elif outType == 36:
-                out = torch.from_numpy(out).to(torch.float8_e4m3fn)
-            elif outType == 34:
-                out = out.astype(hifloat8, copy=False).view(np.int8)
-                out = torch.from_numpy(out)
-            return [out]
-        else:
-            # 获取输入张量
-            input_x = in_tensors[0].cpu()
-            input_scale = in_tensors[1].cpu()
-            input_offset = in_tensors[2].cpu()
+        # 获取输入张量
+        input_x = in_tensors[0].cpu()
+        input_scale = in_tensors[1].cpu()
+        input_offset = in_tensors[2].cpu()
 
-            # 对 input_x 和 input_scale 进行广播和除法操作
+        # 对 input_x 和 input_scale 进行广播和除法操作
+        result = None
+        if get_soc_version() == "Ascend950":
+            result = input_x * (1 / input_scale)
+        else:
             result = input_x / input_scale
 
-            # 如果有 offset，则加上 offset
-            if len(input_offset) > 0:
-                result += input_offset
+        # 如果有 offset，则加上 offset
+        if len(input_offset) > 0:
+            result += input_offset
 
-            # 对结果进行四舍五入，并进行 clip 操作，限制范围为 [-128, 127]
-            result = result.round()
-            result = torch.clamp(result, min=-128, max=127)
+        # 对结果进行四舍五入，并进行 clip 操作，限制范围为 [-128, 127]
+        result = result.round()
+        result = torch.clamp(result, min=-128, max=127)
 
-            # 转换为 int8 类型
-            out = result.to(torch.int8)
+        # 转换为 int8 类型
+        out = result.to(torch.int8)
 
-            return [out]
+        return [out]
 
     def elewiseDequantPerChannel(in_tensors, op_params):
         input_y = in_tensors[0].cpu().numpy()
