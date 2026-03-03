@@ -75,10 +75,12 @@ template <> Status CreateOperation(const infer::ReshapeAndCacheParam &opParam, O
         ATB_LOG(ERROR) << "Format NZ only supports compressType:COMPRESS_TYPE_UNDEFINED! ";
         return ERROR_INVALID_PARAM;
     }
-    Status status = ReshapeAndCacheAclnnRunner::LoadMethod();
-    if (status != NO_ERROR) {
-        ATB_LOG(ERROR) << "Load Aclnn functions failed!";
-        return ERROR_CANN_ERROR;
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
+        Status st = ReshapeAndCacheAclnnRunner::LoadAclnnFuncs();
+        if (st != NO_ERROR) {
+            ATB_LOG(ERROR) << "Load aclnn functions failed!";
+            return st;
+        }
     }
     *operation = new (std::nothrow) ReshapeAndCacheOperation(opParam);
     if (*operation == nullptr) {
@@ -106,7 +108,7 @@ ReshapeAndCacheOperation::ReshapeAndCacheOperation(const infer::ReshapeAndCacheP
         operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("ReshapeAndCacheOperation");
     }
     if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
-        operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("ReshapeAndCacheOperationAscend950");
+        operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("ReshapeAndCacheOperation");
     }
     ATB_LOG(INFO) << GetLogPrefix() << "ReshapeAndCacheParam compressType:" << param.compressType
                   << ", kvCacheCfg:" << param.kvCacheCfg;

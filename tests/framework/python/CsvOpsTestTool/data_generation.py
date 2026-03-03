@@ -3803,6 +3803,9 @@ class ReshapeAndCacheOperation(DataGen):
         if i != 0:
             ReshapeAndCacheOperation.in_tensors[i] = torch_npu.npu_dtype_cast(ReshapeAndCacheOperation.in_tensors[i].npu(), dtype_dict[datatype])
             return torch_npu.npu_format_cast(ReshapeAndCacheOperation.in_tensors[i], format_dict[format])
+        else:
+            if hasattr(ReshapeAndCacheOperation, 'in_tensors'):
+                delattr(ReshapeAndCacheOperation, 'in_tensors')
 
         soc_version = get_soc_version()
         json_data = json.loads(op_params)
@@ -3963,6 +3966,8 @@ class ReshapeAndCacheOperation(DataGen):
         else:
             output_tensor_list[0] = input_tensor_list[2]
             output_tensor_list[1] = input_tensor_list[3]
+        if hasattr(ReshapeAndCacheOperation, 'in_tensors'):
+            delattr(ReshapeAndCacheOperation, 'in_tensors')
 
     @staticmethod
     def golden(in_tensors, op_params):

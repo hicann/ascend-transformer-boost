@@ -9,121 +9,95 @@
  */
 
 #include "reshape_and_cache_aclnn_runner.h"
+#include <aclnn/opdev/op_errno.h>
+#include "acl/acl.h"
 #include "atb/utils/aclnn_util.h"
 #include "atb/utils/log.h"
-#include "atbops/params/params.h"
 #include "atb/utils/operation_register.h"
-#include "acl/acl.h"
+#include "atbops/params/params.h"
+
+namespace {
+static const int KEY_ACLNN_TENSOR_IDX = 0;
+static const int KEY_CACHE_ACLNN_TENSOR_IDX = 1;
+static const int SLOT_MAPPING_ACLNN_TENSOR_IDX = 2;
+static const int VALUE_ACLNN_TENSOR_IDX = 3;
+static const int VALUE_CACHE_ACLNN_TENSOR_IDX = 4;
+}  // namespace
 
 namespace atb {
-static const uint32_t IN_TENSOR_NUM = 5;
-static const uint32_t OUT_TENSOR_NUM = 2;
-const uint32_t TENSOR_IDX_ZERO = 0;
-const uint32_t TENSOR_IDX_ONE = 1;
-static const int DIM0 = 0;
-static const int DIM1 = 1;
-
-AclnnGetWorkspaceSizeFunc ReshapeAndCacheAclnnRunner::aclnnGetWorkspaceSizeFunc_ = nullptr;
-AclnnExecuteFunc ReshapeAndCacheAclnnRunner::aclnnExecuteFunc_ = nullptr;
+AclnnScatterPaKvCacheGetWorkspaceSizeFunc ReshapeAndCacheAclnnRunner::aclnnScatterPaKvCacheGetWorkspaceSizeFunc_ =
+    nullptr;
+AclnnScatterPaKvCacheFunc ReshapeAndCacheAclnnRunner::aclnnScatterPaKvCacheFunc_ = nullptr;
 
 ReshapeAndCacheAclnnRunner::ReshapeAndCacheAclnnRunner(const infer::ReshapeAndCacheParam &param)
     : AclnnRunner("ReshapeAndCacheAclnnRunner"), param_(param)
 {
-    ATB_LOG(INFO) << GetLogPrefix() << "ReshapeAndCacheAclnnRunner::ReshapeAndCacheAclnnRunner called";
+    ATB_LOG(INFO) << GetLogPrefix() << "ReshapeAndCacheAclnnRunner::ReshapeAndCacheAclnnRunner";
+
+    GetTensorNum();
 }
 
-ReshapeAndCacheAclnnRunner::~ReshapeAndCacheAclnnRunner() {}
+ReshapeAndCacheAclnnRunner::~ReshapeAndCacheAclnnRunner()
+{}
 
-Status ReshapeAndCacheAclnnRunner::LoadMethod()
+Status ReshapeAndCacheAclnnRunner::LoadAclnnFuncs()
 {
-    ATB_LOG(INFO) << "ReshapeAndCacheAclnnRunner LoadMethod";
-    Status status = NO_ERROR;
-    if (aclnnGetWorkspaceSizeFunc_ == nullptr ||
-        aclnnExecuteFunc_ == nullptr) {
-        status = LoadFromSharedObjectFile("aclnnScatterPaKvCacheGetWorkspaceSize", "aclnnScatterPaKvCache",
-                                           aclnnGetWorkspaceSizeFunc_,
-                                           aclnnExecuteFunc_);
+    ATB_LOG(INFO) << "ReshapeAndCacheAclnnRunner::LoadAclnnFuncs";
+
+    if (aclnnScatterPaKvCacheGetWorkspaceSizeFunc_ && aclnnScatterPaKvCacheFunc_) {
+        return NO_ERROR;
     }
-    return status;
+    return LoadFromSharedObjectFile("aclnnScatterPaKvCacheGetWorkspaceSize",
+        "aclnnScatterPaKvCache",
+        aclnnScatterPaKvCacheGetWorkspaceSizeFunc_,
+        aclnnScatterPaKvCacheFunc_);
 }
 
 Status ReshapeAndCacheAclnnRunner::BuildAclnnVariantPack(const RunnerVariantPack &runnerVariantPack)
 {
-    ATB_LOG(INFO) << GetLogPrefix() << "BuildAclnnVariantPack";
-    ATB_LOG(INFO) << GetLogPrefix() << "variantPack: " << runnerVariantPack.ToString();
+    ATB_LOG(INFO) << GetLogPrefix() << "ReshapeAndCacheAclnnRunner::BuildAclnnVariantPack, runnerVariantPack: "
+                  << runnerVariantPack.ToString();
     atbVariantPack_ = runnerVariantPack;
-    Status ret = NO_ERROR;
-    aclnnVariantPack_.aclInTensors.reserve(IN_TENSOR_NUM);
-    aclnnVariantPack_.aclInTensors.resize(IN_TENSOR_NUM);
-    for (size_t i = 0; i < IN_TENSOR_NUM; ++i) {
-        ATB_LOG(INFO) << GetLogPrefix() << "ReshapeAndCacheAclnnRunner::BuildAclnnVariantPack inTensor index: " << i;
-        std::shared_ptr<AclNNTensor> aclnnTensorPtr = std::make_shared<AclNNTensor>();
-        atb::Tensor atbTensor = runnerVariantPack.inTensors.at(i);
-        aclnnTensorPtr->atbTensor = atbTensor;
-        aclnnTensorPtr->strides = GetCopyTensorStride(atbTensor.desc.shape);
-        ret = CallAclCreateTensor(atbTensor.desc.shape, atbTensor.desc.shape, atbTensor, aclnnTensorPtr,
-                                      atbTensor.desc.dtype);
-        if (ret != NO_ERROR) {
-            ATB_LOG(ERROR) << GetLogPrefix() << "create aclTensor by aclCreateTensor failed!";
-            return ret;
-        }
-        aclnnTensorPtr->tensorIdx = static_cast<int>(i);
-        aclnnTensorPtr->needUpdateTensorDataPtr = true;
-        aclnnVariantPack_.aclInTensors.at(i) = aclnnTensorPtr;
+    InitTensorIndex();
+    aclnnVariantPack_.aclInTensors.reserve(aclInTensorNum_);
+    aclnnVariantPack_.aclInTensors.resize(aclInTensorNum_);
+    Status st = CreateKeyAclnnTensor();
+    if (st != NO_ERROR) {
+        return st;
     }
-    aclnnVariantPack_.aclOutTensors.reserve(OUT_TENSOR_NUM);
-    aclnnVariantPack_.aclOutTensors.resize(OUT_TENSOR_NUM);
-    for (size_t i = 0; i < OUT_TENSOR_NUM; ++i) {
-        std::shared_ptr<AclNNTensor> aclnnTensorPtr = std::make_shared<AclNNTensor>();
-        ATB_LOG(INFO) << GetLogPrefix() << "ReshapeAndCacheAclnnRunner::BuildAclnnVariantPack outTensor index: " << i;
-        atb::Tensor atbTensor = runnerVariantPack.outTensors.at(i);
-        aclnnTensorPtr->atbTensor = atbTensor;
-        aclnnTensorPtr->strides = GetCopyTensorStride(atbTensor.desc.shape);
-        ret = CallAclCreateTensor(atbTensor.desc.shape, atbTensor.desc.shape, atbTensor, aclnnTensorPtr,
-                                  atbTensor.desc.dtype);
-        if (ret != NO_ERROR) {
-            ATB_LOG(ERROR) << GetLogPrefix() << "create aclTensor by aclCreateTensor failed!";
-            return ret;
-        }
-        aclnnTensorPtr->tensorIdx = static_cast<int>(i);
-        aclnnTensorPtr->needUpdateTensorDataPtr = true;
-        aclnnVariantPack_.aclOutTensors.at(i) = aclnnTensorPtr;
+    st = CreateValueAclnnTensor();
+    if (st != NO_ERROR) {
+        return st;
     }
-    return atb::NO_ERROR;
+    st = CreateKeyCacheAclnnTensor();
+    if (st != NO_ERROR) {
+        return st;
+    }
+    st = CreateValueCacheAclnnTensor();
+    if (st != NO_ERROR) {
+        return st;
+    }
+    return CreateSlotMappingAclnnTensor();
 }
 
 aclnnStatus ReshapeAndCacheAclnnRunner::SetAclNNWorkspaceExecutor()
 {
-    ATB_LOG(INFO) << GetLogPrefix() << "aclnn ReshapeAndCache setup start.";
-    size_t inTensorIndex = 0;
-    ATB_LOG(INFO) << GetLogPrefix() << ", aclInTensors size: " << aclnnVariantPack_.aclInTensors.size()
-                  << ", aclOutTensors size: " << aclnnVariantPack_.aclOutTensors.size();
-    aclnnVariantPack_.aclInTensors.at(1)->tensorIdx = 3;
-    aclnnVariantPack_.aclInTensors.at(2)->tensorIdx = 1;
-    aclnnVariantPack_.aclInTensors.at(3)->tensorIdx = 4;
-    aclnnVariantPack_.aclInTensors.at(4)->tensorIdx = 2;
-    aclTensor *key = aclnnVariantPack_.aclInTensors.at(inTensorIndex++)->tensor;
-    aclTensor *value = aclnnVariantPack_.aclInTensors.at(inTensorIndex++)->tensor;
-    aclTensor *keyCacheRef = aclnnVariantPack_.aclInTensors.at(inTensorIndex++)->tensor;
-    aclTensor *valueCacheRef = aclnnVariantPack_.aclInTensors.at(inTensorIndex++)->tensor;
-    aclTensor *slotMapping = aclnnVariantPack_.aclInTensors.at(inTensorIndex++)->tensor;
+    ATB_LOG(INFO) << GetLogPrefix() << "ReshapeAndCacheAclnnRunner::SetAclNNWorkspaceExecutor";
+    aclTensor *key = aclnnVariantPack_.aclInTensors.at(keyAclTensorIndex_)->tensor;
+    aclTensor *keyCacheRef = aclnnVariantPack_.aclInTensors.at(keyCacheRefAclTensorIndex_)->tensor;
+    aclTensor *slotMapping = aclnnVariantPack_.aclInTensors.at(slotMappingAclTensorIndex_)->tensor;
+    aclTensor *value = aclnnVariantPack_.aclInTensors.at(valueAclTensorIndex_)->tensor;
+    aclTensor *valueCacheRef = aclnnVariantPack_.aclInTensors.at(valueCacheRefAclTensorIndex_)->tensor;
     aclTensor *compressLensOptional = nullptr;
     aclTensor *compressSeqOffsetOptional = nullptr;
     aclTensor *seqLensOptional = nullptr;
+    char *cacheMode = nullptr;
+    char *scatterMode = nullptr;
     const aclIntArray *stridesOptional = nullptr;
     const aclIntArray *offsetsOptional = nullptr;
-    std::string cacheMode = "Norm";
-    std::string scatterMode = "None";
     aclOpExecutor *rawExecutorPtr = aclnnExecutor_.get();
-    ATB_LOG(INFO) << GetLogPrefix() << "&(aclnnExecutor_): " << &(aclnnExecutor_)
-                  << ", addr of aclnnExecutor_: " << aclnnExecutor_
-                  << ", raw ptr from it: " << rawExecutorPtr
-                  << ", then take the address of the raw ptr: " << &rawExecutorPtr;
 
-    ATB_LOG(INFO) << GetLogPrefix() << "workspaceSize addr: " << &(atbVariantPack_.workspaceBufferSize);
-
-    aclnnStatus ret = aclnnGetWorkspaceSizeFunc_(
-        key,
+    aclnnStatus ret = aclnnScatterPaKvCacheGetWorkspaceSizeFunc_(key,
         keyCacheRef,
         slotMapping,
         value,
@@ -131,35 +105,134 @@ aclnnStatus ReshapeAndCacheAclnnRunner::SetAclNNWorkspaceExecutor()
         compressLensOptional,
         compressSeqOffsetOptional,
         seqLensOptional,
-        (char *)cacheMode.c_str(),
-        (char *)scatterMode.c_str(),
+        cacheMode,
+        scatterMode,
         stridesOptional,
         offsetsOptional,
         &(atbVariantPack_.workspaceBufferSize),
         &rawExecutorPtr);
     aclnnExecutor_ = std::shared_ptr<aclOpExecutor>(rawExecutorPtr, [this](aclOpExecutor *ptr) {
-        if (ptr && executorRepeatable_) { // 可复用时才手动销毁aclOpExecutor
+        if (ptr && executorRepeatable_) {
             aclDestroyAclOpExecutor(ptr);
         }
     });
-    ATB_LOG(INFO) << GetLogPrefix() << "workspaceSize: " << atbVariantPack_.workspaceBufferSize;
+    if (ret == ACLNN_SUCCESS) {
+        ATB_LOG(INFO) << GetLogPrefix() << "workspaceSize: " << atbVariantPack_.workspaceBufferSize;
+    } else {
+        ATB_LOG(ERROR) << GetLogPrefix() << "SetAclNNWorkspaceExecutor failed, ret: " << ret;
+    }
     return ret;
 }
 
 Status ReshapeAndCacheAclnnRunner::LaunchAclnnKernel()
 {
-    ATB_LOG(INFO) << GetLogPrefix() << "LaunchAclnnKernel execute start.";
+    ATB_LOG(INFO) << GetLogPrefix() << "ReshapeAndCacheAclnnRunner::LaunchAclnnKernel";
     aclrtStream executeStream = GetExecuteStream(atbVariantPack_.context);
-    aclnnStatus ret = aclnnExecuteFunc_(atbVariantPack_.workspaceBuffer,
-                                        atbVariantPack_.workspaceBufferSize,
-                                        aclnnExecutor_.get(), executeStream);
-    if (ret != ACL_SUCCESS) {
-        ATB_LOG(ERROR) << GetLogPrefix() << "Atb aclnn op kernel launch failed with return value: " << ret;
-        return ERROR_CANN_ERROR;
+    aclnnStatus ret = aclnnScatterPaKvCacheFunc_(
+        atbVariantPack_.workspaceBuffer, atbVariantPack_.workspaceBufferSize, aclnnExecutor_.get(), executeStream);
+    if (ret == ACLNN_SUCCESS) {
+        return NO_ERROR;
     }
-    ATB_LOG(INFO) << GetLogPrefix() << "LaunchAclnnKernel execute success.";
+    ATB_LOG(ERROR) << GetLogPrefix() << "LaunchAclnnKernel failed, ret: " << ret;
+    return ERROR_CANN_ERROR;
+}
+
+void ReshapeAndCacheAclnnRunner::GetTensorNum()
+{
+    aclInTensorNum_ = 5;  // key, keyCacheRef, slotMapping, value, valueCacheRef
+}
+
+void ReshapeAndCacheAclnnRunner::InitTensorIndex()
+{
+    atbInTensorIndex_ = 0;
+    aclInTensorIndex_ = 0;
+
+    keyAclTensorIndex_ = 0;
+    valueAclTensorIndex_ = 0;
+    keyCacheRefAclTensorIndex_ = 0;
+    valueCacheRefAclTensorIndex_ = 0;
+    slotMappingAclTensorIndex_ = 0;
+}
+
+Status ReshapeAndCacheAclnnRunner::CreateKeyAclnnTensor()
+{
+    ATB_LOG(INFO) << GetLogPrefix() << "ReshapeAndCacheAclnnRunner::CreateKeyAclnnTensor";
+    Tensor atbTensor = atbVariantPack_.inTensors.at(atbInTensorIndex_++);
+    SVector<int64_t> strides = GetCopyTensorStride(atbTensor.desc.shape);
+    std::shared_ptr<AclNNTensor> aclnnTensorPtr =
+        CreateAclnnTensor(atbTensor, KEY_ACLNN_TENSOR_IDX, atbTensor.desc.shape, strides);
+    if (!aclnnTensorPtr->tensor) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "key aclCreateTensor failed";
+        return ERROR_INTERNAL_ERROR;
+    }
+    aclnnVariantPack_.aclInTensors.at(aclInTensorIndex_) = aclnnTensorPtr;
+    keyAclTensorIndex_ = aclInTensorIndex_++;
+    return NO_ERROR;
+}
+
+Status ReshapeAndCacheAclnnRunner::CreateValueAclnnTensor()
+{
+    ATB_LOG(INFO) << GetLogPrefix() << "ReshapeAndCacheAclnnRunner::CreateValueAclnnTensor";
+    Tensor atbTensor = atbVariantPack_.inTensors.at(atbInTensorIndex_++);
+    SVector<int64_t> strides = GetCopyTensorStride(atbTensor.desc.shape);
+    std::shared_ptr<AclNNTensor> aclnnTensorPtr =
+        CreateAclnnTensor(atbTensor, VALUE_ACLNN_TENSOR_IDX, atbTensor.desc.shape, strides);
+    if (!aclnnTensorPtr->tensor) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "value aclCreateTensor failed";
+        return ERROR_INTERNAL_ERROR;
+    }
+    aclnnVariantPack_.aclInTensors.at(aclInTensorIndex_) = aclnnTensorPtr;
+    valueAclTensorIndex_ = aclInTensorIndex_++;
+    return NO_ERROR;
+}
+
+Status ReshapeAndCacheAclnnRunner::CreateKeyCacheAclnnTensor()
+{
+    ATB_LOG(INFO) << GetLogPrefix() << "ReshapeAndCacheAclnnRunner::CreateKeyCacheAclnnTensor";
+    Tensor atbTensor = atbVariantPack_.inTensors.at(atbInTensorIndex_++);
+    SVector<int64_t> strides = GetCopyTensorStride(atbTensor.desc.shape);
+    std::shared_ptr<AclNNTensor> aclnnTensorPtr =
+        CreateAclnnTensor(atbTensor, KEY_CACHE_ACLNN_TENSOR_IDX, atbTensor.desc.shape, strides);
+    if (!aclnnTensorPtr->tensor) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "keyCache aclCreateTensor failed";
+        return ERROR_INTERNAL_ERROR;
+    }
+    aclnnVariantPack_.aclInTensors.at(aclInTensorIndex_) = aclnnTensorPtr;
+    keyCacheRefAclTensorIndex_ = aclInTensorIndex_++;
+    return NO_ERROR;
+}
+
+Status ReshapeAndCacheAclnnRunner::CreateValueCacheAclnnTensor()
+{
+    ATB_LOG(INFO) << GetLogPrefix() << "ReshapeAndCacheAclnnRunner::CreateValueCacheAclnnTensor";
+    Tensor atbTensor = atbVariantPack_.inTensors.at(atbInTensorIndex_++);
+    SVector<int64_t> strides = GetCopyTensorStride(atbTensor.desc.shape);
+    std::shared_ptr<AclNNTensor> aclnnTensorPtr =
+        CreateAclnnTensor(atbTensor, VALUE_CACHE_ACLNN_TENSOR_IDX, atbTensor.desc.shape, strides);
+    if (!aclnnTensorPtr->tensor) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "valueCache aclCreateTensor failed";
+        return ERROR_INTERNAL_ERROR;
+    }
+    aclnnVariantPack_.aclInTensors.at(aclInTensorIndex_) = aclnnTensorPtr;
+    valueCacheRefAclTensorIndex_ = aclInTensorIndex_++;
+    return NO_ERROR;
+}
+
+Status ReshapeAndCacheAclnnRunner::CreateSlotMappingAclnnTensor()
+{
+    ATB_LOG(INFO) << GetLogPrefix() << "ReshapeAndCacheAclnnRunner::CreateSlotMappingAclnnTensor";
+    Tensor atbTensor = atbVariantPack_.inTensors.at(atbInTensorIndex_++);
+    SVector<int64_t> strides = GetCopyTensorStride(atbTensor.desc.shape);
+    std::shared_ptr<AclNNTensor> aclnnTensorPtr =
+        CreateAclnnTensor(atbTensor, SLOT_MAPPING_ACLNN_TENSOR_IDX, atbTensor.desc.shape, strides);
+    if (!aclnnTensorPtr->tensor) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "slotMapping aclCreateTensor failed";
+        return ERROR_INTERNAL_ERROR;
+    }
+    aclnnVariantPack_.aclInTensors.at(aclInTensorIndex_) = aclnnTensorPtr;
+    slotMappingAclTensorIndex_ = aclInTensorIndex_++;
     return NO_ERROR;
 }
 
 REG_RUNNER_TYPE(ReshapeAndCacheAclnnRunner);
-} // namespace atb
+}  // namespace atb
