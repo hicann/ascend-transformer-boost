@@ -22,7 +22,7 @@ import sys
 import shutil
 import logging
 import re
-from enum import Enum
+from enum import Enum, IntEnum
 from functools import reduce
 from en_dtypes import hifloat8
 
@@ -5535,29 +5535,40 @@ class PagedAttentionOperation(DataGen):
     def get_op_type(op_params):
         return OpTypes.CV_FUSION
 
+
 class SelfAttentionOperation(DataGen):
-    def gen_mask(batch, heads, max_seq,data_type, mask_type,is_decoder=False,is_triu_mask=False,is_alibi=False,dynamic_batch=False,long_seq=False):
-        import random
-        q_max_seq = max_seq
-        kv_max_seq = max_seq
+    class GoldenMaskType(IntEnum):
         MASK_TYPE_NO_MASK = 0
         MASK_TYPE_NO_HEAD = 1
         MASK_TYPE_NO_BATCH = 2
         MASK_TYPE_ALIBI_WITH_BATCH = 3
         MASK_TYPE_ALIBI_NO_BATCH = 4
         MASK_TYPE_NO_HEAD_DECODER = 5
+        MASK_TYPE_SWA = 6
+        MASK_TYPE_SWA_DECODER = 7
+        MASK_TYPE_ALIBI_WITH_PREFIX_BATCH = 8
+        MASK_TYPE_NO_BATCH_WITH_PREFIX = 9
+        MASK_TYPE_ALIBI_NO_BATCH_WITH_PREFIX = 10
+        MASK_TYPE_RAZOR_FUSION = 11
+    
+
+    def gen_mask(batch, heads, max_seq,data_type, mask_type,is_decoder=False,is_triu_mask=False,is_alibi=False,dynamic_batch=False,long_seq=False):
+        import random
+        q_max_seq = max_seq
+        kv_max_seq = max_seq
+
         mask_type_dict = {
-            # 四维的alibi mask
-            # 四维的alibi mask
-            MASK_TYPE_ALIBI_WITH_BATCH : ((batch, heads, q_max_seq, kv_max_seq), (lambda mask, idx, q_s, kv_s: (mask[idx, :, :q_s, :kv_s]))),
-            # 三维的alibi mask
-            MASK_TYPE_ALIBI_NO_BATCH : ((heads, q_max_seq, kv_max_seq), (lambda mask, idx, q_s, kv_s: (mask[:, :q_s, :kv_s]))),
-            MASK_TYPE_NO_HEAD : ((batch, q_max_seq, kv_max_seq), (lambda mask, idx, q_s, kv_s: (mask[idx, :q_s, :kv_s]))),
-            MASK_TYPE_NO_HEAD_DECODER : ((batch, 1, kv_max_seq), (lambda mask, idx, q_s, kv_s: (mask[idx, :q_s, :kv_s]))),
-            MASK_TYPE_NO_BATCH : ((1, q_max_seq, kv_max_seq), (lambda mask, idx, q_s, kv_s: (mask[:, :q_s, :kv_s]))),
             # 不加mask
-            MASK_TYPE_NO_MASK : ((1, q_max_seq, kv_max_seq), (lambda mask, idx, q_s, kv_s: 0))
+            __class__.GoldenMaskType.MASK_TYPE_NO_MASK : ((1, q_max_seq, kv_max_seq), (lambda mask, idx, q_s, kv_s: 0)),
+            __class__.GoldenMaskType.MASK_TYPE_NO_HEAD : ((batch, q_max_seq, kv_max_seq), (lambda mask, idx, q_s, kv_s: (mask[idx, :q_s, :kv_s]))),
+            # 四维的alibi mask
+            __class__.GoldenMaskType.MASK_TYPE_ALIBI_WITH_BATCH : ((batch, heads, q_max_seq, kv_max_seq), (lambda mask, idx, q_s, kv_s: (mask[idx, :, :q_s, :kv_s]))),
+            # 三维的alibi mask
+            __class__.GoldenMaskType.MASK_TYPE_ALIBI_NO_BATCH : ((heads, q_max_seq, kv_max_seq), (lambda mask, idx, q_s, kv_s: (mask[:, :q_s, :kv_s]))),
+            __class__.GoldenMaskType.MASK_TYPE_NO_HEAD_DECODER : ((batch, 1, kv_max_seq), (lambda mask, idx, q_s, kv_s: (mask[idx, :q_s, :kv_s]))),
+            __class__.GoldenMaskType.MASK_TYPE_NO_BATCH : ((1, q_max_seq, kv_max_seq), (lambda mask, idx, q_s, kv_s: (mask[:, :q_s, :kv_s]))),
         }
+        
         # kernel中mask的系数
         if data_type == torch.float16:
             post_mask_coff = 1
@@ -5598,6 +5609,7 @@ class SelfAttentionOperation(DataGen):
         if select_zero:
             mask.flat[zero_indice] = 0
         mask = torch.from_numpy(mask).to(torch.float32)
+        SelfAttentionOperation.mask_info = mask_info
         SelfAttentionOperation.post_mask_coff = post_mask_coff
         SelfAttentionOperation.pre_mask_coff = pre_mask_coff
         return mask,post_mask_coff
@@ -5628,7 +5640,7 @@ class SelfAttentionOperation(DataGen):
             seqlen_aligned = seqlen_aligned.astype(np.int32)
 
         ntokens = seqlen.sum()
-        logging.debug("ntokens:", ntokens)
+        logging.debug(f"ntokens: {ntokens}")
         return seqlen, seqlen_aligned, ntokens
 
     def group_matmul(heads, group_num, A, B):
@@ -5654,16 +5666,22 @@ class SelfAttentionOperation(DataGen):
             raise TypeError(f"Shape value must be int, got {type(current)} at {indices}")
         return int(current)
 
-    def calc_expect_func_950(batch, seqlen, heads, embed, headDims_v, group_num=32, pseShiftFlag = False, is_mask = False):
+    def calc_expect_func_950(batch, seqlen, heads, embed, headDims_v, group_num=32, pseShiftFlag=False, is_mask=False,
+                             datatype=torch.float16, mask_type=0, op_param=None, q_seqlen=None, shapes=None):
+        logging.info(f"batch {batch}, seqlen {seqlen}, heads {heads}, embed {embed}, headDims_v {headDims_v}, group_num {group_num}, pseShiftFlag {pseShiftFlag}, is_mask {is_mask}, mask_type {mask_type}")
         variate_seq = False
         is_decoder = False
-        max_seq = 2048
         src_type = 'float16'
-        mask_type = 'int8'
+        mask_dtype = torch.int8
         fp32 = True
         logging.debug(f"group_num: {group_num}")
         logging.debug("q_seq is:")
-        if is_decoder:
+        if q_seqlen:
+            q_seqlen = np.array(q_seqlen)
+            q_ntokens = q_seqlen.sum()
+            kv_seqlen = q_seqlen
+            kv_ntokens = q_ntokens
+        elif is_decoder:
             q_seqlen, q_seqlen_aligned, q_ntokens = SelfAttentionOperation.gen_seq_len(batch, 1, variate_seq)
             kv_seqlen, kv_seqlen_aligned, kv_ntokens = SelfAttentionOperation.gen_seq_len(batch, seqlen, variate_seq)
         else:
@@ -5673,17 +5691,38 @@ class SelfAttentionOperation(DataGen):
         max_s = np.max(q_seqlen)
         ntokens2 = (q_seqlen * kv_seqlen).sum()
 
-        q = np.random.uniform(-1.0, 1.0, size=(q_ntokens, heads * embed)).astype(np.float16)
-        k = np.random.uniform(-1.0, 1.0, size=(kv_ntokens, group_num * embed)).astype(np.float16)
-        v = np.random.uniform(-1.0, 1.0, size=(kv_ntokens, group_num * headDims_v)).astype(np.float16)
+        q = torch.from_numpy(np.random.uniform(-1.0, 1.0, size=(q_ntokens, heads * embed)))
+        tor = np.float32(1.0 / math.sqrt(1.0 * embed))
+        q = (q * tor).to(datatype)
+        k = torch.from_numpy(np.random.uniform(-1.0, 1.0, size=(kv_ntokens, group_num * embed))).to(datatype)
+        if headDims_v == 0:
+            headDims_v = embed
+        v = torch.from_numpy(np.random.uniform(-1.0, 1.0, size=(kv_ntokens, group_num * headDims_v))).to(datatype)
+        kv_head = group_num
+        
         mask = np.ones(shape=(1, max_s, max_s)).astype(np.int8)  # 使用当前最大seqlen生成mask
         mask = np.triu(mask, 1)
         # mask *= -10000.0
         logging.debug(mask)
-        pseshift = np.ones(shape=(1, max_s, max_s)).astype(np.float16)  # 使用当前最大seqlen生成pseshift
-        pseshift = np.triu(pseshift, 1)
-        pseshift *= -10000.0
-        logging.debug(pseshift)
+        
+        mask = torch.from_numpy(mask)
+
+        is_alibi = mask_type in (__class__.GoldenMaskType.MASK_TYPE_ALIBI_NO_BATCH, __class__.GoldenMaskType.MASK_TYPE_ALIBI_WITH_BATCH)
+
+        if is_alibi:
+            is_triu_mask = True
+            logging.info(f"before gen_mask mask_type {mask_type}")
+            pseshift, post_mask_coff = __class__.gen_mask(batch, heads, max_s, datatype, mask_type, is_decoder, is_triu_mask, is_alibi)
+            mask_shape = pseshift.shape
+            logging.debug(f"mask shape: {mask_shape}")
+            # logging.debug(pseshift)
+            pseShiftFlag = True
+        else:
+            pseshift = np.ones(shape=(1, max_s, max_s)).astype(np.float16)  # 使用当前最大seqlen生成pseshift
+            pseshift = np.triu(pseshift, 1)
+            pseshift *= -10000.0
+            pseshift = torch.from_numpy(pseshift)
+            logging.debug(pseshift)
 
         q_offset = 0
         k_offset = 0
@@ -5697,58 +5736,62 @@ class SelfAttentionOperation(DataGen):
             q_s = q_seqlen[idx]
             kv_s = kv_seqlen[idx]
             q_slice = q[q_offset:q_offset + q_s][:]
-            q_slice = q_slice.reshape(q_s, heads, embed)
-            q_slice = np.transpose(q_slice, (1, 0, 2))  # (heads, q_seq, embed)
+            q_slice = q_slice.view(q_s, heads, embed)
+            q_slice = torch.permute(q_slice, (1, 0, 2))  # (heads, q_seq, embed)
             k_slice = k[k_offset:k_offset + kv_s][:]
-            k_slice = k_slice.reshape(kv_s, group_num, embed)
-            k_slice = np.transpose(k_slice, (1, 0, 2))
-            k_slice_t = np.transpose(k_slice, (0, 2, 1))   # get K^T (kv_heads, embed, k_seq)
+            k_slice = k_slice.view(kv_s, kv_head, embed)
+            k_slice = torch.permute(k_slice, (1, 0, 2))
+            k_slice_t =torch.permute(k_slice, (0, 2, 1))   # get K^T (kv_heads, embed, k_seq)
             v_slice = v[v_offset:v_offset + kv_s][:]
-            v_slice = v_slice.reshape(kv_s, group_num, headDims_v)
-            v_slice = np.transpose(v_slice, (1, 0, 2))
-            score = SelfAttentionOperation.group_matmul(heads, group_num, q_slice, k_slice_t)
+            v_slice = v_slice.view(kv_s, kv_head, headDims_v)
+            v_slice = torch.permute(v_slice, (1, 0, 2))
+            score = SelfAttentionOperation.group_mm_torch_encoder(heads, kv_head, q_slice, k_slice_t)
             if s is None:
-                s = score.reshape([-1, ])
+                s = score.view([-1, ])
             else:
-                s = np.concatenate((s, score.reshape([-1, ])), 0)
-
-            tor = np.float16(1.0 / math.sqrt(1.0 * embed))
+                s = torch.cat((s, score.reshape([-1, ])), 0)
             score = score * tor
-            if pseShiftFlag:
-                score = score + pseshift[:, :q_s, :kv_s]
-            # import pdb;pdb.set_trace()
+            if is_alibi:
+                score = score + __class__.mask_info[1](pseshift, idx, q_s, kv_s) * __class__.post_mask_coff
             if is_mask:
                 mask_pb = mask[:, :q_s, :kv_s]
-                mask_pb = np.repeat(mask_pb, repeats=heads, axis=0)
-                score[mask_pb.astype(bool)] = -1.7 * 10 ** 38
-            score_max = np.max(score, axis=-1)
-            score = score - score_max.reshape((heads, q_s, 1))
-            score_exp = np.exp(score.astype(np.float32))
-            if not fp32:
-                score_sum = np.sum(score_exp.astype(np.float16), axis=-1)
-                if _p is None:
-                    _p = score_exp.astype(np.float16).reshape([-1, ])
-                else:
-                    _p = np.concatenate((_p, score_exp.astype(np.float16).reshape([-1, ])), 0)
-                p = score_exp.astype(np.float16) / score_sum.reshape((heads, q_s, 1)).astype(np.float16)
-                out_sub = SelfAttentionOperation.group_matmul(heads, group_num, p, v_slice)
-            else:
-                score_sum = np.sum(score_exp, axis=-1)
-                if _p is None:
-                    _p = score_exp.astype(np.float16).reshape([-1, ])
-                else:
-                    _p = np.concatenate((_p, score_exp.astype(np.float16).reshape([-1, ])), 0)
-                p = score_exp.astype(np.float16)
-                out_sub = SelfAttentionOperation.group_matmul(heads, group_num, p, v_slice)
-                out_sub = out_sub / score_sum.reshape((heads, q_s, 1)).astype(np.float16)
+                mask_pb = torch.repeat_interleave(mask_pb, repeats=heads, dim=0)
+                score[mask_pb.to(torch.bool)] = -1.7 * 10 ** 38
 
-            out_sub = out_sub.reshape(heads, q_s, headDims_v)
-            out_sub = np.transpose(out_sub, (1, 0, 2))
-            out_sub = np.ascontiguousarray(out_sub)
+            score_max, _ = torch.max(score, dim=-1)
+            score = score - score_max.view((heads, q_s, 1))
+            score_exp = torch.exp(score)
+
+            if not fp32:
+                score_sum = torch.sum(score_exp.to(datatype), dim=-1)
+                if _p is None:
+                    _p = score_exp.to(datatype).view([-1, ])
+                else:
+                    _p = torch.cat((_p, score_exp.view([-1, ])), 0)
+                p = score_exp.to(datatype) / score_sum.view((head_num, q_s, 1)).to(datatype)
+
+                out_sub = SelfAttentionOperation.group_mm_torch_encoder(heads, group_num, p, v_slice).to(datatype)
+            else:
+                score_sum = torch.sum(score_exp, dim=-1)
+                if _p is None:
+                    _p = score_exp.to(datatype).view([-1, ])
+                else:
+                    _p = torch.cat((_p, score_exp.to(datatype).view([-1, ])), 0)
+                p = score_exp.to(datatype)
+                out_sub = SelfAttentionOperation.group_mm_torch_encoder(heads, group_num, p, v_slice)
+                out_sub = out_sub / score_sum.view((heads, q_s, 1)).to(datatype)
+
+            out_sub = out_sub.view(heads, q_s, headDims_v)
+            out_sub = torch.permute(out_sub, (1, 0, 2))
+            out_sub = out_sub.contiguous()
+            
+            logging.info(f"out_sub shape {out_sub.shape}")
             if out is None:
                 out = out_sub
             else:
-                out = np.concatenate((out, out_sub), 0)
+                out = torch.cat((out, out_sub), dim=0)
+            logging.info(f"out shape {out.shape}")
+            
 
             q_offset += q_s
             k_offset += kv_s
@@ -5756,36 +5799,44 @@ class SelfAttentionOperation(DataGen):
 
         logging.debug("==> data generate finished!")
 
-        q = q.astype(src_type).reshape(-1, heads, embed)
-        k = k.astype(src_type).reshape(-1, group_num, embed)
-        v = v.astype(src_type).reshape(-1, group_num, headDims_v)
-        pseshift = pseshift.astype(src_type).reshape(1, 1, max_s, max_s)
-        pseshift = np.repeat(pseshift, repeats=heads, axis=1)
-        mask = mask.astype(mask_type).reshape(max_s, max_s)
-        q_len = q_seqlen.astype(np.int32)
-        # prefix_sum_q_len = np.cumsum(q_len)
-        out = out.astype(src_type).reshape(-1, heads, headDims_v)
-
+        q = q.to(datatype).view(-1, heads, embed)
+        k = k.to(datatype).view(-1, group_num, embed)
+        v = v.to(datatype).view(-1, group_num, headDims_v)
+        # pseshift = pseshift.to(src_type).view(1, 1, max_s, max_s)
+        # pseshift = torch.repeat_interleave(pseshift, repeats=heads, dim=1)
+        if is_alibi:
+            pseshift = pseshift.to(datatype).view(mask_shape)
+        mask = mask.to(mask_dtype).view(max_s, max_s)
+        
+        q_len = torch.Tensor(q_seqlen).to(torch.int32)
+        # prefix_sum_q_len = torch.cumsum(q_len, dim=0)
+        out = out.to(datatype).view(-1, heads, headDims_v)
+        
+        # TODO
         ret_data_list = [q, k, v]
         if is_mask:
             ret_data_list.append(mask)
-        ret_data_list.append(q_len)
-        if pseShiftFlag:
+        if is_alibi:
             ret_data_list.append(pseshift)
+        ret_data_list.append(q_len)
         ret_data_list.append(out)
         ret_data = tuple(ret_data_list)
+        
+        for tensor in ret_data:
+            logging.info(f"calc_expect_func_950 tensor shape {tensor.shape}")
         return ret_data
 
-    def calc_expect_func(batch, seqlen, heads, embed, group_num=32):
-        is_mask = False
+    def calc_expect_func(batch, seqlen, heads, embed, group_num=32, is_mask=False, datatype=torch.float16, mask_type=0,
+                        op_param=None, q_seqlen=None, shapes=None, embed_v=0):
         variate_seq = False
         is_decoder = False
-        max_seq = 2048
-        src_type = 'float16'
         fp32 = True
-        logging.debug(f"group_num: {group_num}")
-        logging.debug("q_seq is:")
-        if is_decoder:
+        if q_seqlen:
+            q_seqlen = np.array(q_seqlen)
+            q_ntokens = q_seqlen.sum()
+            kv_seqlen = q_seqlen
+            kv_ntokens = q_ntokens
+        elif is_decoder:
             q_seqlen, q_seqlen_aligned, q_ntokens = SelfAttentionOperation.gen_seq_len(batch, 1, variate_seq)
             kv_seqlen, kv_seqlen_aligned, kv_ntokens = SelfAttentionOperation.gen_seq_len(batch, seqlen, variate_seq)
         else:
@@ -5795,13 +5846,45 @@ class SelfAttentionOperation(DataGen):
         max_s = np.max(q_seqlen)
         ntokens2 = (q_seqlen * kv_seqlen).sum()
 
-        q = np.random.uniform(-1.0, 1.0, size=(q_ntokens, heads * embed)).astype(np.float16)
-        k = np.random.uniform(-1.0, 1.0, size=(kv_ntokens, group_num * embed)).astype(np.float16)
-        v = np.random.uniform(-1.0, 1.0, size=(kv_ntokens, group_num * embed)).astype(np.float16)
-        mask = np.ones(shape=(1, max_s, max_s)).astype(np.float16)  # 使用当前最大seqlen生成mask
-        mask = np.triu(mask, 1)
-        mask *= -10000.0
-        logging.debug(mask)
+        layer_id = torch.from_numpy(np.array([0], dtype=np.int32)).to(torch.int32)
+        q = torch.from_numpy(np.random.uniform(-1.0, 1.0, size=(q_ntokens, heads * embed)))
+        tor = np.float32(1.0 / math.sqrt(1.0 * embed))
+        
+        q = (q * tor).to(datatype)
+        k = torch.from_numpy(np.random.uniform(-1.0, 1.0, size=(kv_ntokens, group_num * embed))).to(datatype)
+        
+        if embed_v == 0:
+            embed_v = embed
+        
+        v = torch.from_numpy(np.random.uniform(-1.0, 1.0, size=(kv_ntokens, group_num * embed_v))).to(datatype)
+        
+        is_triu_mask = False
+        is_alibi = False
+        is_decoder=False
+        
+        if mask_type in (__class__.GoldenMaskType.MASK_TYPE_ALIBI_NO_BATCH, __class__.GoldenMaskType.MASK_TYPE_ALIBI_WITH_BATCH):
+            is_triu_mask = True
+            is_alibi = True
+
+        mask = None
+        if is_mask:
+            mask, post_mask_coff = __class__.gen_mask(batch, heads, max_s, datatype, mask_type, is_decoder, is_triu_mask, is_alibi)
+            mask_shape = (max_s, max_s)
+            if is_alibi:
+                mask_shape = mask.shape
+            logging.debug(f"mask shape: {mask.shape}")
+            logging.debug(mask)
+
+        asdops_param = __class__.get_asdops_param(q, k.view(kv_ntokens, group_num * embed), v.view(kv_ntokens, group_num * embed_v), mask, q_seqlen, op_param)
+        embeddim_v = asdops_param["v_embeddim"]
+
+        logging.info("**********data gen shape***********")
+        logging.info(f"q shape: {q.shape}")
+        logging.info(f"k shape: {k.shape}")
+        logging.info(f"v shape: {v.shape}")
+        logging.info(f"layer_id shape: {layer_id.shape}")
+        if is_mask:
+            logging.info(f"mask shape: {mask.shape}")
 
         q_offset = 0
         k_offset = 0
@@ -5810,58 +5893,57 @@ class SelfAttentionOperation(DataGen):
         s = None
         _p = None
         out = None
-
+        
+        head_num = heads
+        kv_head = group_num
+        
+        
         for idx in range(batch):
             q_s = q_seqlen[idx]
             kv_s = kv_seqlen[idx]
             q_slice = q[q_offset:q_offset + q_s][:]
-            q_slice = q_slice.reshape(q_s, heads, embed)
-            q_slice = np.transpose(q_slice, (1, 0, 2))  # (heads, q_seq, embed)
+            q_slice = q_slice.view(q_s, head_num, embed)
+            q_slice = torch.permute(q_slice, (1, 0, 2))  # (heads, q_seq, embed)
             k_slice = k[k_offset:k_offset + kv_s][:]
-            k_slice = k_slice.reshape(kv_s, group_num, embed)
-            k_slice = np.transpose(k_slice, (1, 0, 2))
-            k_slice_t = np.transpose(k_slice, (0, 2, 1))   # get K^T (kv_heads, embed, k_seq)
+            k_slice = k_slice.view(kv_s, kv_head, embed)
+            k_slice = torch.permute(k_slice, (1, 0, 2))
+            k_slice_t =torch.permute(k_slice, (0, 2, 1))   # get K^T (kv_heads, embed, k_seq)
             v_slice = v[v_offset:v_offset + kv_s][:]
-            v_slice = v_slice.reshape(kv_s, group_num, embed)
-            v_slice = np.transpose(v_slice, (1, 0, 2))
-            score = SelfAttentionOperation.group_matmul(heads, group_num, q_slice, k_slice_t)
+            v_slice = v_slice.view(kv_s, kv_head, embeddim_v)
+            v_slice = torch.permute(v_slice, (1, 0, 2))
+            score = SelfAttentionOperation.group_mm_torch_encoder(head_num, kv_head, q_slice, k_slice_t)
             if s is None:
-                s = score.reshape([-1, ])
+                s = score.view([-1, ])
             else:
-                s = np.concatenate((s, score.reshape([-1, ])), 0)
+                s = torch.cat((s, score.reshape([-1, ])), 0)
 
-            tor = np.float16(1.0 / math.sqrt(1.0 * embed))
             score = score * tor
             if is_mask:
-                score = score + mask[:, :q_s, :kv_s]
-            score_max = np.max(score, axis=-1)
-            score = score - score_max.reshape((heads, q_s, 1))
-            score_exp = np.exp(score.astype(np.float32))
-            if not fp32:
-                score_sum = np.sum(score_exp.astype(np.float16), axis=-1)
-                if _p is None:
-                    _p = score_exp.astype(np.float16).reshape([-1, ])
+                if is_alibi:
+                    score = score + __class__.mask_info[1](mask, idx, q_s, kv_s) * __class__.post_mask_coff
                 else:
-                    _p = np.concatenate((_p, score_exp.astype(np.float16).reshape([-1, ])), 0)
-                p = score_exp.astype(np.float16) / score_sum.reshape((heads, q_s, 1)).astype(np.float16)
-                out_sub = SelfAttentionOperation.group_matmul(heads, group_num, p, v_slice)
-            else:
-                score_sum = np.sum(score_exp, axis=-1)
-                if _p is None:
-                    _p = score_exp.astype(np.float16).reshape([-1, ])
-                else:
-                    _p = np.concatenate((_p, score_exp.astype(np.float16).reshape([-1, ])), 0)
-                p = score_exp.astype(np.float16)
-                out_sub = SelfAttentionOperation.group_matmul(heads, group_num, p, v_slice)
-                out_sub = out_sub / score_sum.reshape((heads, q_s, 1)).astype(np.float16)
+                    score = score + mask[:, :q_s, :kv_s]
+        
 
-            out_sub = out_sub.reshape(heads, q_s, embed)
-            out_sub = np.transpose(out_sub, (1, 0, 2))
-            out_sub = np.ascontiguousarray(out_sub)
+            score_max, _ = torch.max(score, axis=-1)
+            score = score - score_max.view((head_num, q_s, 1))
+            score_exp = torch.exp(score)
+
+            score_sum = torch.sum(score_exp, axis=-1)
+            if _p is None:
+                _p = score_exp.view([-1, ])
+            else:
+                _p = torch.cat((_p, score_exp.view([-1, ])), 0)
+            p = score_exp / score_sum.view((head_num, q_s, 1))
+            out_sub = SelfAttentionOperation.group_mm_torch_encoder(head_num, kv_head, p, v_slice)
+
+            out_sub = out_sub.view(head_num, q_s, embeddim_v)
+            out_sub = torch.permute(out_sub, (1, 0, 2)).contiguous()
+            # out_sub = np.ascontiguousarray(out_sub)
             if out is None:
                 out = out_sub
             else:
-                out = np.concatenate((out, out_sub), 0)
+                out = torch.cat((out, out_sub), 0)
 
             q_offset += q_s
             k_offset += kv_s
@@ -5869,14 +5951,22 @@ class SelfAttentionOperation(DataGen):
 
         logging.debug("==> data generate finished!")
 
-        q = q.astype(src_type).reshape(-1, heads, 128)
-        k = k.astype(src_type).reshape(-1, group_num, 128)
-        v = v.astype(src_type).reshape(-1, group_num, 128)
-        mask = mask.astype(src_type).reshape(max_s, max_s)
-        q_len = q_seqlen.astype(np.int32)
-        out = out.astype(src_type).reshape(-1, heads, 128)
+        q = q.to(datatype).view(-1, heads, embed)
+        k = k.to(datatype).view(-1, group_num, embed)
+        v = v.to(datatype).view(-1, group_num, embeddim_v)
+        q_len = torch.from_numpy(q_seqlen.astype(np.int32))
+        out = out.to(datatype).view(-1, heads, embeddim_v)
 
-        ret_data = q, k, v, q_len, out
+        if is_mask:
+            mask = mask.to(datatype).view(mask_shape)
+            ret_data = [q, k, v, mask, q_len, out]
+        else:
+            ret_data = [q, k, v, q_len, out]
+        if shapes:
+            for i in range(len(shapes)):
+                ret_data[i] = ret_data[i].view(shapes[i])
+            if len(shapes[0]) == 2:
+                ret_data[-1] = ret_data[-1].reshape(q_ntokens, heads * embeddim_v)
         return ret_data
 
     @staticmethod
@@ -5943,15 +6033,34 @@ class SelfAttentionOperation(DataGen):
     @staticmethod
     def customize(shapes, i, datatype, format, data_gen_ranges, op_params):
         json_data = json.loads(op_params)
+        logging.info(f"customize json: {json_data}")
+        q_seqlen = None
+        if "seqLen" in json_data:
+            q_seqlen = json_data["seqLen"]
+        torch_data_type = dtype_dict[datatype]
+
         if get_soc_version() == "Ascend950":
             if i == 0:
                 try:
-                    if "maskType" in json_data and json_data["maskType"] == 1:
+                    pseShiftFlag = False
+                    is_mask = False
+                    golden_mask_type = 0
+
+                    if "pseShiftFlag" in json_data and json_data["pseShiftFlag"]:
+                        pseShiftFlag = True
+                    if "maskType" in json_data and json_data["maskType"] != 0:
                         seqlen_index = 4
-                        is_mask = True
+                        if  json_data["maskType"] == 1:
+                            is_mask = True
+                        elif json_data["maskType"] == 2: # 2: alibi mask
+                            pseShiftFlag = True
+                            if len(shapes[3]) == 3: # index3: mask, 3: headnum, max_s, max_s
+                                golden_mask_type = __class__.GoldenMaskType.MASK_TYPE_ALIBI_NO_BATCH # value: 4
+                            elif len(shapes[3]) == 4: # index3: mask, 4: batch, headnum, max_s, max_s
+                                golden_mask_type = __class__.GoldenMaskType.MASK_TYPE_ALIBI_WITH_BATCH # value: 3
                     else:
                         seqlen_index = 3
-                        is_mask = False
+                    logging.info(f" seqlen_index {seqlen_index}")
                     kv_head = SelfAttentionOperation.get_shape(shapes, [1, 1])  # shapes[1][1]
                     qhead = SelfAttentionOperation.get_shape(shapes, [0, 1])    # shapes[0][1]
                     headDims = SelfAttentionOperation.get_shape(shapes, [0, 2]) # shapes[0][2]
@@ -5967,21 +6076,21 @@ class SelfAttentionOperation(DataGen):
                     logging.error(f"Shape validation failed: {str(e)}")
                     raise
 
-                if "pseShiftFlag" in json_data and json_data["pseShiftFlag"]:
-                    pseShiftFlag = True
-                else:
-                    pseShiftFlag = False
-                data = SelfAttentionOperation.calc_expect_func_950(batch, seqlen, qhead, headDims, headDims_v, group_num=kv_head, pseShiftFlag = pseShiftFlag, is_mask = is_mask)
+                # TODO 
+                data = SelfAttentionOperation.calc_expect_func_950(batch=batch, seqlen=seqlen, heads=qhead, embed=headDims, headDims_v=headDims_v,
+                                                                   group_num=kv_head, pseShiftFlag = pseShiftFlag, is_mask=is_mask,
+                                                                   datatype=torch_data_type, mask_type=golden_mask_type, op_param=op_params,
+                                                                   q_seqlen=q_seqlen, shapes=shapes)
                 param_seqlen = data[seqlen_index].tolist()
-                in_tensors = [torch.from_numpy(tensor) for tensor in data]
+                in_tensors = list(data)
                 if datatype == "bf16":
                     in_tensors[0] = in_tensors[0].to(torch.bfloat16)
                     in_tensors[1] = in_tensors[1].to(torch.bfloat16)
                     in_tensors[2] = in_tensors[2].to(torch.bfloat16)
                     in_tensors[-1] = in_tensors[-1].to(torch.bfloat16)
                 SelfAttentionOperation.in_tensors_encoder = [tensor.npu() for tensor in in_tensors]
-                for tensor in in_tensors:
-                    logging.debug(tensor.dtype, tensor.shape)
+                for i, tensor in enumerate(in_tensors):
+                    logging.debug(f"customize, i {i} dtype {tensor.dtype} shape {tensor.shape}")
                 return SelfAttentionOperation.in_tensors_encoder[0]
             else:
                 return SelfAttentionOperation.in_tensors_encoder[i]
@@ -6024,15 +6133,55 @@ class SelfAttentionOperation(DataGen):
             SelfAttentionOperation.clamp_max = clamp_max
             SelfAttentionOperation.in_tensors = [q,k,v,attention_mask.to(data_type).npu(),torch.tensor(kv_seqLen).to(torch.int32).npu(),torch.tensor(q_seqlen).to(torch.int32).npu(),layer_id]
             return SelfAttentionOperation.in_tensors[i]
+
         if json_data["calcType"] == 3:
             if i == 0:
-                kv_head = 32
-                data = SelfAttentionOperation.calc_expect_func(16, 128, 32, 128, group_num=kv_head)
-                param_seqlen = data[4].tolist()
-                in_tensors = [torch.from_numpy(tensor) for tensor in data]
+                qhead = json_data["headNum"]
+                kv_head = json_data["kvHeadNum"] if "kvHeadNum" in json_data else json_data["headNum"]
+                
+                # golden mask type
+                golden_mask_type = 0
+                if "maskType" in json_data:
+                    seqlen_index = 3
+                    is_mask = False
+                    if json_data["maskType"] != 0:
+                        seqlen_index = 4
+                        is_mask = True
+                    if json_data["maskType"] == 2: #2: alibi mask
+                        if len(shapes[3]) == 3: # index3: mask, 3: headnum, max_s, max_s
+                            golden_mask_type = __class__.GoldenMaskType.MASK_TYPE_ALIBI_NO_BATCH
+                        elif len(shapes[3]) == 4: # index3: mask, 4: batch, headnum, max_s, max_s
+                            golden_mask_type = __class__.GoldenMaskType.MASK_TYPE_ALIBI_WITH_BATCH
+                else:
+                    seqlen_index = 3
+                    is_mask = False
+                batch = __class__.get_shape(shapes, [seqlen_index, 0])    # shapes[3/4][0]
+
+                headDims = 0
+                if len(shapes[0]) == 2: # index 0: q, 2: bs, nd
+                    headDims = __class__.get_shape(shapes, [0, 1]) // qhead
+                elif len(shapes[0]) == 3: # 3: bs, n, d
+                    headDims = __class__.get_shape(shapes, [0, 2]) # shapes[0][2]
+
+                seqlen = __class__.get_shape(shapes, [0, 0]) // batch # shapes[0][0] / batch
+                
+                # index 2: v, 3: bs, n, d
+                #   len(shapes[2]) == 3
+                embeddim_v = __class__.get_shape(shapes, [2, -1])
+                if len(shapes[2]) == 2: # 2: bs, nd, nd合轴
+                    embeddim_v //= kv_head
+
+                logging.debug(f"seqlen_index {seqlen_index} batch {batch}, seqlen {seqlen}, qhead {qhead}, headDims {headDims}, kv_head {kv_head}, q_seqlen {q_seqlen}")
+                logging.debug(f"embeddim_v = {embeddim_v}")
+                data = SelfAttentionOperation.calc_expect_func(batch=batch, seqlen=seqlen, heads=qhead, embed=headDims, group_num=kv_head, is_mask=is_mask,
+                                                               datatype=torch_data_type, mask_type=golden_mask_type, op_param=op_params, q_seqlen=q_seqlen,
+                                                               shapes=shapes, embed_v=embeddim_v)
+
+                param_seqlen = data[seqlen_index].tolist()
+                in_tensors = data
                 SelfAttentionOperation.in_tensors_encoder = [tensor.npu() for tensor in in_tensors]
-                for tensor in in_tensors:
-                    logging.debug(tensor.dtype, tensor.shape)
+                for i, tensor in enumerate(in_tensors):
+                    logging.debug(f"customize, i {i} dtype {tensor.dtype} shape {tensor.shape}")
                 return SelfAttentionOperation.in_tensors_encoder[0]
             else:
                 return SelfAttentionOperation.in_tensors_encoder[i]
@@ -6104,7 +6253,6 @@ class SelfAttentionOperation(DataGen):
             SelfAttentionOperation.param_token_offset = token_offset.tolist()
 
             SelfAttentionOperation.in_tensors = mixed_q, mixed_k, mixed_v, cache_k, cache_v, attention_mask, token_offset, seqlen, layerid
-
             return mixed_q
 
     @staticmethod
@@ -6113,15 +6261,19 @@ class SelfAttentionOperation(DataGen):
             json_data = json.loads(op_params)
             if get_soc_version() == "Ascend950":
                 out_index = 4
-                if "maskType" in json_data and json_data["maskType"] == 1:
+                if "maskType" in json_data and json_data["maskType"] in (1, 2): # 1: norm mask 2: alibi mask
                     out_index += 1
                 if "pseShiftFlag" in json_data and json_data["pseShiftFlag"]:
                     out_index += 1
                 shape = SelfAttentionOperation.in_tensors_encoder[out_index].shape
+                logging.info(f"zero index {out_index} shape {shape}")
                 data = torch.zeros(shape, dtype=dtype_dict[datatype]).npu()
                 return torch_npu.npu_format_cast(data, format_dict[format])
             elif json_data["calcType"] == 3:
-                shape = SelfAttentionOperation.in_tensors_encoder[4].shape
+                out_index = 4 # 4: q, k, v, seqlen, out
+                if "maskType" in json_data and json_data["maskType"] in (1, 2): # 1: norm mask 2: alibi mask
+                    out_index += 1 # 1: mask
+                shape = SelfAttentionOperation.in_tensors_encoder[out_index].shape
                 data = torch.zeros(shape, dtype=dtype_dict[datatype]).npu()
                 return torch_npu.npu_format_cast(data, format_dict[format])
             elif json_data["clampType"] == 1:
@@ -6149,17 +6301,39 @@ class SelfAttentionOperation(DataGen):
         asdops_param["is_mask"] = (json_data["maskType"] != 0)
         asdops_param["qk_scale"] = json_data["qkScale"]
         asdops_param["post_mask_coff"] = -3e38
-        if json_data["kernelType"] == 1:
+        if "kernelType" in json_data and json_data["kernelType"] == 1:
             asdops_param["post_mask_coff"] = 1
         if "pseShiftFlag" in json_data:
             asdops_param["pseShiftFlag"] = json_data["pseShiftFlag"]
+            asdops_param["is_alibi"] = True
+            asdops_param["is_mask"] = False
         
         asdops_param["data_type"] = q.dtype
         asdops_param["q_ntokens"] = q.shape[0]
         asdops_param["kv_ntokens"] = k.shape[0]
-        asdops_param["v_embeddim"] = v.shape[1] // kvHeadNum
+        
+        # len(v.shape) == 3: bs, n, d
+        v_embeddim = v.shape[-1]
+        
+        if len(v.shape) == 2: # shape dim_size 2: bs, nd
+            v_embeddim //= kvHeadNum
+        asdops_param["v_embeddim"] = v_embeddim
         asdops_param["q_seqlen"] = seq_len.tolist()
         asdops_param["maskType"] = json_data["maskType"]
+
+        golden_mask_type = 0
+        asdops_param["is_alibi"] = False
+        if "maskType" in json_data and json_data["maskType"] == 2:
+            if json_data["maskType"] == 2: # 2: alibi mask
+                if len(mask.shape) == 3: # 3: headnum, max_s, max_s
+                    golden_mask_type = __class__.GoldenMaskType.MASK_TYPE_ALIBI_NO_BATCH
+                elif len(mask.shape) == 4: # 4: batch, headnum, max_s, max_s
+                    golden_mask_type = __class__.GoldenMaskType.MASK_TYPE_ALIBI_WITH_BATCH
+                asdops_param["is_alibi"] = True
+                if get_soc_version() == "Ascend950":
+                    asdops_param["is_mask"] = False
+                    asdops_param["pseShiftFlag"] = True
+        asdops_param["golden_mask_type"] = golden_mask_type
 
         MASK_TYPE_NO_MASK = 0
         MASK_TYPE_NO_HEAD = 1
@@ -6203,16 +6377,16 @@ class SelfAttentionOperation(DataGen):
         batch = len(seq_len)
         # dynamic_batch = self.dynamic_batch
         # batch_state = self.batch_state
+        
+        logging.info(f"asdops_param {asdops_param}")
+        
         head_num = asdops_param["head_num"]
         is_decoder = asdops_param["is_decoder"]
         embed = asdops_param["embeddim"]
         embed_v = asdops_param["v_embeddim"]
         kv_head = asdops_param["kv_head"]
         is_mask = asdops_param["is_mask"]
-        if "pseShiftFlag" in asdops_param:
-            pseShiftFlag = asdops_param["pseShiftFlag"]
-        else:
-            pseShiftFlag = False
+
         qk_scale = asdops_param["qk_scale"]
         post_mask_coff = asdops_param["post_mask_coff"]
         mask_info = asdops_param["mask_info"]
@@ -6220,8 +6394,16 @@ class SelfAttentionOperation(DataGen):
         q_ntokens = asdops_param["q_ntokens"]
         kv_ntokens = asdops_param["kv_ntokens"]
         q_seqlen = asdops_param["q_seqlen"]
+        is_alibi = asdops_param["is_alibi"]
+        if "pseShiftFlag" in asdops_param:
+            pseShiftFlag = asdops_param["pseShiftFlag"]
+        else:
+            pseShiftFlag = False
+        if is_alibi:
+            pseShiftFlag = True
         kv_seqlen = q_seqlen
 
+        logging.debug(f"asdops params: {asdops_param}")
         q = q.to(torch.float32)
         k = k.to(torch.float32)
         v = v.to(torch.float32)
@@ -6240,6 +6422,9 @@ class SelfAttentionOperation(DataGen):
         out = None
 
         max_seq_len = max(q_seqlen)
+        
+        
+        logging.info(f"calc_golden_encoder_950 {is_mask}")
 
         for idx in range(batch):
             q_s = q_seqlen[idx]
@@ -6262,11 +6447,11 @@ class SelfAttentionOperation(DataGen):
 
             tor = qk_scale
             score = score * tor
-            if pseShiftFlag:
-                score = score + pseshift[:, :q_s, :kv_s]
+            if is_alibi:
+                score = score + __class__.mask_info[1](pseshift, idx, q_s, kv_s) * __class__.post_mask_coff
             if is_mask:
                 mask_pb = mask[:, :q_s, :kv_s]
-                mask_pb = np.repeat(mask_pb, repeats=head_num, axis=0)
+                mask_pb = np.repeat(mask_pb.cpu(), repeats=head_num, axis=0)
                 score[mask_pb.to(bool)] = -1.7 * 10 ** 38
             score_max, _ = torch.max(score, axis=-1)
             score = score - score_max.view((head_num, q_s, 1))
@@ -6303,11 +6488,10 @@ class SelfAttentionOperation(DataGen):
         k_offset = 0
         v_offset = 0
         batch = len(seq_len)
-        # dynamic_batch = self.dynamic_batch
-        # batch_state = self.batch_state
         head_num = asdops_param["head_num"]
         is_decoder = asdops_param["is_decoder"]
         embed = asdops_param["embeddim"]
+        embeddim_v = asdops_param["v_embeddim"]
         kv_head = asdops_param["kv_head"]
         is_mask = asdops_param["is_mask"]
         qk_scale = asdops_param["qk_scale"]
@@ -6317,8 +6501,10 @@ class SelfAttentionOperation(DataGen):
         q_ntokens = asdops_param["q_ntokens"]
         kv_ntokens = asdops_param["kv_ntokens"]
         q_seqlen = asdops_param["q_seqlen"]
+        is_alibi = asdops_param["is_alibi"]
         kv_seqlen = q_seqlen
 
+        logging.debug(f"asdops params: {asdops_param}")
         q = q.to(torch.float32)
         k = k.to(torch.float32)
         v = v.to(torch.float32)
@@ -6346,7 +6532,7 @@ class SelfAttentionOperation(DataGen):
             k_slice = torch.permute(k_slice, (1, 0, 2))
             k_slice_t =torch.permute(k_slice, (0, 2, 1))   # get K^T (kv_heads, embed, k_seq)
             v_slice = v[v_offset:v_offset + kv_s][:]
-            v_slice = v_slice.view(kv_s, kv_head, embed)
+            v_slice = v_slice.view(kv_s, kv_head, embeddim_v)
             v_slice = torch.permute(v_slice, (1, 0, 2))
             score = SelfAttentionOperation.group_mm_torch_encoder(head_num, kv_head, q_slice, k_slice_t)
             if s is None:
@@ -6363,6 +6549,8 @@ class SelfAttentionOperation(DataGen):
                     no_compress_mask = np.triu(no_compress_mask, 1)
                     no_compress_mask *= -10000.0
                     score = score + no_compress_mask[:, :q_s, :kv_s]
+                elif is_alibi:
+                    score = score + __class__.mask_info[1](mask, idx, q_s, kv_s) * __class__.post_mask_coff
                 else:
                     score = score + mask[:, :q_s, :kv_s]
             score_max, _ = torch.max(score, axis=-1)
@@ -6377,7 +6565,7 @@ class SelfAttentionOperation(DataGen):
             p = score_exp / score_sum.view((head_num, q_s, 1))
             out_sub = SelfAttentionOperation.group_mm_torch_encoder(head_num, kv_head, p, v_slice)
 
-            out_sub = out_sub.view(head_num, q_s, embed)
+            out_sub = out_sub.view(head_num, q_s, embeddim_v)
             out_sub = torch.permute(out_sub, (1, 0, 2)).contiguous()
             # out_sub = np.ascontiguousarray(out_sub)
             if out is None:
@@ -6390,8 +6578,7 @@ class SelfAttentionOperation(DataGen):
             v_offset += kv_s
 
         # golden data
-        # out = torch.from_numpy(out)
-        out = out.view(q_ntokens, head_num, embed)
+        out = out.view(q_ntokens, head_num, embeddim_v)
         return out.to(data_type).cpu()
 
     @staticmethod
@@ -6400,7 +6587,9 @@ class SelfAttentionOperation(DataGen):
         is_first,
         gm
     ):
-        sim = qk_result.numpy()
+        sim = qk_result.cpu().numpy()
+        
+        # sim = qk_result.numpy()
         lm = np.max(sim, axis=-1, keepdims=True)
         if is_first:
             hm = lm
@@ -6437,9 +6626,14 @@ class SelfAttentionOperation(DataGen):
         q = in_tensors[0]
         k = in_tensors[1]
         v = in_tensors[2]
-        ref_output = torch.zeros_like(q)
         qk_scale = asdops_param["qk_scale"]
         is_mask = asdops_param["is_mask"]
+        is_alibi = asdops_param["is_alibi"]
+        
+        mask = None
+        if is_mask:
+            mask = in_tensors[3]
+
         scale = qk_scale
         if len(q.shape) == 2:
             dim0, dim1 = q.shape
@@ -6451,10 +6645,13 @@ class SelfAttentionOperation(DataGen):
             dim0, dim1 = k.shape
             embeddim = dim1 // kv_head 
             k = k.contiguous().view(dim0,  kv_head, embeddim)
+        embeddimv = v.shape[-1]
         if len(v.shape) == 2:
             dim0, dim1 = v.shape
-            embeddimv = dim1 // kv_head 
+            embeddimv = dim1 // kv_head
             v = v.contiguous().view(dim0,  kv_head, embeddimv)
+        q_ntokens = q.shape[0]
+        ref_output = torch.zeros(q_ntokens, heads, embeddimv)
         q_seqlen = kv_seqLen
         q_offset = 0
         k_offset = 0
@@ -6462,6 +6659,7 @@ class SelfAttentionOperation(DataGen):
         mask_compress = 0
         if is_mask and (asdops_param["maskType"] == 1 or asdops_param["maskType"] == 3):
             mask_compress = 1
+            no_compress_mask = None
             if q.dtype == torch.bfloat16:
                 no_compress_mask = np.ones(shape=(heads, 128, 128)).astype(np.float32)
                 no_compress_mask = np.triu(no_compress_mask, 1)
@@ -6470,6 +6668,7 @@ class SelfAttentionOperation(DataGen):
                 no_compress_mask = np.ones(shape=(heads, 128, 128)).astype(np.float16)
                 no_compress_mask = np.triu(no_compress_mask, 1)
                 no_compress_mask *= -10000.0
+            no_compress_mask = torch.Tensor(no_compress_mask)
         context_size = 128
         for idx in range(batch):
             q_s = q_seqlen[idx]
@@ -6500,9 +6699,9 @@ class SelfAttentionOperation(DataGen):
                     sub_key = key[:, :, kv_start : kv_start + sub_len] # [14, 128, 128]
                     sub_value = value[:, kv_start : kv_start + sub_len, :]
                     if q.dtype == torch.bfloat16:
-                        qk_result = SelfAttentionOperation.qkMM1(query, sub_key) 
+                        qk_result = SelfAttentionOperation.qkMM1(query.cpu(), sub_key.cpu()) 
                     else:
-                        qk_result = SelfAttentionOperation.qkMM1(query.to(torch.float16), sub_key.to(torch.float16)) 
+                        qk_result = SelfAttentionOperation.qkMM1(query.cpu().to(torch.float16), sub_key.cpu().to(torch.float16)) 
                     if q.dtype == torch.bfloat16:
                         qk_result = qk_result.to(torch.float32) * scale
                     else:
@@ -6510,17 +6709,19 @@ class SelfAttentionOperation(DataGen):
                     if is_mask:
                         if mask_compress:
                             if q_start // context_size == kv_start // context_size:
-                                qk_result = qk_result + no_compress_mask[:,:sub_q_len,:sub_len]
+                                qk_result = qk_result.cpu() + no_compress_mask[:,:sub_q_len,:sub_len].cpu()
+                        elif is_alibi:
+                            qk_result = qk_result.cpu() + __class__.mask_info[1](mask, idx, q_s, kv_s).cpu() * __class__.post_mask_coff
                     if kv_start == 0:
                         gm = None
                     p_result, row_sum, dm, gm = SelfAttentionOperation.softmax1(qk_result, kv_start == 0, gm)
                     if kv_start == 0:
                         gm_high = None
-                    if q.dtype == torch.bfloat16 or (q.dtype == torch.float16 and is_mask) :
-                        lo = torch.matmul(p_result.to(q.dtype).to(torch.float32), sub_value.to(torch.float32))
+                    if q.dtype == torch.bfloat16 or (q.dtype == torch.float16 and is_mask):
+                        lo = torch.matmul(p_result.cpu().to(q.dtype).to(torch.float32), sub_value.cpu().to(torch.float32))
                         lo = lo.to(torch.float32)
                     else:
-                        lo = torch.matmul(p_result.to(torch.float32), sub_value.to(torch.float32))
+                        lo = torch.matmul(p_result.cpu().to(torch.float32), sub_value.cpu().to(torch.float32))
                         lo = lo.to(torch.float16)
                     lo = lo.numpy()
                     if kv_start == 0:
@@ -6536,12 +6737,14 @@ class SelfAttentionOperation(DataGen):
                 go = go / gl
                 go = np.transpose(go, (1, 0, 2))
                 out = torch.from_numpy(go).to(q.dtype)
-                out = out.reshape(sub_q_len,heads,embeddim)
+                out = out.reshape(sub_q_len, heads, embeddimv)
                 ref_output[q_offset:q_offset + sub_q_len][:] = out
                 q_offset += sub_q_len
             k_offset += kv_s
             v_offset += kv_s
+            logging.info(f"ref_output dtype {ref_output.dtype}")
         return ref_output
+
 
     @staticmethod
     def golden(in_tensors, op_params):
@@ -6637,7 +6840,7 @@ class SelfAttentionOperation(DataGen):
             out = out.view(q_ntokens, heads * embed)
             golden_out = out.to(q.dtype)
             return [golden_out]
-        if json_data["calcType"] == 3:
+        if "calcType" in json_data and json_data["calcType"] == 3:
             q = in_tensors[0]
             k = in_tensors[1]
             v = in_tensors[2]
@@ -6670,13 +6873,16 @@ class SelfAttentionOperation(DataGen):
                 kv_seqLen_tesnor = in_tensors[4]
                 if "pseShiftFlag" in json_data and json_data["pseShiftFlag"]:
                     pseShift = in_tensors[5]
+                if json_data["maskType"] == 2: # 2: alibi mask
+                    pseShift = in_tensors[3]
             else:
                 seq_len = in_tensors[3]
                 batch = len(in_tensors[3])
                 kv_seqLen_tesnor = in_tensors[3]
                 if "pseShiftFlag" in json_data and json_data["pseShiftFlag"]:
                     pseShift = in_tensors[4]
-            kv_seqLen = kv_seqLen_tesnor.numpy()
+            kv_seqLen = kv_seqLen_tesnor.cpu().numpy()
+            
             max_seq = np.max(kv_seqLen)
             heads = json_data['headNum']
             kv_head = json_data['kvHeadNum'] if 'kvHeadNum' in json_data else json_data['headNum']
@@ -6705,8 +6911,12 @@ class SelfAttentionOperation(DataGen):
             out = SelfAttentionOperation.calc_golden_encoder(q, k, v, mask, seq_len, asdops_params)
             ref_output = SelfAttentionOperation.calc_golden_encoder_new(heads, kv_head, in_tensors,
                             batch, kv_seqLen, mask, asdops_params, op_params)
-            return [out,ref_output]
-        elif json_data["clampType"] == 1:
+            if len(in_tensors[0].shape) == 2: # q shape: bs, nd -> out shape: bs, nd
+                dim0, dim1, dim2 = out.shape
+                out = out.view(dim0, dim1 * dim2)
+                ref_output = ref_output.view(dim0, dim1 * dim2)
+            return [out, ref_output]
+        elif "clampType" in json_data and json_data["clampType"] == 1:
             layerid = int(in_tensors[8][0])
             mixed_q = in_tensors[0]
             mixed_k = in_tensors[1]
@@ -6763,8 +6973,6 @@ class SelfAttentionOperation(DataGen):
                 if dim0 == 1:
                     attention_mask = attention_mask.contiguous().view(dim1, dim1)
                 elif dim0 != batch:
-
-
                     attention_mask = attention_mask.contiguous().view(batch, dim0 // batch, dim1, dim1)
 
 
@@ -6913,6 +7121,89 @@ class SelfAttentionOperation(DataGen):
             context = torch.concat(context_list, dim=0)
             logging.debug(context.shape)
             return [context]
+
+    @staticmethod
+    def truth_value(in_tensors, op_params):
+        logging.info("begin truth_value")
+        ret = []
+        json_data = json.loads(op_params)
+        if "calcType" in json_data and json_data["calcType"] == 3:
+            q = in_tensors[0]
+            k = in_tensors[1]
+            v = in_tensors[2]
+            if len(q.shape) == 3:
+                dim0, dim1, dim2 = q.shape
+                q = q.contiguous().view(dim0, dim1*dim2)
+            elif len(q.shape) == 4:
+                dim0, dim1, dim2, dim3 = q.shape
+                q = q.contiguous().view(dim0*dim1, dim2*dim3)
+            if len(k.shape) == 3:
+                dim0, dim1, dim2 = k.shape
+                k = k.contiguous().view(dim0, dim1*dim2)
+            elif len(k.shape) == 4:
+                dim0, dim1, dim2, dim3 = k.shape
+                k = k.contiguous().view(dim0*dim1, dim2, dim3)
+            if len(v.shape) == 3:
+                dim0, dim1, dim2 = v.shape
+                v = v.contiguous().view(dim0, dim1*dim2)
+            elif len(v.shape) == 4:
+                dim0, dim1, dim2, dim3 = v.shape
+                v = v.contiguous().view(dim0*dim1, dim2, dim3)
+            mask = None
+            seq_len = None
+            kv_seqLen_tesnor =None
+            pseShift = None
+            if json_data["maskType"] != 0:
+                mask = in_tensors[3]
+                seq_len = in_tensors[4]
+                batch = len(in_tensors[4])
+                kv_seqLen_tesnor = in_tensors[4]
+                if "pseShiftFlag" in json_data and json_data["pseShiftFlag"]:
+                    pseShift = in_tensors[5]
+            else:
+                seq_len = in_tensors[3]
+                batch = len(in_tensors[3])
+                kv_seqLen_tesnor = in_tensors[3]
+                if "pseShiftFlag" in json_data and json_data["pseShiftFlag"]:
+                    pseShift = in_tensors[4]
+            # kv_seqLen = kv_seqLen_tesnor.numpy()
+            kv_seqLen = kv_seqLen_tesnor.cpu().numpy()
+            
+            max_seq = np.max(kv_seqLen)
+            heads = json_data['headNum']
+            kv_head = json_data['kvHeadNum'] if 'kvHeadNum' in json_data else json_data['headNum']
+            if mask is not None:
+                if get_soc_version() != "Ascend910B" and get_soc_version() != "Ascend950":
+                    mask = mask.contiguous().permute(0, 2, 1, 3)
+                    dim0, dim1, dim2, dim3 = mask.shape
+                    mask = mask.contiguous().view(dim0, dim1, dim2*dim3)
+                    mask = mask[:, :, : dim1]
+                    batch =len(seq_len)
+                    if dim0 == 1:
+                        mask = mask.contiguous().view(dim1, dim1)
+                    elif dim0 != batch:
+                        if dim1 > dim2 * dim3:
+                            # alibi mask compress
+                            step = dim2 * dim3
+                            mask_padded = -10000 * torch.ones(dim0, dim1 * 2, dim1)
+                            for i in range(dim1 // step):
+                                dim1_offset = i * step
+                                dim2_offset = i * step
+                                mask_padded[:, dim1_offset : dim1_offset + dim1, dim2_offset : dim2_offset + step ] = mask
+                            mask = mask_padded[:, : dim1, : dim1]
+            asdops_params = SelfAttentionOperation.get_asdops_param(q, k, v, mask, seq_len, op_params)
+            if get_soc_version() == "Ascend950":
+                return [SelfAttentionOperation.calc_golden_encoder_950(q, k, v, pseShift, mask, seq_len, asdops_params).cpu()]
+            # out = SelfAttentionOperation.calc_golden_encoder(q, k, v, mask, seq_len, asdops_params)
+            ref_output = SelfAttentionOperation.calc_golden_encoder_new(heads, kv_head, in_tensors,
+                            batch, kv_seqLen, mask, asdops_params, op_params)
+            if len(in_tensors[0].shape) == 2: # q shape: bs, nd -> out shape: bs, nd
+                dim0, dim1, dim2 = ref_output.shape
+                # out = out.view(dim0, dim1 * dim2)
+                ref_output = ref_output.view(dim0, dim1 * dim2)
+            ret = [ref_output]
+        logging.info("finish truth_value")
+        return ret
 
     @staticmethod
     def get_op_type(op_params):
