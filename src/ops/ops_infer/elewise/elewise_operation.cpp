@@ -266,7 +266,8 @@ Status ElewiseOperation::InferShapeCheckImpl(const SVector<TensorDesc> &inTensor
                         }
                     }
                 }
-                if (!TensorUtil::TensorShapeEqual(inTensorDescs[TENSOR_IDX_ONE].shape,
+                if (!TensorCheck::IsEmptyTensor(inTensorDescs[TENSOR_IDX_TWO]) &&
+                    !TensorUtil::TensorShapeEqual(inTensorDescs[TENSOR_IDX_ONE].shape,
                                                   inTensorDescs[TENSOR_IDX_TWO].shape)) {
                     ATB_LOG(ERROR) << GetLogPrefix() << "IN_TENSOR_1's shape should match IN_TENSOR_2's shape";
                     return ERROR_INVALID_TENSOR_DIM;
