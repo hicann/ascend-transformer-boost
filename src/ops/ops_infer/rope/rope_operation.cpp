@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Technologies Co., Ltd.
+ * Copyright (c) 2026 Huawei Technologies Co., Ltd.
  * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
  * CANN Open Software License Agreement Version 2.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
@@ -46,6 +46,10 @@ template <> Status CreateOperation(const infer::RopeParam &opParam, Operation **
         if (RopeAclnnRunner::LoadMethod() != NO_ERROR) {
             ATB_LOG(ERROR) << "Load aclnn function failed, please check your CANN version.";
             return ERROR_CANN_ERROR;
+        }
+        if (opParam.cosFormat != 0) {
+            ATB_LOG(ERROR) << "Rope only supports cosFormat to be 0, but got " << opParam.cosFormat;
+            return ERROR_INVALID_PARAM;
         }
     }
     return NO_ERROR;
@@ -106,7 +110,7 @@ Status RopeOperation::ParamCheck(const SVector<TensorDesc> &inTensorDescs) const
 {
     if (param_.rotaryCoeff != ROTARY_COEFF_TWO && param_.rotaryCoeff != ROTARY_COEFF_FOUR &&
         param_.rotaryCoeff != inTensorDescs.at(PARAM_COS).shape.dims[1]) {
-        ATB_LOG(ERROR) << GetLogPrefix() << "Wrong rotaryCoeff: " << param_.rotaryCoeff;
+        ATB_LOG(ERROR) << GetLogPrefix() << "only supports rotaryCoeff to be one of 2,4,headdim, but got wrong rotaryCoeff: " << param_.rotaryCoeff;
         return ERROR_INVALID_PARAM;
     }
     if (inTensorDescs.at(PARAM_COS).shape.dims[1] % param_.rotaryCoeff != 0 || inTensorDescs.at(PARAM_SIN).shape.dims[1] % param_.rotaryCoeff != 0) {
@@ -116,7 +120,7 @@ Status RopeOperation::ParamCheck(const SVector<TensorDesc> &inTensorDescs) const
         return ERROR_INVALID_PARAM;
     }
     if (param_.cosFormat != 0 && param_.cosFormat != 1) {
-        ATB_LOG(ERROR) << GetLogPrefix() << "Wrong Param, cosFormat: " << param_.cosFormat;
+        ATB_LOG(ERROR) << GetLogPrefix() << "only supports cosFormat as 0 or 1, but got wrong cosFormat: " << param_.cosFormat;
         return ERROR_INVALID_PARAM;
     }
 
@@ -151,18 +155,20 @@ Status RopeOperation::DimCheck(const SVector<TensorDesc> &inTensorDescs) const
         return ERROR_INVALID_TENSOR_SIZE;
     }
 
-    if (inTensorDescs.at(2).shape.dims[1] > MAX_HEAD_SIZE || inTensorDescs.at(3).shape.dims[1] > MAX_HEAD_SIZE) {
-        ATB_LOG(ERROR) << GetLogPrefix() << "head_size or head_size / 2 must be less than or equal to 4096!"
-                       << "cos.dims[1]: " << inTensorDescs.at(2).shape.dims[1]
-                       << "sin.dims[1]: " << inTensorDescs.at(3).shape.dims[1];
-        return ERROR_INVALID_TENSOR_DIM;
-    }
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
+        if (inTensorDescs.at(2).shape.dims[1] > MAX_HEAD_SIZE || inTensorDescs.at(3).shape.dims[1] > MAX_HEAD_SIZE) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "head_size or head_size / 2 must be less than or equal to 4096!"
+                        << "cos.dims[1]: " << inTensorDescs.at(2).shape.dims[1]
+                        << "sin.dims[1]: " << inTensorDescs.at(3).shape.dims[1];
+            return ERROR_INVALID_TENSOR_DIM;
+        }
 
-    if (inTensorDescs.at(2).shape.dims[1] < MIN_HEAD_SIZE || inTensorDescs.at(3).shape.dims[1] < MIN_HEAD_SIZE) {
-        ATB_LOG(ERROR) << GetLogPrefix() << "head_size or head_size / 2 must be greater than or equal to 16!"
-                       << "cos.dims[1]: " << inTensorDescs.at(2).shape.dims[1]
-                       << "sin.dims[1]: " << inTensorDescs.at(3).shape.dims[1];
-        return ERROR_INVALID_TENSOR_DIM;
+        if (inTensorDescs.at(2).shape.dims[1] < MIN_HEAD_SIZE || inTensorDescs.at(3).shape.dims[1] < MIN_HEAD_SIZE) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "head_size or head_size / 2 must be greater than or equal to 16!"
+                        << "cos.dims[1]: " << inTensorDescs.at(2).shape.dims[1]
+                        << "sin.dims[1]: " << inTensorDescs.at(3).shape.dims[1];
+            return ERROR_INVALID_TENSOR_DIM;
+        }
     }
 
     if (inTensorDescs.at(2).shape.dims[0] != inTensorDescs.at(3).shape.dims[0] || // index: 2, 3
@@ -197,19 +203,25 @@ Status RopeOperation::HiddenSizeCheck(const SVector<TensorDesc> &inTensorDescs) 
                        << ", sin: " << TensorUtil::TensorDescToString(inTensorDescs.at(3)); // index: 3
         return ERROR_INVALID_TENSOR_SIZE;
     }
-
+    int64_t headDim = inTensorDescs.at(PARAM_COS).shape.dims[1]; // 1: headDim
+    if (hiddenSizeK % headDim != 0) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "hiddenSizeK should be an integer multiple of headDim, Q: "
+                       << TensorUtil::TensorDescToString(inTensorDescs.at(0))
+                       << ", cos : " << TensorUtil::TensorDescToString(inTensorDescs.at(2)); // index: 2
+        return ERROR_INVALID_TENSOR_DIM;
+    }
     return NO_ERROR;
 }
 
 std::shared_ptr<Runner> RopeOperation::CreateRunner(Context &context) const
 {
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
+        return std::make_shared<RopeAclnnRunner>(param_);
+    }
     ContextBase *contextBase = dynamic_cast<ContextBase *>(&context);
     if (!contextBase) {
         ATB_LOG(DEBUG) << "context cast to contextBase failed!";
         return nullptr;
-    }
-    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
-        return std::make_shared<RopeAclnnRunner>(param_);
     }
     int64_t runnerTypeIdx = RunnerTypeRegister::GetRunnerTypeIdx("RopeOpsRunner");
     RunnerPool &pool = contextBase->GetRunnerPool(runnerTypeIdx);

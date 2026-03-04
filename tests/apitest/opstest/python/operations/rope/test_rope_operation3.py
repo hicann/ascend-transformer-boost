@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2024 Huawei Technologies Co., Ltd.
+# Copyright (c) 2026 Huawei Technologies Co., Ltd.
 # This program is free software, you can redistribute it and/or modify it under the terms and conditions of
 # CANN Open Software License Agreement Version 2.0 (the "License").
 # Please refer to the License for details. You may not use this file except in compliance with the License.
@@ -54,7 +54,10 @@ class TestUnpadRopeOperation(operation_test.OperationTest):
         k_sum = torch.cat(tuple(k_list), dim=0)
         return [q_sum, k_sum]
 
-    def test(self):
+    def test_cos_format1(self):
+        if operation_test.get_soc_version() == 'Ascend950':
+            print("this testcase doesn't support Ascend950")
+            return
         min_seqlen = 1
         max_seqlen = 2048
         batch = 4
