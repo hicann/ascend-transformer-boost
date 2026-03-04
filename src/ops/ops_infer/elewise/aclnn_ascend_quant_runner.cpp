@@ -11,12 +11,14 @@
 #include <aclnn/opdev/op_errno.h>
 #include "atb/utils/aclnn_util.h"
 #include "atb/utils/log.h"
+#include "atb/utils/tensor_check.h"
 #include "acl/acl.h"
 #include "atbops/params/params.h"
 #include "atb/utils/operation_register.h"
 
 namespace {
 static const uint32_t IN_TENSOR_NUM = 3;
+static const uint32_t IN_TENSOR_NUM_WITHOUT_OFFSET = 2;
 static const uint32_t OUT_TENSOR_NUM = 1;
 static const uint32_t INDEX_0 = 0;
 static const uint32_t INDEX_1 = 1;
@@ -89,8 +91,9 @@ Status AclnnAscendQuantRunner::BuildAclnnVariantPack(const RunnerVariantPack &ru
     ATB_LOG(INFO) << GetLogPrefix() << "variantPack: " << runnerVariantPack.ToString();
     this->atbVariantPack_ = runnerVariantPack;
     Status ret = NO_ERROR;
-    this->aclnnVariantPack_.aclInTensors.reserve(IN_TENSOR_NUM);
-    this->aclnnVariantPack_.aclInTensors.resize(IN_TENSOR_NUM);
+    is_offset_empty_ = TensorCheck::IsEmptyTensor(runnerVariantPack.inTensors.at(INDEX_2));
+    this->aclnnVariantPack_.aclInTensors.reserve(is_offset_empty_ ? IN_TENSOR_NUM_WITHOUT_OFFSET : IN_TENSOR_NUM);
+    this->aclnnVariantPack_.aclInTensors.resize(is_offset_empty_ ? IN_TENSOR_NUM_WITHOUT_OFFSET : IN_TENSOR_NUM);
     const bool is_scale_all_one = [](const Dims &shape) {
         for (size_t i = 0; i < shape.dimNum; ++i) {
             if (shape.dims[i] != 1) {
@@ -145,6 +148,7 @@ Status AclnnAscendQuantRunner::BuildAclnnVariantPack(const RunnerVariantPack &ru
     }
     aclnnStatus status = ACL_SUCCESS;
     // temp scale
+    scaleBufferSize_ = 0;
     {
         scaleBufferSize_ = runnerVariantPack.inTensors.at(INDEX_1).dataSize;
         ATB_LOG(INFO) << GetLogPrefix() << "scaleBufferSize_: " << scaleBufferSize_;
@@ -174,7 +178,8 @@ Status AclnnAscendQuantRunner::BuildAclnnVariantPack(const RunnerVariantPack &ru
     ATB_LOG(INFO) << GetLogPrefix() << "scaleDatatype_: " << scaleDatatype_;
 
     // temp offset
-    {
+    offsetBufferSize_ = 0;
+    if (!is_offset_empty_) {
         offsetBufferSize_ = runnerVariantPack.inTensors.at(INDEX_2).dataSize * MULTIPLE_2;
         ATB_LOG(INFO) << GetLogPrefix() << "offsetBufferSize_: " << offsetBufferSize_;
         atb::Tensor atbTensor = runnerVariantPack.inTensors.at(INDEX_2);
@@ -211,11 +216,12 @@ aclnnStatus AclnnAscendQuantRunner::SetAclNNWorkspaceExecutor()
     size_t inTensorStart = 0;
     aclTensor *x = this->aclnnVariantPack_.aclInTensors.at(inTensorStart++)->tensor;
     aclTensor *scale = this->aclnnVariantPack_.aclInTensors.at(inTensorStart++)->tensor;
-    aclTensor *offset = this->aclnnVariantPack_.aclInTensors.at(inTensorStart++)->tensor;
     size_t outTensorStart = 0;
     aclTensor *output = this->aclnnVariantPack_.aclOutTensors.at(outTensorStart++)->tensor;
 
     aclnnStatus ret = ACL_SUCCESS;
+
+    this->reciprocalWorkspaceSize_ = 0;
     aclOpExecutor *rawReciprocalExecutorPtr = this->aclnnReciprocalExecutor_.get();
     ret = AclnnAscendQuantRunner::aclnnReciprocalGetWorkspaceSizeFunc_(scale,  // self
                                                                        scale_, // out
@@ -237,29 +243,35 @@ aclnnStatus AclnnAscendQuantRunner::SetAclNNWorkspaceExecutor()
             }
         });
 
-    aclOpExecutor *rawCastExecutorPtr = this->aclnnCastExecutor_.get();
-    ret = AclnnAscendQuantRunner::aclnnCastGetWorkspaceSizeFunc_(offset,         // self
-                                                                 scaleDatatype_, // dtype
-                                                                 offset_,        // out
-                                                                 &(this->castWorkspaceSize_), &rawCastExecutorPtr);
-    if (ret != ACL_SUCCESS) {
-        ATB_LOG(ERROR) << GetLogPrefix() << "aclnnCastGetWorkspaceSize failed!";
-        return ret;
-    }
-    ret = aclSetAclOpExecutorRepeatable(rawCastExecutorPtr);
-    if (ret != ACL_SUCCESS) {
-        ATB_LOG(ERROR) << GetLogPrefix() << "Set Cast AclOpExecutorRepeatable failed!";
-        return ret;
-    }
-    this->aclnnCastExecutor_ = std::shared_ptr<aclOpExecutor>(rawCastExecutorPtr, [this](aclOpExecutor *ptr) {
-        if (ptr) { // 可复用时才手动销毁aclOpExecutor
-            aclDestroyAclOpExecutor(ptr);
+    this->castWorkspaceSize_ = 0;
+    if (!is_offset_empty_) {
+        aclTensor *offset = this->aclnnVariantPack_.aclInTensors.at(inTensorStart++)->tensor;
+        aclOpExecutor *rawCastExecutorPtr = this->aclnnCastExecutor_.get();
+        ret = AclnnAscendQuantRunner::aclnnCastGetWorkspaceSizeFunc_(offset,         // self
+                                                                     scaleDatatype_, // dtype
+                                                                     offset_,        // out
+                                                                     &(this->castWorkspaceSize_), &rawCastExecutorPtr);
+        if (ret != ACL_SUCCESS) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "aclnnCastGetWorkspaceSize failed!";
+            return ret;
         }
-    });
+        ret = aclSetAclOpExecutorRepeatable(rawCastExecutorPtr);
+        if (ret != ACL_SUCCESS) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "Set Cast AclOpExecutorRepeatable failed!";
+            return ret;
+        }
+        this->aclnnCastExecutor_ = std::shared_ptr<aclOpExecutor>(rawCastExecutorPtr, [this](aclOpExecutor *ptr) {
+            if (ptr) { // 可复用时才手动销毁aclOpExecutor
+                aclDestroyAclOpExecutor(ptr);
+            }
+        });
+    }
+
+    this->quantWorkspaceSize_ = 0;
     aclOpExecutor *rawExecutorPtr = this->aclnnExecutor_.get();
     ret = AclnnAscendQuantRunner::aclnnGetWorkspaceSizeFunc_(x,                                      // x
                                                              scale_,                                 // scale
-                                                             offset_,                                // offset
+                                                             is_offset_empty_ ? nullptr : offset_,   // offset
                                                              false,                                  // sqrtMode
                                                              (char *)(std::string("round").c_str()), // roundMode
                                                              ACL_INT8,                               // dstType
@@ -309,19 +321,21 @@ Status AclnnAscendQuantRunner::LaunchAclnnKernel()
         ATB_LOG(ERROR) << GetLogPrefix() << "aclSetInputTensorAddr failed with return value: " << ret;
         return ERROR_CANN_ERROR;
     }
-    ret = aclSetOutputTensorAddr(this->aclnnCastExecutor_.get(), INDEX_0, this->offset_,
-                                 this->atbVariantPack_.workspaceBuffer + this->reciprocalWorkspaceSize_ +
-                                     this->castWorkspaceSize_ + this->quantWorkspaceSize_ + this->scaleBufferSize_);
-    if (ret != ACL_SUCCESS) {
-        ATB_LOG(ERROR) << GetLogPrefix() << "aclSetOutputTensorAddr failed with return value: " << ret;
-        return ERROR_CANN_ERROR;
-    }
-    ret = aclSetInputTensorAddr(this->aclnnExecutor_.get(), INDEX_2, this->offset_,
-                                this->atbVariantPack_.workspaceBuffer + this->reciprocalWorkspaceSize_ +
-                                    this->castWorkspaceSize_ + this->quantWorkspaceSize_ + this->scaleBufferSize_);
-    if (ret != ACL_SUCCESS) {
-        ATB_LOG(ERROR) << GetLogPrefix() << "aclSetInputTensorAddr failed with return value: " << ret;
-        return ERROR_CANN_ERROR;
+    if (!is_offset_empty_) {
+        ret = aclSetOutputTensorAddr(this->aclnnCastExecutor_.get(), INDEX_0, this->offset_,
+                                     this->atbVariantPack_.workspaceBuffer + this->reciprocalWorkspaceSize_ +
+                                         this->castWorkspaceSize_ + this->quantWorkspaceSize_ + this->scaleBufferSize_);
+        if (ret != ACL_SUCCESS) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "aclSetOutputTensorAddr failed with return value: " << ret;
+            return ERROR_CANN_ERROR;
+        }
+        ret = aclSetInputTensorAddr(this->aclnnExecutor_.get(), INDEX_2, this->offset_,
+                                    this->atbVariantPack_.workspaceBuffer + this->reciprocalWorkspaceSize_ +
+                                        this->castWorkspaceSize_ + this->quantWorkspaceSize_ + this->scaleBufferSize_);
+        if (ret != ACL_SUCCESS) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "aclSetInputTensorAddr failed with return value: " << ret;
+            return ERROR_CANN_ERROR;
+        }
     }
     ret = AclnnAscendQuantRunner::aclnnReciprocalExecuteFunc_(this->atbVariantPack_.workspaceBuffer,
                                                               this->reciprocalWorkspaceSize_,
@@ -330,12 +344,14 @@ Status AclnnAscendQuantRunner::LaunchAclnnKernel()
         ATB_LOG(ERROR) << GetLogPrefix() << "Atb aclnn op kernel launch failed with return value: " << ret;
         return ERROR_CANN_ERROR;
     }
-    ret = AclnnAscendQuantRunner::aclnnCastExecuteFunc_(
-        this->atbVariantPack_.workspaceBuffer + this->reciprocalWorkspaceSize_, this->castWorkspaceSize_,
-        this->aclnnCastExecutor_.get(), executeStream);
-    if (ret != ACL_SUCCESS) {
-        ATB_LOG(ERROR) << GetLogPrefix() << "Atb aclnn op kernel launch failed with return value: " << ret;
-        return ERROR_CANN_ERROR;
+    if (!is_offset_empty_) {
+        ret = AclnnAscendQuantRunner::aclnnCastExecuteFunc_(
+            this->atbVariantPack_.workspaceBuffer + this->reciprocalWorkspaceSize_, this->castWorkspaceSize_,
+            this->aclnnCastExecutor_.get(), executeStream);
+        if (ret != ACL_SUCCESS) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "Atb aclnn op kernel launch failed with return value: " << ret;
+            return ERROR_CANN_ERROR;
+        }
     }
     ret = AclnnAscendQuantRunner::aclnnExecuteFunc_(
         this->atbVariantPack_.workspaceBuffer + this->reciprocalWorkspaceSize_ + this->castWorkspaceSize_,

@@ -30,6 +30,7 @@ protected:
 private:
     void CleanUp();
     infer::ElewiseParam param_;
+    bool is_offset_empty_ = false;
     aclDataType scaleDatatype_ = ACL_FLOAT16;
     aclTensor *scale_ = nullptr;
     aclTensor *offset_ = nullptr;
