@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Huawei Technologies Co., Ltd.
+ * Copyright (c) 2026 Huawei Technologies Co., Ltd.
  * This file is a part of the CANN Open Software.
  * Licensed under CANN Open Software License Agreement Version 2.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
@@ -13,14 +13,14 @@
 #include "atb/runner/aclnn_runner.h"
 namespace atb {
 using aclnnGetWorkspaceSizeFuncPtr = aclnnStatus(*)(
-        const aclTensor *, //queryRef
-        const aclTensor *, //keyRef
-        const aclTensor *, //cos
-        const aclTensor *, //sin
-        int64_t,
-        char *,
-        uint64_t *,
-        aclOpExecutor**
+        const aclTensor *, // queryRef
+        const aclTensor *, // keyRef
+        const aclTensor *, // cos
+        const aclTensor *, // sin
+        int64_t,           // layout
+        char *, // rotaryMode
+        uint64_t *, //workspaceSize
+        aclOpExecutor** //executor
     );
 using aclnnExecuteFuncPtr = aclnnStatus(*)(
         void *,
@@ -41,7 +41,6 @@ protected:
 private:
     infer::RopeParam param_;
     //两个函数指针分别对应对应aclnnop/aclnn_apply_rotary_pos_emb_v2.h中的两段式接口
-    //GetWorkSpace接口
     static aclnnGetWorkspaceSizeFuncPtr aclnnGetWorkspaceSizeFunc_;
     static aclnnExecuteFuncPtr aclnnExecuteFunc_;
 };
