@@ -7,22 +7,22 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
-#ifndef ATB_RMS_NORM_ACLNN_RUNNER_H
-#define ATB_RMS_NORM_ACLNN_RUNNER_H
+#ifndef ATB_ADD_RMS_NORM_ACLNN_RUNNER_H
+#define ATB_ADD_RMS_NORM_ACLNN_RUNNER_H
 #include "atb/infer_op_params.h"
 #include "atb/runner/aclnn_runner.h"
 
-using AclnnRmsNormGetWorkspaceSizeFunc = aclnnStatus (*)(const aclTensor *x, const aclTensor *gamma, double epsilon,
-    const aclTensor *yOut, const aclTensor *rstdOut, uint64_t *workspaceSize, aclOpExecutor **executor);
-
-using AclnnRmsNormFunc = aclnnStatus (*)(
-    void *workspace, uint64_t workspaceSize, aclOpExecutor *executor, aclrtStream stream);
+using AclnnAddRmsNormGetWorkspaceSizeFunc = aclnnStatus (*)(const aclTensor *x1, const aclTensor *x2,
+    const aclTensor *gamma, double epsilon, const aclTensor *yOut, const aclTensor *rstdOut, const aclTensor *xOut,
+    uint64_t *workspaceSize, aclOpExecutor **executor);
+using AclnnAddRmsNormFunc = aclnnStatus (*)(
+    void *workspace, uint64_t workspaceSize, aclOpExecutor *executor, const aclrtStream stream);
 
 namespace atb {
-class RmsNormAclnnRunner : public AclnnRunner {
+class AddRmsNormAclnnRunner : public AclnnRunner {
 public:
-    explicit RmsNormAclnnRunner(const infer::RmsNormParam &param);
-    ~RmsNormAclnnRunner() override;
+    explicit AddRmsNormAclnnRunner(const infer::RmsNormParam &param);
+    ~AddRmsNormAclnnRunner() override;
 
     static Status LoadAclnnFuncs();
 
@@ -34,10 +34,12 @@ protected:
 private:
     void GetTensorNum();
     void InitTensorIndex();
-    Status CreateXAclnnTensor();
+    Status CreateX1AclnnTensor();
+    Status CreateX2AclnnTensor();
     Status CreateGammaAclnnTensor();
     Status CreateYOutAclnnTensor();
     Status CreateRstdOutAclnnTensor();
+    Status CreateXOutAclnnTensor();
 
 private:
     infer::RmsNormParam param_;
@@ -50,15 +52,17 @@ private:
     size_t atbOutTensorIndex_ = 0;
     size_t aclOutTensorIndex_ = 0;
 
-    size_t xAclTensorIndex_ = 0;
+    size_t x1AclTensorIndex_ = 0;
+    size_t x2AclTensorIndex_ = 0;
     size_t gammaAclTensorIndex_ = 0;
     size_t yOutAclTensorIndex_ = 0;
     size_t rstdOutAclTensorIndex_ = 0;
+    size_t xOutAclTensorIndex_ = 0;
 
     void *rstdDeviceData_ = nullptr;
 
-    static AclnnRmsNormGetWorkspaceSizeFunc aclnnRmsNormGetWorkspaceSizeFunc_;
-    static AclnnRmsNormFunc aclnnRmsNormFunc_;
+    static AclnnAddRmsNormGetWorkspaceSizeFunc aclnnAddRmsNormGetWorkspaceSizeFunc_;
+    static AclnnAddRmsNormFunc aclnnAddRmsNormFunc_;
 };
 }  // namespace atb
-#endif
+#endif  // ATB_ADD_RMS_NORM_ACLNN_RUNNER_H
