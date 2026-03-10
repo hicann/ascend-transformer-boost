@@ -531,7 +531,7 @@ class LinearOperation(DataGen):
         else:
             golden_result = torch.matmul(x, weight)
             if bias is not None:
-                if MatmulCommon.bias_golden.dtype == torch.bfloat16:
+                if MatmulCommon.bias_golden.dtype == torch.bfloat16 and get_soc_version() != "Ascend950":
                     golden_result = golden_result.to(torch.bfloat16)
                 golden_result = golden_result.to(bias.dtype) + bias
             if deq_scale is not None:
