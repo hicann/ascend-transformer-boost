@@ -126,7 +126,12 @@ function log_init() {
         local filesize=$(ls -l $log_file | awk '{ print $5}')
         local maxsize=$((1024*1024*50))
         if [ $filesize -gt $maxsize ]; then
-            local log_file_move_name="ascend_atb_install_bak.log"
+            local log_base_name="${LOG_NAME%.*}"
+            local log_extension="${LOG_NAME##*.}"
+            if [ -n "${log_extension}" ]; then
+                log_extension=".${log_extension}"
+            fi
+            local log_file_move_name="${log_base_name}_bak${log_extension}"
             mv -f "${log_file}" "${LOG_PATH}${log_file_move_name}"
             chmod 440 "${LOG_PATH}${log_file_move_name}"
             make_file "$log_file"

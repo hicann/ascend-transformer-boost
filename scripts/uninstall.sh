@@ -33,8 +33,27 @@ else
     LOG_PATH="${HOME}${LOG_PATH}"
     log_file=${LOG_PATH}${LOG_NAME}
 fi
-chmod 640 "${log_file}"
 
+# 将日志记录到日志文件
+function log() {
+    if [ ! -f "$log_file" ]; then
+        if [ ! -d "${LOG_PATH}" ];then
+            mkdir -p ${LOG_PATH}
+        fi
+        touch $log_file
+    fi
+    if [ x"$log_file" = x ]; then
+        echo -e "[cann-atb] [$(date +%Y%m%d-%H:%M:%S)] [$1] $2"
+    else
+        if [ $(stat -c %s $log_file) -gt $MAX_LOG_SIZE ];then 
+            echo -e "[cann-atb] [$(date +%Y%m%d-%H:%M:%S)] [$1] log file is bigger than $MAX_LOG_SIZE, stop write log to file"
+        else
+            echo -e "[cann-atb] [$(date +%Y%m%d-%H:%M:%S)] [$1] $2" >>$log_file
+        fi
+    fi
+}
+
+# 将日志记录到日志文件并打屏
 function print() {
     if [ ! -f "$log_file" ]; then
         if [ ! -d "${LOG_PATH}" ];then
@@ -43,14 +62,78 @@ function print() {
         touch $log_file
     fi
     if [ x"$log_file" = x ]; then
-        echo -e "[atb] [$(date +%Y%m%d-%H:%M:%S)] [$1] $2"
+        echo -e "[cann-atb] [$(date +%Y%m%d-%H:%M:%S)] [$1] $2"
     else
         if [ $(stat -c %s $log_file) -gt $MAX_LOG_SIZE ];then 
-            echo -e "[atb] [$(date +%Y%m%d-%H:%M:%S)] [$1] log file is bigger than $MAX_LOG_SIZE, stop write log to file"
-            echo -e "[atb] [$(date +%Y%m%d-%H:%M:%S)] [$1] $2"
+            echo -e "[cann-atb] [$(date +%Y%m%d-%H:%M:%S)] [$1] log file is bigger than $MAX_LOG_SIZE, stop write log to file"
+            echo -e "[cann-atb] [$(date +%Y%m%d-%H:%M:%S)] [$1] $2"
         else
-            echo -e "[atb] [$(date +%Y%m%d-%H:%M:%S)] [$1] $2" | tee -a $log_file
+            echo -e "[cann-atb] [$(date +%Y%m%d-%H:%M:%S)] [$1] $2" | tee -a $log_file
         fi
+    fi
+}
+
+# 创建文件夹
+function make_dir() {
+    log "INFO" "mkdir ${1}"
+    mkdir -p ${1} 2>/dev/null
+    if [ $? -ne 0 ]; then
+        print "ERROR" "create $1 failed !"
+        exit 1
+    fi
+}
+
+# 创建文件
+function make_file() {
+    log "INFO" "touch ${1}"
+    touch ${1} 2>/dev/null
+    if [ $? -ne 0 ]; then
+        print "ERROR" "create $1 failed !"
+        exit 1
+    fi
+}
+
+## 日志模块初始化 ##
+function log_init() {
+    # 判断输入的日志保存路径是否存在，不存在就创建
+    if [ ! -d "$LOG_PATH" ]; then
+        make_dir "$LOG_PATH"
+    fi
+    chmod 750 "${LOG_PATH}"
+    # 判断日志文件是否存在，如果不存在就创建；存在则判断是否大于50M
+    if [ ! -f "$log_file" ]; then
+        make_file "$log_file"
+        # 安装日志权限
+        chmod_recursion ${LOG_PATH} "750" "dir"
+        chmod 640 "${log_file}"
+    else
+        local filesize=$(ls -l $log_file | awk '{ print $5}')
+        local maxsize=$((1024*1024*50))
+        if [ $filesize -gt $maxsize ]; then
+            local log_base_name="${LOG_NAME%.*}"
+            local log_extension="${LOG_NAME##*.}"
+            if [ -n "${log_extension}" ]; then
+                log_extension=".${log_extension}"
+            fi
+            local log_file_move_name="${log_base_name}_bak${log_extension}"
+            mv -f "${log_file}" "${LOG_PATH}${log_file_move_name}"
+            chmod 440 "${LOG_PATH}${log_file_move_name}"
+            make_file "$log_file"
+            log "INFO" "log file > 50M, move ${log_file} to ${LOG_PATH}${log_file_move_name}."
+        fi
+        chmod 640 "${log_file}"
+    fi
+    print "INFO" "Install log save in ${log_file}"
+}
+
+function chmod_recursion() {
+    local parameter2=$2
+    local rights="$(echo ${parameter2:0:2})""$(echo ${parameter2:1:1})"
+    rights=$([ "${install_for_all_flag}" == "y" ] && echo ${rights} || echo $2)
+    if [ "$3" = "dir" ]; then
+        find $1 -type d -exec chmod ${rights} {} \; 2>/dev/null
+    elif [ "$3" = "file" ]; then
+        find $1 -type f -name "$4" -exec chmod ${rights} {} \; 2>/dev/null
     fi
 }
 
@@ -154,6 +237,7 @@ function uninstall_torch_atb() {
 }
 
 install_path=$(cd "${CUR_DIR}/../../${VERSION}";pwd)
+log_init
 uninstall_process ${install_path}
 uninstall_torch_atb
 chmod 440 "${log_file}"
