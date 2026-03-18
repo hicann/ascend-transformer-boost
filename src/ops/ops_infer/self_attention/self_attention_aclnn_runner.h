@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 Huawei Technologies Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Technologies Co., Ltd.
  * This file is a part of the CANN Open Software.
  * Licensed under CANN Open Software License Agreement Version 2.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
@@ -15,8 +15,8 @@
 #include "atb/infer_op_params.h"
 #include "atb/runner/aclnn_runner.h"
 
-using AclnnFusedInferAttentionScoreV3GetWorkspaceSizeFunc = aclnnStatus (*)(const aclTensor *query,
-    const aclTensorList *key, const aclTensorList *value, const aclTensor *pseShiftOptional,
+using AclnnFusedInferAttentionScoreV5GetWorkspaceSizeFunc = aclnnStatus (*)(
+    const aclTensor *query, const aclTensorList *key, const aclTensorList *value, const aclTensor *pseShiftOptional,
     const aclTensor *attenMaskOptional, const aclIntArray *actualSeqLengthsOptional,
     const aclIntArray *actualSeqLengthsKvOptional, const aclTensor *deqScale1Optional,
     const aclTensor *quantScale1Optional, const aclTensor *deqScale2Optional, const aclTensor *quantScale2Optional,
@@ -27,16 +27,18 @@ using AclnnFusedInferAttentionScoreV3GetWorkspaceSizeFunc = aclnnStatus (*)(cons
     const aclTensor *valueAntiquantScaleOptional, const aclTensor *valueAntiquantOffsetOptional,
     const aclTensor *keySharedPrefixOptional, const aclTensor *valueSharedPrefixOptional,
     const aclIntArray *actualSharedPrefixLenOptional, const aclTensor *queryRopeOptional,
-    const aclTensor *keyRopeOptional, const aclTensor *keyRopeAntiquantScaleOptional, int64_t numHeads,
-    double scaleValue, int64_t preTokens, int64_t nextTokens, char *inputLayout, int64_t numKeyValueHeads,
-    int64_t sparseMode, int64_t innerPrecise, int64_t blockSize, int64_t antiquantMode, bool softmaxLseFlag,
-    int64_t keyAntiquantMode, int64_t valueAntiquantMode, const aclTensor *attentionOut, const aclTensor *softmaxLse,
-    uint64_t *workspaceSize, aclOpExecutor **executor);
-using AclnnFusedInferAttentionScoreV3Func = aclnnStatus (*)(
-    void *workspace, uint64_t workspaceSize, aclOpExecutor *executor, const aclrtStream stream);
+    const aclTensor *keyRopeOptional, const aclTensor *keyRopeAntiquantScaleOptional,
+    const aclTensor *dequantScaleQueryOptional, const aclTensor *learnableSinkOptional,
+    const aclIntArray *qStartIdxOptional, const aclIntArray *kvStartIdxOptional, int64_t numHeads, double scaleValue,
+    int64_t preTokens, int64_t nextTokens, char *inputLayout, int64_t numKeyValueHeads, int64_t sparseMode,
+    int64_t innerPrecise, int64_t blockSize, int64_t antiquantMode, bool softmaxLseFlag, int64_t keyAntiquantMode,
+    int64_t valueAntiquantMode, int64_t queryQuantMode, int64_t pseType, const aclTensor *attentionOut,
+    const aclTensor *softmaxLse, uint64_t *workspaceSize, aclOpExecutor **executor);
+using AclnnFusedInferAttentionScoreV5Func = aclnnStatus (*)(void *workspace, uint64_t workspaceSize,
+                                                            aclOpExecutor *executor, const aclrtStream stream);
 
 namespace atb {
-struct AclnnFusedInferAttentionScoreV3Param {
+struct AclnnFusedInferAttentionScoreV5Param {
     int64_t numHeads = 0;
     double scaleValue = 0.0;
     int64_t preTokens = 0;
@@ -50,6 +52,8 @@ struct AclnnFusedInferAttentionScoreV3Param {
     bool softmaxLseFlag = false;
     int64_t keyAntiquantMode = 0;
     int64_t valueAntiquantMode = 0;
+    int64_t queryQuantMode = 0;
+    int64_t pseType = 0;
 };
 
 class SelfAttentionAclnnRunner : public AclnnRunner {
@@ -102,10 +106,10 @@ private:
 
     aclIntArray *actualSeqLengths_ = nullptr;
 
-    AclnnFusedInferAttentionScoreV3Param aclnnParam_;
+    AclnnFusedInferAttentionScoreV5Param aclnnParam_;
 
-    static AclnnFusedInferAttentionScoreV3GetWorkspaceSizeFunc aclnnFusedInferAttentionScoreV3GetWorkspaceSizeFunc_;
-    static AclnnFusedInferAttentionScoreV3Func aclnnFusedInferAttentionScoreV3Func_;
+    static AclnnFusedInferAttentionScoreV5GetWorkspaceSizeFunc aclnnFusedInferAttentionScoreV5GetWorkspaceSizeFunc_;
+    static AclnnFusedInferAttentionScoreV5Func aclnnFusedInferAttentionScoreV5Func_;
 };
-}  // namespace atb
-#endif  // ATB_SELF_ATTENTION_ACLNN_RUNNER_H
+} // namespace atb
+#endif // ATB_SELF_ATTENTION_ACLNN_RUNNER_H

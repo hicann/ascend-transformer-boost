@@ -1,7 +1,5 @@
-
-
 /*
- * Copyright (c) 2024-2025 Huawei Technologies Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Technologies Co., Ltd.
  * This file is a part of the CANN Open Software.
  * Licensed under CANN Open Software License Agreement Version 2.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
@@ -32,9 +30,9 @@ static const int ATTENTION_OUT_ACLNN_TENSOR_IDX = 0;
 
 namespace atb {
 
-AclnnFusedInferAttentionScoreV3GetWorkspaceSizeFunc
-    SelfAttentionAclnnRunner::aclnnFusedInferAttentionScoreV3GetWorkspaceSizeFunc_ = nullptr;
-AclnnFusedInferAttentionScoreV3Func SelfAttentionAclnnRunner::aclnnFusedInferAttentionScoreV3Func_ = nullptr;
+AclnnFusedInferAttentionScoreV5GetWorkspaceSizeFunc
+    SelfAttentionAclnnRunner::aclnnFusedInferAttentionScoreV5GetWorkspaceSizeFunc_ = nullptr;
+AclnnFusedInferAttentionScoreV5Func SelfAttentionAclnnRunner::aclnnFusedInferAttentionScoreV5Func_ = nullptr;
 
 SelfAttentionAclnnRunner::SelfAttentionAclnnRunner(const infer::SelfAttentionParam &opParam)
     : AclnnRunner("SelfAttentionAclnnRunner"), param_(opParam)
@@ -52,13 +50,13 @@ Status SelfAttentionAclnnRunner::LoadMethod()
 {
     ATB_LOG(INFO) << "SelfAttentionAclnnRunner::LoadMethod";
 
-    if (aclnnFusedInferAttentionScoreV3GetWorkspaceSizeFunc_ && aclnnFusedInferAttentionScoreV3Func_) {
+    if (aclnnFusedInferAttentionScoreV5GetWorkspaceSizeFunc_ && aclnnFusedInferAttentionScoreV5Func_) {
         return NO_ERROR;
     }
-    return LoadFromSharedObjectFile("aclnnFusedInferAttentionScoreV3GetWorkspaceSize",
-        "aclnnFusedInferAttentionScoreV3",
-        aclnnFusedInferAttentionScoreV3GetWorkspaceSizeFunc_,
-        aclnnFusedInferAttentionScoreV3Func_);
+    return LoadFromSharedObjectFile("aclnnFusedInferAttentionScoreV5GetWorkspaceSize",
+        "aclnnFusedInferAttentionScoreV5",
+        aclnnFusedInferAttentionScoreV5GetWorkspaceSizeFunc_,
+        aclnnFusedInferAttentionScoreV5Func_);
 }
 
 Status SelfAttentionAclnnRunner::BuildAclnnVariantPack(const RunnerVariantPack &runnerVariantPack)
@@ -155,50 +153,39 @@ aclnnStatus SelfAttentionAclnnRunner::SetAclNNWorkspaceExecutor()
     }
     aclOpExecutor *rawExecutePtr = aclnnExecutor_.get();
 
-    aclnnStatus ret = aclnnFusedInferAttentionScoreV3GetWorkspaceSizeFunc_(query,
-        key,
-        value,
-        pseShift,
-        attenMask,
-        actualSeqLengths_,
-        actualSeqLengths_,  // actualSeqLengthsKv
-        nullptr,            // deqScale1
-        nullptr,            // quantScale1
-        nullptr,            // deqScale2
-        nullptr,            // quantScale2
-        nullptr,            // quantOffset2
-        nullptr,            // antiquantScale
-        nullptr,            // antiquantOffset
-        nullptr,            // blockTable
-        nullptr,            // queryPaddingSize
-        nullptr,            // kvPaddingSize
-        nullptr,            // keyAntiquantScale
-        nullptr,            // keyAntiquantOffset
-        nullptr,            // valueAntiquantScale
-        nullptr,            // valueAntiquantOffset
-        nullptr,            // keySharedPrefix
-        nullptr,            // valueSharedPrefix
-        nullptr,            // actualSharedPrefixLen
-        nullptr,            // queryRope
-        nullptr,            // keyRope
-        nullptr,            // keyRopeAntiquantScale
-        aclnnParam_.numHeads,
-        aclnnParam_.scaleValue,
-        aclnnParam_.preTokens,
-        aclnnParam_.nextTokens,
-        inputLayout.get(),
-        aclnnParam_.numKeyValueHeads,
-        aclnnParam_.sparseMode,
-        aclnnParam_.innerPrecise,
-        aclnnParam_.blockSize,
-        aclnnParam_.antiquantMode,
-        aclnnParam_.softmaxLseFlag,
-        aclnnParam_.keyAntiquantMode,
-        aclnnParam_.valueAntiquantMode,
-        attentionOut,
-        nullptr,  // softmaxLse
-        &(atbVariantPack_.workspaceBufferSize),
-        &rawExecutePtr);
+    aclnnStatus ret = aclnnFusedInferAttentionScoreV5GetWorkspaceSizeFunc_(
+        query, key, value, pseShift, attenMask, actualSeqLengths_,
+        actualSeqLengths_, // actualSeqLengthsKv
+        nullptr,           // deqScale1
+        nullptr,           // quantScale1
+        nullptr,           // deqScale2
+        nullptr,           // quantScale2
+        nullptr,           // quantOffset2
+        nullptr,           // antiquantScale
+        nullptr,           // antiquantOffset
+        nullptr,           // blockTable
+        nullptr,           // queryPaddingSize
+        nullptr,           // kvPaddingSize
+        nullptr,           // keyAntiquantScale
+        nullptr,           // keyAntiquantOffset
+        nullptr,           // valueAntiquantScale
+        nullptr,           // valueAntiquantOffset
+        nullptr,           // keySharedPrefix
+        nullptr,           // valueSharedPrefix
+        nullptr,           // actualSharedPrefixLen
+        nullptr,           // queryRope
+        nullptr,           // keyRope
+        nullptr,           // keyRopeAntiquantScale
+        nullptr,           // dequantScaleQuery
+        nullptr,           // learnableSink
+        nullptr,           // qStartIdx
+        nullptr,           // kvStartIdx
+        aclnnParam_.numHeads, aclnnParam_.scaleValue, aclnnParam_.preTokens, aclnnParam_.nextTokens, inputLayout.get(),
+        aclnnParam_.numKeyValueHeads, aclnnParam_.sparseMode, aclnnParam_.innerPrecise, aclnnParam_.blockSize,
+        aclnnParam_.antiquantMode, aclnnParam_.softmaxLseFlag, aclnnParam_.keyAntiquantMode,
+        aclnnParam_.valueAntiquantMode, aclnnParam_.queryQuantMode, aclnnParam_.pseType, attentionOut,
+        nullptr, // softmaxLse
+        &(atbVariantPack_.workspaceBufferSize), &rawExecutePtr);
     aclnnExecutor_ = std::shared_ptr<aclOpExecutor>(rawExecutePtr, [this](aclOpExecutor *ptr) {
         if (ptr && executorRepeatable_) {
             aclDestroyAclOpExecutor(ptr);
@@ -217,7 +204,7 @@ Status SelfAttentionAclnnRunner::LaunchAclnnKernel()
     ATB_LOG(INFO) << GetLogPrefix() << "SelfAttentionAclnnRunner::LaunchAclnnKernel";
 
     aclrtStream executeStream = GetExecuteStream(atbVariantPack_.context);
-    aclnnStatus ret = aclnnFusedInferAttentionScoreV3Func_(
+    aclnnStatus ret = aclnnFusedInferAttentionScoreV5Func_(
         atbVariantPack_.workspaceBuffer, atbVariantPack_.workspaceBufferSize, aclnnExecutor_.get(), executeStream);
     if (actualSeqLengths_ != nullptr) {
         aclnnStatus ret = aclDestroyIntArray(actualSeqLengths_);
@@ -471,7 +458,13 @@ Status SelfAttentionAclnnRunner::CreateAttenMaskAclnnTensor()
     std::shared_ptr<AclNNTensor> aclnnTensorPtr = InitAclnnTensor(atbTensor, ATTEN_MASK_ACLNN_TENSOR_IDX);
     Dims storageShape = atbTensor.desc.shape;
     if (qSeqLen_ != 1 && storageShape.dims[1] == 2048 && param_.isTriuMask) {
-        aclnnParam_.sparseMode = 2;  // leftUpCausal mask
+        aclnnParam_.sparseMode = 2;  // 2: leftUpCausal mask
+    } else if (storageShape.dimNum == 2) { // 2: [maxQSeqlen, maxKVSeqlen]
+        storageShape.dimNum = 3; // 3: [1, maxQSeqlen, maxKVSeqlen]
+        for (int64_t i = storageShape.dimNum; i > 0; --i) {
+            storageShape.dims[i] = storageShape.dims[i-1];
+        }
+        storageShape.dims[0] = 1;
     }
     aclnnTensorPtr->strides = GetCopyTensorStride(storageShape);
     aclnnTensorPtr->tensor = aclCreateTensor(storageShape.dims,
