@@ -33,8 +33,14 @@ private:
 private:
     infer::SelfAttentionParam param_;
     SelfAttentionFusionVariantPackParam newParam_;
-    int64_t ntokens_ = 0;
-    int64_t hiddenSize_ = 0;
+    // BSND (1, bs, nd) last two dim shapes: bs, nd
+    // BNSD (bn, s, d) last two dim shapes: s, d
+    int64_t qDim1_ = 0;
+    int64_t qDim2_ = 0;
+    int64_t vDim1_ = 0;
+    int64_t vDim2_ = 0;
+
+    bool isBNSD_ = false; // specify use either BSND/BNSD
     Mki::Tensor nullTensor_ = {}; // 空tensor，作为layerId
 };
 } // namespace atb

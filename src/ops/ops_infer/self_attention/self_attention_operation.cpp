@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 Huawei Technologies Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Technologies Co., Ltd.
  * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
  * CANN Open Software License Agreement Version 2.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
@@ -26,6 +26,7 @@
 #include "self_attention_encoder_fusion_ops_runner_910a.h"
 #include "atb/utils/param_to_json.h"
 #include "atb/utils/singleton.h"
+#include "atb/utils/utils_internal.h"
 #include "atb/operation/atb_operation_ir_cfg.h"
 #include "atb/operation/op_param_funcs.h"
 #include "atb/utils/operation_register.h"
@@ -47,8 +48,13 @@ static const int SLOPES_BIT = 0x00002;
 static const int MASK_BIT = 0x00004;
 static const int BYPASS_BIT = 0x00008;
 static const int SCALE_BIT = 0x00010;
+static constexpr int64_t COMPRESS_MASK_SIZE = 128;
+static constexpr int64_t BYTE2_ALIGN = 16;
 
 bool ParamCheck950(const infer::SelfAttentionParam &opParam);
+bool KernelTypeRangeCheck(const infer::SelfAttentionParam &opParam);
+bool ExpM8v2ParamCheck(const infer::SelfAttentionParam &opParam);
+bool InputLayoutRangeCheck(const infer::SelfAttentionParam &opParam);
 
 template <> Status CreateOperation(const infer::SelfAttentionParam &opParam, Operation **operation)
 {
@@ -127,7 +133,17 @@ template <> Status CreateOperation(const infer::SelfAttentionParam &opParam, Ope
     if (!DeviceParamCheck(opParam)) {
         return ERROR_INVALID_PARAM;
     }
+    if (!KernelTypeRangeCheck(opParam)) {
+        return ERROR_INVALID_PARAM;
+    }
+    if (!InputLayoutRangeCheck(opParam)) {
+        return ERROR_INVALID_PARAM;
+    }
     if (opParam.calcType == infer::SelfAttentionParam::PREFIX_ENCODER && !PrefixEncoderParamCheck(opParam)) {
+        return ERROR_INVALID_PARAM;
+    }
+    if (opParam.kernelType == infer::SelfAttentionParam::KernelType::KERNELTYPE_EXP_M8V2 &&
+        !ExpM8v2ParamCheck(opParam)) {
         return ERROR_INVALID_PARAM;
     }
     *operation = new (std::nothrow) SelfAttentionOperation(opParam);
@@ -174,16 +190,27 @@ bool BNSDParamCheck(const infer::SelfAttentionParam &opParam)
                 ATB_LOG(ERROR) << "BNSD feature does not support mla mode";
                 return false;
             }
-            if (opParam.maskType != infer::SelfAttentionParam::MASK_TYPE_UNDEFINED) {
-                ATB_LOG(ERROR) << "when inputLayout is TYPE_BNSD, maskType should be MASK_TYPE_UNDEFINED";
-                return false;
-            }
-            if (!GetSingleton<Config>().Is910B()) {
-                ATB_LOG(ERROR) << "PA_ENCODER BNSD only supports Atlas 800I A2 inference product";
-                return false;
-            }
             if (opParam.kernelType == infer::SelfAttentionParam::KERNELTYPE_HIGH_PRECISION) {
                 ATB_LOG(ERROR) << "PA_ENCODER BNSD does not support KERNELTYPE_HIGH_PRECISION";
+                return false;
+            }
+            bool isExpM8v2 = opParam.kernelType == infer::SelfAttentionParam::KernelType::KERNELTYPE_EXP_M8V2;
+            if (!GetSingleton<Config>().Is910B()) {
+                if (GetSingleton<Config>().Is310P()) {
+                    if (!isExpM8v2) {
+                        ATB_LOG(ERROR) << "Self Attention PA_ENCODER BNSD only supports kerernelType as "
+                                          "KERNELTYPE_EXP_M8V2 on Atlas inference products";
+                        return false;
+                    }
+                } else {
+                    ATB_LOG(ERROR)
+                        << "Self Attention PA_ENCODER with no KERNELTYPE_EXP_M8V2 BNSD only supports Atlas 800I "
+                           "A2 inference product";
+                    return false;
+                }
+            }
+            if (!isExpM8v2 && opParam.maskType != infer::SelfAttentionParam::MASK_TYPE_UNDEFINED) {
+                ATB_LOG(ERROR) << "when inputLayout is TYPE_BNSD, maskType should be MASK_TYPE_UNDEFINED";
                 return false;
             }
         } else {
@@ -405,6 +432,115 @@ bool ParamCheck950(const infer::SelfAttentionParam &opParam)
     return true;
 }
 
+bool KernelTypeRangeCheck(const infer::SelfAttentionParam &opParam)
+{
+    if (opParam.kernelType != infer::SelfAttentionParam::KernelType::KERNELTYPE_DEFAULT &&
+        opParam.kernelType != infer::SelfAttentionParam::KernelType::KERNELTYPE_HIGH_PRECISION &&
+        opParam.kernelType != infer::SelfAttentionParam::KernelType::KERNELTYPE_EXP_M8V2) {
+        ATB_LOG(ERROR) << "Self attention expect kernelType to be one of KERNELTYPE_DEFAULT("
+                       << infer::SelfAttentionParam::KernelType::KERNELTYPE_DEFAULT << "), KERNELTYPE_HIGH_PRECISION("
+                       << infer::SelfAttentionParam::KernelType::KERNELTYPE_HIGH_PRECISION << "), KERNELTYPE_EXP_M8V2("
+                       << infer::SelfAttentionParam::KernelType::KERNELTYPE_EXP_M8V2
+                       << "), but got: " << opParam.kernelType;
+        return false;
+    }
+    return true;
+}
+
+bool InputLayoutRangeCheck(const infer::SelfAttentionParam &opParam)
+{
+    if (opParam.inputLayout != infer::InputLayout::TYPE_BSND && opParam.inputLayout != infer::InputLayout::TYPE_BNSD) {
+        ATB_LOG(ERROR) << "Self attention expect inputLayout to be one of TYPE_BNSD(" << infer::InputLayout::TYPE_BSND
+                       << "), TYPE_BNSD(" << infer::InputLayout::TYPE_BNSD << "), but got: " << opParam.kernelType;
+        return false;
+    }
+    return true;
+}
+
+bool ExpM8v2ParamCheck(const infer::SelfAttentionParam &opParam)
+{
+    if (!GetSingleton<Config>().Is310P()) {
+        ATB_LOG(ERROR) << "Self attention with KERNELTYPE_EXP_M8V2 only support Atlas inference products";
+        return false;
+    }
+    if (opParam.quantType != infer::SelfAttentionParam::QuantType::TYPE_QUANT_UNQUANT) {
+        ATB_LOG(ERROR) << "Self attention with KERNELTYPE_EXP_M8V2 doesn't support qkvQuant, but got quantType: "
+                       << opParam.quantType;
+        return false;
+    }
+    if (opParam.outDataType != ACL_DT_UNDEFINED) {
+        ATB_LOG(ERROR)
+            << "Self attention with KERNELTYPE_EXP_M8V2 doesn't support output quantification, but got outDataType: "
+            << opParam.outDataType;
+        return false;
+    }
+    if (!UtilsInternal::IsFloatEqual(opParam.qScale, 1)) {
+        ATB_LOG(ERROR) << "Self attention with KERNELTYPE_EXP_M8V2 doesn't support qScale, but got qScale: "
+                       << opParam.qScale;
+        return false;
+    }
+    if (opParam.batchRunStatusEnable) {
+        ATB_LOG(ERROR)
+            << "Self attention with KERNELTYPE_EXP_M8V2 doesn't support dynamic batch, but got batchRunStatusEnable: "
+            << opParam.batchRunStatusEnable;
+        return false;
+    }
+    if (opParam.isTriuMask != 0) {
+        ATB_LOG(ERROR)
+            << "Self attention with KERNELTYPE_EXP_M8V2 expects isTriuMask to be default value, 0, but got isTriuMask: "
+            << opParam.isTriuMask;
+        return false;
+    }
+    if (opParam.calcType != infer::SelfAttentionParam::CalcType::PA_ENCODER) {
+        ATB_LOG(ERROR)
+            << "Self attention with KERNELTYPE_EXP_M8V2 only supports calcType PA_ENCODER, but got calcType: "
+            << opParam.calcType;
+        return false;
+    }
+    if (opParam.clampType != infer::SelfAttentionParam::ClampType::CLAMP_TYPE_UNDEFINED) {
+        ATB_LOG(ERROR) << "Self attention with KERNELTYPE_EXP_M8V2 expects clampType to be CLAMP_TYPE_UNDEFINED.";
+        return false;
+    }
+    if (!UtilsInternal::IsFloatEqual(opParam.clampMax, 0) || !UtilsInternal::IsFloatEqual(opParam.clampMin, 0)) {
+        ATB_LOG(ERROR) << "Self attention with KERNELTYPE_EXP_M8V2 doesn't supports clamp, but got clampMax: "
+                       << opParam.clampMax << ", clampMin: " << opParam.clampMin;
+        return false;
+    }
+    if (opParam.maskType != infer::SelfAttentionParam::MaskType::MASK_TYPE_UNDEFINED &&
+        opParam.maskType != infer::SelfAttentionParam::MaskType::MASK_TYPE_NORM &&
+        opParam.maskType != infer::SelfAttentionParam::MaskType::MASK_TYPE_NORM_COMPRESS) {
+        ATB_LOG(ERROR)
+            << "Self attention with KERNELTYPE_EXP_M8V2 only supports maskType to be one of MASK_TYPE_UNDEFINED("
+            << infer::SelfAttentionParam::MaskType::MASK_TYPE_UNDEFINED << "), MASK_TYPE_NORM("
+            << infer::SelfAttentionParam::MaskType::MASK_TYPE_NORM << "), MASK_TYPE_NORM_COMPRESS("
+            << infer::SelfAttentionParam::MaskType::MASK_TYPE_NORM_COMPRESS
+            << "), but got maskType: " << opParam.maskType;
+        return false;
+    }
+    if (opParam.kvcacheCfg != infer::SelfAttentionParam::KvCacheCfg::K_CACHE_V_CACHE) {
+        ATB_LOG(ERROR) << "Self attention with KERNELTYPE_EXP_M8V2 only supports K_CACHE_V_CACHE, but got kvcacheCfg: "
+                       << opParam.kvcacheCfg;
+        return false;
+    }
+    if (opParam.scaleType != infer::SelfAttentionParam::ScaleType::SCALE_TYPE_TOR) {
+        ATB_LOG(ERROR) << "Self attention with KERNELTYPE_EXP_M8V2 only supports SCALE_TYPE_TOR.";
+        return false;
+    }
+    if (opParam.mlaVHeadSize != 0) {
+        ATB_LOG(ERROR) << "Self attention with KERNELTYPE_EXP_M8V2 doesn't support MLA merge kvcache";
+        return false;
+    }
+    if (opParam.windowSize != 0) {
+        ATB_LOG(ERROR) << "Self attention with KERNELTYPE_EXP_M8V2 doesn't support SWA";
+        return false;
+    }
+    if (opParam.cacheType != infer::SelfAttentionParam::CacheType::CACHE_TYPE_NORM) {
+        ATB_LOG(ERROR) << "Self attention with KERNELTYPE_EXP_M8V2 only supports CACHE_TYPE_NORM.";
+        return false;
+    }
+    return true;
+}
+
 void SelfAttentionOperation::InitMlaFaOpIni()
 {
     std::stringstream opIrKeySs;
@@ -480,6 +616,18 @@ uint32_t SelfAttentionOperation::Bools2Int(bool hasScale, bool hasKV, bool hasMa
     return ret;
 }
 
+void SelfAttentionOperation::InitM8v2FaOpIni()
+{
+    // currently m8v2 only supports 310p
+    std::string operationIrM8v2 = "SelfAttentionOperation310PExpM8v2";
+    // m8v2 only supports no mask, norm mask and norm compress mask
+    if (param_.maskType == infer::SelfAttentionParam::MASK_TYPE_NORM ||
+        param_.maskType == infer::SelfAttentionParam::MASK_TYPE_NORM_COMPRESS) {
+        operationIrM8v2 += "MaskNorm";
+    }
+    operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr(operationIrM8v2);
+}
+
 void SelfAttentionOperation::InitPaEncoderOpIni()
 {
     if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
@@ -502,7 +650,9 @@ void SelfAttentionOperation::InitPaEncoderOpIni()
                      GetSingleton<AtbOperationIrCfg>().GetOperationIr("SelfAttentionOperationEncoderLogn1Slopes1") :
                      GetSingleton<AtbOperationIrCfg>().GetOperationIr("SelfAttentionOperationEncoderLogn1"));
     } else if (isMla_) {
-        InitMlaFaOpIni();
+        return InitMlaFaOpIni();
+    } else if (param_.kernelType == infer::SelfAttentionParam::KernelType::KERNELTYPE_EXP_M8V2) {
+        return InitM8v2FaOpIni();
     } else if (param_.inputLayout == infer::TYPE_BNSD) {
         operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("SelfAttentionOperationEncoderBNSD");
     } else if (param_.quantType == infer::SelfAttentionParam::QuantType::TYPE_QUANT_QKV_OFFLINE) {
@@ -1047,9 +1197,18 @@ Status SelfAttentionOperation::InferShapePADimCheck(const SVector<TensorDesc> &i
         }
     }
     if (hasMask_) {
-        st = (GetSingleton<Config>().Is910B() ||
-        Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) ?
-        PAMaskDimCheck(inTensorDescs) : PAMaskDimCheckNz(inTensorDescs);
+        if (GetSingleton<Config>().Is910B() ||
+            Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
+            st = PAMaskDimCheck(inTensorDescs);
+        } else if (param_.kernelType == infer::SelfAttentionParam::KernelType::KERNELTYPE_EXP_M8V2) {
+            // m8v2 supports nd and nz mask
+            if (param_.maskType == infer::SelfAttentionParam::MaskType::MASK_TYPE_NORM_COMPRESS ||
+                param_.maskType == infer::SelfAttentionParam::MASK_TYPE_NORM) {
+                st = NormMaskDimCheck(inTensorDescs);
+            }
+        } else {
+            st = PAMaskDimCheckNz(inTensorDescs);
+        }
         if (st != NO_ERROR) {
             return st;
         }
@@ -1058,8 +1217,8 @@ Status SelfAttentionOperation::InferShapePADimCheck(const SVector<TensorDesc> &i
         ATB_LOG(ERROR) << "shape of slopes should be the same as headNum";
         return ERROR_INVALID_TENSOR_DIM;
     }
-    if (inTensorDescs.at(tokenOffsetId_).shape.dimNum == 2 &&   // 2: [2, batch]
-        inTensorDescs.at(tokenOffsetId_).shape.dims[0] != 2) {  // 2: [2, batch]
+    if (inTensorDescs.at(tokenOffsetId_).shape.dimNum == 2 &&  // 2: dimNum [2, batch]
+        inTensorDescs.at(tokenOffsetId_).shape.dims[0] != 2) { // 2: [2, batch]
         ATB_LOG(ERROR) << "shape of seqlen should be [batch] or [2, batch]";
         return ERROR_INVALID_TENSOR_DIM;
     }
@@ -1118,36 +1277,94 @@ Status SelfAttentionOperation::InferShapePADimCheckBNSD(const SVector<TensorDesc
         return st;
     }
     if (!TensorUtil::TensorDescEqual(inTensorDescs.at(kcacheId_), inTensorDescs.at(kcacheId_ + 1))) {
-        ATB_LOG(ERROR) << "shape of key and value should be same";
+        ATB_LOG(ERROR) << GetLogPrefix() << "shape of key and value should be same";
         return ERROR_INVALID_TENSOR_DIM;
     }
     uint32_t batch = inTensorDescs.at(tokenOffsetId_).shape.dims[0];
     if (inTensorDescs.at(tokenOffsetId_).shape.dimNum == 2) { // 2: [2, batch]
         batch = inTensorDescs.at(tokenOffsetId_).shape.dims[1];
         if (inTensorDescs.at(tokenOffsetId_).shape.dims[0] != 2) { // 2: [2, batch]
-            ATB_LOG(ERROR) << "shape of seqlen should be [batch] or [2, batch]";
+            ATB_LOG(ERROR) << GetLogPrefix() << "shape of seqlen should be [batch] or [2, batch]";
             return ERROR_INVALID_TENSOR_DIM;
         }
     }
-    if (batch != inTensorDescs.at(0).shape.dims[0] || batch != inTensorDescs.at(kcacheId_).shape.dims[0]) {
-        ATB_LOG(ERROR) << "batch of seqlen, query, key and value should be same";
+    if (batch != inTensorDescs.at(0).shape.dims[0]) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "batch of seqlen, query should be same";
+        return ERROR_INVALID_TENSOR_DIM;
+    }
+    if (batch != inTensorDescs.at(kcacheId_).shape.dims[0]) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "batch of seqlen, key and vlaue should be same";
         return ERROR_INVALID_TENSOR_DIM;
     }
     if (inTensorDescs.at(0).shape.dims[1] != param_.headNum) {
-        ATB_LOG(ERROR) << "2nd dim of query should be same as param headNum when inputLayout is TYPE_BNSD";
+        ATB_LOG(ERROR) << GetLogPrefix() << "2nd dim of query should be same as param headNum when inputLayout is TYPE_BNSD";
         return ERROR_INVALID_TENSOR_DIM;
     }
     if (inTensorDescs.at(1).shape.dims[1] != kvHeadNum_) {
-        ATB_LOG(ERROR) << "2nd dim of key should be same as kvHeadNum when inputLayout is TYPE_BNSD";
+        ATB_LOG(ERROR) << GetLogPrefix() << "2nd dim of key should be same as kvHeadNum when inputLayout is TYPE_BNSD";
         return ERROR_INVALID_TENSOR_DIM;
     }
     if (inTensorDescs.at(0).shape.dims[3] != inTensorDescs.at(kcacheId_).shape.dims[3]) { // 3: headSize
-        ATB_LOG(ERROR) << "headSize of key and query should be same";
+        ATB_LOG(ERROR) << GetLogPrefix() << "headSize of key and query should be same";
         return ERROR_INVALID_TENSOR_DIM;
     }
     if (inTensorDescs.at(0).shape.dims[3] > MAX_HEAD_SIZE) { // 3: headSize
-        ATB_LOG(ERROR) << "headSize should be no greater than 256 when inputLayout is TYPE_BNSD";
+        ATB_LOG(ERROR) << GetLogPrefix() << "headSize should be no greater than 256 when inputLayout is TYPE_BNSD";
         return ERROR_INVALID_TENSOR_DIM;
+    }
+    return NO_ERROR;
+}
+
+Status SelfAttentionOperation::NormMaskDimCheck(const SVector<TensorDesc> &inTensorDescs) const
+{
+    aclFormat maskFormat = inTensorDescs.at(maskId_).format;
+    int64_t actualMaskDim = inTensorDescs.at(maskId_).shape.dimNum;
+    if (param_.maskType == infer::SelfAttentionParam::MaskType::MASK_TYPE_NORM_COMPRESS) {
+        int64_t maskDim = 2;
+        if (maskFormat == ACL_FORMAT_FRACTAL_NZ) {
+            // 310p, norm compress shape: [1, 128/16, 128, 16] -> [1, 8, 128, 16]
+            maskDim = 4; // 4: [1,8,128,16]
+            if (actualMaskDim != maskDim) {
+                ATB_LOG(ERROR) << GetLogPrefix() << "invalid compress mask dimNum, expect: " << maskDim
+                               << ", but got: " << actualMaskDim;
+                return ERROR_INVALID_TENSOR_SIZE;
+            }
+            if (inTensorDescs.at(maskId_).shape.dims[0] != 1 || // 1 : compress mask shape
+                inTensorDescs.at(maskId_).shape.dims[1] !=
+                    COMPRESS_MASK_SIZE / BYTE2_ALIGN ||                          // 128 / 16 = 8: compress mask shape
+                inTensorDescs.at(maskId_).shape.dims[2] != COMPRESS_MASK_SIZE || // 2: dim2 128 : compress mask shape
+                inTensorDescs.at(maskId_).shape.dims[3] != BYTE2_ALIGN) {        // 3: dim3 16 : compress mask shape
+                ATB_LOG(ERROR) << GetLogPrefix() << "invalid compress mask shape";
+                return ERROR_INVALID_TENSOR_DIM;
+            }
+        } else if (maskFormat == ACL_FORMAT_ND) {
+            // 910b, 950
+            // maskDim = 2: [128,128]
+            if (actualMaskDim != maskDim) {
+                ATB_LOG(ERROR) << GetLogPrefix() << "invalid compress mask dimNum, expect: " << maskDim
+                               << ", but got: " << actualMaskDim;
+                return ERROR_INVALID_TENSOR_SIZE;
+            }
+            if (inTensorDescs.at(maskId_).shape.dims[0] != COMPRESS_MASK_SIZE || // 128 : compress mask shape
+                inTensorDescs.at(maskId_).shape.dims[1] != COMPRESS_MASK_SIZE) { // 128 : compress mask shape
+                ATB_LOG(ERROR) << GetLogPrefix() << "invalid compress mask shape";
+                return ERROR_INVALID_TENSOR_DIM;
+            }
+        }
+    } else if (param_.maskType == infer::SelfAttentionParam::MaskType::MASK_TYPE_NORM) {
+        // norm mask: [maxseqlen, maxseqlen], [batch, maxseqlen, maxseqlen]
+        if (actualMaskDim == 3) { // 3: maskDim with batch, need to check batch compare to seqlen
+            // mask: [batch, maxseqlen, maxseqlen]
+            // seqlen shape: one of [2, batch], [batch], lastDim is batch
+            int64_t seqLenDimNum = inTensorDescs.at(tokenOffsetId_).shape.dimNum;
+            int64_t seqlenBatch = inTensorDescs.at(tokenOffsetId_).shape.dims[seqLenDimNum - 1];
+            if (inTensorDescs.at(maskId_).shape.dims[0] != seqlenBatch) {
+                ATB_LOG(ERROR) << GetLogPrefix() << "invalid compress mask batch("
+                               << inTensorDescs.at(maskId_).shape.dims[0]
+                               << ") expect to be the same as seqlen batch: " << seqlenBatch;
+                return ERROR_INVALID_TENSOR_SIZE;
+            }
+        }
     }
     return NO_ERROR;
 }
@@ -1181,15 +1398,7 @@ Status SelfAttentionOperation::PAMaskDimCheck(const SVector<TensorDesc> &inTenso
             return ERROR_INVALID_TENSOR_SIZE;
         }
     } else if (param_.maskType == infer::SelfAttentionParam::MASK_TYPE_NORM_COMPRESS) {
-        if (inTensorDescs.at(maskId_).shape.dimNum != 2) { // 2: [128,128]
-            ATB_LOG(ERROR) << "invalid compress mask dimNum";
-            return ERROR_INVALID_TENSOR_SIZE;
-        }
-        if (inTensorDescs.at(maskId_).shape.dims[0] != 128 || // 128 : compress mask shape
-            inTensorDescs.at(maskId_).shape.dims[1] != 128) { // 128 : compress mask shape
-            ATB_LOG(ERROR) << "invalid compress mask shape";
-            return ERROR_INVALID_TENSOR_DIM;
-        }
+        return NormMaskDimCheck(inTensorDescs);
     } else {
         if (inTensorDescs.at(maskId_).shape.dimNum != 2 && // 5: attnMask 2: 2 dims
             inTensorDescs.at(maskId_).shape.dimNum != 3 && // 5: attnMask 3: 3 dims
@@ -1205,25 +1414,15 @@ Status SelfAttentionOperation::PAMaskDimCheckNz(const SVector<TensorDesc> &inTen
 {
     if (hasSlopes_) {
         if (inTensorDescs.at(maskId_).shape.dimNum != 4) { // 4: [head_num,128//16,maxSeqlen,16] or [1,256//16,256,16]
-            ATB_LOG(ERROR) << "invalid mask dimNum";
+            ATB_LOG(ERROR) << GetLogPrefix() << "invalid mask dimNum";
             return ERROR_INVALID_TENSOR_SIZE;
         } else if (inTensorDescs.at(maskId_).shape.dimNum == 4 &&   // 4: compress mask dimNum
                    inTensorDescs.at(maskId_).shape.dims[3] != 16) { // 3: dim3 16: nz format
-            ATB_LOG(ERROR) << "invalid alibi compress mask shape";
+            ATB_LOG(ERROR) << GetLogPrefix() << "invalid alibi compress mask shape";
             return ERROR_INVALID_TENSOR_DIM;
         }
     } else if (param_.maskType == infer::SelfAttentionParam::MASK_TYPE_NORM_COMPRESS) {
-        if (inTensorDescs.at(maskId_).shape.dimNum != 4) { // 4: [1,8,128,16]
-            ATB_LOG(ERROR) << "invalid compress mask dimNum";
-            return ERROR_INVALID_TENSOR_SIZE;
-        }
-        if (inTensorDescs.at(maskId_).shape.dims[0] != 1 ||   // 1 : compress mask shape
-            inTensorDescs.at(maskId_).shape.dims[1] != 8 ||   // 8 : compress mask shape
-            inTensorDescs.at(maskId_).shape.dims[2] != 128 || // 2: dim2 128 : compress mask shape
-            inTensorDescs.at(maskId_).shape.dims[3] != 16) {  // 3: dim3 16 : compress mask shape
-            ATB_LOG(ERROR) << "invalid compress mask shape";
-            return ERROR_INVALID_TENSOR_DIM;
-        }
+        return NormMaskDimCheck(inTensorDescs);
     }
     return NO_ERROR;
 }
@@ -1367,14 +1566,15 @@ Status SelfAttentionOperation::HeadSizeDimCheck310P(const SVector<TensorDesc> &i
 {
     int64_t headSizeK = 0;
     int64_t headSizeV = 0;
-    if (!TensorUtil::TensorDescEqual(inTensorDescs.at(1), inTensorDescs.at(2))) { // 2: cacheV
+    if (!TensorUtil::TensorDescEqual(inTensorDescs.at(1), inTensorDescs.at(2))) { // 1: cacheK, 2: cacheV
         ATB_LOG(ERROR) << GetLogPrefix() << "shape of internsor1 and intensor2 should be same";
         return ERROR_INVALID_TENSOR_DIM;
     }
     if (param_.kvcacheCfg == atb::infer::SelfAttentionParam::K_BYPASS_V_BYPASS) {
-        if (inTensorDescs.at(1).shape.dims[2] * 16 % kvHeadNum_ != 0 || // 2: hiddenSize/16 16: 16对齐
-            inTensorDescs.at(2).shape.dims[2] * 16 % kvHeadNum_ != 0) { // 2: value 2: hiddenSize/16 16: 16对齐
-            ATB_LOG(ERROR) << GetLogPrefix() << "hiddenSize of key and value should be multiples of kvHeadNum";
+        // [batch, headNum, headSize/16, maxKvSeqlen, 16]
+        if (inTensorDescs.at(1).shape.dims[2] * 16 % kvHeadNum_ != 0 || // 2: headSize/16 16: 16对齐
+            inTensorDescs.at(2).shape.dims[2] * 16 % kvHeadNum_ != 0) { // 2: value 2: headSize/16 16: 16对齐
+            ATB_LOG(ERROR) << GetLogPrefix() << "headSize of key and value should be multiples of kvHeadNum";
             return ERROR_INVALID_TENSOR_DIM;
         }
         headSizeK = inTensorDescs.at(1).shape.dims[2] * 16 / kvHeadNum_; // 2: hiddenSize/16 16: 16对齐
@@ -1382,14 +1582,15 @@ Status SelfAttentionOperation::HeadSizeDimCheck310P(const SVector<TensorDesc> &i
     } else if (inTensorDescs.at(1).shape.dimNum == 2) {                  // 2: [nTokens, hiddenSize]
         if (inTensorDescs.at(1).shape.dims[1] % kvHeadNum_ != 0 ||
             inTensorDescs.at(2).shape.dims[1] % kvHeadNum_ != 0) { // 2: value
-            ATB_LOG(ERROR) << GetLogPrefix() << "hiddenSize of key and value should be multiples of kvHeadNum";
+            ATB_LOG(ERROR) << GetLogPrefix() << "headSize of key and value should be multiples of kvHeadNum";
             return ERROR_INVALID_TENSOR_DIM;
         }
         headSizeK = inTensorDescs.at(1).shape.dims[1] / kvHeadNum_;
         headSizeV = inTensorDescs.at(2).shape.dims[1] / kvHeadNum_; // 2: value
     } else {
-        uint32_t lastDimPos = inTensorDescs.at(1).shape.dimNum - 1;
-        headSizeK = inTensorDescs.at(1).shape.dims[lastDimPos];
+        // bsnd + dimNum == 3, shape: [bs, n, d]
+        uint32_t lastDimPos = inTensorDescs.at(1).shape.dimNum - 1; // 1: cacheK
+        headSizeK = inTensorDescs.at(1).shape.dims[lastDimPos]; // 1: cacheK
         lastDimPos = inTensorDescs.at(2).shape.dimNum - 1;      // 2: cacheV
         headSizeV = inTensorDescs.at(2).shape.dims[lastDimPos]; // 2: cacheV
     }
@@ -1674,41 +1875,42 @@ Status SelfAttentionOperation::InferShapePADimNumCheckBNSD(const SVector<TensorD
 
 Status SelfAttentionOperation::InferShapePADimNumCheck(const SVector<TensorDesc> &inTensorDescs) const
 {
-    if (isMla_) {
+    if (isMla_) { // mla combine cache
         if ((inTensorDescs.at(0).shape.dimNum != 2 &&  // 0: q 2: 2 [nTokens, hiddenSize]
              inTensorDescs.at(0).shape.dimNum != 3 &&  // 0: q 3: [nTokens, head_num, head_size]
              inTensorDescs.at(0).shape.dimNum != 4)) { // 0: q 4: [batch, seq_len, head_num, head_size]
-            ATB_LOG(ERROR) << "dimNum of query should be 2, 3 or 4";
+            ATB_LOG(ERROR) << GetLogPrefix() << "dimNum of query should be 2, 3 or 4, but got: " << inTensorDescs.at(0).shape.dimNum;
             return ERROR_INVALID_TENSOR_SIZE;
         }
         if ((inTensorDescs.at(1).shape.dimNum != 2 &&  // 1: k 2: 2 [nTokens, hiddenSize]
              inTensorDescs.at(1).shape.dimNum != 3 &&  // 1: k 3: [nTokens, head_num, head_size]
              inTensorDescs.at(1).shape.dimNum != 4)) { // 1: k 4: [batch, seq_len, head_num, head_size]
-            ATB_LOG(ERROR) << "dimNum of key should be 2, 3 or 4";
+            ATB_LOG(ERROR) << GetLogPrefix() << "dimNum of key should be 2, 3 or 4, but got: " << inTensorDescs.at(1).shape.dimNum;
             return ERROR_INVALID_TENSOR_SIZE;
         }
     } else {
         if (inTensorDescs.at(0).shape.dimNum != 2 && // 0: q 2: 2 [nTokens, hiddenSize]
             inTensorDescs.at(0).shape.dimNum != 3) { // 0: q 3: [nTokens, head_num, head_size]
-            ATB_LOG(ERROR) << "dimNum of query should be 2, 3";
+            ATB_LOG(ERROR) << GetLogPrefix() << "dimNum of query should be 2, 3, but got: " << inTensorDescs.at(0).shape.dimNum;
             return ERROR_INVALID_TENSOR_SIZE;
         }
         if (inTensorDescs.at(0).shape.dimNum != inTensorDescs.at(1).shape.dimNum) { // 0: q 1: K
-            ATB_LOG(ERROR) << "dimNum of key and query should be the same";
+            ATB_LOG(ERROR) << GetLogPrefix() << "dimNum of key(" << inTensorDescs.at(0).shape.dimNum << ") and query("
+                           << inTensorDescs.at(1).shape.dimNum << ") should be the same";
             return ERROR_INVALID_TENSOR_SIZE;
         }
         if (inTensorDescs.at(2).shape.dimNum != inTensorDescs.at(1).shape.dimNum) { // 1: K 2: V
-            ATB_LOG(ERROR) << "dimNum of key and value should be the same";
+            ATB_LOG(ERROR) << GetLogPrefix() << "dimNum of key and value should be the same";
             return ERROR_INVALID_TENSOR_SIZE;
         }
     }
     if (hasSlopes_ && inTensorDescs.at(tokenOffsetId_ + 1).shape.dimNum != 1) { // tokenOffsetId + 1: Slopes 1: 1 dim
-        ATB_LOG(ERROR) << "invalid intensor dimNum";
+        ATB_LOG(ERROR) << GetLogPrefix() << "invalid intensor dimNum";
         return ERROR_INVALID_TENSOR_SIZE;
     }
     if (inTensorDescs.at(tokenOffsetId_).shape.dimNum != 1 &&
         inTensorDescs.at(tokenOffsetId_).shape.dimNum != 2) { // 2: seqlen: [2, batch]
-        ATB_LOG(ERROR) << "dimNum of seqlen should be 1 or 2";
+        ATB_LOG(ERROR) << GetLogPrefix() << "dimNum of seqlen should be 1 or 2";
         return ERROR_INVALID_TENSOR_DIM_NUM;
     }
     return NO_ERROR;

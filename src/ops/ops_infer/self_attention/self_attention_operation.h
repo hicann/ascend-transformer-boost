@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 Huawei Technologies Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Technologies Co., Ltd.
  * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
  * CANN Open Software License Agreement Version 2.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
@@ -54,6 +54,7 @@ private:
     Status SWAMaskDimCheck(const SVector<TensorDesc> &inTensorDescs) const;
     Status PAMaskDimCheck(const SVector<TensorDesc> &inTensorDescs) const;
     Status PAMaskDimCheckNz(const SVector<TensorDesc> &inTensorDescs) const;
+    Status NormMaskDimCheck(const SVector<TensorDesc> &inTensorDescs) const;
     Status InferShapeMaskDimNumCheck(const SVector<TensorDesc> &inTensorDescs) const;
     Status InferShapePrefixDimNumCheck910B(const SVector<TensorDesc> &inTensorDescs) const;
     Status InferShapePrefixDimCheck910B(const SVector<TensorDesc> &inTensorDescs) const;
@@ -73,6 +74,7 @@ private:
     void InitFaOpIni();
     void InitPaEncoderOpIni();
     void InitMlaFaOpIni();
+    void InitM8v2FaOpIni();
     infer::SelfAttentionParam param_;
     bool isMla_ = false;
     bool hasMask_ = false;

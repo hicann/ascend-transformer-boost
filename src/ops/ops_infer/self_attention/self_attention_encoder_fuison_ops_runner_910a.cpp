@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Technologies Co., Ltd.
+ * Copyright (c) 2026 Huawei Technologies Co., Ltd.
  * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
  * CANN Open Software License Agreement Version 2.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
@@ -17,14 +17,36 @@
 #include "atb/utils/operation_register.h"
 
 namespace atb {
+
+AtbOps::OpParam::UnpadFlashAttentionNz::PrecType ConvertKernelType(infer::SelfAttentionParam::KernelType type)
+{
+    switch (type) {
+        case infer::SelfAttentionParam::KERNELTYPE_DEFAULT:
+            return AtbOps::OpParam::UnpadFlashAttentionNz::PrecType::BMM1_FP16_EXP_FP32;
+        case infer::SelfAttentionParam::KERNELTYPE_HIGH_PRECISION:
+            return AtbOps::OpParam::UnpadFlashAttentionNz::PrecType::BMM1_FP32_EXP_FP32;
+        case infer::SelfAttentionParam::KERNELTYPE_EXP_M8V2:
+            return AtbOps::OpParam::UnpadFlashAttentionNz::PrecType::BMM1_FP16_EXP_M8V2;
+    }
+    ATB_LOG(ERROR) << "SelfAttentionEncoderFusionOpsRunner910A got unexpected kernelType: " << type;
+    return AtbOps::OpParam::UnpadFlashAttentionNz::PrecType::BMM1_FP16_EXP_FP32;
+}
+
 void TransQKVEncoderViewFunc910a(const Mki::SVector<int64_t> &oldDims, Mki::SVector<int64_t> &newDims)
 {
-    if (oldDims.size() != 3) { // 3: q, k, v 必须三维
-        ATB_LOG(ERROR) << "The dimNum of q, k, v should all be 3";
+    if (oldDims.size() != 3 && oldDims.size() != 4) {
+        ATB_LOG(ERROR) << "The dimNum of q, k, v should all be 3 [nTokens, headNum, headSize] or 4 [batch, headNum, "
+                          "maxSeqlen, headSize]";
         newDims.clear();
         return;
     }
-    newDims = {1, oldDims.at(0), oldDims.at(1) * oldDims.at(2)};
+    if (oldDims.size() == 3) { // 3: [bs, n, d] -> [1, bs, nd] -> [1, nd/16, bs, 16]
+        newDims = {1, oldDims.at(0), oldDims.at(1) * oldDims.at(2)};
+        return;
+    }
+    if (oldDims.size() == 4) { // 4: [b, n, s, d] -> [bn, s, d] -> [bn, d/16, s, 16]
+        newDims = {oldDims.at(0) * oldDims.at(1), oldDims.at(2), oldDims.at(3)};
+    }
 }
 
 SelfAttentionEncoderFusionOpsRunner910A::SelfAttentionEncoderFusionOpsRunner910A(const infer::SelfAttentionParam &param)
@@ -37,10 +59,10 @@ SelfAttentionEncoderFusionOpsRunner910A::SelfAttentionEncoderFusionOpsRunner910A
 Status SelfAttentionEncoderFusionOpsRunner910A::SetupKernelGraph(const OpsTensorPack &opsTensorPack)
 {
     bool needMask = (param_.maskType != atb::infer::SelfAttentionParam::MASK_TYPE_UNDEFINED);
-    bool isMaskCompress = (param_.maskType == atb::infer::SelfAttentionParam::MASK_TYPE_ALIBI_COMPRESS ||
-                           param_.maskType == atb::infer::SelfAttentionParam::MASK_TYPE_ALIBI_COMPRESS_SQRT);
+    bool isMaskAlibiCompress = (param_.maskType == atb::infer::SelfAttentionParam::MASK_TYPE_ALIBI_COMPRESS ||
+                                param_.maskType == atb::infer::SelfAttentionParam::MASK_TYPE_ALIBI_COMPRESS_SQRT);
     bool needLogN = (param_.scaleType == atb::infer::SelfAttentionParam::SCALE_TYPE_LOGN);
-    std::size_t intensorSize = needMask ? (isMaskCompress ? 6 : 5) : 4; // 6, 5, 4: flash encoder input num
+    std::size_t intensorSize = needMask ? (isMaskAlibiCompress ? 6 : 5) : 4; // 6, 5, 4: flash encoder input num
     if (needLogN) {
         intensorSize++;
     }
@@ -53,13 +75,14 @@ Status SelfAttentionEncoderFusionOpsRunner910A::SetupKernelGraph(const OpsTensor
     Mki::Tensor *mask = needMask ? &kernelGraph_.inTensors.at(inTensorStart++) : &nullTensor_;
     Mki::Tensor &seqLen = kernelGraph_.inTensors.at(inTensorStart++);
     Mki::Tensor *layerId = &nullTensor_;
-    Mki::Tensor *slopes = isMaskCompress ? &kernelGraph_.inTensors.at(inTensorStart++) : &nullTensor_;
+    Mki::Tensor *slopes = isMaskAlibiCompress ? &kernelGraph_.inTensors.at(inTensorStart++) : &nullTensor_;
     Mki::Tensor *logN = needLogN ? &kernelGraph_.inTensors.at(inTensorStart++) : &nullTensor_;
 
     Mki::Tensor &output = kernelGraph_.outTensors.at(0);
 
+    // 3: [bs, n, d]
+    isBNSD_ = query.desc.dims.size() == 4; // 4: [b, n, s, d], need to reshape
     ATB_LOG(INFO) << GetLogPrefix() << "seqLen dataSize:" << seqLen.dataSize;
-
     auto attnMaskFormat = needMask ? opsTensorPack.inTensors.at(3).desc.format :
                                      static_cast<Mki::TensorFormat>(ACL_FORMAT_UNDEFINED); // 3: attnMask tensor
 
@@ -72,9 +95,8 @@ Status SelfAttentionEncoderFusionOpsRunner910A::SetupKernelGraph(const OpsTensor
     Mki::Tensor &queryNz = kernelGraph_.internalTensors.at(internalTensorId++);
     Mki::Tensor &keyNz = kernelGraph_.internalTensors.at(internalTensorId++);
     Mki::Tensor &valueNz = kernelGraph_.internalTensors.at(internalTensorId++);
-    Mki::Tensor *attnMaskNz = (attnMaskFormat == static_cast<Mki::TensorFormat>(ACL_FORMAT_ND) && needMask) ?
-                                  &kernelGraph_.internalTensors.at(internalTensorId++) :
-                                  mask;
+    bool needMaskTransdata = attnMaskFormat == static_cast<Mki::TensorFormat>(ACL_FORMAT_ND) && needMask;
+    Mki::Tensor *attnMaskNz = needMaskTransdata ? &kernelGraph_.internalTensors.at(internalTensorId++) : mask;
     Mki::Tensor &outNz = kernelGraph_.internalTensors.at(internalTensorId++);
     kernelGraph_.nodes.resize((attnMaskFormat == static_cast<Mki::TensorFormat>(ACL_FORMAT_FRACTAL_NZ) || (!needMask)) ?
                                   5 : // 5: attn mask 为nz或不需要mask时
@@ -82,22 +104,33 @@ Status SelfAttentionEncoderFusionOpsRunner910A::SetupKernelGraph(const OpsTensor
 
     size_t nodeId = 0;
     auto &qTransdataNode = kernelGraph_.nodes.at(nodeId++);
+
+    // kernel graph
+    // shape transformation
+    // 1st step: inTensorViewFuncs
+    // 2nd step: transdata
+    // q: bsnd: [bs, n, d] -> [1, bs, nd] -> [1, nd/16, bs, 16]
+    //    bnsd: [b, n, s, d] -> [bn, s, d] -> [bn, d/16, s, 16]
     qTransdataNode.opDesc = {0, "TransdataOperation",
                              AsdOps::OpParam::Transdata({AsdOps::OpParam::Transdata::ND_TO_FRACTAL_NZ, {0, 0}})};
     qTransdataNode.inTensors = {&query};
     qTransdataNode.outTensors = {&queryNz};
     qTransdataNode.inferShapePreFunc = [&](Mki::LaunchParam &launchParam) {
-        if (launchParam.GetInTensor(0).desc.dims.size() < 3) { // 3: q必须至少三维
+        if (launchParam.GetInTensor(0).desc.dims.size() < 3) { // 0: q index, 3: q必须至少三维
             ATB_LOG(ERROR) << "expect intensor dimNum to be at least 3, but got: "
                            << launchParam.GetInTensor(0).desc.dims.size();
             return;
         }
-        ntokens_ = launchParam.GetInTensor(0).desc.dims.at(1);
-        hiddenSize_ = launchParam.GetInTensor(0).desc.dims.at(2); // 2: 第三维
+        if (launchParam.GetInTensor(0).desc.dims.size() == 3) {  // 0: q index, 3: bsnd:[1, bs, nd], bnsd: [bs, n, d]
+            qDim1_ = launchParam.GetInTensor(0).desc.dims.at(1); // 0: q index, 1: 2nd dim
+            qDim2_ = launchParam.GetInTensor(0).desc.dims.at(2); // 0: q index, 2: 3rd dim
+        }
     };
     qTransdataNode.inTensorViewFuncs.resize(qTransdataNode.inTensors.size());
     qTransdataNode.inTensorViewFuncs[0] = &TransQKVEncoderViewFunc910a;
 
+    // k: bsnd: [bs, n, d] -> [1, bs, nd] -> [1, nd/16, bs, 16]
+    //    bnsd: [b, n, s, d] -> [bn, s, d] -> [bn, d/16, s, 16]
     auto &kTransdataNode = kernelGraph_.nodes.at(nodeId++);
     kTransdataNode.opDesc = {0, "TransdataOperation",
                              AsdOps::OpParam::Transdata({AsdOps::OpParam::Transdata::ND_TO_FRACTAL_NZ, {0, 0}})};
@@ -115,9 +148,21 @@ Status SelfAttentionEncoderFusionOpsRunner910A::SetupKernelGraph(const OpsTensor
     vTransdataNode.inTensorViewFuncs.resize(vTransdataNode.inTensors.size());
     vTransdataNode.inTensorViewFuncs[0] = &TransQKVEncoderViewFunc910a;
 
-    // if attn mask is nd and is needed, do transdata
-    if (attnMaskFormat == static_cast<Mki::TensorFormat>(ACL_FORMAT_ND) && needMask) {
-        ATB_LOG(INFO) << "attnMaskTransdataNode IN " << nodeId;
+    vTransdataNode.inferShapePreFunc = [&](Mki::LaunchParam &launchParam) {
+        if (launchParam.GetInTensor(0).desc.dims.size() < 3) { // 0: v transdata index, 3: v必须至少三维
+            ATB_LOG(ERROR) << "expect intensor dimNum to be at least 3, but got: "
+                           << launchParam.GetInTensor(2).desc.dims.size();
+            return;
+        }
+        if (launchParam.GetInTensor(0).desc.dims.size() == 3) {  // 0: 0 index, 3: bsnd:[1, bs, nd], bnsd: [bs, n, d]
+            vDim1_ = launchParam.GetInTensor(0).desc.dims.at(1); // 0: 0 index, 1: 2nd dim
+            vDim2_ = launchParam.GetInTensor(0).desc.dims.at(2); // 0: 0 index, 2: 3rd dim
+        }
+    };
+
+    // if attn mask is nd and needed, do transdata mask
+    if (needMaskTransdata) {
+        ATB_LOG(INFO) << "attnMaskTransdataNode IN nodeId: " << nodeId;
         auto &attnMaskTransdataNode = kernelGraph_.nodes.at(nodeId++);
         attnMaskTransdataNode.opDesc = {
             0, "TransdataOperation",
@@ -132,7 +177,7 @@ Status SelfAttentionEncoderFusionOpsRunner910A::SetupKernelGraph(const OpsTensor
     SetFAParam(unpadFlashAttentionNzParam);
     flashAttentionEncoderNode.opDesc = {0, "UnpadFlashAttentionNzOperation", unpadFlashAttentionNzParam};
 
-    if (attnMaskFormat == static_cast<Mki::TensorFormat>(ACL_FORMAT_ND) && needMask) {
+    if (needMaskTransdata) {
         flashAttentionEncoderNode.inTensors = {&queryNz, &keyNz, &valueNz, layerId, attnMaskNz, slopes, logN};
     } else {
         flashAttentionEncoderNode.inTensors = {&queryNz, &keyNz, &valueNz, layerId, mask, slopes, logN};
@@ -142,21 +187,21 @@ Status SelfAttentionEncoderFusionOpsRunner910A::SetupKernelGraph(const OpsTensor
     auto &transdataOutNode = kernelGraph_.nodes.at(nodeId++);
     transdataOutNode.opDesc = {
         0, "TransdataOperation",
-        AsdOps::OpParam::Transdata({AsdOps::OpParam::Transdata::FRACTAL_NZ_TO_ND, {ntokens_, hiddenSize_}})};
+        AsdOps::OpParam::Transdata({AsdOps::OpParam::Transdata::FRACTAL_NZ_TO_ND, {qDim1_, vDim2_}})};
     transdataOutNode.inTensors = {&outNz};
     transdataOutNode.outTensors = {&output};
     transdataOutNode.inferShapePreFunc = [=](Mki::LaunchParam &launchParam) {
         launchParam.SetParam(
-            AsdOps::OpParam::Transdata({AsdOps::OpParam::Transdata::FRACTAL_NZ_TO_ND, {ntokens_, hiddenSize_}}));
+            AsdOps::OpParam::Transdata({AsdOps::OpParam::Transdata::FRACTAL_NZ_TO_ND, {qDim1_, vDim2_}}));
     };
     return NO_ERROR;
 }
 
 bool SelfAttentionEncoderFusionOpsRunner910A::NeedModifySlopes(const OpsTensorPack &opsTensorPack)
 {
-    bool isMaskCompress = param_.maskType == atb::infer::SelfAttentionParam::MASK_TYPE_ALIBI_COMPRESS ||
-                          param_.maskType == atb::infer::SelfAttentionParam::MASK_TYPE_ALIBI_COMPRESS_SQRT;
-    if (!isMaskCompress) {
+    bool isMaskAlibiCompress = param_.maskType == atb::infer::SelfAttentionParam::MASK_TYPE_ALIBI_COMPRESS ||
+                               param_.maskType == atb::infer::SelfAttentionParam::MASK_TYPE_ALIBI_COMPRESS_SQRT;
+    if (!isMaskAlibiCompress) {
         return false;
     } else {
         return opsTensorPack.inTensors.at(3).desc.dims.size() == 4 && // 3: maskId, 4: 非 [1,256//16,256,16] 的情况
@@ -224,6 +269,7 @@ void SelfAttentionEncoderFusionOpsRunner910A::SetFAParam(AtbOps::OpParam::UnpadF
     flashAttentionParam.scaleType = param_.scaleType == atb::infer::SelfAttentionParam::SCALE_TYPE_LOGN ?
                                         AtbOps::OpParam::UnpadFlashAttentionNz::SCALE_LOGN :
                                         AtbOps::OpParam::UnpadFlashAttentionNz::SCALE_TOR;
+    flashAttentionParam.precType = ConvertKernelType(param_.kernelType);
 }
 
 void SelfAttentionEncoderFusionOpsRunner910A::SetParam(const Mki::Any &param)
