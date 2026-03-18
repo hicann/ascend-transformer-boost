@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2024 Huawei Technologies Co., Ltd.
+# Copyright (c) 2026 Huawei Technologies Co., Ltd.
 # This program is free software, you can redistribute it and/or modify it under the terms and conditions of
 # CANN Open Software License Agreement Version 2.0 (the "License").
 # Please refer to the License for details. You may not use this file except in compliance with the License.
@@ -119,7 +119,10 @@ class TestFlashAttentionEncoderOperation910A(operation_test.OperationTest):
         return x.reshape(x_shape[:-4] + [m1, m0, n1, n0]).permute(*array_trans)
 
 
-    def calc_expect_func(self, layer, batch, seqlen, max_seq, heads, kv_head, embed, mask_type=0):
+    def calc_expect_func(self, layer, batch, seqlen, max_seq, heads, kv_head, embed, mask_type=0, atbops_kernel_type=0):
+        self.atbops_kernel_type = atbops_kernel_type
+        self.heads = heads
+        self.embed = embed
         is_mask = mask_type>0
         variate_seq = False
         is_decoder = False
@@ -244,25 +247,21 @@ class TestFlashAttentionEncoderOperation910A(operation_test.OperationTest):
             v_offset += kv_s
 
         print("==> data generate finished!")
-
-        # q = q.astype(src_type).reshape(-1, heads, 128)
-        # k = k.astype(src_type).reshape(-1, kv_head, 128)
-        # v = v.astype(src_type).reshape(-1, kv_head, 128)
         mask = mask.astype(src_type).reshape(max_seq, max_seq)
 
         q_len = q_seqlen.astype(np.int32)
         out = out.astype(src_type).reshape(-1, heads*embed)
-        # out = out.astype(src_type).reshape(-1, heads, 128)
 
         ret_data = q, k, v, k_max, v_max, mask, q_len, tokenOffset, layer_id
         self.out = torch.from_numpy(out).npu()
         return ret_data
     def golden_calc(self, input_tensors):
+        if self.atbops_kernel_type == 3: # m8v2, 输出3维
+            self.out = self.out.reshape(-1, self.heads, self.embed)
         return [self.out]
+        
 
     def golden_compare(self, out_tensor, golden_out_tensor):
-        # print('out: ', out_tensor)
-        # print('golden: ', golden_out_tensor)
         return torch.allclose(out_tensor, golden_out_tensor, rtol=0.001, atol=0.001)
 
     def test_mask(self):
@@ -339,7 +338,53 @@ class TestFlashAttentionEncoderOperation910A(operation_test.OperationTest):
         self.execute_with_param(OP_NAME, PARAM, RUN_PARAM, [
             in_tensors[0], in_tensors[1], in_tensors[2], in_tensors[3], in_tensors[4], in_tensors[6], in_tensors[7], in_tensors[8]
         ])
+    def test_no_exp_m8v2(self):
+        if operation_test.get_soc_version() != 'Ascend310P':
+            print("this testcase only supports Ascend310P")
+            return
+        layer = 2
+        batch = 1
+        seqlen = 1024
+        max_seq = 2048
+        heads = 32
+        kv_head = 32
+        embed = 128
+        mask_type = 0
+        atbops_kernel_type = 3
+        data = self.calc_expect_func(layer, batch, seqlen, max_seq, heads, kv_head, embed, mask_type, atbops_kernel_type)
+        param_seqlen = data[6].tolist()
+        param_tokenOffset = data[7].tolist()
+        in_tensors = [torch.from_numpy(tensor) for tensor in data]
+        in_tensors = [tensor.npu() for tensor in in_tensors]
+        k_cache_nz = self.convert_nd_to_nz(in_tensors[3]).reshape(layer, batch, kv_head * embed // 16, max_seq, 16)
+        k_cache_nz = torch_npu.npu_format_cast(k_cache_nz.contiguous(), 29)
+        in_tensors[3] = k_cache_nz
+        v_cache_nz = self.convert_nd_to_nz(in_tensors[4]).reshape(layer, batch, kv_head * embed // 16, max_seq, 16)
+        v_cache_nz = torch_npu.npu_format_cast(v_cache_nz.contiguous(), 29)
+        in_tensors[4] = v_cache_nz
+        mask_nz = self.nd_to_nz_2d(in_tensors[5])
+        mask_nz = torch_npu.npu_format_cast(mask_nz.contiguous(), 29)
+        in_tensors[5] = mask_nz
+        a = [print(tensor.dtype, tensor.device, tensor.shape) for tensor in in_tensors]
+        seqlens = torch.stack([torch.Tensor(param_seqlen).to(torch.int32), torch.Tensor(param_tokenOffset).to(torch.int32)]).npu()
+        
+        # [ntokens, heads * embed] -> [ntokens, heads, embed]
+        q, k, v = in_tensors[0:3]
+        q = q.reshape(-1, heads, embed)
+        k = k.reshape(-1, kv_head, embed)
+        v = v.reshape(-1, kv_head, embed)
+        
 
+        OP_NAME = "SelfAttentionOperation"
+        PARAM = json.dumps({"headNum": heads, "qkScale": (1 / float(math.sqrt(embed))), "kvHeadNum": kv_head,
+                            "calcType": 3, "maskType": mask_type, "kernelType": 2})
+        
+        param_seqlen = np.concatenate((param_seqlen, param_tokenOffset), axis=0).tolist()
+        RUN_PARAM = json.dumps({"seqLen": param_seqlen, "kvCacheWithParam": True})
+        print(PARAM, RUN_PARAM)
+        self.execute_with_param(OP_NAME, PARAM, RUN_PARAM, [
+            q, k, v, seqlens
+        ])
 
 if __name__ == '__main__':
     unittest.main()
