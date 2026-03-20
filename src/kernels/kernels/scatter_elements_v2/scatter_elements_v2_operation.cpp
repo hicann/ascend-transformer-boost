@@ -109,17 +109,9 @@ private:
     Kernel *GetInt8BestKernel(TensorDType indiceDtype, std::string reduction) const
     {
         if (indiceDtype == TENSOR_DTYPE_INT32) {
-            if (reduction == "add") {
-                return GetKernelByName("ScatterElementsV2Int8Int32AddKernel");
-            } else {
-                return GetKernelByName("ScatterElementsV2Int8Int32NoneKernel");
-            }
+            return GetKernelByName("ScatterElementsV2Int8Int32Kernel");
         } else if (indiceDtype == TENSOR_DTYPE_INT64) {
-            if (reduction == "add") {
-                return GetKernelByName("ScatterElementsV2Int8Int64AddKernel");
-            } else {
-                return GetKernelByName("ScatterElementsV2Int8Int64NoneKernel");
-            }
+            return GetKernelByName("ScatterElementsV2Int8Int64Kernel");
         } else {
             MKI_LOG(ERROR) << "indiceDtype only support int32 or int64";
             return nullptr;
@@ -129,17 +121,9 @@ private:
     Kernel *GetUint8BestKernel(TensorDType indiceDtype, std::string reduction) const
     {
         if (indiceDtype == TENSOR_DTYPE_INT32) {
-            if (reduction == "add") {
-                return GetKernelByName("ScatterElementsV2Uint8Int32AddKernel");
-            } else {
-                return GetKernelByName("ScatterElementsV2Uint8Int32NoneKernel");
-            }
+            return GetKernelByName("ScatterElementsV2Uint8Int32Kernel");
         } else if (indiceDtype == TENSOR_DTYPE_INT64) {
-            if (reduction == "add") {
-                return GetKernelByName("ScatterElementsV2Uint8Int64AddKernel");
-            } else {
-                return GetKernelByName("ScatterElementsV2Uint8Int64NoneKernel");
-            }
+            return GetKernelByName("ScatterElementsV2Uint8Int64Kernel");
         } else {
             MKI_LOG(ERROR) << "indiceDtype only support int32 or int64";
             return nullptr;
@@ -149,17 +133,9 @@ private:
     Kernel *GetInt32BestKernel(TensorDType indiceDtype, std::string reduction) const
     {
         if (indiceDtype == TENSOR_DTYPE_INT32) {
-            if (reduction == "add") {
-                return GetKernelByName("ScatterElementsV2Int32Int32AddKernel");
-            } else {
-                return GetKernelByName("ScatterElementsV2Int32Int32NoneKernel");
-            }
+            return GetKernelByName("ScatterElementsV2Int32Int32Kernel");
         } else if (indiceDtype == TENSOR_DTYPE_INT64) {
-            if (reduction == "add") {
-                return GetKernelByName("ScatterElementsV2Int32Int64AddKernel");
-            } else {
-                return GetKernelByName("ScatterElementsV2Int32Int64NoneKernel");
-            }
+            return GetKernelByName("ScatterElementsV2Int32Int64Kernel");
         } else {
             MKI_LOG(ERROR) << "indiceDtype only support int32 or int64";
             return nullptr;
@@ -169,17 +145,9 @@ private:
     Kernel *GetFloat16BestKernel(TensorDType indiceDtype, std::string reduction) const
     {
         if (indiceDtype == TENSOR_DTYPE_INT32) {
-            if (reduction == "add") {
-                return GetKernelByName("ScatterElementsV2Float16Int32AddKernel");
-            } else {
-                return GetKernelByName("ScatterElementsV2Float16Int32NoneKernel");
-            }
+            return GetKernelByName("ScatterElementsV2Float16Int32Kernel");
         } else if (indiceDtype == TENSOR_DTYPE_INT64) {
-            if (reduction == "add") {
-                return GetKernelByName("ScatterElementsV2Float16Int64AddKernel");
-            } else {
-                return GetKernelByName("ScatterElementsV2Float16Int64NoneKernel");
-            }
+            return GetKernelByName("ScatterElementsV2Float16Int64Kernel");
         } else {
             MKI_LOG(ERROR) << "indiceDtype only support int32 or int64";
             return nullptr;
@@ -189,17 +157,9 @@ private:
     Kernel *GetFloat32BestKernel(TensorDType indiceDtype, std::string reduction) const
     {
         if (indiceDtype == TENSOR_DTYPE_INT32) {
-            if (reduction == "add") {
-                return GetKernelByName("ScatterElementsV2Float32Int32AddKernel");
-            } else {
-                return GetKernelByName("ScatterElementsV2Float32Int32NoneKernel");
-            }
+            return GetKernelByName("ScatterElementsV2Float32Int32Kernel");
         } else if (indiceDtype == TENSOR_DTYPE_INT64) {
-            if (reduction == "add") {
-                return GetKernelByName("ScatterElementsV2Float32Int64AddKernel");
-            } else {
-                return GetKernelByName("ScatterElementsV2Float32Int64NoneKernel");
-            }
+            return GetKernelByName("ScatterElementsV2Float32Int64Kernel");
         } else {
             MKI_LOG(ERROR) << "indiceDtype only support int32 or int64";
             return nullptr;
@@ -209,17 +169,9 @@ private:
     Kernel *GetBfloat16BestKernel(TensorDType indiceDtype, std::string reduction) const
     {
         if (indiceDtype == TENSOR_DTYPE_INT32) {
-            if (reduction == "add") {
-                return GetKernelByName("ScatterElementsV2Bfloat16Int32AddKernel");
-            } else {
-                return GetKernelByName("ScatterElementsV2Bfloat16Int32NoneKernel");
-            }
+            return GetKernelByName("ScatterElementsV2Bfloat16Int32Kernel");
         } else if (indiceDtype == TENSOR_DTYPE_INT64) {
-            if (reduction == "add") {
-                return GetKernelByName("ScatterElementsV2Bfloat16Int64AddKernel");
-            } else {
-                return GetKernelByName("ScatterElementsV2Bfloat16Int64NoneKernel");
-            }
+            return GetKernelByName("ScatterElementsV2Bfloat16Int64Kernel");
         } else {
             MKI_LOG(ERROR) << "indiceDtype only support int32 or int64";
             return nullptr;

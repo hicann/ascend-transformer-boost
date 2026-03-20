@@ -52,58 +52,35 @@ public:
 };
 
 // ScatterElementsV2Kernel
-using ScatterElementsV2Int32Int32NoneKernel = ScatterElementsV2Kernel<TENSOR_DTYPE_INT32, TENSOR_DTYPE_INT32, NONE>;
-using ScatterElementsV2Int32Int32AddKernel = ScatterElementsV2Kernel<TENSOR_DTYPE_INT32, TENSOR_DTYPE_INT32, ADD>;
-using ScatterElementsV2Int32Int64NoneKernel = ScatterElementsV2Kernel<TENSOR_DTYPE_INT32, TENSOR_DTYPE_INT64, NONE>;
-using ScatterElementsV2Int32Int64AddKernel = ScatterElementsV2Kernel<TENSOR_DTYPE_INT32, TENSOR_DTYPE_INT64, ADD>;
+// Note: The 'attr' parameter is deprecated and has no effect. Any value passed will be trated the same.
+using ScatterElementsV2Int32Int32Kernel = ScatterElementsV2Kernel<TENSOR_DTYPE_INT32, TENSOR_DTYPE_INT32, NONE>;
+using ScatterElementsV2Int32Int64Kernel = ScatterElementsV2Kernel<TENSOR_DTYPE_INT32, TENSOR_DTYPE_INT64, NONE>;
 
-using ScatterElementsV2Bfloat16Int32NoneKernel = ScatterElementsV2Kernel<TENSOR_DTYPE_BF16, TENSOR_DTYPE_INT32, NONE>;
-using ScatterElementsV2Bfloat16Int32AddKernel = ScatterElementsV2Kernel<TENSOR_DTYPE_BF16, TENSOR_DTYPE_INT32, ADD>;
-using ScatterElementsV2Bfloat16Int64NoneKernel = ScatterElementsV2Kernel<TENSOR_DTYPE_BF16, TENSOR_DTYPE_INT64, NONE>;
-using ScatterElementsV2Bfloat16Int64AddKernel = ScatterElementsV2Kernel<TENSOR_DTYPE_BF16, TENSOR_DTYPE_INT64, ADD>;
+using ScatterElementsV2Bfloat16Int32Kernel = ScatterElementsV2Kernel<TENSOR_DTYPE_BF16, TENSOR_DTYPE_INT32, NONE>;
+using ScatterElementsV2Bfloat16Int64Kernel = ScatterElementsV2Kernel<TENSOR_DTYPE_BF16, TENSOR_DTYPE_INT64, NONE>;
 
-using ScatterElementsV2Uint8Int32NoneKernel = ScatterElementsV2Kernel<TENSOR_DTYPE_UINT8, TENSOR_DTYPE_INT32, NONE>;
-using ScatterElementsV2Uint8Int32AddKernel = ScatterElementsV2Kernel<TENSOR_DTYPE_UINT8, TENSOR_DTYPE_INT32, ADD>;
-using ScatterElementsV2Uint8Int64NoneKernel = ScatterElementsV2Kernel<TENSOR_DTYPE_UINT8, TENSOR_DTYPE_INT64, NONE>;
-using ScatterElementsV2Uint8Int64AddKernel = ScatterElementsV2Kernel<TENSOR_DTYPE_UINT8, TENSOR_DTYPE_INT64, ADD>;
+using ScatterElementsV2Uint8Int32Kernel = ScatterElementsV2Kernel<TENSOR_DTYPE_UINT8, TENSOR_DTYPE_INT32, NONE>;
+using ScatterElementsV2Uint8Int64Kernel = ScatterElementsV2Kernel<TENSOR_DTYPE_UINT8, TENSOR_DTYPE_INT64, NONE>;
 
-using ScatterElementsV2Int8Int32NoneKernel = ScatterElementsV2Kernel<TENSOR_DTYPE_INT8, TENSOR_DTYPE_INT32, NONE>;
-using ScatterElementsV2Int8Int32AddKernel = ScatterElementsV2Kernel<TENSOR_DTYPE_INT8, TENSOR_DTYPE_INT32, ADD>;
-using ScatterElementsV2Int8Int64NoneKernel = ScatterElementsV2Kernel<TENSOR_DTYPE_INT8, TENSOR_DTYPE_INT64, NONE>;
-using ScatterElementsV2Int8Int64AddKernel = ScatterElementsV2Kernel<TENSOR_DTYPE_INT8, TENSOR_DTYPE_INT64, ADD>;
+using ScatterElementsV2Int8Int32Kernel = ScatterElementsV2Kernel<TENSOR_DTYPE_INT8, TENSOR_DTYPE_INT32, NONE>;
+using ScatterElementsV2Int8Int64Kernel = ScatterElementsV2Kernel<TENSOR_DTYPE_INT8, TENSOR_DTYPE_INT64, NONE>;
 
-using ScatterElementsV2Float32Int32NoneKernel = ScatterElementsV2Kernel<TENSOR_DTYPE_FLOAT, TENSOR_DTYPE_INT32, NONE>;
-using ScatterElementsV2Float32Int32AddKernel = ScatterElementsV2Kernel<TENSOR_DTYPE_FLOAT, TENSOR_DTYPE_INT32, ADD>;
-using ScatterElementsV2Float32Int64NoneKernel = ScatterElementsV2Kernel<TENSOR_DTYPE_FLOAT, TENSOR_DTYPE_INT64, NONE>;
-using ScatterElementsV2Float32Int64AddKernel = ScatterElementsV2Kernel<TENSOR_DTYPE_FLOAT, TENSOR_DTYPE_INT64, ADD>;
+using ScatterElementsV2Float32Int32Kernel = ScatterElementsV2Kernel<TENSOR_DTYPE_FLOAT, TENSOR_DTYPE_INT32, NONE>;
+using ScatterElementsV2Float32Int64Kernel = ScatterElementsV2Kernel<TENSOR_DTYPE_FLOAT, TENSOR_DTYPE_INT64, NONE>;
 
-using ScatterElementsV2Float16Int32NoneKernel = ScatterElementsV2Kernel<TENSOR_DTYPE_FLOAT16, TENSOR_DTYPE_INT32, NONE>;
-using ScatterElementsV2Float16Int32AddKernel = ScatterElementsV2Kernel<TENSOR_DTYPE_FLOAT16, TENSOR_DTYPE_INT32, ADD>;
-using ScatterElementsV2Float16Int64NoneKernel = ScatterElementsV2Kernel<TENSOR_DTYPE_FLOAT16, TENSOR_DTYPE_INT64, NONE>;
-using ScatterElementsV2Float16Int64AddKernel = ScatterElementsV2Kernel<TENSOR_DTYPE_FLOAT16, TENSOR_DTYPE_INT64, ADD>;
+using ScatterElementsV2Float16Int32Kernel = ScatterElementsV2Kernel<TENSOR_DTYPE_FLOAT16, TENSOR_DTYPE_INT32, NONE>;
+using ScatterElementsV2Float16Int64Kernel = ScatterElementsV2Kernel<TENSOR_DTYPE_FLOAT16, TENSOR_DTYPE_INT64, NONE>;
 
-REG_KERNEL_BASE(ScatterElementsV2Int32Int32NoneKernel);
-REG_KERNEL_BASE(ScatterElementsV2Int32Int32AddKernel);
-REG_KERNEL_BASE(ScatterElementsV2Int32Int64NoneKernel);
-REG_KERNEL_BASE(ScatterElementsV2Int32Int64AddKernel);
-REG_KERNEL_BASE(ScatterElementsV2Bfloat16Int32NoneKernel);
-REG_KERNEL_BASE(ScatterElementsV2Bfloat16Int32AddKernel);
-REG_KERNEL_BASE(ScatterElementsV2Bfloat16Int64NoneKernel);
-REG_KERNEL_BASE(ScatterElementsV2Bfloat16Int64AddKernel);
-REG_KERNEL_BASE(ScatterElementsV2Uint8Int32NoneKernel);
-REG_KERNEL_BASE(ScatterElementsV2Uint8Int32AddKernel);
-REG_KERNEL_BASE(ScatterElementsV2Uint8Int64NoneKernel);
-REG_KERNEL_BASE(ScatterElementsV2Uint8Int64AddKernel);
-REG_KERNEL_BASE(ScatterElementsV2Int8Int32NoneKernel);
-REG_KERNEL_BASE(ScatterElementsV2Int8Int32AddKernel);
-REG_KERNEL_BASE(ScatterElementsV2Int8Int64NoneKernel);
-REG_KERNEL_BASE(ScatterElementsV2Int8Int64AddKernel);
-REG_KERNEL_BASE(ScatterElementsV2Float32Int32NoneKernel);
-REG_KERNEL_BASE(ScatterElementsV2Float32Int32AddKernel);
-REG_KERNEL_BASE(ScatterElementsV2Float32Int64NoneKernel);
-REG_KERNEL_BASE(ScatterElementsV2Float32Int64AddKernel);
-REG_KERNEL_BASE(ScatterElementsV2Float16Int32NoneKernel);
-REG_KERNEL_BASE(ScatterElementsV2Float16Int32AddKernel);
-REG_KERNEL_BASE(ScatterElementsV2Float16Int64NoneKernel);
-REG_KERNEL_BASE(ScatterElementsV2Float16Int64AddKernel);
+REG_KERNEL_BASE(ScatterElementsV2Int32Int32Kernel);
+REG_KERNEL_BASE(ScatterElementsV2Int32Int64Kernel);
+REG_KERNEL_BASE(ScatterElementsV2Bfloat16Int32Kernel);
+REG_KERNEL_BASE(ScatterElementsV2Bfloat16Int64Kernel);
+REG_KERNEL_BASE(ScatterElementsV2Uint8Int32Kernel);
+REG_KERNEL_BASE(ScatterElementsV2Uint8Int64Kernel);
+REG_KERNEL_BASE(ScatterElementsV2Int8Int32Kernel);
+REG_KERNEL_BASE(ScatterElementsV2Int8Int64Kernel);
+REG_KERNEL_BASE(ScatterElementsV2Float32Int32Kernel);
+REG_KERNEL_BASE(ScatterElementsV2Float32Int64Kernel);
+REG_KERNEL_BASE(ScatterElementsV2Float16Int32Kernel);
+REG_KERNEL_BASE(ScatterElementsV2Float16Int64Kernel);
 } // namespace AsdOps
