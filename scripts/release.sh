@@ -240,7 +240,7 @@ function fn_build_tbe_dependency()
 {
     CANNDEV_DIR=$THIRD_PARTY_DIR/canndev
     METADEF_DIR=$THIRD_PARTY_DIR/metadef
-    API_DIR=$THIRD_PARTY_DIR/api
+    DEVKIT_DIR=$THIRD_PARTY_DIR/asc-devkit
     CANN_OPS_DIR=$THIRD_PARTY_DIR/cann-ops-adv
     export ASCEND_KERNEL_PATH=$ASCEND_HOME_PATH/opp/built-in/op_impl/ai_core/tbe/kernel
     COMPILE_OPTIONS="${COMPILE_OPTIONS} -DBUILD_TBE_ADAPTER=ON"
@@ -250,24 +250,26 @@ function fn_build_tbe_dependency()
         echo "Failed to find canndev"
         exit 1
     fi
-    if [ ! -d "$API_DIR" ];then
+    if [ ! -d "$DEVKIT_DIR" ];then
         echo "Failed to find api"
         exit 1
     fi
-    if [ ! -d "$API_DIR/include/adv_api" ];then
-        echo "Failed to find $API_DIR/include/adv_api"
+    if [ ! -d "$DEVKIT_DIR/include/adv_api" ];then
+        echo "Failed to find $DEVKIT_DIR/include/adv_api"
         exit 1
     fi
-    rm -rf $API_DIR/tiling
-    cp -r $API_DIR/include/adv_api $API_DIR/tiling
+    rm -rf $DEVKIT_DIR/tiling
+    cp -r $DEVKIT_DIR/include/adv_api $DEVKIT_DIR/tiling
     if [ ! -d "$CANN_OPS_DIR" ];then
         echo "Failed to find cann-ops-adv"
         exit 1
     fi
     cp -r $CODE_ROOT/src/kernels/tbe_adapter/stubs/include/canndev $THIRD_PARTY_DIR
-    cp -r $CODE_ROOT/src/kernels/tbe_adapter/stubs/include/api $THIRD_PARTY_DIR
+    cp -r $CODE_ROOT/src/kernels/tbe_adapter/stubs/include/air $THIRD_PARTY_DIR
+    # Future replacements file should be place here
+    cp $CODE_ROOT/src/kernels/tbe_adapter/stubs/stub_files/metadef/inc/common/plugin/plugin_manager.h $THIRD_PARTY_DIR/metadef/inc/common/plugin/
     set +e
-    ln -s $API_DIR/impl $THIRD_PARTY_DIR/impl
+    ln -s $DEVKIT_DIR/impl $THIRD_PARTY_DIR/impl
     set -e
     if [ ! -d "$METADEF_DIR" ];then
         echo "Failed to find metadef"

@@ -18,6 +18,7 @@
 #include "debug/ge_util.h"
 #include "graph/normal_graph/ge_tensor_impl.h"
 #include "graph/utils/tensor_utils.h"
+#include "include/mki/utils/log/log.h"
 
 #define UNUSED_VALUE(x) (void)(x)
 namespace ge {
