@@ -53,7 +53,7 @@ SelfAttentionEncoderFusionOpsRunner910A::SelfAttentionEncoderFusionOpsRunner910A
     : OpsRunner("SelfAttentionEncoderFusionOpsRunner910A"), param_(param)
 {
     needKernelGraphModify_ = true;
-    ATB_LOG(INFO) << "SelfAttentionEncoderFusionOpsRunner910A::SelfAttentionEncoderFusionOpsRunner910A called";
+    ATB_LOG(INFO) << GetLogPrefix() << "SelfAttentionEncoderFusionOpsRunner910A::SelfAttentionEncoderFusionOpsRunner910A called";
 }
 
 Status SelfAttentionEncoderFusionOpsRunner910A::SetupKernelGraph(const OpsTensorPack &opsTensorPack)
@@ -183,16 +183,15 @@ Status SelfAttentionEncoderFusionOpsRunner910A::SetupKernelGraph(const OpsTensor
         flashAttentionEncoderNode.inTensors = {&queryNz, &keyNz, &valueNz, layerId, mask, slopes, logN};
     }
     flashAttentionEncoderNode.outTensors = {&outNz};
-
     auto &transdataOutNode = kernelGraph_.nodes.at(nodeId++);
     transdataOutNode.opDesc = {
         0, "TransdataOperation",
-        AsdOps::OpParam::Transdata({AsdOps::OpParam::Transdata::FRACTAL_NZ_TO_ND, {qDim1_, vDim2_}})};
+        AsdOps::OpParam::Transdata({AsdOps::OpParam::Transdata::FRACTAL_NZ_TO_ND, {qDim1_, qDim2_}})};
     transdataOutNode.inTensors = {&outNz};
     transdataOutNode.outTensors = {&output};
     transdataOutNode.inferShapePreFunc = [=](Mki::LaunchParam &launchParam) {
         launchParam.SetParam(
-            AsdOps::OpParam::Transdata({AsdOps::OpParam::Transdata::FRACTAL_NZ_TO_ND, {qDim1_, vDim2_}}));
+            AsdOps::OpParam::Transdata({AsdOps::OpParam::Transdata::FRACTAL_NZ_TO_ND, {qDim1_, qDim2_}}));
     };
     return NO_ERROR;
 }
