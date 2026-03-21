@@ -57,7 +57,11 @@ template <> Status CreateOperation(const infer::RopeParam &opParam, Operation **
 
 RopeOperation::RopeOperation(const infer::RopeParam &param) : OperationBase("RopeOperation"), param_(param)
 {
-    operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("RopeOperation");
+    std::string opKey = "RopeOperation";
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
+        opKey += "950";
+    }
+    operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr(opKey);
 }
 
 RopeOperation::~RopeOperation() {}
@@ -155,7 +159,7 @@ Status RopeOperation::DimCheck(const SVector<TensorDesc> &inTensorDescs) const
         return ERROR_INVALID_TENSOR_SIZE;
     }
 
-    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
+    if (Mki::PlatformInfo::Instance().GetPlatformType() != Mki::PlatformType::ASCEND_950) {
         if (inTensorDescs.at(2).shape.dims[1] > MAX_HEAD_SIZE || inTensorDescs.at(3).shape.dims[1] > MAX_HEAD_SIZE) {
             ATB_LOG(ERROR) << GetLogPrefix() << "head_size or head_size / 2 must be less than or equal to 4096!"
                         << "cos.dims[1]: " << inTensorDescs.at(2).shape.dims[1]
