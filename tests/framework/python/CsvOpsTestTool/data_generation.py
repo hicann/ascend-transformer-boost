@@ -3479,8 +3479,25 @@ class RopeOperation(DataGen):
 
         min_seqlen = 1
         max_seqlen = 5
-        batch = 3
+        batch = 1
+        logging.info(f"{shapes=}")
+        if get_soc_version() == "Ascend950":
+            batch = shapes[4][0]
+            batch = max(batch, 1)
+            if len(shapes[0]) == 4: # query shape: 4d, [b,s,n,d]
+                min_seqlen = shapes[0][1] // batch
+            elif len(shapes[0]) == 2:
+                min_seqlen = shapes[0][0] // batch
+            max_seqlen = min_seqlen + 1
         seqlen = torch.randint(min_seqlen, max_seqlen, (batch,), dtype=torch.int32)
+        json_data = json.loads(op_params)
+
+        logging.info(f"{min_seqlen=} {max_seqlen=} {batch=}")
+
+        logging.info(f"{seqlen=}")
+
+        if "seqlen" in json_data:
+            seqlen = torch.tensor(json_data["seqlen"], dtype=torch.int32)
         ntoken = int(seqlen.sum())
         hidden_size = shapes[0][1]
         head_size = shapes[2][1]
@@ -3497,12 +3514,18 @@ class RopeOperation(DataGen):
 
     @staticmethod
     def zero(shape, datatype, format, data_gen_ranges, op_params):
-        if hasattr(RopeOperation, 'unpadRetdata'):
-            realshape = RopeOperation.unpadRetdata[0].size()
+        if hasattr(__class__, 'unpadRetdata'):
+            realshape = __class__.unpadRetdata[0].size()
         else:
             realshape = shape
         data = torch.zeros(realshape, dtype=dtype_dict[datatype]).npu()
         return torch_npu.npu_format_cast(data, format_dict[format])
+
+    @staticmethod
+    def case_postprocess(op_params, operation, input_tensor_list, output_tensor_list):
+        # 使用完后删除暂存shape
+        if hasattr(__class__, 'unpadRetdata'):
+            delattr(__class__, 'unpadRetdata')
 
     @staticmethod
     def rotate_half(x):
@@ -3512,12 +3535,13 @@ class RopeOperation(DataGen):
     @staticmethod
     def RopeA5_gloden(in_tensors, op_params):
         json_data = json.loads(op_params)
-        if in_tensors[0].dtype == torch.bfloat16:
+        if in_tensors[0].dtype in (torch.bfloat16, torch.float16):
             in_tensors[0] = in_tensors[0].to(torch.float32)
             in_tensors[1] = in_tensors[1].to(torch.float32)
             in_tensors[2] = in_tensors[2].to(torch.float32)
             in_tensors[3] = in_tensors[3].to(torch.float32)
             dtype = np.float32
+            origin_dtype = in_tensors[0].dtype
         else:
             dtype = np.float16
         q = np.array(in_tensors[0].cpu()).astype(dtype)
@@ -3604,10 +3628,10 @@ class RopeOperation(DataGen):
         if isFour:
             rope_q = rope_q.reshape((realBatch, realSeqLen, realHeadNumQ, realHeadDim))
             rope_k = rope_k.reshape((realBatch, realSeqLen, realHeadNumK, realHeadDim))
+        ret = [torch.tensor(rope_q), torch.tensor(rope_k)]
         if dtype == np.float32:
-            return [torch.tensor(rope_q).bfloat16(), torch.tensor(rope_k).bfloat16()]
-        else:
-            return [torch.tensor(rope_q), torch.tensor(rope_k)]
+            ret = [torch.tensor(rope_q).to(origin_dtype), torch.tensor(rope_k).to(origin_dtype)]
+        return ret
 
     @staticmethod
     def golden(in_tensors, op_params):
