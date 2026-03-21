@@ -16,27 +16,64 @@
 namespace {
 static const uint32_t IN_TENSOR_NUM = 1;
 static const uint32_t OUT_TENSOR_NUM = 1;
+static const uint32_t INDEX_ZERO = 0;
+static const uint32_t SIZE_TWO = 2;
 } // namespace
 
 namespace atb {
 AclnnSliceV2GetWorkspaceSizeFunc SliceAclnnRunner::aclnnGetWorkspaceSizeFunc_ = nullptr;
 AclnnSliceV2Func SliceAclnnRunner::aclnnExecuteFunc_ = nullptr;
+AclnnCastGetWorkspaceSizeFunc SliceAclnnRunner::aclnnCastGetWorkspaceSizeFunc_ = nullptr;
+AclnnCastExecuteFunc SliceAclnnRunner::aclnnCastExecuteFunc_ = nullptr;
 
 SliceAclnnRunner::SliceAclnnRunner(const infer::SliceParam &param) : AclnnRunner("SliceAclnnRunner"), param_(param)
 {
     ATB_LOG(INFO) << GetLogPrefix() << "SliceAclnnRunner::SliceAclnnRunner created";
 }
 
-SliceAclnnRunner::~SliceAclnnRunner() {}
+void SliceAclnnRunner::CleanUp()
+{
+    aclnnStatus ret = 0;
+    if (self_ != nullptr) {
+        ret = aclDestroyTensor(self_);
+        if (ret != ACL_SUCCESS)
+            ATB_LOG(ERROR) << GetLogPrefix() << "destroy self_->tensor failed with return value: " << ret;
+        self_ = nullptr;
+    }
+    if (out_ != nullptr) {
+        ret = aclDestroyTensor(out_);
+        if (ret != ACL_SUCCESS)
+            ATB_LOG(ERROR) << GetLogPrefix() << "destroy out_->tensor failed with return value: " << ret;
+        out_ = nullptr;
+    }
+}
+
+SliceAclnnRunner::~SliceAclnnRunner()
+{
+    CleanUp();
+}
 
 Status SliceAclnnRunner::LoadAclnnFuncs()
 {
     ATB_LOG(INFO) << "SliceAclnnRunner LoadAclnnFuncs";
-    if (SliceAclnnRunner::aclnnGetWorkspaceSizeFunc_ != nullptr && SliceAclnnRunner::aclnnExecuteFunc_ != nullptr) {
+    if (SliceAclnnRunner::aclnnGetWorkspaceSizeFunc_ != nullptr && SliceAclnnRunner::aclnnExecuteFunc_ != nullptr &&
+        SliceAclnnRunner::aclnnCastGetWorkspaceSizeFunc_ != nullptr &&
+        SliceAclnnRunner::aclnnCastExecuteFunc_ != nullptr) {
         return NO_ERROR;
     }
-    return LoadFromSharedObjectFile("aclnnSliceV2GetWorkspaceSize", "aclnnSliceV2",
-                                    SliceAclnnRunner::aclnnGetWorkspaceSizeFunc_, SliceAclnnRunner::aclnnExecuteFunc_);
+    Status st = NO_ERROR;
+    st = LoadFromSharedObjectFile("aclnnSliceV2GetWorkspaceSize", "aclnnSliceV2",
+                                  SliceAclnnRunner::aclnnGetWorkspaceSizeFunc_, SliceAclnnRunner::aclnnExecuteFunc_);
+    if (st != NO_ERROR) {
+        return st;
+    }
+    st = LoadFromSharedObjectFile("aclnnCastGetWorkspaceSize", "aclnnCast",
+                                  SliceAclnnRunner::aclnnCastGetWorkspaceSizeFunc_,
+                                  SliceAclnnRunner::aclnnCastExecuteFunc_);
+    if (st != NO_ERROR) {
+        return st;
+    }
+    return NO_ERROR;
 }
 
 Status SliceAclnnRunner::BuildAclnnVariantPack(const RunnerVariantPack &runnerVariantPack)
@@ -83,6 +120,62 @@ Status SliceAclnnRunner::BuildAclnnVariantPack(const RunnerVariantPack &runnerVa
         aclnnTensorPtr->needUpdateTensorDataPtr = true;
         aclnnVariantPack_.aclOutTensors[i] = aclnnTensorPtr;
     }
+    aclnnStatus status = ACL_SUCCESS;
+    selfBufferSize_ = 0;
+    // temp self
+    if (this->atbVariantPack_.inTensors.at(INDEX_ZERO).desc.dtype == ACL_UINT32) {
+        selfBufferSize_ = this->atbVariantPack_.inTensors.at(INDEX_ZERO).dataSize * SIZE_TWO;
+        atb::SVector<int64_t> strides = GetCopyTensorStride(this->atbVariantPack_.inTensors.at(INDEX_ZERO).desc.shape);
+        Dims viewDims;
+
+        viewDims.dimNum = this->atbVariantPack_.inTensors.at(INDEX_ZERO).desc.shape.dimNum;
+        for (size_t i = 0; i < viewDims.dimNum; i++) {
+            viewDims.dims[i] = this->atbVariantPack_.inTensors.at(INDEX_ZERO).desc.shape.dims[i];
+        }
+        if (self_ != nullptr) {
+            status = aclDestroyTensor(self_);
+            if (status != ACL_SUCCESS) {
+                ATB_LOG(ERROR) << GetLogPrefix() << "destroy self_->tensor failed with statusurn value: " << status;
+                return ERROR_CANN_ERROR;
+            }
+            self_ = nullptr;
+        }
+        self_ = aclCreateTensor(viewDims.dims, viewDims.dimNum, ACL_INT64, strides.data(), 0,
+                                this->atbVariantPack_.inTensors.at(INDEX_ZERO).desc.format, viewDims.dims,
+                                viewDims.dimNum, nullptr);
+        if (self_ == nullptr) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "create int64 indices by aclCreateTensor failed!";
+            return ERROR_CANN_ERROR;
+        }
+    }
+    outBufferSize_ = 0;
+    // temp out
+    if (this->atbVariantPack_.outTensors.at(INDEX_ZERO).desc.dtype == ACL_UINT32) {
+        outBufferSize_ = this->atbVariantPack_.outTensors.at(INDEX_ZERO).dataSize * SIZE_TWO;
+        atb::SVector<int64_t> strides = GetCopyTensorStride(this->atbVariantPack_.outTensors.at(INDEX_ZERO).desc.shape);
+        Dims viewDims;
+
+        viewDims.dimNum = this->atbVariantPack_.outTensors.at(INDEX_ZERO).desc.shape.dimNum;
+        for (size_t i = 0; i < viewDims.dimNum; i++) {
+            viewDims.dims[i] = this->atbVariantPack_.outTensors.at(INDEX_ZERO).desc.shape.dims[i];
+        }
+        if (out_ != nullptr) {
+            status = aclDestroyTensor(out_);
+            if (status != ACL_SUCCESS) {
+                ATB_LOG(ERROR) << GetLogPrefix() << "destroy out->tensor failed with return value: " << status;
+                return ERROR_CANN_ERROR;
+            }
+            out_ = nullptr;
+        }
+        out_ = aclCreateTensor(viewDims.dims, viewDims.dimNum, ACL_INT64, strides.data(), 0,
+                               this->atbVariantPack_.outTensors.at(INDEX_ZERO).desc.format, viewDims.dims,
+                               viewDims.dimNum, nullptr);
+        if (out_ == nullptr) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "create int64 indices by aclCreateTensor failed!";
+            return ERROR_CANN_ERROR;
+        }
+    }
+
     return atb::NO_ERROR;
 }
 
@@ -157,32 +250,137 @@ aclnnStatus SliceAclnnRunner::SetAclNNWorkspaceExecutor()
     startsArray_ = aclCreateIntArray(starts, dimNum);
     endsArray_ = aclCreateIntArray(ends, dimNum);
 
-    aclOpExecutor *rawExecutorPtr = aclnnExecutor_.get();
-
-    ret = SliceAclnnRunner::aclnnGetWorkspaceSizeFunc_(x, startsArray_, endsArray_, axesArray_, stepsArray_, output,
-                                                       &(atbVariantPack_.workspaceBufferSize), &rawExecutorPtr);
-    aclnnExecutor_ = std::shared_ptr<aclOpExecutor>(rawExecutorPtr, [this](aclOpExecutor *ptr) {
-        if (ptr && executorRepeatable_) { // 可复用时才手动销毁aclOpExecutor
-            aclDestroyAclOpExecutor(ptr);
+    // aclnnSliceV2 does not support uint32, convert uint32 to int64
+    if (selfBufferSize_ != 0) {
+        aclOpExecutor *rawCastExecutorPtr = this->aclnnCastExecutor1st_.get();
+        ret = SliceAclnnRunner::aclnnCastGetWorkspaceSizeFunc_(x, ACL_INT64, self_, &(this->cast1stWorkspaceSize_),
+                                                               &rawCastExecutorPtr);
+        if (ret != ACL_SUCCESS) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "aclnnCastGetWorkspaceSize failed!";
+            return ret;
         }
-    });
+        ret = aclSetAclOpExecutorRepeatable(rawCastExecutorPtr);
+        if (ret != ACL_SUCCESS) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "Set Cast AclOpExecutorRepeatable failed!";
+            return ret;
+        }
+        this->aclnnCastExecutor1st_ = std::shared_ptr<aclOpExecutor>(rawCastExecutorPtr, [this](aclOpExecutor *ptr) {
+            if (ptr) { // 可复用时才手动销毁aclOpExecutor
+                aclDestroyAclOpExecutor(ptr);
+            }
+        });
+    }
+
+    aclOpExecutor *rawExecutorPtr = aclnnExecutor_.get();
+    ret = SliceAclnnRunner::aclnnGetWorkspaceSizeFunc_(selfBufferSize_ == 0 ? x : self_, startsArray_, endsArray_,
+                                                       axesArray_, stepsArray_, outBufferSize_ == 0 ? output : out_,
+                                                       &(this->sliceWorkspaceSize_), &rawExecutorPtr);
     if (ret != ACL_SUCCESS) {
         ATB_LOG(ERROR) << GetLogPrefix() << "aclnnGetWorkspaceSize failed!";
         return ret;
     }
+    ret = aclSetAclOpExecutorRepeatable(rawExecutorPtr);
+    if (ret != ACL_SUCCESS) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "Set Slice AclOpExecutorRepeatable failed!";
+        return ret;
+    }
+    aclnnExecutor_ = std::shared_ptr<aclOpExecutor>(rawExecutorPtr, [this](aclOpExecutor *ptr) {
+        if (ptr) { // 可复用时才手动销毁aclOpExecutor
+            aclDestroyAclOpExecutor(ptr);
+        }
+    });
+
+    // convert int64 to uint32
+    if (outBufferSize_ != 0) {
+        aclOpExecutor *rawCastExecutorPtr = this->aclnnCastExecutor2nd_.get();
+        ret = SliceAclnnRunner::aclnnCastGetWorkspaceSizeFunc_(out_, ACL_UINT32, output, &(this->cast2ndWorkspaceSize_),
+                                                               &rawCastExecutorPtr);
+        if (ret != ACL_SUCCESS) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "aclnnCastGetWorkspaceSize failed!";
+            return ret;
+        }
+        ret = aclSetAclOpExecutorRepeatable(rawCastExecutorPtr);
+        if (ret != ACL_SUCCESS) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "Set Cast AclOpExecutorRepeatable failed!";
+            return ret;
+        }
+        this->aclnnCastExecutor2nd_ = std::shared_ptr<aclOpExecutor>(rawCastExecutorPtr, [this](aclOpExecutor *ptr) {
+            if (ptr) { // 可复用时才手动销毁aclOpExecutor
+                aclDestroyAclOpExecutor(ptr);
+            }
+        });
+    }
+    this->atbVariantPack_.workspaceBufferSize = this->sliceWorkspaceSize_ + this->cast1stWorkspaceSize_ +
+                                                this->cast2ndWorkspaceSize_ + this->selfBufferSize_ +
+                                                this->outBufferSize_;
     ATB_LOG(INFO) << GetLogPrefix() << "workspaceSize: " << atbVariantPack_.workspaceBufferSize;
     return ret;
+}
+
+bool SliceAclnnRunner::useCache()
+{
+    return false;
 }
 
 Status SliceAclnnRunner::LaunchAclnnKernel()
 {
     ATB_LOG(INFO) << GetLogPrefix() << "LaunchAclnnKernel execute start.";
     void *executeStream = GetExecuteStream(atbVariantPack_.context);
-    aclnnStatus ret = SliceAclnnRunner::aclnnExecuteFunc_(
-        atbVariantPack_.workspaceBuffer, atbVariantPack_.workspaceBufferSize, aclnnExecutor_.get(), executeStream);
+    aclnnStatus ret = ACL_SUCCESS;
+    if (selfBufferSize_ != 0) {
+        ret = aclSetOutputTensorAddr(this->aclnnCastExecutor1st_.get(), INDEX_ZERO, this->self_,
+                                     this->atbVariantPack_.workspaceBuffer + this->sliceWorkspaceSize_ +
+                                         this->cast1stWorkspaceSize_ + this->cast2ndWorkspaceSize_);
+        if (ret != ACL_SUCCESS) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "aclSetOutputTensorAddr failed with return value: " << ret;
+            return ERROR_CANN_ERROR;
+        }
+        ret = aclSetInputTensorAddr(this->aclnnExecutor_.get(), INDEX_ZERO, this->self_,
+                                    this->atbVariantPack_.workspaceBuffer + this->sliceWorkspaceSize_ +
+                                        this->cast1stWorkspaceSize_ + this->cast2ndWorkspaceSize_);
+        if (ret != ACL_SUCCESS) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "aclSetInputTensorAddr failed with return value: " << ret;
+            return ERROR_CANN_ERROR;
+        }
+    }
+    if (outBufferSize_ != 0) {
+        ret = aclSetOutputTensorAddr(this->aclnnExecutor_.get(), INDEX_ZERO, this->out_,
+                                     this->atbVariantPack_.workspaceBuffer + this->sliceWorkspaceSize_ +
+                                         this->cast1stWorkspaceSize_ + this->cast2ndWorkspaceSize_ + selfBufferSize_);
+        if (ret != ACL_SUCCESS) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "aclSetOutputTensorAddr failed with return value: " << ret;
+            return ERROR_CANN_ERROR;
+        }
+        ret = aclSetInputTensorAddr(this->aclnnCastExecutor2nd_.get(), INDEX_ZERO, this->out_,
+                                    this->atbVariantPack_.workspaceBuffer + this->sliceWorkspaceSize_ +
+                                        this->cast1stWorkspaceSize_ + this->cast2ndWorkspaceSize_ + selfBufferSize_);
+        if (ret != ACL_SUCCESS) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "aclSetInputTensorAddr failed with return value: " << ret;
+            return ERROR_CANN_ERROR;
+        }
+    }
+    if (selfBufferSize_ != 0) {
+        ret = SliceAclnnRunner::aclnnCastExecuteFunc_(atbVariantPack_.workspaceBuffer + this->sliceWorkspaceSize_,
+                                                      this->cast1stWorkspaceSize_, aclnnExecutor_.get(), executeStream);
+        if (ret != ACL_SUCCESS) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "Atb aclnn op kernel launch failed with return value: " << ret;
+            return ERROR_CANN_ERROR;
+        }
+    }
+    ret = SliceAclnnRunner::aclnnExecuteFunc_(atbVariantPack_.workspaceBuffer, this->sliceWorkspaceSize_,
+                                              aclnnExecutor_.get(), executeStream);
     if (ret != ACL_SUCCESS) {
         ATB_LOG(ERROR) << GetLogPrefix() << "Atb aclnn op kernel launch failed with return value: " << ret;
         return ERROR_CANN_ERROR;
+    }
+    if (outBufferSize_ != 0) {
+        ret = SliceAclnnRunner::aclnnCastExecuteFunc_(
+            atbVariantPack_.workspaceBuffer + this->sliceWorkspaceSize_ + this->cast1stWorkspaceSize_,
+            this->cast2ndWorkspaceSize_, this->aclnnCastExecutor2nd_.get(), executeStream);
+        if (ret != ACL_SUCCESS) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "Atb aclnn op kernel launch failed with return value: " << ret;
+            return ERROR_CANN_ERROR;
+        }
     }
     ATB_LOG(INFO) << GetLogPrefix() << "LaunchAclnnKernel execute success.";
     if (stepsArray_) {
