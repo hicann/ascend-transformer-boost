@@ -2427,6 +2427,22 @@ class TopkToppSamplingOperation(DataGen):
 
     @staticmethod
     def golden(in_tensors, op_params):
+
+        def logprobs_golden(in_tensors, logprobs_size):
+            sorted_probs = in_tensors[0].to(torch.float32).cpu().numpy()
+            cumsumed_probs = in_tensors[1]
+            select_index = in_tensors[2]
+            select_prob = np.take_along_axis(cumsumed_probs, select_index, axis=-1).astype(np.float32)
+
+            logprobs_output = sorted_probs[:, :logprobs_size]
+            logprobs_output = np.log(np.divide(logprobs_output, select_prob))
+            batch = sorted_probs.shape[0]
+            increasing_index = np.tile(np.arange(logprobs_size), batch).reshape(batch, -1)
+            mask = ~torch.tensor(increasing_index <= select_index)
+            logprobs_output = torch.tensor(logprobs_output).masked_fill(mask=mask, value=-9999.0)
+
+            return logprobs_output
+        
         json_data = json.loads(op_params)
         topktopp_sampling_type = json_data["topkToppSamplingType"]
         libc = CDLL("libc.so.6")
@@ -2479,10 +2495,8 @@ class TopkToppSamplingOperation(DataGen):
                     mask_tensor[:, 0] = 0
                     sum_val = np.sum(~mask_tensor.numpy(), axis=-1, keepdims=True) - 1
                     sum_val[sum_val < 0] = 0
-                    topp_v = np.take_along_axis(probs_cumsumed.to(torch.float32).cpu().numpy(), sum_val, axis=-1)
-                    logprobs_output = probs_sorted[:, :logProbsSize].cpu()
-                    logprobs_output = logprobs_output.div(torch.from_numpy(topp_v)).log()
-                    logprobs_output = logprobs_output.masked_fill(mask=mask_tensor[:, :logProbsSize], value=-9999.0)
+                    probs_cumsumed = probs_cumsumed.to(torch.float32).cpu().numpy()
+                    logprobs_output = logprobs_golden([probs_sorted, probs_cumsumed, sum_val], logProbsSize)
                     return [outtensor_idx.to(torch.int32).cpu(), outtensor_probs.to(torch.float16).cpu(),
                             logprobs_output.to(torch.float32).cpu()]
 
@@ -2513,13 +2527,8 @@ class TopkToppSamplingOperation(DataGen):
                 outtensor_probs = torch.gather(probs_sorted, dim=1, index=res_idx)
                 outtensor_idx = torch.gather(idx_sorted, dim=1, index=res_idx)
                 if topktopp_sampling_type == 3:
-                    bool_judge[:, 0] = 1
                     logProbsSize = json_data["logProbsSize"]
-                    logprobs_output = probs_sorted[:, :logProbsSize].to(torch.float32).cpu()
-                    logprobs_output = logprobs_output.div(torch.from_numpy(topp_v)).log()
-
-                    logprobs_output = logprobs_output.masked_fill(mask=~torch.from_numpy(bool_judge[:, :logProbsSize]),
-                                                                  value=-9999.0)
+                    logprobs_output = logprobs_golden([probs_sorted, probs_cumsumed, sum_val], logProbsSize)
                     return [outtensor_idx.to(torch.int32).cpu(), outtensor_probs.to(torch.float16).cpu(),
                             logprobs_output.to(torch.float32).cpu()]
                 else:
