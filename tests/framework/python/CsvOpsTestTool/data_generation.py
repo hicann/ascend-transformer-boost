@@ -2443,6 +2443,26 @@ class TopkToppSamplingOperation(DataGen):
 
             return logprobs_output
         
+        def toppsample_golden_firstpick(probs_cumsumed, topp, rand, temp_ub_ele_aligned=16384):
+            batch_size = probs_cumsumed.shape[0]
+            vocab_size = probs_cumsumed.shape[-1]
+            per_core_run_num = (vocab_size + temp_ub_ele_aligned - 1) // temp_ub_ele_aligned
+            for b in range(batch_size):
+                remove_val = topp[b] if topp.shape[0] > 1 else topp[0]
+                idx_return = None
+                # 模拟分块遍历（对应FirstPick中的循环）
+                for j in range(per_core_run_num):
+                    start_idx = j * temp_ub_ele_aligned
+                    end_idx = min(start_idx + temp_ub_ele_aligned, vocab_size)
+                    # 获取当前块的最后一个值
+                    block_last_val = probs_cumsumed[b, end_idx - 1]
+                    # 找到第一个大于temp_rand_val的块
+                    if block_last_val >= remove_val * rand[b] and idx_return is None:
+                        idx_return = j
+                if idx_return is None:
+                    idx_return = per_core_run_num - 1
+            return idx_return
+        
         json_data = json.loads(op_params)
         topktopp_sampling_type = json_data["topkToppSamplingType"]
         libc = CDLL("libc.so.6")
@@ -2458,11 +2478,13 @@ class TopkToppSamplingOperation(DataGen):
             # 转npu计算以提高精度
             probs_sorted_sumed = probs_cumsumed.cpu().to(torch.float32).numpy()
             topp_cpu = topp.cpu().to(torch.float32).numpy()
+            rand = np.array(rand_list).reshape(-1, 1)[0:probs.shape[0]]
+            idx_return = toppsample_golden_firstpick(probs_sorted_sumed, topp_cpu, rand, 16384)
             bool_judge = (probs_sorted_sumed < topp_cpu)
             sum_val = np.sum(bool_judge, axis=-1, keepdims=True) - 1
             sum_val[sum_val < 0] = 0
-            topp_v = np.take_along_axis(probs_sorted_sumed, sum_val, axis=-1)
-            topp_v *= np.array(rand_list).reshape(-1, 1)[0:probs.shape[0]]
+            topp_v = np.take_along_axis(probs_sorted_sumed, np.minimum((idx_return + 1) * 16384 - 1, sum_val), axis=-1)
+            topp_v *= rand
             bool_judge_one = probs_sorted_sumed <= topp_v
             res = np.sum(bool_judge_one, axis=-1, keepdims=True)
             res[res < 0] = 0
@@ -2504,12 +2526,8 @@ class TopkToppSamplingOperation(DataGen):
             if topktopp_sampling_type == 1 or topktopp_sampling_type == 3:
                 topp = topp.to(torch.float32).cpu().numpy()
                 probs_cumsumed = probs_cumsumed.to(torch.float32).cpu().numpy()
-                bool_judge = (probs_cumsumed < topp)
-                sum_val = np.sum(bool_judge, axis=-1, keepdims=True) - 1
-                sum_val[sum_val < 0] = 0
-                topp_v = np.take_along_axis(probs_cumsumed, sum_val, axis=-1)
+                rand = None
                 randnp_new = np.zeros(probs_cumsumed.shape[0])
-                topp_v_new = None
                 for i in range(probs_cumsumed.shape[0]):
                     if topktopp_sampling_type == 1:
                         randSeeds = json_data["randSeeds"]
@@ -2517,9 +2535,15 @@ class TopkToppSamplingOperation(DataGen):
                         rand_num = libc.rand() / 0x7fffffff
                         randnp_new[i] = rand_num
                         randnp_new = randnp_new.reshape(-1, 1)
-                        topp_v_new = randnp_new[0:probs_cumsumed.shape[0]] * topp_v
+                        rand = randnp_new[0:probs_cumsumed.shape[0]]
                     else:
-                        topp_v_new = in_tensors[3].cpu().numpy().astype(np.float32) * topp_v
+                        rand = in_tensors[3].cpu().numpy().astype(np.float32)
+                idx_return = toppsample_golden_firstpick(probs_cumsumed, topp, rand, 16384)
+                bool_judge = (probs_cumsumed < topp)
+                sum_val = np.sum(bool_judge, axis=-1, keepdims=True) - 1
+                sum_val[sum_val < 0] = 0
+                topp_v = np.take_along_axis(probs_cumsumed,  np.minimum((idx_return + 1) * 16384 - 1,sum_val), axis=-1)
+                topp_v_new = rand * topp_v
                 bool_judge_one = (probs_cumsumed < topp_v_new)
                 res = np.sum(bool_judge_one, axis=-1, keepdims=True)
                 res[res < 0] = 0
