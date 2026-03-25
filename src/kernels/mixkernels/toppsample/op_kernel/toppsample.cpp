@@ -116,12 +116,14 @@ public:
         AscendC::LocalTensor<T> toppBuf_ = yBuf_.Get<T>();
         AscendC::LocalTensor<float> toppBufF32_ = yF32Buf_.Get<float>();
         AscendC::LocalTensor<int32_t> int32BlkBuf = int32Buf_.Get<int32_t>();
+        AscendC::LocalTensor<int32_t> selectRangeBlkBuf = selectRangeBlkBuf_.Get<int32_t>();
 
         PickUpRand();
         AscendC::SetFlag<HardEvent::MTE2_V>(EVENT_ID0);
         AscendC::WaitFlag<HardEvent::MTE2_V>(EVENT_ID0);
         // 最开始清空数据
         Duplicate(int32BlkBuf, (int32_t)0, MAX_CORE_NUM);
+        Duplicate(selectRangeBlkBuf, (int32_t)0, MAX_CORE_NUM);
         AscendC::LocalTensor<uint32_t> uint32Buf_ = int8Buf_.Get<uint32_t>();
         Duplicate(uint32Buf_, uint32_t(0), tempUbEleAligened_ / BLK_SIZE);
         // 截断数可能是batch个，也可能是1个
