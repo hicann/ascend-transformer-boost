@@ -29,6 +29,7 @@ sys.path.append("./tests/pythontest")
 save_path = "./"
 from precision_calcu import compare_cv
 
+
 class ScaleType(Enum):
     SCALE_TOR = 0
     SCALE_LOGN = 1

@@ -90,7 +90,8 @@ Status SelfAttentionAclnnRunner::BuildAclnnVariantPack(const RunnerVariantPack &
     if (st != NO_ERROR) {
         return st;
     }
-    if (qSeqLen_ != 1) {
+    if (!isDecoder_) {
+        // Prefill need mask
         switch (param_.maskType) {
             case infer::SelfAttentionParam::MASK_TYPE_ALIBI:
                 st = CreatePseShiftAclnnTensor();
@@ -132,7 +133,7 @@ aclnnStatus SelfAttentionAclnnRunner::SetAclNNWorkspaceExecutor()
     aclTensorList *value = aclnnVariantPack_.aclInTensorList.at(valueAclTensorListIndex_);
     aclTensor *pseShift = nullptr;
     aclTensor *attenMask = nullptr;
-    if (qSeqLen_ != 1) {
+    if (!isDecoder_) {
         if (param_.maskType == infer::SelfAttentionParam::MASK_TYPE_ALIBI) {
             pseShift = aclnnVariantPack_.aclInTensors.at(pseShiftAclTensorIndex_)->tensor;
         }
@@ -274,7 +275,8 @@ Status SelfAttentionAclnnRunner::CreateQueryAclnnTensor()
     Tensor atbTensor = atbVariantPack_.inTensors.at(atbInTensorIndex_++);
     std::shared_ptr<AclNNTensor> aclnnTensorPtr = InitAclnnTensor(atbTensor, QUERY_ACLNN_TENSOR_IDX);
     Dims storageShape = atbTensor.desc.shape;
-    qSeqLen_ = storageShape.dims[0] / batch_;
+    // [B*S, N, D] reduced to [B*1, N, D]
+    isDecoder_ = storageShape.dims[0] == batch_;
     Dims viewShape;
     if (param_.maskType == infer::SelfAttentionParam::MASK_TYPE_ALIBI) {
         viewShape.dimNum = 4;  // 4: [B, S, N, D]
@@ -457,7 +459,8 @@ Status SelfAttentionAclnnRunner::CreateAttenMaskAclnnTensor()
     Tensor atbTensor = atbVariantPack_.inTensors.at(atbInTensorIndex_++);
     std::shared_ptr<AclNNTensor> aclnnTensorPtr = InitAclnnTensor(atbTensor, ATTEN_MASK_ACLNN_TENSOR_IDX);
     Dims storageShape = atbTensor.desc.shape;
-    if (qSeqLen_ != 1 && storageShape.dims[1] == 2048 && param_.isTriuMask) {
+    // only prefill need mask
+    if (!isDecoder_ && storageShape.dims[1] == 2048 && param_.isTriuMask) {
         aclnnParam_.sparseMode = 2;  // 2: leftUpCausal mask
     } else if (storageShape.dimNum == 2) { // 2: [maxQSeqlen, maxKVSeqlen]
         storageShape.dimNum = 3; // 3: [1, maxQSeqlen, maxKVSeqlen]

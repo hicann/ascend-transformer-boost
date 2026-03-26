@@ -102,7 +102,8 @@ private:
     size_t attentionOutAclTensorIndex_ = 0;
 
     int64_t batch_ = 0;
-    int64_t qSeqLen_ = 0;
+    // Decoder: for all batch, qSeqlen is 1; update kvCache in FA
+    int64_t isDecoder_ = false;
 
     aclIntArray *actualSeqLengths_ = nullptr;
 

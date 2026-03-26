@@ -49,6 +49,7 @@ static const int MASK_BIT = 0x00004;
 static const int BYPASS_BIT = 0x00008;
 static const int SCALE_BIT = 0x00010;
 static constexpr int64_t COMPRESS_MASK_SIZE = 128;
+static constexpr int64_t COMPRESS_MASK_SIZE_950 = 2048;
 static constexpr int64_t BYTE2_ALIGN = 16;
 
 bool ParamCheck950(const infer::SelfAttentionParam &opParam);
@@ -1345,9 +1346,15 @@ Status SelfAttentionOperation::NormMaskDimCheck(const SVector<TensorDesc> &inTen
                                << ", but got: " << actualMaskDim;
                 return ERROR_INVALID_TENSOR_SIZE;
             }
-            if (inTensorDescs.at(maskId_).shape.dims[0] != COMPRESS_MASK_SIZE || // 128 : compress mask shape
-                inTensorDescs.at(maskId_).shape.dims[1] != COMPRESS_MASK_SIZE) { // 128 : compress mask shape
-                ATB_LOG(ERROR) << GetLogPrefix() << "invalid compress mask shape";
+            int64_t maxMaskLen = COMPRESS_MASK_SIZE;
+            if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
+                maxMaskLen = COMPRESS_MASK_SIZE_950;
+            }
+            if (inTensorDescs.at(maskId_).shape.dims[0] != maxMaskLen || // 128 : compress mask shape
+                inTensorDescs.at(maskId_).shape.dims[1] != maxMaskLen) { // 128 : compress mask shape
+                ATB_LOG(ERROR) << GetLogPrefix() << "invalid compress mask shape, expect[" << maxMaskLen << ", "
+                               << "], but got: [" << inTensorDescs.at(maskId_).shape.dims[0] << ", "
+                               << inTensorDescs.at(maskId_).shape.dims[1] << "].";
                 return ERROR_INVALID_TENSOR_DIM;
             }
         }
