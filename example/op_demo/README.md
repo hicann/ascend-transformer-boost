@@ -17,12 +17,12 @@ atb::Status TransdataOp(atb::Context *contextPtr, aclrtStream stream, const atb:
 
 | 参数名称| 含义 |
 | --- | --- |
-| `contextPtr` | 指向 `atb::Context `的指针，用于提供上下文信息 |
+|`contextPtr` | 指向`atb::Context `的指针，用于提供上下文信息 |
 |`stream`  |  用于执行操作的流 |
-|  `inTensor`| 待转换的 ND 格式的tensor |
+|`inTensor`| 待转换的 ND 格式的tensor |
 |`tensorType`| 输入 tensor 的数据类型|
 |`outTensor`|输出 tensor |
-|`outTensor`|输出的 `FRACTAL_NZ` 格式的 tensor，函数执行后将被填充|
+|`outTensor`|输出的`FRACTAL_NZ`格式的 tensor，函数执行后将被填充|
 |`shape`|输出 tensor的维度|
 
 #### 返回值
@@ -56,7 +56,9 @@ atb::Status GetShape(const aclDataType tensorType, const std::vector<int64_t> &i
 `atb::Status`: 函数执行的状态码，表示操作是否成功。如果成功，返回 `atb::ErrorType::NO_ERROR`，否则返回相应的错误码。
 
 ## Transdata使用说明
+
 注意：
+
 - 使用`TransdataOp`转换ND格式的tensor时，需要保证传入的tensor是ND格式，因此创建初始的tensor时，应当使用ND格式下的shape，而使用`TransdataOp`函数时传入最终想得到的NZ格式下tensor的shape；
 - 在`CreateTensorFromVector`中只传入了一种格式下的shape，因此需要使用GetShape函数得到ND和NZ两种数据格式下的shape
 

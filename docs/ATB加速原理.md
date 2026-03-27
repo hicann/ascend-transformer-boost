@@ -20,7 +20,6 @@
 
 <img src="./images/原理2.png" alt="算子下发流程" style="width: 600; height: auto;">
 
-
 1. 合法性检查 
 
     检查算子输入、输出、参数是否符合算子要求， 防止错误参数提交到Device后导致错误。
@@ -60,7 +59,6 @@
 
     Tiling策略对复杂算子的性能影响巨大， 同一个算子在不同Tiling策略下可能有10倍性能差异。
 
-
 4. 获取Workspace大小
 
     算子内部有时需要通过额外的HBM内存进行数据交换或者缓存， 这部分空间称为算子的Workspace。 需要在算子实际执行前分配好。 
@@ -95,6 +93,7 @@
     - 内存优化：通过基于内存Block分裂、合并、尾块优化的内存分配算法，实现图算子内部中间Tensor复用，平均节省Workspace 50%，提升大模型推理Batch Size上限。
 
 ### 组图实例
+
 详见 tests/framework/c++/layer_ops/llama65b/layer/llama65b_layer_mlp_graph_builder.cpp 中CreateLlamaMlpOperationByGraphOpBuilder函数。
 下面仅包含组图逻辑主体。
 
@@ -163,13 +162,11 @@ atb::Status CreateLlamaMlpOperationByGraphOpBuilder(const LlamaMlpParamGb &param
 
     <img src="./images/原理12.png" alt="HBM内存优化" style="width: 600; height:auto;">
 
-
 3. 下发优化
 
     优化前下发调度：逐个算子执行Setup和execution，容易在NPU上形成空泡
 
     <img src="./images/原理13.png" alt="普通算子下发" style="width: 600; height:auto;">
-
 
     基础优化：ATB通过图算子批量进行算子Setup和任务下发，可有效减少NPU空泡。 这一步优化是组图模式自动实现的。不需要用户特殊操作。
 
@@ -178,5 +175,4 @@ atb::Status CreateLlamaMlpOperationByGraphOpBuilder(const LlamaMlpParamGb &param
     双线程下发优化（推荐使用）：通过双线程分别进行算子批量Setup和批量任务下发，可以同时减少host执行时间和NPU空泡。
     这种当时需要用户创建两个线程， 其中一个线程处理Setup， 另一个线程处理Execute。
     
-
     <img src="./images/原理15.png" alt="多线程图算子下发优化" style="width: 600; height:auto;">

@@ -87,7 +87,6 @@ git config --global user.email "email@your_email.com"
     git remote add upstream https://gitcode.com/cann/ascend-transformer-boost.git
     ```
 
-
 #### 2.3 拉分支
 
 更新您的本地分支
@@ -106,13 +105,9 @@ git checkout -b myfeature
 
  `myfeature` 为个人分支名称，后续在此分支上编辑和修改代码。
 
-
-
 ### 3. 本地构建和验证
 
 本地构建和验证参见[构建与测试](../开发指南.md#构建)。
-
-
 
 ### 4. 保持您的分支和master的同步
 
@@ -135,8 +130,6 @@ git commit -m "提交内容描述"
 
 您可能会在前次提交的基础上，继续编辑构建并测试更多内容，可以使用 `git commit --amend` 继续添加提交。
 
-
-
 ### 6. 将变更推送到您的远端目录
 
 准备进行审查（或只是建立工作的异地备份）时，将分支推到您在`gitcode.com`的fork分支:
@@ -155,7 +148,6 @@ git push -f origin myfeature
 
    提交 PR 是对项目主分支的一次合并，为保证合并的质量，请谨慎操作。
 
-
 ### 8. 将pull request与处理的Issue进行关联
 
 1. 访问仓库的`Issue`列表，进入您本次pull request所处理的对应Issue页面。
@@ -165,7 +157,6 @@ git push -f origin myfeature
 2. 在Issue右侧的`Pull Requests`中选择您提交的 PR 进行关联。完成关联后，当PR被合并时，关联的Issue将被自动关闭。
    
    ![Issue关联PR](../images/issue-link-pr.png)
-
 
 ### 9. 查看门禁状态以及代码检视意见
 
@@ -186,8 +177,6 @@ git push -f origin myfeature
    您可以在PR列表内找到您提交的PR，并看到对该PR的评论和评审意见。
 
    ![](../images/pr-list.png)
-
-
 
 ### 常用操作
 
@@ -232,8 +221,6 @@ git push ${your_remote_name} myrevert
 
 - 用这个分支创建一个PR.
 
-
-
 #### 处理提交冲突
 
 如果您发现提交的PR带有以下的标记，说明您提交的PR和您本地存在冲突，您需要处理冲突。
@@ -264,8 +251,6 @@ git push ${your_remote_name} myrevert
    git rebase --continue
    git push -f origin yourbranch
    ```
-
-
 
 #### 合并提交
 

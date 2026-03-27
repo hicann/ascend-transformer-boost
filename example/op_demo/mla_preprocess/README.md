@@ -1,8 +1,11 @@
 # 加速库MlaPreprocessOperation C++ Demo
+
 ## 介绍
+
 该目录下为加速库MlaPreprocessOperation C++调用示例。
 
 ## 使用说明
+
 - 首先source 对应的CANN和nnal包的安装路径
     1. source [cann安装路径]/set_env.sh
         默认：source /usr/local/Ascend/ascend-toolkit/set_env.sh
@@ -12,25 +15,33 @@
         例如： source ./ascend-transformer-boost/output/atb/set_env.sh
 
 - 运行demo
+
     ```sh
     bash build.sh
     ```
+
     **注意**：
     - 使用cxx_abi=0（默认）时，设置`D_GLIBCXX_USE_CXX11_ABI`为0，即：
+
         ```sh
         g++ -D_GLIBCXX_USE_CXX11_ABI=0 -I ...
         ```
+
     - 使用cxx_abi=1时，更改`D_GLIBCXX_USE_CXX11_ABI`为1，即：
+
         ```sh
         g++ -D_GLIBCXX_USE_CXX11_ABI=1 -I ...
         ```
+
     - 提供的build脚本仅用于编译和运行mlapo_demo.cpp，如需编译其他demo，需要替换“mlapo_demo”为对应的cpp文件名
 
 ## 额外说明
+
 示例中生成的数据不代表实际场景，如需数据生成参考请查看根目录下的python用例目录：
 tests/apitest/opstest/python/operations/mla_preprocess/
 
 ### 场景说明
+
 提供demo分别对应不同产品/场景，具体场景区别可以参见官网。
 用户调用demo二进制文件时key输入`dtype`，`tokenNum`，`headNum`，控制数据类型和shape。
     `dtype`对应input的数据类型，分别支持float16/bf16，对应下面数据规格的两列。
@@ -40,11 +51,13 @@ mlapo_demo.cpp：
   + ctkv和qNope经过per_head静态对称量化为int8类型；并使用rope拆分kvcache和query，并且krope和ctkv转为NZ格式输出，ctkv和qNope经过per_head静态对称量化为int8类型。
 
 **参数设置**：
+
 | 成员名称  | 取值         |
 | :-------- | :----------- |
 | cacheMode | INT8_NZCACHE |
 
 **数据规格**：
+
 | tensor名字     | 数据类型     | 数据格式 | 维度信息                        |
 | -------------- | ------------ | -------- | ------------------------------- |
 | **Input**      |
@@ -77,14 +90,15 @@ mlapo_demo.cpp：
 | `kvCacheOut0`  | int8         | nz       | [64, headNum * 512/32, 128, 32] |
 | `qOut1`        | float16/bf16 | nd       | [tokenNum, headNum, 64]         |
 | `kvCacheOut1`  | float16/bf16 | nz       | [64, headNum * 64/16, 128, 16]  |
-> 默认值：`dtype = float16`, `tokenNum = 4`, `headNum = 128`
 
+> 默认值：`dtype = float16`, `tokenNum = 4`, `headNum = 128`
 
 mlapo_ds_demo.cpp：
 + 场景：MLAPO deepSeek场景
   + 使用rope拆分kvcache和query，per_tensor静态非对称量化。
 
 **参数设置**：
+
 | 成员名称     | 取值         |
 | :----------- | :----------- |
 | wdqDim       | 1536         |
@@ -99,6 +113,7 @@ mlapo_ds_demo.cpp：
 | cacheMode    | INT8_NZCACHE |
 
 **数据规格**：
+
 | tensor名字     | 数据类型     | 数据格式 | 维度信息                 |
 | -------------- | ------------ | -------- | ------------------------ |
 | **Input**      |
@@ -131,4 +146,5 @@ mlapo_ds_demo.cpp：
 | `kvCacheOut0`  | int8         | nz       | [161, 128, 1, 512]       |
 | `qOut1`        | float16/bf16 | nd       | [tokenNum, headNum, 64]  |
 | `kvCacheOut1`  | float16/bf16 | nz       | [161, 128, 1, 64]       |
+
 > 默认值：`dtype = float16`, `tokenNum = 32`, `headNum = 128`

@@ -155,6 +155,7 @@
         | `x`        | float16  | nd       | [32, 128, 512]  | npu     |
         | `weight`   | float16  | nd       | [128, 512, 128] | npu     |
         | `output`   | float16  | nd       | [32, 128, 512]  | npu     |
+        
 3. 量化场景
 
     - linear_dequant_demo.cpp  
