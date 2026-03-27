@@ -13,22 +13,31 @@
 ## 用例运行
 
 - 进入到atb-aclnn目录下:
+
     ```sh
     cd  ${用例所在目录}/atb-aclnn
     ```
+
 - 设置CANN环境变量（如source /usr/local/Ascend/ascend-toolkit/set_env.sh）:
+
     ```sh
     source ${toolkit安装目录}/set_env.sh
     ```
+
 - 设置ATB环境变量（如source /usr/local/Ascend/nnal/atb/set_env.sh）:
+
     ```sh
     source ${nnal安装目录}/atb/set_env.sh
     ```
+
 - 执行build.sh脚本:
+
     ```sh
     bash ./build.sh
     ```
+
 - 执行用例:
+
     ```sh
     ./build/test_model
     ```
@@ -37,11 +46,13 @@
 
 - 当前用例根据物理机上的device卡数创建线程，若需要调整线程个数，请自行修改main.cpp中的线程创建个数。
 - 保证demo的ABI版本与ATB一致。ATB的abi版本的查看方法：
+
     ```sh
     env | grep ATB_HOME_PATH
     ```
 
     demo的ABI版本查看方法：通过查看CMakeList中的如下命令来查看ABI版本为0或1，OFF表示0，ON表示1。下面的代码则表示ABI版本为0。
+
     ```sh
     option(USE_CXX11_ABI "USE_CXX11_ABI" OFF) 
     ```
