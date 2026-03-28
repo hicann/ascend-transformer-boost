@@ -21,6 +21,7 @@
     ```
 
     **注意**：
+    
     - 使用cxx_abi=0（默认）时，设置`D_GLIBCXX_USE_CXX11_ABI`为0，即：
 
         ```sh
@@ -42,11 +43,12 @@ tests/apitest/opstest/python/operations/linear/
 
 ## 产品支持情况
 
-本op仅支持Atlas A2/A3系列
+本op仅支持<term>Atlas A2 训练系列产品/Atlas A2 推理系列产品</term>、<term>Atlas A3 训练系列产品/Atlas A3 推理系列产品</term>。
 
 ### 场景说明
 
 提供demo分别对应，编译运行时需要对应更改build脚本：
+
 1. 基础场景：
     linear_parallel_demo.cpp
     - 默认编译脚本可编译运行

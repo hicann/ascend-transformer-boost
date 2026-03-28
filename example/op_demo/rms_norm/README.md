@@ -43,6 +43,7 @@ tests/apitest/opstest/python/operations/rms_norm/
 ### 场景说明
 
 提供demo分别对应，编译运行时需要对应更改build脚本：
+
 - **rms_norm_demo.cpp**
 
     【注】：默认编译脚本可编译运行

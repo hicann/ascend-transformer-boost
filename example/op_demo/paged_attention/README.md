@@ -47,10 +47,13 @@ tests/apitest/opstest/python/operations/paged_attention/
 ## 场景说明
 
 提供demo编译运行时需要对应更改build脚本：  
+
 1. 不开启并行解码且带mask场景：
 
     - paged_attention_demo.cpp  
+
         默认编译脚本可编译运行，该demo仅支持在Atlas A2/A3系列上运行。  
+
         **参数设置**：
 
         | 成员名称        | 取值                      |
@@ -79,7 +82,9 @@ tests/apitest/opstest/python/operations/paged_attention/
         | `attnOut`     | float16  | nd       | [2, 32, 128]       | npu     |
 
    - paged_attention_qwen_demo.cpp  
+
         该demo仅支持在Atlas A2/A3系列上运行。  
+        
         **参数设置**：
 
         | 成员名称        | 取值                      |
