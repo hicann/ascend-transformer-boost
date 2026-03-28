@@ -47,8 +47,11 @@ faupdate仅支持Atlas A2/A3系列产品。
 ## 场景说明
 
 所给Demo的场景说明如下：  
+
 - faupdate_demo.cpp  
-  该demo仅支持在Atlas A2/A3系列产品上运行。  
+
+  该demo仅支持在Atlas A2/A3系列产品上运行。 
+
     **参数设置**
 
     | 成员名称       | 取值          |
@@ -63,4 +66,3 @@ faupdate仅支持Atlas A2/A3系列产品。
     | `lse`      | float    | nd       | [8, 16384]      | npu     |
     | `localout` | float    | nd       | [8, 16384, 128] | npu     |
     | `output`   | float    | nd       | [16384, 128]    | npu     |
-

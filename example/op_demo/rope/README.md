@@ -146,6 +146,7 @@ tests/apitest/opstest/python/operations/rope/
     | rotaryCoeff |   2   |
 
     **输入**
+
     | TensorName | DataType | DataFormat |  Shape   |
     | :--------: | :------: | :--------: | :------: |
     |   query    |   bf16   |     nd     | [5, 640] |
@@ -160,3 +161,4 @@ tests/apitest/opstest/python/operations/rope/
     | :--------: | :------: | :--------: | :------: |
     |   ropeQ    |   bf16   |     nd     | [5, 640] |
     |   ropeK    |   bf16   |     nd     | [5, 128] |
+    
