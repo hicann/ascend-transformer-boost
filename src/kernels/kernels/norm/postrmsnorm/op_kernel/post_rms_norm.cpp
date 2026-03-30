@@ -327,7 +327,7 @@ public:
         } else {
             rowWork_ = numRow - (numCore_ - 1) * rowWork;
         }
-#if __CCE_AICORE__ != 220
+#if defined(__CCE_AICORE__) && __CCE_AICORE__ != 220
         if ((numCol_ % sliceSize_) * sizeof(T) < BLOCK_BYTE && (numCol_ % sliceSize_) != 0) {
             sliceSizeTmp_ = sliceSize_ - ((BLOCK_BYTE / sizeof(T)) - (numCol_ % sliceSize_));
         } else {
@@ -538,7 +538,7 @@ private:
 
 inline __aicore__ void InitTilingData(const __gm__ uint8_t *pTilingdata, AsdOps::PostRmsNormTilingData *tilingdata)
 {
-#if defined(__CCE_KT_TEST__) || (__CCE_AICORE__ == 220)
+#if defined(__CCE_KT_TEST__) || (defined(__CCE_AICORE__) && __CCE_AICORE__ == 220)
     tilingdata->numCore = (*(const __gm__ uint32_t *)(pTilingdata + 0));
     tilingdata->numCol = (*(const __gm__ uint32_t *)(pTilingdata + 4));
     tilingdata->numRow = (*(const __gm__ uint32_t *)(pTilingdata + 8));
@@ -587,7 +587,7 @@ extern "C" __global__ __aicore__ void post_rms_norm(GM_ADDR x, GM_ADDR bias, GM_
         PostRmsNormDoubleBuffer<half, false> kernel(&pipe, x, bias, resIn, g, y, tilingData);
         kernel.Launch();
     }
-#if defined(__CCE_KT_TEST__) || (__CCE_AICORE__ == 220)
+#if defined(__CCE_KT_TEST__) || (defined(__CCE_AICORE__) && __CCE_AICORE__ == 220)
     if (TILING_KEY_IS(1)) { // 001
         PostRmsNormShort<bfloat16_t, true> kernel(&pipe, x, bias, resIn, g, y, tilingData);
         kernel.Launch();

@@ -113,7 +113,7 @@ __aicore__ inline  void MultiplyGamma(AscendC::LocalTensor<T>& fp16_gamma,
                                       uint32_t numCol_, uint32_t& numColAlignFp32,
                                       uint32_t& numColAlignFp16, uint32_t& precisionMode_)
 {
-#if defined(__CCE_KT_TEST__) || (__CCE_AICORE__ == 220)
+#if defined(__CCE_KT_TEST__) || (defined(__CCE_AICORE__) && __CCE_AICORE__ == 220)
     if constexpr (std::is_same<T, bfloat16_t>::value) {
         Cast(sqx, fp16_gamma, AscendC::RoundMode::CAST_NONE, numColAlignFp16); // g
         AscendC::PipeBarrier<PIPE_V>();

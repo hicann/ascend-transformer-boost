@@ -41,7 +41,7 @@ struct RmsNormTypeCheck<Tp, Tp>
     : public true_type {
 };
 
-#if __CCE_AICORE__ != 300
+#if defined(__CCE_AICORE__) && __CCE_AICORE__ != 300
 __aicore__ inline void ReduceSumFP32(const LocalTensor<float>& dst_local, const LocalTensor<float>& src_local,
                                      const LocalTensor<float>& work_local, int32_t count)
     {
@@ -78,9 +78,9 @@ __aicore__ inline void ReduceSumFP32(const LocalTensor<float>& dst_local, const 
 __aicore__ inline void ReduceSumCustom(const LocalTensor<float>& dst_local, const LocalTensor<float>& src_local,
                                        const LocalTensor<float>& work_local, int32_t count)
     {
-    #if __CCE_AICORE__ == 220
+    #if defined(__CCE_AICORE__) && __CCE_AICORE__ == 220
         ReduceSumFP32(dst_local, src_local, work_local, count);
-    #elif __CCE_AICORE__ == 100
+    #elif defined(__CCE_AICORE__) && __CCE_AICORE__ == 100
         float sum = 0;
         int32_t elementNumPerRep = AscendC::ONE_REPEAT_BYTE_SIZE / sizeof(float);
         AscendC::LocalTensor<float> src = src_local;
@@ -120,7 +120,7 @@ __aicore__ inline void ReduceSumCustom(const LocalTensor<float>& dst_local, cons
         AscendC::SetFlag<HardEvent::S_V>(EVENT_ID0);
         AscendC::WaitFlag<HardEvent::S_V>(EVENT_ID0);
         Duplicate(dst_local, sum, count);
-    #elif __CCE_AICORE__ == 300
+    #elif defined(__CCE_AICORE__) && __CCE_AICORE__ == 300
         ReduceSum(dst_local, src_local, work_local, count);
     #else
         ReduceSum(dst_local, src_local, dst_local, count);
@@ -177,7 +177,7 @@ __aicore__ inline void BlockReduceSumFP32(const LocalTensor<float>& dst_local, c
 template <typename T, typename U, typename R>
 __aicore__ inline void DataCopyCustom(const U& dstTensor, const R& srcTensor,
                                       const uint64_t count) {
-#if __CCE_AICORE__ == 220
+#if defined(__CCE_AICORE__) && __CCE_AICORE__ == 220
     DataCopyParams copyParams;
     copyParams.blockLen = count * sizeof(T);
     copyParams.blockCount = 1;

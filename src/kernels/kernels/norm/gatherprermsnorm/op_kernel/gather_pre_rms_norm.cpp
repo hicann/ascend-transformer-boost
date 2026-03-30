@@ -401,7 +401,7 @@ private:
 
 inline __aicore__ void InitTilingData(const __gm__ uint8_t *pTilingdata, AsdOps::GatherPreRmsNormTilingData *tilingdata)
 {
-#if defined(__CCE_KT_TEST__) || (__CCE_AICORE__ == 220)
+#if defined(__CCE_KT_TEST__) || (defined(__CCE_AICORE__) && __CCE_AICORE__ == 220)
     tilingdata->numCore = (*(const __gm__ uint32_t *)(pTilingdata + 0));
     tilingdata->numCol = (*(const __gm__ uint32_t *)(pTilingdata + 4));
     tilingdata->numRow = (*(const __gm__ uint32_t *)(pTilingdata + 8));
@@ -432,7 +432,7 @@ inline __aicore__ void InitTilingData(const __gm__ uint8_t *pTilingdata, AsdOps:
 extern "C" __global__ __aicore__ void gather_pre_rms_norm(GM_ADDR x, GM_ADDR rIn, GM_ADDR indices, GM_ADDR g,
     GM_ADDR y, GM_ADDR rOut, GM_ADDR tiling)
 {
-#if defined(__CCE_KT_TEST__) || (__CCE_AICORE__ == 220)
+#if defined(__CCE_KT_TEST__) || (defined(__CCE_AICORE__) && __CCE_AICORE__ == 220)
     PRELOAD(3);  // icache预取, 减少icache miss
 #endif
     AscendC::TPipe pipe;
@@ -446,7 +446,7 @@ extern "C" __global__ __aicore__ void gather_pre_rms_norm(GM_ADDR x, GM_ADDR rIn
         GatherPreRmsnormLargeIndices<half> kernel(&pipe, x, rIn, indices, g, y, rOut, tilingData);
         kernel.Launch();
     }
-#if defined(__CCE_KT_TEST__) || (__CCE_AICORE__ == 220)
+#if defined(__CCE_KT_TEST__) || (defined(__CCE_AICORE__) && __CCE_AICORE__ == 220)
     if (TILING_KEY_IS(110)) { // bf16, no slice, small indices
         GatherPreRmsnormSmallIndices<bfloat16_t> kernel(&pipe, x, rIn, indices, g, y, rOut, tilingData);
         kernel.Launch();
