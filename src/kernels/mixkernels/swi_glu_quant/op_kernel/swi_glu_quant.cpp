@@ -34,7 +34,7 @@ inline __aicore__ void InitTilingData(const __gm__ uint8_t *p_tilingdata, AtbOps
 
 extern "C" __global__ __aicore__ void swi_glu_quant(GM_ADDR x, GM_ADDR y, GM_ADDR scale, GM_ADDR tiling)
 {
-#if defined(__CCE_KT_TEST__) || (__CCE_AICORE__ == 220)
+#if defined(__CCE_KT_TEST__) || (defined(__CCE_AICORE__) && __CCE_AICORE__ == 220)
     PRELOAD(3);
 #endif
     AscendC::TPipe pipe;

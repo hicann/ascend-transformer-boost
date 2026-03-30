@@ -114,7 +114,7 @@ private:
 inline __aicore__ void InitTilingData(const __gm__ uint8_t *p_tilingdata,
 AtbOps::GenAttentionMaskTilingData *tilingData)
 {
-#if defined(__CCE_KT_TEST__) || (__CCE_AICORE__ == 220)
+#if defined(__CCE_KT_TEST__) || (defined(__CCE_AICORE__) && __CCE_AICORE__ == 220)
     tilingData->batch = (*(const __gm__ uint32_t *)(p_tilingdata + 0));
     tilingData->maxSeqLen = (*(const __gm__ uint32_t *)(p_tilingdata + 4));
     tilingData->blockNum = (*(const __gm__ uint32_t *)(p_tilingdata + 8));

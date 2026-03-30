@@ -330,7 +330,7 @@ protected:
 template <typename T = ReshapeAndCacheTilingData, bool NCT = false>
 inline __aicore__ void InitTilingData(const __gm__ uint8_t *p_tilingdata, T *tilingdata)
 {
-#if defined(__CCE_KT_TEST__) || (__CCE_AICORE__ == 220) || (__CCE_AICORE__ == 300)
+#if defined(__CCE_KT_TEST__) || (defined(__CCE_AICORE__) && __CCE_AICORE__ == 220) || (defined(__CCE_AICORE__) && __CCE_AICORE__ == 300)
     tilingdata->numTokens = (*(const __gm__ uint32_t *)(p_tilingdata + 0));
     tilingdata->numHeads = (*(const __gm__ uint32_t *)(p_tilingdata + 4));
     tilingdata->headSizeK = (*(const __gm__ uint32_t *)(p_tilingdata + 8));

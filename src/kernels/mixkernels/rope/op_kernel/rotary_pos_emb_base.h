@@ -83,7 +83,7 @@ public:
     __aicore__ inline void Copy2Ub(const AscendC::GlobalTensor<T> &src, const AscendC::LocalTensor<T> &dst,
                                    uint32_t copyLen)
     {
-#if defined(__CCE_KT_TEST__) || (__CCE_AICORE__ == 220)
+#if defined(__CCE_KT_TEST__) || (defined(__CCE_AICORE__) && __CCE_AICORE__ == 220)
         if (g_coreType == AscendC::AIC) return;
 #endif
         uint32_t blkSizeReal = BLK_SIZE / sizeof(T);
@@ -100,7 +100,7 @@ public:
     __aicore__ inline void Copy2UbNoPipeAll(const AscendC::GlobalTensor<T> &src, const AscendC::LocalTensor<T> &dst,
                                    uint32_t copyLen)
     {
-#if defined(__CCE_KT_TEST__) || (__CCE_AICORE__ == 220)
+#if defined(__CCE_KT_TEST__) || (defined(__CCE_AICORE__) && __CCE_AICORE__ == 220)
         if (g_coreType == AscendC::AIC) return;
 #endif
         uint32_t blkSizeReal = BLK_SIZE / sizeof(T);
@@ -115,7 +115,7 @@ public:
     __aicore__ inline void Copy2Gm(const AscendC::LocalTensor<T> &src, const AscendC::GlobalTensor<T> &dst,
                                    uint32_t hiddenSizeLen)
     {
-#if defined(__CCE_KT_TEST__) || (__CCE_AICORE__ == 220)
+#if defined(__CCE_KT_TEST__) || (defined(__CCE_AICORE__) && __CCE_AICORE__ == 220)
         if (g_coreType == AscendC::AIC) return;
 #endif
         uint32_t blkSizeReal = BLK_SIZE / sizeof(T);
@@ -131,7 +131,7 @@ public:
                                         const AscendC::GlobalTensor<CosDtype> &src,
                                         const AscendC::GlobalTensor<CosDtype> &extraGm)
     {
-#if defined(__CCE_KT_TEST__) || (__CCE_AICORE__ == 220)
+#if defined(__CCE_KT_TEST__) || (defined(__CCE_AICORE__) && __CCE_AICORE__ == 220)
         if (g_coreType == AscendC::AIC) return;
 #endif
         // cos or sin,[maxseqlen,headsize]-->[sumseqlen,hiddensize]
@@ -169,7 +169,7 @@ public:
         AscendC::LocalTensor<COS_DTYPE> judgeUbuf_ = outQueueCO2_.Get<COS_DTYPE>();
         AscendC::GlobalTensor<COS_DTYPE> extraGmCosDtype;
         extraGmCosDtype.SetGlobalBuffer((__gm__ COS_DTYPE *)extra);
-#if defined __CCE_AICORE__ == 100
+#if defined(__CCE_AICORE__) && __CCE_AICORE__ == 100
         AscendC::PipeBarrier<PIPE_ALL>();
         this->ExpandCosSin(judgeUbuf_, this->cosGm_, extraGmCosDtype);
         this->cosGm_ = extraGmCosDtype;
@@ -520,7 +520,7 @@ public:
         uint32_t oriPosTemp, uint32_t removeTemp, uint32_t padTemp,
         uint32_t posTemp, uint32_t res)
     {
-#if defined(__CCE_KT_TEST__) || (__CCE_AICORE__ == 220)
+#if defined(__CCE_KT_TEST__) || (defined(__CCE_AICORE__) && __CCE_AICORE__ == 220)
         if (g_coreType == AscendC::AIC) return;
 #endif
         const int32_t calcCount = repeatTimes1 * repeatSize_;
@@ -545,7 +545,7 @@ public:
     __aicore__ inline void CalcRopeAlign(const AscendC::LocalTensor<BUF_TYPE> &tempBuf, uint32_t repeatTimes1,
                                          uint32_t oriPosTemp, uint32_t removeTemp, uint32_t padTemp)
     {
-#if defined(__CCE_KT_TEST__) || (__CCE_AICORE__ == 220)
+#if defined(__CCE_KT_TEST__) || (defined(__CCE_AICORE__) && __CCE_AICORE__ == 220)
         if (g_coreType == AscendC::AIC) return;
 #endif
         const int32_t calcCount = repeatTimes1 * repeatSize_;

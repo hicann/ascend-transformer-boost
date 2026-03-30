@@ -35,7 +35,7 @@ __aicore__ inline void SetAtomicnone()
 }
 __aicore__ inline void SetMasknorm()
 {
-#if __CCE_AICORE__ == 100
+#if defined(__CCE_AICORE__) && __CCE_AICORE__ == 100
     return;
 #endif
     AscendC::SetMaskNorm();

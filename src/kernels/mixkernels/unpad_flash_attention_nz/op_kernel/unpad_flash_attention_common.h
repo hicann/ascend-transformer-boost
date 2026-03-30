@@ -19,7 +19,7 @@
 #define __aicore__ [aicore]
 #endif
 
-#if __CCE_AICORE__ == 100
+#if defined(__CCE_AICORE__) && __CCE_AICORE__ == 100
 constexpr int32_t BATCH_TILING_OFFSET = 192;
 #else
 constexpr int32_t BATCH_TILING_OFFSET = 128;
@@ -86,7 +86,7 @@ __aicore__ inline void SyncStart()
     SET_FLAG(MTE1, MTE2, EVENT_ID1);
     SET_FLAG(MTE1, MTE2, EVENT_ID2);
     SET_FLAG(MTE1, MTE2, EVENT_ID3);
-#if __CCE_AICORE__ == 100
+#if defined(__CCE_AICORE__) && __CCE_AICORE__ == 100
     SET_FLAG(V, MTE2, EVENT_ID0);
 #else
     SET_FLAG(MTE1, MTE2, EVENT_ID4);
@@ -103,7 +103,7 @@ __aicore__ inline void SyncEnd()
     WAIT_FLAG(MTE1, MTE2, EVENT_ID1);
     WAIT_FLAG(MTE1, MTE2, EVENT_ID2);
     WAIT_FLAG(MTE1, MTE2, EVENT_ID3);
-#if __CCE_AICORE__ != 100
+#if defined(__CCE_AICORE__) && __CCE_AICORE__ != 100
     WAIT_FLAG(MTE1, MTE2, EVENT_ID4);
     WAIT_FLAG(MTE1, MTE2, EVENT_ID5);
     WAIT_FLAG(MTE1, MTE2, EVENT_ID6);
@@ -125,7 +125,7 @@ __aicore__ inline void SyncEnd()
     WAIT_FLAG(M, MTE1, EVENT_ID1);
     WAIT_FLAG(M, MTE1, EVENT_ID2);
     WAIT_FLAG(M, MTE1, EVENT_ID3);
-#if __CCE_AICORE__ == 100
+#if defined(__CCE_AICORE__) && __CCE_AICORE__ == 100
     WAIT_FLAG(V, MTE2, EVENT_ID0);
 #else
     WAIT_FLAG(V, MTE2, EVENT_ID6);

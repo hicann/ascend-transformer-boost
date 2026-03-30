@@ -162,7 +162,7 @@ private:
 
 inline __aicore__ void InitTilingData(const __gm__ uint8_t *p_tilingdata, AtbOps::RopeGradTilingData *tilingData)
 {
-#if defined(__CCE_KT_TEST__) || (__CCE_AICORE__ == 220)
+#if defined(__CCE_KT_TEST__) || (defined(__CCE_AICORE__) && __CCE_AICORE__ == 220)
     tilingData->maxSeqLen = (*(const __gm__ int64_t *)(p_tilingdata + 0));
     tilingData->hiddenSize = (*(const __gm__ int64_t *)(p_tilingdata + 8));
     tilingData->headSize = (*(const __gm__ int64_t *)(p_tilingdata + 16));

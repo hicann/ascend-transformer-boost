@@ -326,7 +326,7 @@ __aicore__ inline void RmsNormAndRopeAndReshapeAndCache<K_DTYPE>::Process()
 inline __aicore__ void InitTilingData(const __gm__ uint8_t *pTilingdata,
     AtbOps::RmsNormAndRopeAndReshapeAndCacheTilingData *tilingdata)
 {
-#if defined(__CCE_KT_TEST__) || (__CCE_AICORE__ == 220)
+#if defined(__CCE_KT_TEST__) || (defined(__CCE_AICORE__) && __CCE_AICORE__ == 220)
     tilingdata->numRow = (*(const __gm__ uint32_t *)(pTilingdata + 0));
     tilingdata->numCol = (*(const __gm__ uint32_t *)(pTilingdata + 4));
     tilingdata->numCore = (*(const __gm__ uint32_t *)(pTilingdata + 8));
@@ -372,7 +372,7 @@ extern "C" __global__ __aicore__ void rms_norm_and_rope_and_reshape_and_cache(GM
     GM_ADDR keyRope, GM_ADDR cos, GM_ADDR sin, GM_ADDR slotMapping, GM_ADDR keycachein, GM_ADDR keycacheout,
     GM_ADDR tiling)
 {
-#if defined(__CCE_KT_TEST__) || (__CCE_AICORE__ == 220)
+#if defined(__CCE_KT_TEST__) || (defined(__CCE_AICORE__) && __CCE_AICORE__ == 220)
     PRELOAD(2);
 #endif
     AtbOps::RmsNormAndRopeAndReshapeAndCacheTilingData tilingData;
