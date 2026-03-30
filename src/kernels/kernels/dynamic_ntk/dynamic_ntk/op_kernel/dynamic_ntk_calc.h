@@ -31,7 +31,7 @@ public:
     static constexpr uint32_t ONE_BLK_POS_ELEMENTS = ONE_BLK_SIZE / POS_DSIZE;
     static constexpr uint32_t ONE_BLK_OUT_ELEMENTS = ONE_BLK_SIZE / OUT_DSIZE;
     static constexpr uint32_t ONE_BLK_SEQLEN_ELEMENTS = ONE_BLK_SIZE / SEQLEN_DSIZE;
-#if __CCE_AICORE__ == 200
+#if defined(__CCE_AICORE__) && __CCE_AICORE__ == 200
     static constexpr RoundMode OUT_CAST_MODE = RoundMode::CAST_NONE;
 #else
     static constexpr RoundMode OUT_CAST_MODE = RoundMode::CAST_ROUND;
@@ -50,7 +50,7 @@ public:
         sinGm.SetGlobalBuffer((__gm__ OutType *)sin, sinSize);
         cosGm.SetGlobalBuffer((__gm__ OutType *)cos, sinSize);
 
-#if __CCE_AICORE__ == 200
+#if defined(__CCE_AICORE__) && __CCE_AICORE__ == 200
         TBuf<> tbuf;
         tPipe.InitBuffer(tbuf, ONE_BLK_SIZE);
 #endif

@@ -118,7 +118,7 @@ public:
 
     __aicore__ inline void ExcuteCompute()
     {
-#if defined(__CCE_KT_TEST__) || (__CCE_AICORE__ == 220)
+#if defined(__CCE_KT_TEST__) || (defined(__CCE_AICORE__) && __CCE_AICORE__ == 220)
         if constexpr (std::is_same<T, bfloat16_t>::value) {
             ComputeBF16(numCopyRow_, sizeH_);
             return;

@@ -158,7 +158,7 @@ public:
             if (tilingData_->dimN * sizeof(T) % BLOCK_SIZE == 0) {
                 DataCopy(local, gm[bOffset_ * tilingData_->dimN + nOffset_], outerCount_);
             } else {
-#if __CCE_AICORE__ == 220
+#if defined(__CCE_AICORE__) && __CCE_AICORE__ == 220
                 DataCopyParams copyParams = { static_cast<uint16_t>(outerCount_ / tilingData_->dimN),
                     static_cast<uint16_t>(tilingData_->dimN * sizeof(T)), 0, 0 };
                 DataCopyPad(local, gm[bOffset_ * tilingData_->dimN + nOffset_], copyParams, DataCopyPadParams());
@@ -168,7 +168,7 @@ public:
             if (outerCount_ * sizeof(T) % BLOCK_SIZE == 0) {
                 DataCopy(local, gm[bOffset_ * tilingData_->dimN + nOffset_], outerCount_);
             } else {
-#if __CCE_AICORE__ == 220
+#if defined(__CCE_AICORE__) && __CCE_AICORE__ == 220
                 DataCopyParams copyParams = { 1, static_cast<uint16_t>(outerCount_ * sizeof(T)), 0, 0 };
                 DataCopyPad(local, gm[bOffset_ * tilingData_->dimN + nOffset_], copyParams, DataCopyPadParams());
 #endif
@@ -185,7 +185,7 @@ public:
         if (innerCount_ * sizeof(T) % BLOCK_SIZE == 0) {
             DataCopy(local, gm[nOffset_], innerCount_);
         } else {
-#if __CCE_AICORE__ == 220
+#if defined(__CCE_AICORE__) && __CCE_AICORE__ == 220
             DataCopyParams copyParams = { 1, static_cast<uint16_t>(innerCount_ * sizeof(T)), 0, 0 };
             DataCopyPad(local, gm[nOffset_], copyParams, DataCopyPadParams());
 #endif
@@ -208,7 +208,7 @@ public:
             if (tilingData_->dimN * sizeof(T) % BLOCK_SIZE == 0) {
                 DataCopy(gm[bOffset_ * tilingData_->dimN + nOffset_], local, outerCount_);
             } else {
-#if __CCE_AICORE__ == 220
+#if defined(__CCE_AICORE__) && __CCE_AICORE__ == 220
                 DataCopyParams copyParams = { static_cast<uint16_t>(outerCount_ / tilingData_->dimN),
                     static_cast<uint16_t>(tilingData_->dimN * sizeof(T)), 0, 0 };
                 DataCopyPad(gm[bOffset_ * tilingData_->dimN + nOffset_], local, copyParams);
@@ -218,7 +218,7 @@ public:
             if (outerCount_ * sizeof(T) % BLOCK_SIZE == 0) {
                 DataCopy(gm[bOffset_ * tilingData_->dimN + nOffset_], local, outerCount_);
             } else {
-#if __CCE_AICORE__ == 220
+#if defined(__CCE_AICORE__) && __CCE_AICORE__ == 220
                 DataCopyParams copyParams = { 1, static_cast<uint16_t>(outerCount_ * sizeof(T)), 0, 0 };
                 DataCopyPad(gm[bOffset_ * tilingData_->dimN + nOffset_], local, copyParams);
 #endif
@@ -246,7 +246,7 @@ protected:
 
 inline __aicore__ void InitTilingData(const __gm__ uint8_t *p_tilingdata, BroadcastTilingData *tilingdata)
 {
-#if defined(__CCE_KT_TEST__) || (__CCE_AICORE__ == 220)
+#if defined(__CCE_KT_TEST__) || (defined(__CCE_AICORE__) && __CCE_AICORE__ == 220)
     tilingdata->dimB = (*(const __gm__ int64_t *)(p_tilingdata + 0));
     tilingdata->dimN = (*(const __gm__ int64_t *)(p_tilingdata + 8));
     tilingdata->dimBBlockNum = (*(const __gm__ int64_t *)(p_tilingdata + 16));
