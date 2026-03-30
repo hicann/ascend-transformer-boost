@@ -282,7 +282,7 @@ private:
 inline __aicore__ void InitTilingData(const __gm__ uint8_t *pTilingdata,
                                       AsdOps::RmsNormQuantCommonTilingData *tilingdata)
 {
-#if defined(__CCE_KT_TEST__) || (__CCE_AICORE__ == 220)
+#if defined(__CCE_KT_TEST__) || (defined(__CCE_AICORE__) && __CCE_AICORE__ == 220)
     tilingdata->numCore = (*(const __gm__ uint32_t *)(pTilingdata + 0));
     tilingdata->numCol = (*(const __gm__ uint32_t *)(pTilingdata + 4));
     tilingdata->numRow = (*(const __gm__ uint32_t *)(pTilingdata + 8));
@@ -326,7 +326,7 @@ extern "C" __global__ __aicore__ void rms_post_norm_quant(GM_ADDR x, GM_ADDR r, 
         RmsPostNormQuant<half, false> kernel(&pipe, x, r, g, scale, offset, y, res, tilingData);
         kernel.Launch();
     }
-#if defined(__CCE_KT_TEST__) || (__CCE_AICORE__ == 220)
+#if defined(__CCE_KT_TEST__) || (defined(__CCE_AICORE__) && __CCE_AICORE__ == 220)
     if (TILING_KEY_IS(110)) { // bf16, scale, offset, no slice
         RmsPostNormQuant<bfloat16_t, true> kernel(&pipe, x, r, g, scale, offset, y, res, tilingData);
         kernel.Launch();
