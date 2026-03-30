@@ -265,13 +265,13 @@ public:
     {
         // Copy A
         AscendC::LocalTensor<inType> aLocal = this->inQueueA.template AllocTensor<inType>();
-#if defined(__CCE_KT_TEST__) || (__CCE_AICORE__ == 220)
+#if defined(__CCE_KT_TEST__) || (defined(__CCE_AICORE__) && __CCE_AICORE__ == 220)
         DataCopyPad(aLocal, this->xGm[splitCopyinOffset], splitCopyinParams, padParams);
 #endif
         this->inQueueA.template EnQue(aLocal);
         // Copy B
         AscendC::LocalTensor<inType> bLocal = this->inQueueB.template AllocTensor<inType>();
-#if defined(__CCE_KT_TEST__) || (__CCE_AICORE__ == 220)
+#if defined(__CCE_KT_TEST__) || (defined(__CCE_AICORE__) && __CCE_AICORE__ == 220)
         DataCopyPad(bLocal, this->xGm[splitCopyinOffset + colLen], splitCopyinParams, padParams);
 #endif
         this->inQueueB.template EnQue(bLocal);
@@ -280,7 +280,7 @@ public:
     __aicore__ inline void CopyOutPad(uint64_t splitCopyoutOffset, AscendC::DataCopyExtParams& splitCopyoutParams)
     {
         AscendC::LocalTensor<outType> cLocal = this->outQueueY.template DeQue<outType>();
-#if defined(__CCE_KT_TEST__) || (__CCE_AICORE__ == 220)
+#if defined(__CCE_KT_TEST__) || (defined(__CCE_AICORE__) && __CCE_AICORE__ == 220)
         DataCopyPad(this->yGm[splitCopyoutOffset], cLocal, splitCopyoutParams);
 #endif
         this->outQueueY.template FreeTensor(cLocal);
@@ -323,7 +323,7 @@ public:
         if constexpr (sizeof(inType) == sizeof(float)) {
             DataCopy(cLocal, tmpYLocal, tileLength);
         } else {
-#if defined(__CCE_KT_TEST__) || (__CCE_AICORE__ == 220)
+#if defined(__CCE_KT_TEST__) || (defined(__CCE_AICORE__) && __CCE_AICORE__ == 220)
             Cast(cLocal, tmpYLocal, AscendC::RoundMode::CAST_RINT, tileLength);
 #else
             Cast(cLocal, tmpYLocal, AscendC::RoundMode::CAST_NONE, tileLength);

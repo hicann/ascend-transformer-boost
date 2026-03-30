@@ -346,7 +346,7 @@ private:
 
 inline __aicore__ void InitTilingData(const __gm__ uint8_t *p_tilingdata, AsdOps::CohereLayerNormTilingData *tilingdata)
 {
-#if defined(__CCE_KT_TEST__) || (__CCE_AICORE__ == 220)
+#if defined(__CCE_KT_TEST__) || (defined(__CCE_AICORE__) && __CCE_AICORE__ == 220)
     tilingdata->numCore = (*(const __gm__ uint32_t *)(p_tilingdata + 0));
     tilingdata->numCoreRows = (*(const __gm__ uint32_t *)(p_tilingdata + 4));
     tilingdata->coreRowStrides = (*(const __gm__ uint32_t *)(p_tilingdata + 8));
@@ -404,7 +404,7 @@ extern "C" __global__ __aicore__ void cohere_layer_norm(GM_ADDR x, GM_ADDR gamma
         CohereLayerNorm<half, g_singleRowMove> op(x, gamma, y, tilingData);
         op.Launch();
     }
-#if defined(__CCE_KT_TEST__) || (__CCE_AICORE__ == 220)
+#if defined(__CCE_KT_TEST__) || (defined(__CCE_AICORE__) && __CCE_AICORE__ == 220)
     if (TILING_KEY_IS(2100000000)) { // bf16 & multiple row move
         CohereLayerNorm<bfloat16_t, g_multipleRowMove> op(x, gamma, y, tilingData);
         op.Launch();

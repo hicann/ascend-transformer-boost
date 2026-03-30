@@ -112,7 +112,7 @@ private:
     {
         CopyInNormal(scaleGm_, scaleQueue_);
         scaleLocal_ = scaleQueue_.DeQue<T>();
-#if defined(__CCE_KT_TEST__) || (__CCE_AICORE__ == 220)
+#if defined(__CCE_KT_TEST__) || (defined(__CCE_AICORE__) && __CCE_AICORE__ == 220)
         if constexpr (IsSameType<T, bfloat16_t>::value) {
             Cast(scaleCastedLocal_, scaleLocal_, RoundMode::CAST_NONE, innerCount_);
             PipeBarrier<PIPE_V>();
@@ -346,7 +346,7 @@ extern "C" __global__ __aicore__ void quant_per_channel(
         op.Init(&tilingData);
         op.Process(x, scale, offset, y);
     }
-#if defined(__CCE_KT_TEST__) || (__CCE_AICORE__ == 220)
+#if defined(__CCE_KT_TEST__) || (defined(__CCE_AICORE__) && __CCE_AICORE__ == 220)
     if (TILING_KEY_IS(2010000000)) {
         // per tensor, no offset, -128, bf16
         QuantPerTensorKernel<bfloat16_t, false, false> op;

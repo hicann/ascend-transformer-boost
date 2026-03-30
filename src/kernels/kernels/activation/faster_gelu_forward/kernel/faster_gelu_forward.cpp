@@ -18,7 +18,7 @@ using namespace AsdOps;
 
 inline __aicore__ void InitTilingData(const __gm__ uint8_t *p_tilingdata, FasterGeluForwardTilingData *tilingdata)
 {
-#if defined(__CCE_KT_TEST__) || (__CCE_AICORE__ == 220)
+#if defined(__CCE_KT_TEST__) || (defined(__CCE_AICORE__) && __CCE_AICORE__ == 220)
     tilingdata->usedCoreNum = (*(const __gm__ uint32_t *)(p_tilingdata + 0));
     tilingdata->maxTileLen = (*(const __gm__ uint32_t *)(p_tilingdata + 4));
     tilingdata->alignDataNum = (*(const __gm__ uint32_t *)(p_tilingdata + 8));
@@ -56,7 +56,7 @@ extern "C" __global__ __aicore__ void faster_gelu_forward(GM_ADDR inputAddr, GM_
         // fp32默认走高精度模式
         op.Process<false>();
     }
-#if defined(__CCE_KT_TEST__) || (__CCE_AICORE__ == 220)
+#if defined(__CCE_KT_TEST__) || (defined(__CCE_AICORE__) && __CCE_AICORE__ == 220)
     if (TILING_KEY_IS(27)) {
         FasterGeluForward<bfloat16_t, bfloat16_t, false> op;
         op.Init(inputAddr, outputAddr, tilingData);
