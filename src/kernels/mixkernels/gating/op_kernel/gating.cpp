@@ -539,14 +539,14 @@ private:
                 singleQueSize
             };
             struct MrgSort4Info srcInfo(elementLengths, false, validBit, repeatTimes);
-            MrgSort4(sortedQue[!switchFlag], srcList, srcInfo);
-            switchFlag = !switchFlag;
+            MrgSort4(sortedQue[switchFlag ^ 1], srcList, srcInfo);
+            switchFlag ^= 1;
             singleQueSize *= mergeCount;
         }
 
         SetFlag<HardEvent::V_S>(EVENT_ID0);
         WaitFlag<HardEvent::V_S>(EVENT_ID0);
-        if (!switchFlag) {
+        if (!static_cast<bool>(switchFlag)) {
             DataCopy(sortBuf, tmpBuf, STRUCT_TILE_NUM);
         }
     }

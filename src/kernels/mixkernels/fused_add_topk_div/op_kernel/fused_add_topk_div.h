@@ -450,8 +450,8 @@ __aicore__ inline void FusedAddTopkDiv<inputT, calT, enableExpertMapping>::CopyO
     int64_t offset = outBatchStride_ + loop * k_;
     LocalTensor<float> yLocal = yOutQueue_.DeQue<float>();
     LocalTensor<int32_t> indicesLocal = indicesOutQueue_.DeQue<int32_t>();
-    
-    if constexpr (enableExpertMapping) {
+
+    if constexpr (static_cast<bool>(enableExpertMapping)) {
         // CopyIn mappingNum
         CopyInMappingNum();
         
