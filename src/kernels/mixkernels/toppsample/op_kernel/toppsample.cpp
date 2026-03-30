@@ -369,7 +369,7 @@ private:
 
 inline __aicore__ void InitTilingData(const __gm__ uint8_t *p_tilingdata, AtbOps::ToppsampleTilingData *tilingdata)
 {
-#if defined(__CCE_KT_TEST__) || (__CCE_AICORE__ == 220)
+#if defined(__CCE_KT_TEST__) || (defined(__CCE_AICORE__) && __CCE_AICORE__ == 220)
     tilingdata->realLastDim = (*(const __gm__ uint32_t *)(p_tilingdata + 0));
     tilingdata->expandLastDim = (*(const __gm__ uint32_t *)(p_tilingdata + 4));
     tilingdata->firstDim = (*(const __gm__ uint32_t *)(p_tilingdata + 8));
@@ -415,7 +415,7 @@ extern "C" __global__ __aicore__ void toppsample(GM_ADDR cumsumed_probs, GM_ADDR
         op.Init(cumsumed_probs, topp, select_index, select_range, tiling_data);
         op.Process(workspace);
     }
-#if defined(__CCE_KT_TEST__) || (__CCE_AICORE__ == 220)
+#if defined(__CCE_KT_TEST__) || (defined(__CCE_AICORE__) && __CCE_AICORE__ == 220)
     if (TILING_KEY_IS(3)) {
         KernelToppsample<false, bfloat16_t> op;
         op.Init(cumsumed_probs, topp, select_index, select_range, tiling_data);

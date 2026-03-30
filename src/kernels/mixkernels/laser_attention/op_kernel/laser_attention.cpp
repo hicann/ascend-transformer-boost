@@ -21,7 +21,7 @@ using namespace AscendC;
 
 inline __aicore__ void InitTilingData(const __gm__ uint8_t *p_tilingdata, AtbOps::LaserAttentionTilingData *tilingdata)
 {
-#if defined(__CCE_KT_TEST__) || (__CCE_AICORE__ == 220)
+#if defined(__CCE_KT_TEST__) || (defined(__CCE_AICORE__) && __CCE_AICORE__ == 220)
     tilingdata->batchSize = (*(const __gm__ int32_t *)(p_tilingdata + 0));
     tilingdata->headNum = (*(const __gm__ int32_t *)(p_tilingdata + 4));
     tilingdata->seqSize = (*(const __gm__ int32_t *)(p_tilingdata + 8));
@@ -127,7 +127,7 @@ laser_attention(__gm__ uint8_t *__restrict__ ffts_addr, __gm__ uint8_t *__restri
         op.SetHighPrecision(isHighPrecision);
         op.Run();
     }
-#elif __DAV_C220_VEC__
+#elif defined(__DAV_C220_VEC__)
     VectorForward<__bf16, true, float> op;
     if (inputLayout != 3) {
         TransposeCustom<__bf16, true> op_in;

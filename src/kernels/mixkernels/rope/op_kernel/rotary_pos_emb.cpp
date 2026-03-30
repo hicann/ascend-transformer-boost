@@ -52,13 +52,13 @@ extern "C" __global__ __aicore__ void rotary_pos_emb(GM_ADDR q, GM_ADDR k, GM_AD
         ropeFp32.RopeInitGm(q, k, cos, sin, seqLen, outQ, outK);
         ropeFp32.Process(workspace, sync);
     } else if (TILING_KEY_IS(32)) {
-#if defined(__CCE_KT_TEST__) || (__CCE_AICORE__ == 220)
+#if defined(__CCE_KT_TEST__) || (defined(__CCE_AICORE__) && __CCE_AICORE__ == 220)
         RopeBf16<bfloat16_t, bfloat16_t, true> ropeBf16(&tiling_data, &pipe);
         ropeBf16.RopeInitGm(q, k, cos, sin, seqLen, outQ, outK);
         ropeBf16.Process(workspace, sync);
 #endif
     } else if (TILING_KEY_IS(33)) {
-#if defined(__CCE_KT_TEST__) || (__CCE_AICORE__ == 220)
+#if defined(__CCE_KT_TEST__) || (defined(__CCE_AICORE__) && __CCE_AICORE__ == 220)
         RopeBf16Align<bfloat16_t, bfloat16_t, true> ropeBf16(&tiling_data, &pipe);
         ropeBf16.RopeInitGm(q, k, cos, sin, seqLen, outQ, outK);
         ropeBf16.Process(workspace, sync);
@@ -72,13 +72,13 @@ extern "C" __global__ __aicore__ void rotary_pos_emb(GM_ADDR q, GM_ADDR k, GM_AD
         ropeFp32.RopeInitGm(q, k, cos, sin, seqLen, outQ, outK);
         ropeFp32.Process(workspace, sync);
     } else if (TILING_KEY_IS(22)) {
-#if defined(__CCE_KT_TEST__) || (__CCE_AICORE__ == 220)
+#if defined(__CCE_KT_TEST__) || (defined(__CCE_AICORE__) && __CCE_AICORE__ == 220)
         RopeBf16<bfloat16_t, bfloat16_t, false> ropeBf16(&tiling_data, &pipe);
         ropeBf16.RopeInitGm(q, k, cos, sin, seqLen, outQ, outK);
         ropeBf16.Process(workspace, sync);
 #endif
     } else if (TILING_KEY_IS(24)) {
-#if defined(__CCE_KT_TEST__) || (__CCE_AICORE__ == 220)
+#if defined(__CCE_KT_TEST__) || (defined(__CCE_AICORE__) && __CCE_AICORE__ == 220)
         RopeBf16Align<bfloat16_t, bfloat16_t, false> ropeBf16(&tiling_data, &pipe);
         ropeBf16.RopeInitGm(q, k, cos, sin, seqLen, outQ, outK);
         ropeBf16.Process(workspace, sync);

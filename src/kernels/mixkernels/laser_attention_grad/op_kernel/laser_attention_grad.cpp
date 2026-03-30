@@ -26,7 +26,7 @@ using namespace AscendC;
 inline __aicore__ void InitTilingData(const __gm__ uint8_t *p_tilingdata,
                                       AtbOps::LaserAttentionGradTilingData *tilingdata)
 {
-#if defined(__CCE_KT_TEST__) || (__CCE_AICORE__ == 220)
+#if defined(__CCE_KT_TEST__) || (defined(__CCE_AICORE__) && __CCE_AICORE__ == 220)
     tilingdata->batchSize = (*(const __gm__ int32_t *)(p_tilingdata + 0));
     tilingdata->headNum = (*(const __gm__ int32_t *)(p_tilingdata + 4));
     tilingdata->seqSize = (*(const __gm__ int32_t *)(p_tilingdata + 8));
@@ -155,7 +155,7 @@ laser_attention_grad(__gm__ uint8_t *__restrict__ ffts_addr, __gm__ uint8_t *__r
                   batchSize, headNum, gqaGroupSize, headDim, sparseMode, windowLength, blockNumPerCore);
         cube.Run_mix();
         SyncAll<false>();
-#elif __DAV_C220_VEC__
+#elif defined(__DAV_C220_VEC__)
         VEC_BACKWARD_FP32_OP::VectorBackward<TYPE, true> Vector;
         Vector.Init(gm_dO, gm_O, gm_S, gm_rowmax, gm_rowsum, gm_dP, gm_mask, isTri, qSize, kSize, batchSize, headNum,
                     headDim, blockNumPerCore, sparseMode, windowLength, maskSeqLength, scale);
@@ -221,7 +221,7 @@ laser_attention_grad(__gm__ uint8_t *__restrict__ ffts_addr, __gm__ uint8_t *__r
             cube.Run_op();
             SyncAll<false>();
         }
-#elif __DAV_C220_VEC__
+#elif defined(__DAV_C220_VEC__)
         VEC_BACKWARD_BAND_OP::VectorBackwardBandOp<TYPE, true> Vector;
 
         TransposeGrad<TYPE, true> transpose_grad;
