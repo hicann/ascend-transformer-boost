@@ -289,6 +289,8 @@ private:
                 zGm_(static_cast<uint64_t>(blockIdx_) * nlCoreRun_ + i) = int32BlkBuf.GetValue(i);
                 selectRangeGm_(static_cast<uint64_t>(blockIdx_) * nlCoreRun_ + i) = selectRangeBlkBuf.GetValue(i);
             }
+            AscendC::DataCacheCleanAndInvalid<int32_t, AscendC::CacheLine::SINGLE_CACHE_LINE>(zGm_[static_cast<uint64_t>(blockIdx_) * nlCoreRun_]);
+ 	        AscendC::DataCacheCleanAndInvalid<int32_t, AscendC::CacheLine::SINGLE_CACHE_LINE>(selectRangeGm_[static_cast<uint64_t>(blockIdx_) * nlCoreRun_]);
         }
     }
 
