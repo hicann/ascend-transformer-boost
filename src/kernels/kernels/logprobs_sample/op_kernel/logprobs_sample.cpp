@@ -53,7 +53,7 @@ public:
         pipe_.InitBuffer(inQueueSortedProbs_, BUFFER_NUM,  calculateSizePad_ * sizeof(T));
         pipe_.InitBuffer(outQueueLogprobs_, BUFFER_NUM, outputSizePad_ * sizeof(float));
 
-#if (__CCE_AICORE__ != 220)
+#if (defined(__CCE_AICORE__) && __CCE_AICORE__ != 220)
         if (isMultiCore_) {
             if (collectOutputLocally_) {
                 pipe_.InitBuffer(outputLocalBuf_, coreRun_ * OUTPUT_PAD_SIZE * sizeof(float));
@@ -78,7 +78,7 @@ public:
             Compute();
             CopyOut(relativeBatchId, absoluteBatchId);
         }
-#if (__CCE_AICORE__ != 220)
+#if (defined(__CCE_AICORE__) && __CCE_AICORE__ != 220)
         if (isMultiCore_ && collectOutputLocally_) {
             SyncOut();
         }
@@ -95,7 +95,7 @@ private:
             currentSelectRange_ = 1;
         int64_t selectProbOffset = currentSelectRange_ - 1;
         selectProbOffset += probsSize_ * absoluteBatchId;
-#if (__CCE_AICORE__ == 220)
+#if (defined(__CCE_AICORE__) && __CCE_AICORE__ == 220)
         if constexpr(AscendC::IsSameType<T, bfloat16_t>::value) {
             currentSelectProb_ = AscendC::ToFloat(cumsumedProbsGm_.GetValue(selectProbOffset));
         } else {
@@ -135,7 +135,7 @@ private:
             }
         }
 
-#if (__CCE_AICORE__ != 220)
+#if (defined(__CCE_AICORE__) && __CCE_AICORE__ != 220)
         if (!isOutputAligned_ && isMultiCore_ && !collectOutputLocally_) {
             AscendC::LocalTensor<uint32_t> gatherMaskPattern = gatherMaskPattenBuf_.Get<uint32_t>();
             /* 比如logprobsSize为20，对应的索引为[0, 19]
@@ -186,7 +186,7 @@ private:
             // 对齐场景，全量拷贝；单核场景，正常覆盖
             AscendC::DataCopy(logprobsOutputGm_[offsetMain], logprobsLocal, outputSizePad_);
         } else {
-#if (__CCE_AICORE__ == 220)
+#if (defined(__CCE_AICORE__) && __CCE_AICORE__ == 220)
             AscendC::DataCopyExtParams copyParams{1, logprobsSize_ * (uint32_t)sizeof(float), 0, 0, 0};
             AscendC::DataCopyPad(logprobsOutputGm_[offsetMain], logprobsLocal, copyParams);
 #else
@@ -275,7 +275,7 @@ private:
 
 inline __aicore__ void InitTilingData(const __gm__ uint8_t *p_tilingdata, AsdOps::LogprobsSampleTilingData *tilingdata)
 {
-#if defined(__CCE_KT_TEST__) || (__CCE_AICORE__ == 220)
+#if defined(__CCE_KT_TEST__) || (defined(__CCE_AICORE__) && __CCE_AICORE__ == 220)
     tilingdata->batchSize = (*(const __gm__ uint32_t *)(p_tilingdata + 0));
     tilingdata->probsSize = (*(const __gm__ uint32_t *)(p_tilingdata + 4));
 #else
@@ -312,7 +312,7 @@ extern "C" __global__ __aicore__ void logprobs_sample(GM_ADDR sortedProbs, GM_AD
         op.Init(sortedProbs, cumsumedProbs, selectRange, logprobsSize, syncWorkspace, outputLogprobs, tiling_data);
         op.Process();
     }
-#if (__CCE_AICORE__ == 220)
+#if (defined(__CCE_AICORE__) && __CCE_AICORE__ == 220)
     if (TILING_KEY_IS(1)) {
         LogprobsSample<bfloat16_t> op;
         op.Init(sortedProbs, cumsumedProbs, selectRange, logprobsSize, syncWorkspace, outputLogprobs, tiling_data);
