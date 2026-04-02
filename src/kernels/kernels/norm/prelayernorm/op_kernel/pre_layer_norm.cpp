@@ -123,7 +123,7 @@ extern "C" __global__ __aicore__ void pre_layer_norm(GM_ADDR x, GM_ADDR res_in, 
         op.Init(x, res_in, gamma, beta, z, res_out, tiling_data);
         op.Process();
     }
-#if defined(__CCE_KT_TEST__) || (__CCE_AICORE__ == 220)
+#if defined(__CCE_KT_TEST__) || (defined(__CCE_AICORE__) && __CCE_AICORE__ == 220)
     if (TILING_KEY_IS(2)) { // 10
         PreLayerNorm<bfloat16_t, true> op;
         op.Init(x, res_in, gamma, beta, z, res_out, tiling_data);

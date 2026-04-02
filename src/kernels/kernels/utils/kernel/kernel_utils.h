@@ -76,7 +76,7 @@ __aicore__ inline void CastFromF16ToI8(const AscendC::LocalTensor<int8_t> &out, 
     AscendC::PipeBarrier<PIPE_V>();
     Mins(in, in, (half)127, count); // 127: limit
     AscendC::PipeBarrier<PIPE_V>();
-#if defined(__CCE_KT_TEST__) || (__CCE_AICORE__ == 220)
+#if defined(__CCE_KT_TEST__) || (defined(__CCE_AICORE__) && __CCE_AICORE__ == 220)
     Cast(out, in, AscendC::RoundMode::CAST_RINT, count);
 #else
     Cast(out, in, AscendC::RoundMode::CAST_NONE, count);
@@ -110,7 +110,7 @@ template <typename T>
 __aicore__ inline T ComputeSum(const AscendC::LocalTensor<T> &in, const AscendC::LocalTensor<T> &tmp,
                                const AscendC::LocalTensor<T> &workLocal, uint32_t count)
 {
-#if __CCE_AICORE__ == 100
+#if defined(__CCE_AICORE__) && __CCE_AICORE__ == 100
     float sum = 0;
     int64_t elementNumPerRep = AscendC::ONE_REPEAT_BYTE_SIZE / sizeof(T);
     AscendC::LocalTensor<T> src = in;

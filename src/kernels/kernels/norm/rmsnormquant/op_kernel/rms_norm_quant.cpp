@@ -235,7 +235,7 @@ private:
              {1, 1, AscendC::DEFAULT_REPEAT_STRIDE, AscendC::DEFAULT_REPEAT_STRIDE / OFFSET_SUM});
         Mul(sqx, fp32_xy, fp32_xy, REPEAT_TIME_64, numel / REPEAT_TIME_64,
             {1, 1, 1, AscendC::DEFAULT_REPEAT_STRIDE, AscendC::DEFAULT_REPEAT_STRIDE, AscendC::DEFAULT_REPEAT_STRIDE});
-#if __CCE_AICORE__ == 100
+#if defined(__CCE_AICORE__) && __CCE_AICORE__ == 100
         ReduceSumCustom(sum, sqx, work, numel);
 #else
         ReduceSum(sum, sqx, work, numel);
@@ -332,7 +332,7 @@ private:
 inline __aicore__ void InitTilingData(const __gm__ uint8_t *p_tilingdata,
                                       AsdOps::RmsNormQuantCommonTilingData *tilingdata)
 {
-#if defined(__CCE_KT_TEST__) || (__CCE_AICORE__ == 220)
+#if defined(__CCE_KT_TEST__) || (defined(__CCE_AICORE__) && __CCE_AICORE__ == 220)
     tilingdata->numCore = (*(const __gm__ uint32_t *)(p_tilingdata + 0));
     tilingdata->numCol = (*(const __gm__ uint32_t *)(p_tilingdata + 4));
     tilingdata->numRow = (*(const __gm__ uint32_t *)(p_tilingdata + 8));
@@ -377,7 +377,7 @@ extern "C" __global__ __aicore__ void rms_norm_quant(GM_ADDR x, GM_ADDR g, GM_AD
         RmsNormQuant<half, false, false> kernel(x, g, b, scale, offset, y, tiling_data);
         kernel.Launch();
     }
-#if defined(__CCE_KT_TEST__) || (__CCE_AICORE__ == 220)
+#if defined(__CCE_KT_TEST__) || (defined(__CCE_AICORE__) && __CCE_AICORE__ == 220)
     if (TILING_KEY_IS(2100000000)) { // bf16, beta, scale, offset, no slice
         RmsNormQuant<bfloat16_t, true, true> kernel(x, g, b, scale, offset, y, tiling_data);
         kernel.Launch();
