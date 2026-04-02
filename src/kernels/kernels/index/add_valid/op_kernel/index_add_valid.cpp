@@ -266,7 +266,7 @@ extern "C" __global__ __aicore__ void index_add_valid(GM_ADDR var, GM_ADDR indic
                                                  GM_ADDR tiling) {
     AsdOps::IndexAddValidTilingData tiling_data;
     InitTilingData(tiling, &(tiling_data));
-#if defined(__CCE_KT_TEST__) || (__CCE_AICORE__ == 220)
+#if defined(__CCE_KT_TEST__) || (defined(__CCE_AICORE__) && __CCE_AICORE__ == 220)
     if (TILING_KEY_IS(2000000000)) { // half
                 IndexAddValid<half> op;
                 op.Init(var, indices, updates, validIndicesNum, workspace, tiling_data.indicesValid,

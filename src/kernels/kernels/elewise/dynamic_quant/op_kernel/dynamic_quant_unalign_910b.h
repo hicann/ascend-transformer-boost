@@ -118,7 +118,7 @@ private:
 
     __aicore__ inline void ExcuteCompute(uint32_t copyRow)
     {
-#if defined(__CCE_KT_TEST__) || (__CCE_AICORE__ == 220)
+#if defined(__CCE_KT_TEST__) || (defined(__CCE_AICORE__) && __CCE_AICORE__ == 220)
         if constexpr (std::is_same<T, bfloat16_t>::value) {
             DynamicQuantAlign<T>::ComputeBF16(copyRow, sizeZOut_);
             return;
@@ -147,7 +147,7 @@ private:
             uint64_t paddingValue = 0;
             AscendC::DataCopyPadParams padParams {true, leftPadding, rightPadding, paddingValue};
 
-#if __CCE_AICORE__ == 220
+#if defined(__CCE_AICORE__) && __CCE_AICORE__ == 220
             DataCopyPad(inLocal, this->inGm_[progress * this->lenCopyRow_], dataCopyParams, padParams);
 #endif
         } else {
@@ -171,7 +171,7 @@ private:
             uint16_t blockCountX = calRow;
             uint16_t blockLenX = lenZSizeH_;
             AscendC::DataCopyParams dataCopyParamsX {blockCountX, blockLenX, 0, 0};
-#if __CCE_AICORE__ == 220
+#if defined(__CCE_AICORE__) && __CCE_AICORE__ == 220
             DataCopyPad(this->outGm_[progress * this->lenCopyRow_], outLocal, dataCopyParamsX);
 #endif
         } else {
@@ -182,7 +182,7 @@ private:
         uint16_t lenScale = calRow * AsdOps::DYNAMIC_QUANT_SIZE_OF_FLOAT;
         if (isScalePad) {
             AscendC::DataCopyParams paramsScale {countScale, lenScale, 0, 0};
-#if __CCE_AICORE__ == 220
+#if defined(__CCE_AICORE__) && __CCE_AICORE__ == 220
             DataCopyPad(this->scaleGm_[progress * this->numCopyRow_], scaleLocal, paramsScale);
 #endif
         } else {
@@ -191,7 +191,7 @@ private:
         if (this->asymmetric_) {
             if (isScalePad) {
                 AscendC::DataCopyParams paramsScale {countScale, lenScale, 0, 0};
-#if __CCE_AICORE__ == 220
+#if defined(__CCE_AICORE__) && __CCE_AICORE__ == 220
                 DataCopyPad(this->offsetGm_[progress * this->numCopyRow_], offsetLocal, paramsScale);
 #endif
             } else {

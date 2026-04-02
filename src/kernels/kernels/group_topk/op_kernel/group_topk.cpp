@@ -588,7 +588,7 @@ extern "C" __global__ __aicore__ void group_topk(GM_ADDR topKInput, GM_ADDR idxA
     } else if (TILING_KEY_IS(900)) {
         single_value_group_topk_impl<half>(topKInput, idxArr, tilingData);
     }
-#if defined(__CCE_KT_TEST__) || (__CCE_AICORE__ == 220)
+#if defined(__CCE_KT_TEST__) || (defined(__CCE_AICORE__) && __CCE_AICORE__ == 220)
     else if (TILING_KEY_IS(20000000001)) {
         group_topk_impl<bfloat16_t, GroupMultiFlag::UNDEFINED>(topKInput, idxArr, tilingData);
     } else if (TILING_KEY_IS(20000000011)) {

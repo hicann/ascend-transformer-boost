@@ -19,7 +19,7 @@ using namespace AsdOps;
 
 inline __aicore__ void InitTilingData(const __gm__ uint8_t *p_tilingdata, GeluForwardTilingData *tilingdata)
 {
-#if defined(__CCE_KT_TEST__) || (__CCE_AICORE__ == 220)
+#if defined(__CCE_KT_TEST__) || (defined(__CCE_AICORE__) && __CCE_AICORE__ == 220)
     tilingdata->blockLength = (*(const __gm__ uint32_t *)(p_tilingdata + 0));
     tilingdata->tileNum = (*(const __gm__ uint32_t *)(p_tilingdata + 4));
     tilingdata->tileLength = (*(const __gm__ uint32_t *)(p_tilingdata + 8));
@@ -53,7 +53,7 @@ extern "C" __global__ __aicore__ void gelu_forward(GM_ADDR inputAddr, GM_ADDR ou
         op.Init(inputAddr, outputAddr, tilingData);
         op.ProcessFP32();
     }
-#if defined(__CCE_KT_TEST__) || (__CCE_AICORE__ == 220) // 220代表910B
+#if defined(__CCE_KT_TEST__) || (defined(__CCE_AICORE__) && __CCE_AICORE__ == 220) // 220代表910B
     if (TILING_KEY_IS(27)) { // 27代表bf16
         GeluForward<bfloat16_t, bfloat16_t> op;
         op.Init(inputAddr, outputAddr, tilingData);
