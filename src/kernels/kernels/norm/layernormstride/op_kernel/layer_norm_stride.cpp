@@ -445,7 +445,7 @@ private:
 
 inline __aicore__ void InitTilingData(const __gm__ uint8_t *p_tilingdata, AsdOps::LayerNormStrideTilingData *tilingdata)
 {
-#if defined(__CCE_KT_TEST__) || (__CCE_AICORE__ == 220)
+#if defined(__CCE_KT_TEST__) || (defined(__CCE_AICORE__) && __CCE_AICORE__ == 220)
     tilingdata->numCore = (*(const __gm__ uint32_t *)(p_tilingdata + 0));
     tilingdata->numLastDim = (*(const __gm__ uint32_t *)(p_tilingdata + 4));
     tilingdata->numFirstDim = (*(const __gm__ uint32_t *)(p_tilingdata + 8));
@@ -506,7 +506,7 @@ extern "C" __global__ __aicore__ void layer_norm_stride(GM_ADDR x, GM_ADDR gamma
         op.Init(x, gamma, beta, z, tilingData);
         op.Process();
     }
-#if defined(__CCE_KT_TEST__) || (__CCE_AICORE__ == 220)
+#if defined(__CCE_KT_TEST__) || (defined(__CCE_AICORE__) && __CCE_AICORE__ == 220)
     if (TILING_KEY_IS(2100000000)) { // bf16 & SliceCompute
         KernelLayerNormStride<bfloat16_t, false> op;
         op.Init(x, gamma, beta, z, tilingData);

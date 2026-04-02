@@ -78,7 +78,7 @@ public:
         pipe.InitBuffer(fp32BufG_, actNumCol_ * sizeof(float));
         pipe.InitBuffer(fp32BufXy_, actNumCol_ * sizeof(float));
         pipe.InitBuffer(calcBuf_, BUF_FACTOR * actNumCol_ * sizeof(float));
-#if __CCE_AICORE__ == 300
+#if defined(__CCE_AICORE__) && __CCE_AICORE__ == 300
         pipe.InitBuffer(workLocalBuf_, GetReduceSumWorkLocalSize<float>(actNumCol_) * sizeof(float));
 #endif
     }
@@ -90,7 +90,7 @@ public:
         CopyIn(gmG_, fp16QueG_, 0, actNumCol_);
         AscendC::LocalTensor<float> buf = calcBuf_.Get<float>();
         AscendC::LocalTensor<float> work = buf[OFFSET_WORKSPACE * actNumCol_];
-#if __CCE_AICORE__ == 300
+#if defined(__CCE_AICORE__) && __CCE_AICORE__ == 300
         AscendC::LocalTensor<float> workLocal = workLocalBuf_.Get<float>();
         float rms = sqrt(ComputeSliceSquareSum(fp32Xy, work, workLocal, numCol_) * avgFactor_ + epsilon_);
 #else
@@ -125,7 +125,7 @@ private:
         
         AscendC::LocalTensor<float> buf = calcBuf_.Get<float>();
         AscendC::LocalTensor<float> work = buf[OFFSET_WORKSPACE * actNumCol_];
-#if __CCE_AICORE__ == 300
+#if defined(__CCE_AICORE__) && __CCE_AICORE__ == 300
         AscendC::LocalTensor<float> workLocal = workLocalBuf_.Get<float>();
         float squareSum = ComputeSliceSquareSum(fp32Xy, work, workLocal, numCol_);
 #else
@@ -147,7 +147,7 @@ private:
     AscendC::TBuf<AscendC::TPosition::VECCALC> fp32BufXy_;
     AscendC::TBuf<AscendC::TPosition::VECCALC> fp32BufG_;
     AscendC::TBuf<AscendC::TPosition::VECCALC> calcBuf_;
-#if __CCE_AICORE__ == 300
+#if defined(__CCE_AICORE__) && __CCE_AICORE__ == 300
     AscendC::TBuf<AscendC::TPosition::VECCALC> workLocalBuf_;
 #endif
     AscendC::GlobalTensor<T> gmX_;
@@ -222,7 +222,7 @@ public:
         pipe.InitBuffer(fp16QueY_, BUFFER_NUM, sizeof(T) * sliceSize_);
         pipe.InitBuffer(fp32BufXy_, sizeof(float) * sliceSize_);
         pipe.InitBuffer(calcBuf_, BUF_FACTOR * sizeof(float) * sliceSize_);
-#if __CCE_AICORE__ == 300
+#if defined(__CCE_AICORE__) && __CCE_AICORE__ == 300
         pipe.InitBuffer(workLocalBuf_, GetReduceSumWorkLocalSize<float>(sliceSize_) * sizeof(float));
 #endif
     }
@@ -263,7 +263,7 @@ private:
         uint32_t alignNumel = (numel + ALIGN_SIZE - 1) / ALIGN_SIZE * ALIGN_SIZE;
         CopyInAndCastF32(fp32Xy, gmX_, fp16QueX_, offset, alignNumel);
 
-#if __CCE_AICORE__ == 300
+#if defined(__CCE_AICORE__) && __CCE_AICORE__ == 300
         AscendC::LocalTensor<float> workLocal = workLocalBuf_.Get<float>();
         return ComputeSliceSquareSum(fp32Xy, work, workLocal, numel);
 #else
@@ -299,7 +299,7 @@ private:
     AscendC::TQue<AscendC::QuePosition::VECOUT, BUFFER_NUM> fp16QueY_;
     AscendC::TBuf<AscendC::TPosition::VECCALC> fp32BufXy_;
     AscendC::TBuf<AscendC::TPosition::VECCALC> calcBuf_;
-#if __CCE_AICORE__ == 300
+#if defined(__CCE_AICORE__) && __CCE_AICORE__ == 300
     AscendC::TBuf<AscendC::TPosition::VECCALC> workLocalBuf_;
 #endif
     AscendC::GlobalTensor<T> gmX_;
@@ -323,7 +323,7 @@ private:
 
 inline __aicore__ void InitTilingData(const __gm__ uint8_t *p_tilingdata, AsdOps::RmsNormCommonTilingData *tilingdata)
 {
-#if defined(__CCE_KT_TEST__) || (__CCE_AICORE__ == 220) || (__CCE_AICORE__ == 300)
+#if defined(__CCE_KT_TEST__) || (defined(__CCE_AICORE__) && __CCE_AICORE__ == 220) || (defined(__CCE_AICORE__) && __CCE_AICORE__ == 300)
     tilingdata->numCore = (*(const __gm__ uint32_t *)(p_tilingdata + 0));
     tilingdata->numCol = (*(const __gm__ uint32_t *)(p_tilingdata + 4));
     tilingdata->numRow = (*(const __gm__ uint32_t *)(p_tilingdata + 8));
@@ -379,7 +379,7 @@ extern "C" __global__ __aicore__ void rms_norm(GM_ADDR x, GM_ADDR g, GM_ADDR y, 
         RmsNormShort<half, GEMMA_OFF, PRE_OFF> kernel(x, g, y, tilingData);
         kernel.Launch();
     }
-#if defined(__CCE_KT_TEST__) || (__CCE_AICORE__ == 220)
+#if defined(__CCE_KT_TEST__) || (defined(__CCE_AICORE__) && __CCE_AICORE__ == 220)
     if (TILING_KEY_IS(11110)){  // BF16,gemmamode = 1,precisionmode = 0
         RmsNormShort<bfloat16_t, GEMMA_ON, PRE_ON> kernel(x, g, y, tilingData);
         kernel.Launch();
@@ -394,7 +394,7 @@ extern "C" __global__ __aicore__ void rms_norm(GM_ADDR x, GM_ADDR g, GM_ADDR y, 
         RmsNormLong<half> kernel(x, g, y, tilingData);
         kernel.Launch();
     }
-#if defined(__CCE_KT_TEST__) || (__CCE_AICORE__ == 220)
+#if defined(__CCE_KT_TEST__) || (defined(__CCE_AICORE__) && __CCE_AICORE__ == 220)
     if (TILING_KEY_IS(110010)) {
         RmsNormLong<bfloat16_t> kernel(x, g, y, tilingData);
         kernel.Launch();

@@ -214,7 +214,7 @@ private:
 
 inline __aicore__ void InitTilingData(const __gm__ uint8_t *p_tilingdata, AsdOps::RmsNormCommonTilingData *tilingdata)
 {
-#if defined(__CCE_KT_TEST__) || (__CCE_AICORE__ == 220)
+#if defined(__CCE_KT_TEST__) || (defined(__CCE_AICORE__) && __CCE_AICORE__ == 220)
     tilingdata->numCore = (*(const __gm__ uint32_t *)(p_tilingdata + 0));
     tilingdata->numCol = (*(const __gm__ uint32_t *)(p_tilingdata + 4));
     tilingdata->numRow = (*(const __gm__ uint32_t *)(p_tilingdata + 8));
