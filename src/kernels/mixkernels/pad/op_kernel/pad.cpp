@@ -113,7 +113,7 @@ private:
 
 inline __aicore__ void InitTilingData(const __gm__ uint8_t *p_tilingdata, AtbOps::PadTilingData *tilingdata)
 {
-#if defined(__CCE_KT_TEST__) || (__CCE_AICORE__ == 220)
+#if defined(__CCE_KT_TEST__) || (defined(__CCE_AICORE__) && __CCE_AICORE__ == 220)
     tilingdata->padLength = (*(const __gm__ uint32_t *)(p_tilingdata + 0));
     tilingdata->batch = (*(const __gm__ uint32_t *)(p_tilingdata + 4));
     tilingdata->hiddenDim = (*(const __gm__ uint32_t *)(p_tilingdata + 8));
