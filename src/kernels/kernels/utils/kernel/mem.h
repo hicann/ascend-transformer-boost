@@ -11,8 +11,7 @@
 #define INCLUDE_MEM_H
 
 #include "hardware.h"
-#include "kernel_event.h"
-#include "kernel_tensor.h"
+#include "kernel_operator.h"
 
 enum class BufferType { ASCEND_UB, ASCEND_CB, ASCEND_L0A, ASCEND_L0B, ASCEND_L0C, ASCEND_MAX };
 
