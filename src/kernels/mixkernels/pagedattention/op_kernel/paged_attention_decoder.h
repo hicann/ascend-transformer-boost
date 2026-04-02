@@ -31,7 +31,7 @@ constexpr int64_t UB_FLOAT_LINE_SIZE = 256;
 constexpr int64_t UB_HALF_LINE_SIZE = 512;
 constexpr int64_t MAX_LEN_64_BYTES = 64;
 constexpr int32_t DEC_UB_UINT8_BLOCK_SIZE = 8192; // 16 * 128 * 2
-#if __CCE_AICORE__ == 100
+#if defined(__CCE_AICORE__) && __CCE_AICORE__ == 100
 constexpr int32_t TILING_HEAD_SIZE = 192;
 #else
 constexpr int32_t TILING_HEAD_SIZE = 128;
@@ -69,7 +69,7 @@ __aicore__ inline void SyncStart()
     SET_FLAG(MTE1, MTE2, EVENT_ID1);
     SET_FLAG(MTE1, MTE2, EVENT_ID2);
     SET_FLAG(MTE1, MTE2, EVENT_ID3);
-#if __CCE_AICORE__ == 100
+#if defined(__CCE_AICORE__) && __CCE_AICORE__ == 100
 #else
     SET_FLAG(MTE1, MTE2, EVENT_ID4);
     SET_FLAG(MTE1, MTE2, EVENT_ID5);
@@ -84,7 +84,7 @@ __aicore__ inline void SyncEnd()
     WAIT_FLAG(MTE1, MTE2, EVENT_ID1);
     WAIT_FLAG(MTE1, MTE2, EVENT_ID2);
     WAIT_FLAG(MTE1, MTE2, EVENT_ID3);
-#if __CCE_AICORE__ == 100
+#if defined(__CCE_AICORE__) && __CCE_AICORE__ == 100
 #else
     WAIT_FLAG(MTE1, MTE2, EVENT_ID4);
     WAIT_FLAG(MTE1, MTE2, EVENT_ID5);

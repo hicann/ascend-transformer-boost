@@ -12,9 +12,9 @@
 
 constexpr int32_t BUFFER_NUM = 2;
 constexpr int32_t BLOCK_SIZE = 32;
-#if defined(__CCE_KT_TEST__) || (__CCE_AICORE__ == 220)
+#if defined(__CCE_KT_TEST__) || (defined(__CCE_AICORE__) && __CCE_AICORE__ == 220)
 constexpr int32_t UB_SIZE = 192 * 1024;
-#elif (__CCE_AICORE__ == 300)
+#elif (defined(__CCE_AICORE__) && __CCE_AICORE__ == 300)
 constexpr int32_t UB_SIZE = 120 * 1024;
 constexpr int32_t UB_SLOT_MAPPING_SIZE = 128 * 1024;
 #else
@@ -116,7 +116,7 @@ public:
         AscendC::DataCopyParams copyParamsOutV{static_cast<uint16_t>(ubSizeV / BLOCK_SIZE), 1, 0,
                                                 static_cast<uint16_t>(blockSize - 1)};
         for (uint32_t i = 0; i < baseTaskNum; i++) {
-#if defined(__CCE_KT_TEST__) || (__CCE_AICORE__ == 220)
+#if defined(__CCE_KT_TEST__) || (defined(__CCE_AICORE__) && __CCE_AICORE__ == 220)
             int32_t slotValue = slotMappingGM.GetValue(i + startTaskId);
 #else
             uint32_t maxNumTokens = UB_SLOT_MAPPING_SIZE / sizeof(int32_t); // 一次最多搬入max_num_tokens个slot_id
@@ -162,7 +162,7 @@ public:
 private:
     inline __aicore__ void InitTilingData(GM_ADDR tiling)
     {
-#if defined(__CCE_KT_TEST__) || (__CCE_AICORE__ == 220)
+#if defined(__CCE_KT_TEST__) || (defined(__CCE_AICORE__) && __CCE_AICORE__ == 220)
         // 取tiling参数
         numTokens = (uint32_t)(*((__gm__ uint32_t *)tiling)); // 取地址解引用，结构体地址偏移再取值
         numHeads = (uint32_t)(*((__gm__ uint32_t *)tiling + 1)); // numHeads index
