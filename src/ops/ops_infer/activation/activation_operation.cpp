@@ -50,14 +50,7 @@ template <> Status CreateOperation(const infer::ActivationParam &opParam, Operat
         return ERROR_INVALID_PARAM;
     }
     if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
-        if (opParam.activationType == atb::infer::ActivationType::ACTIVATION_SWISH ||
-            opParam.activationType == atb::infer::ActivationType::ACTIVATION_SIGMOID) {
-            Status status = ActivationAclnnRunner::LoadAclnnFunctions();
-            if (status != NO_ERROR) {
-                ATB_LOG(ERROR) << "load aclnn funcs failed.";
-                return ERROR_CANN_ERROR;
-            }
-        } else if (opParam.activationType == atb::infer::ActivationType::ACTIVATION_SWIGLU_FORWARD){
+        if (opParam.activationType == atb::infer::ActivationType::ACTIVATION_SWIGLU_FORWARD){
             Status status = SwigluForwardAclnnRunner::LoadMethod();
             if (status != NO_ERROR) {
                 ATB_LOG(WARN) << "Load Aclnn functions failed!";

@@ -44,12 +44,7 @@ template <> Status CreateOperation(const infer::ElewiseParam &opParam, Operation
     }
 
     if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
-        if (opParam.elewiseType == infer::ElewiseParam::ElewiseType::ELEWISE_DYNAMIC_QUANT) {
-            if (AclnnDynamicQuantRunner::LoadMethod() != NO_ERROR) {
-                ATB_LOG(ERROR) << "Load aclnn function failed, please check your CANN version.";
-                return ERROR_CANN_ERROR;
-            }
-        } else if (opParam.elewiseType == infer::ElewiseParam::ElewiseType::ELEWISE_QUANT_PER_CHANNEL) {
+        if (opParam.elewiseType == infer::ElewiseParam::ElewiseType::ELEWISE_QUANT_PER_CHANNEL) {
             if (AclnnAscendQuantRunner::LoadMethod() != NO_ERROR) {
                 ATB_LOG(ERROR) << "Load aclnn function failed, please check your CANN version.";
                 return ERROR_CANN_ERROR;
@@ -65,9 +60,7 @@ template <> Status CreateOperation(const infer::ElewiseParam &opParam, Operation
         ATB_LOG(ERROR) << "Elewise dequant only support Atlas 800I A2 inference product";
         return ERROR_INVALID_PARAM;
     }
-    if ((!GetSingleton<Config>().Is910B() &&
-         Mki::PlatformInfo::Instance().GetPlatformType() != Mki::PlatformType::ASCEND_950) &&
-        (opParam.elewiseType == infer::ElewiseParam::ElewiseType::ELEWISE_QUANT)) {
+    if (!GetSingleton<Config>().Is910B() && opParam.elewiseType == infer::ElewiseParam::ElewiseType::ELEWISE_QUANT) {
         ATB_LOG(ERROR) << "Elewise quant is not supported on this product series.";
         return ERROR_INVALID_PARAM;
     }
@@ -97,7 +90,6 @@ template <> Status CreateOperation(const infer::ElewiseParam &opParam, Operation
 ElewiseOperation::ElewiseOperation(const infer::ElewiseParam &param) : OperationBase("ElewiseOperation"), param_(param)
 {
     bool IS_310B = GetSingleton<Config>().Is310B();
-    bool IS_950 = Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950;
     static std::map<infer::ElewiseParam::ElewiseType, std::string> opIniTable = {
         {infer::ElewiseParam::ElewiseType::ELEWISE_CAST,
          IS_310B ? "ElewiseOperationCastAtlas200I500A2" : "ElewiseOperationCast"},
@@ -106,8 +98,7 @@ ElewiseOperation::ElewiseOperation(const infer::ElewiseParam &param) : Operation
         {infer::ElewiseParam::ElewiseType::ELEWISE_COS, "ElewiseOperationCos"},
         {infer::ElewiseParam::ElewiseType::ELEWISE_SIN, "ElewiseOperationSin"},
         {infer::ElewiseParam::ElewiseType::ELEWISE_NEG, "ElewiseOperationNeg"},
-        {infer::ElewiseParam::ElewiseType::ELEWISE_QUANT,
-         IS_950 ? "ElewiseOperationQuantAscend950" : "ElewiseOperationQuant"},
+        {infer::ElewiseParam::ElewiseType::ELEWISE_QUANT, "ElewiseOperationQuant"},
         {infer::ElewiseParam::ElewiseType::ELEWISE_LOGICAL_NOT, "ElewiseOperationLogicalNot"},
         {infer::ElewiseParam::ElewiseType::ELEWISE_ADD,
          IS_310B ? "ElewiseOperationAddAtlas200I500A2" : "ElewiseOperationAdd"},
@@ -122,8 +113,7 @@ ElewiseOperation::ElewiseOperation(const infer::ElewiseParam &param) : Operation
         {infer::ElewiseParam::ElewiseType::ELEWISE_EQUAL, "ElewiseOperationEqual"},
         {infer::ElewiseParam::ElewiseType::ELEWISE_QUANT_PER_CHANNEL, "ElewiseOperationQuantPerChannel"},
         {infer::ElewiseParam::ElewiseType::ELEWISE_DEQUANT_PER_CHANNEL, "ElewiseOperationDequantPerChannel"},
-        {infer::ElewiseParam::ElewiseType::ELEWISE_DYNAMIC_QUANT,
-         IS_950 ? "ElewiseOperationDynamicQuant950" : "ElewiseOperationDynamicQuant"},
+        {infer::ElewiseParam::ElewiseType::ELEWISE_DYNAMIC_QUANT, "ElewiseOperationDynamicQuant"},
         {infer::ElewiseParam::ElewiseType::ELEWISE_TANH, "ElewiseOperationTanh"},
     };
     std::map<infer::ElewiseParam::ElewiseType, std::string>::const_iterator it = opIniTable.find(param_.elewiseType);
@@ -512,24 +502,18 @@ bool ElewiseOperation::InferShapeCheckDynamicQuant310P(const SVector<TensorDesc>
 std::shared_ptr<Runner> ElewiseOperation::CreateRunner(Context &context) const
 {
     (void)context;
-    if (param_.elewiseType == infer::ElewiseParam::ElewiseType::ELEWISE_DYNAMIC_QUANT &&
-        Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
-        return std::make_shared<AclnnDynamicQuantRunner>(param_);
-    } else if (param_.elewiseType == infer::ElewiseParam::ElewiseType::ELEWISE_QUANT_PER_CHANNEL &&
-               Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
-        return std::make_shared<AclnnAscendQuantRunner>(param_);
-    }
-    std::unordered_set<infer::ElewiseParam::ElewiseType> aclnnOpType = {
-        infer::ElewiseParam::ElewiseType::ELEWISE_CAST,    infer::ElewiseParam::ElewiseType::ELEWISE_MULS,
-        infer::ElewiseParam::ElewiseType::ELEWISE_COS,     infer::ElewiseParam::ElewiseType::ELEWISE_SIN,
-        infer::ElewiseParam::ElewiseType::ELEWISE_ADD,     infer::ElewiseParam::ElewiseType::ELEWISE_LESS,
-        infer::ElewiseParam::ElewiseType::ELEWISE_MUL,     infer::ElewiseParam::ElewiseType::ELEWISE_GREATER,
-        infer::ElewiseParam::ElewiseType::ELEWISE_REALDIV, infer::ElewiseParam::ElewiseType::ELEWISE_LOGICAL_NOT,
-        infer::ElewiseParam::ElewiseType::ELEWISE_QUANT,   infer::ElewiseParam::ElewiseType::ELEWISE_SUB,
-    };
-    if (aclnnOpType.find(param_.elewiseType) != aclnnOpType.end() &&
-        Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
-        return std::make_shared<ElewiseAclnnRunner>(param_);
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
+        if (param_.elewiseType == infer::ElewiseParam::ElewiseType::ELEWISE_QUANT_PER_CHANNEL) {
+            return std::make_shared<AclnnAscendQuantRunner>(param_);
+        }
+        std::unordered_set<infer::ElewiseParam::ElewiseType> aclnnOpType = {
+            infer::ElewiseParam::ElewiseType::ELEWISE_CAST,    infer::ElewiseParam::ElewiseType::ELEWISE_MULS,
+            infer::ElewiseParam::ElewiseType::ELEWISE_ADD,     infer::ElewiseParam::ElewiseType::ELEWISE_GREATER,
+            infer::ElewiseParam::ElewiseType::ELEWISE_REALDIV,
+        };
+        if (aclnnOpType.find(param_.elewiseType) != aclnnOpType.end()) {
+            return std::make_shared<ElewiseAclnnRunner>(param_);
+        }
     }
     return std::make_shared<ElewiseOpsRunner>(param_);
 }

@@ -28,13 +28,6 @@ template <> Status CreateOperation(const infer::RepeatParam &opParam, Operation 
     }
     OP_PARAM_RSV_CHECK(opParam);
 
-    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
-        if (RepeatAclnnRunner::LoadMethod() != NO_ERROR) {
-            ATB_LOG(ERROR) << "Load aclnn function failed, please check your CANN version.";
-            return ERROR_CANN_ERROR;
-        }
-    }
-
     if (opParam.multiples.size() > MAX_DIM) {
         ATB_LOG(ERROR) << "The dimNum of param.multiples should <= MAX_DIM(8)";
         return ERROR_INVALID_PARAM;
@@ -140,9 +133,6 @@ Status RepeatOperation::SetupCheckImpl(const SVector<Tensor> &inTensors, const S
 std::shared_ptr<Runner> RepeatOperation::CreateRunner(Context &context) const
 {
     (void)context;
-    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
-        return std::make_shared<RepeatAclnnRunner>(param_);
-    }
     return std::make_shared<RepeatOpsRunner>(param_);
 }
 
