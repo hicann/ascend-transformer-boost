@@ -32,18 +32,6 @@ bool ParamCheck(const atb::infer::FillParam &opParam)
         ATB_LOG(ERROR) << "fillParam withMask is false, outDim.size() should >0 && <= MAX_DIM(8)";
         return false;
     }
-    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
-        atb::Status status = atb::MaskedFillAclnnRunner::LoadMethod();
-        if (status != atb::ErrorType::NO_ERROR) {
-            ATB_LOG(ERROR) << "Load aclnn function failed, fill with mask is not supported!";
-            return false;
-        }
-        status = atb::FillAclnnRunner::LoadMethod();
-        if (status != atb::ErrorType::NO_ERROR) {
-            ATB_LOG(ERROR) << "Load aclnn function failed, fill without mask is not supported!";
-            return false;
-        }
-    }
     return true;
 }
 } // namespace
@@ -152,15 +140,6 @@ Status FillOperation::CheckIsTensorBroadcastable(const TensorDesc &input, const 
 std::shared_ptr<Runner> FillOperation::CreateRunner(Context &context) const
 {
     (void)context;
-    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
-        if (param_.withMask) {
-            ATB_LOG(INFO) << GetLogPrefix() << "create MaskedFillAclnnRunner";
-            return std::make_shared<MaskedFillAclnnRunner>(param_);
-        } else {
-            ATB_LOG(INFO) << GetLogPrefix() << "create FillAclnnRunner";
-            return std::make_shared<FillAclnnRunner>(param_);
-        }
-    }
     return std::make_shared<FillOpsRunner>(param_);
 }
 

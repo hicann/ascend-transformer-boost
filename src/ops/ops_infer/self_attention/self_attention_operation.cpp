@@ -1543,7 +1543,8 @@ Status SelfAttentionOperation::MaxHeadSizeCheck910B(const int64_t headSizeK, con
     if (useMlaKernel) {
         maxHeadSize = MAX_HEAD_SIZE_MLA_KERNEL;
     }
-    if ((param_.windowSize > 0 && !useMlaKernel) || param_.scaleType != infer::SelfAttentionParam::SCALE_TYPE_TOR ||
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950 ||
+        (param_.windowSize > 0 && !useMlaKernel) || param_.scaleType != infer::SelfAttentionParam::SCALE_TYPE_TOR ||
         param_.inputLayout == atb::infer::InputLayout::TYPE_BNSD ||
         (!isMla_ && param_.quantType != infer::SelfAttentionParam::QuantType::TYPE_QUANT_UNQUANT)) {
         maxHeadSize = 256; // 256: 不支持mla的场景headsize小于等于256，且headSizeK，headSizeV需要相等
