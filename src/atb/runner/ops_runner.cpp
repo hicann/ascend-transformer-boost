@@ -65,7 +65,11 @@ enum OpType : int {
 
 OpsRunner::OpsRunner(const std::string &name) : Runner(name)
 {
-    memAllocationSolver_ = GetGlobalMemAllocationSolver();
+    if (!GetSingleton<Config>().Is310PRC()) {
+ 	    memAllocationSolver_ = GetGlobalMemAllocationSolver();
+ 	} else {
+ 	    memAllocationSolver_ = CreateMemAllocationSolver();
+ 	}
 
     runnerTypeIdx_ = RunnerTypeRegister::GetRunnerTypeIdx(name);
 
@@ -187,7 +191,9 @@ bool OpsRunner::SetupCanReuse(RunnerVariantPack &runnerVariantPack, bool &kernel
 Status OpsRunner::SetupImpl(RunnerVariantPack &runnerVariantPack)
 {
     ATB_LOG(INFO) << GetLogPrefix() << " setup start, runnerVariantPack:\n" << runnerVariantPack.ToString();
-    memAllocationSolver_ = GetGlobalMemAllocationSolver();
+    if (!GetSingleton<Config>().Is310PRC()) {
+ 	    memAllocationSolver_ = GetGlobalMemAllocationSolver();
+ 	}
     InitOpsTensorPack(runnerVariantPack);
     ReserveSvector(runnerVariantPack);
 
@@ -219,7 +225,9 @@ Status OpsRunner::SetupImpl(RunnerVariantPack &runnerVariantPack)
         ATB_LOG(ERROR) << GetLogPrefix() << "PlanKernelGraph fail";
         return st;
     }
-    UpdateOutTensorDeviceData(runnerVariantPack);
+    if (!GetSingleton<Config>().Is310PRC()) {
+ 	    UpdateOutTensorDeviceData(runnerVariantPack);
+ 	}
     isParamUpdated_ = false;
     return ErrorType::NO_ERROR;
 }
@@ -700,6 +708,9 @@ void OpsRunner::Reset()
     tilingSizes_.clear();
     workspaceSize_ = 0;
     intermediateSize_ = 0;
+    if (GetSingleton<Config>().Is310PRC()) {
+ 	    memAllocationSolver_->Reset();
+ 	}
     mallocCache_.clear();
     tensorMalloced_.clear();
 }
@@ -916,26 +927,28 @@ void OpsRunner::InitTensorMaxNodeMap()
         ATB_LOG(INFO) << GetLogPrefix() << " InitTensorMaxNodeMap call once";
         return;
     }
-    const size_t kernelGraphInTensorsSize = kernelGraph_.inTensors.size();
-    for (size_t i = 0; i < kernelGraphInTensorsSize; ++i) {
-        Mki::Tensor *tensor = &kernelGraph_.inTensors.at(i);
-        auto it = isInTensorCanFree_.find(tensor);
-        if (it == isInTensorCanFree_.end() || !it->second) {
-            continue; // 若intensor的isInTensorCanFree为false，不参与内存释放
-        }
-        uint64_t maxNodeId = 0;
-        uint64_t dependNodeCount = 0;
+    if (!GetSingleton<Config>().Is310PRC()) {
+        const size_t kernelGraphInTensorsSize = kernelGraph_.inTensors.size();
+        for (size_t i = 0; i < kernelGraphInTensorsSize; ++i) {
+            Mki::Tensor *tensor = &kernelGraph_.inTensors.at(i);
+            auto it = isInTensorCanFree_.find(tensor);
+            if (it == isInTensorCanFree_.end() || !it->second) {
+                continue; // 若intensor的isInTensorCanFree为false，不参与内存释放
+            }
+            uint64_t maxNodeId = 0;
+            uint64_t dependNodeCount = 0;
 
-        SearchTensorInNodeInTensor(tensor, maxNodeId, dependNodeCount);
-        if (dependNodeCount == 0) {
-            ATB_LOG(WARN) << GetLogPrefix() << "intensor[" << i << "] dependNodeCount is 0, graph wrong";
-            memAllocationSolver_->Free((uint8_t *)tensor->data); // 当intensor在graph内未被使用时，立即释放
-            mallocCache_.push_back({tensor, false});
-        } else {
-            ATB_LOG(INFO) << GetLogPrefix() << "intensor[" << i << "] maxNodeId: " << maxNodeId
-                          << ", dependNodeCount: " << dependNodeCount;
-            tensorMaxNodeIdMap_[tensor] = maxNodeId;
-            maxNodeIdTensorMap_[maxNodeId].insert(tensor);
+            SearchTensorInNodeInTensor(tensor, maxNodeId, dependNodeCount);
+            if (dependNodeCount == 0) {
+                ATB_LOG(WARN) << GetLogPrefix() << "intensor[" << i << "] dependNodeCount is 0, graph wrong";
+                memAllocationSolver_->Free((uint8_t *)tensor->data); // 当intensor在graph内未被使用时，立即释放
+                mallocCache_.push_back({tensor, false});
+            } else {
+                ATB_LOG(INFO) << GetLogPrefix() << "intensor[" << i << "] maxNodeId: " << maxNodeId
+                            << ", dependNodeCount: " << dependNodeCount;
+                tensorMaxNodeIdMap_[tensor] = maxNodeId;
+                maxNodeIdTensorMap_[maxNodeId].insert(tensor);
+            }
         }
     }
     const size_t kernelGraphInternalTensorsSize = kernelGraph_.internalTensors.size();

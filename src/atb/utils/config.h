@@ -33,6 +33,7 @@ public:
     bool Is310P() const;
     bool Is910A() const;
     bool Is310B() const;
+    bool Is310PRC() const;
     uint32_t GetWorkspaceMemAllocAlgType() const;
     uint32_t GetLocalKernelCacheCount() const;
     uint32_t GetGlobalKernelCacheCount() const;
@@ -58,6 +59,7 @@ private:
     bool is310P_ = false;
     bool is910A_ = false;
     bool is310B_ = false;
+    bool is310PRC_ = false;
     uint32_t workspaceMemAllocAlgType_ = 1;
     uint32_t localKernelCacheCount_ = 1;
     uint32_t globalKernelCacheCount_ = 1;
