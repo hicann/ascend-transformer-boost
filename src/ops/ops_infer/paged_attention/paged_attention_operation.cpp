@@ -96,19 +96,8 @@ template <> Status CreateOperation(const infer::PagedAttentionParam &opParam, Op
     }
     OP_PARAM_RSV_CHECK(opParam);
     if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
-        if (PagedAttentionAclnnRunner::LoadAclnnFuncs() != NO_ERROR) {
-            ATB_LOG(ERROR) << "Load aclnn function failed, please check your CANN version.";
-            return ERROR_CANN_ERROR;
-        }
-        if (!Ascend950ParamCheck(opParam)) {
-            return ERROR_INVALID_PARAM;
-        }
-        *operation = new (std::nothrow) PagedAttentionOperation(opParam);
-        if (*operation == nullptr) {
-            ATB_LOG(ERROR) << "failed to new operation";
-            return ERROR_OUT_OF_HOST_MEMORY;
-        }
-        return NO_ERROR;
+        ATB_LOG(ERROR) << "Ascend950 doesn't support PagedAttention";
+        return ERROR_INVALID_PARAM;
     }
     if (!CommonParamCheck(opParam)) {
         return ERROR_INVALID_PARAM;
