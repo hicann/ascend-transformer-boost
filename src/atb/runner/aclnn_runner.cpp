@@ -55,22 +55,6 @@ Status AclnnRunner::SetupImpl(RunnerVariantPack &runnerVariantPack)
     Status ret = NO_ERROR;
     const std::string &opName = this->GetName();
     AclnnCacheSlot aclnnCacheSlot = {};
-    // executorCache hit
-    if (executorRepeatable_ &&
-        GetSingleton<AclnnExecutorCache>().FetchCacheSlot(opName, runnerVariantPack, aclnnCacheSlot) == NO_ERROR) {
-        if (!IsAclnnRunnerVariankPackEqual(this->aclnnVariantPack_, runnerVariantPack)) {
-            ATB_LOG(INFO) << GetLogPrefix()
-                          << "fetched cached runnerVariantPack not same as aclnnVariantPack_, build again";
-            ret = BuildAclnnVariantPack(runnerVariantPack);
-            if (ret != NO_ERROR) {
-                ATB_LOG(ERROR) << GetLogPrefix() << "BuildAclnnVariantPack failed!";
-                return ret;
-            }
-        }
-        this->atbVariantPack_.workspaceBufferSize = aclnnCacheSlot.workspaceSize;
-        this->aclnnExecutor_ = aclnnCacheSlot.executor;
-        return NO_ERROR;
-    }
     // cache miss，创建新的executor
     ATB_LOG(INFO) << GetLogPrefix() << "ExecutorCache miss, BuildAclnnVariantPack directly";
     ret = BuildAclnnVariantPack(runnerVariantPack);

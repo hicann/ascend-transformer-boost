@@ -48,11 +48,13 @@ private:
     bool splitWithSize_ = false;
 
     size_t aclInTensorNum_ = 0;
+    size_t aclOutTensorNum_ = 0;
     size_t aclOutTensorListNum_ = 0;
 
     size_t atbInTensorIndex_ = 0;
     size_t aclInTensorIndex_ = 0;
     size_t atbOutTensorIndex_ = 0;
+    size_t aclOutTensorIndex_ = 0;
     size_t aclOutTensorListIndex_ = 0;
 
     size_t selfAclTensorIndex_ = 0;
