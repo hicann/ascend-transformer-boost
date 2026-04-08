@@ -29,7 +29,6 @@ SplitAclnnRunner::SplitAclnnRunner(const infer::SplitParam &param) : AclnnRunner
     ATB_LOG(INFO) << GetLogPrefix() << "SplitAclnnRunner::SplitAclnnRunner";
 
     splitWithSize_ = param_.splitSizes.size() > 0;
-    GetTensorNum();
 }
 
 SplitAclnnRunner::~SplitAclnnRunner()
@@ -70,15 +69,18 @@ Status SplitAclnnRunner::BuildAclnnVariantPack(const RunnerVariantPack &runnerVa
     ATB_LOG(INFO) << GetLogPrefix()
                   << "SplitAclnnRunner::BuildAclnnVariantPack, runnerVariantPack: " << runnerVariantPack.ToString();
     atbVariantPack_ = runnerVariantPack;
+    GetTensorNum();
     InitTensorIndex();
     aclnnVariantPack_.aclInTensors.reserve(aclInTensorNum_);
     aclnnVariantPack_.aclInTensors.resize(aclInTensorNum_);
+    aclnnVariantPack_.aclOutTensors.reserve(aclOutTensorNum_);
+    aclnnVariantPack_.aclOutTensors.resize(aclOutTensorNum_);
+    aclnnVariantPack_.aclOutTensorList.reserve(aclOutTensorListNum_);
+    aclnnVariantPack_.aclOutTensorList.resize(aclOutTensorListNum_);
     Status st = CreateSelfAclnnTensor();
     if (st != NO_ERROR) {
         return st;
     }
-    aclnnVariantPack_.aclOutTensorList.reserve(aclOutTensorListNum_);
-    aclnnVariantPack_.aclOutTensorList.resize(aclOutTensorListNum_);
     return CreateOutAclnnTensorList();
 }
 
@@ -142,7 +144,8 @@ Status SplitAclnnRunner::LaunchAclnnKernel()
 
 void SplitAclnnRunner::GetTensorNum()
 {
-    aclInTensorNum_ = 1;      // self
+    aclInTensorNum_ = 1; // self
+    aclOutTensorNum_ = static_cast<size_t>(param_.splitNum);
     aclOutTensorListNum_ = 1; // out
 }
 
@@ -151,6 +154,7 @@ void SplitAclnnRunner::InitTensorIndex()
     atbInTensorIndex_ = 0;
     aclInTensorIndex_ = 0;
     atbOutTensorIndex_ = 0;
+    aclOutTensorIndex_ = 0;
     aclOutTensorListIndex_ = 0;
 
     selfAclTensorIndex_ = 0;
@@ -178,20 +182,21 @@ Status SplitAclnnRunner::CreateOutAclnnTensorList()
     ATB_LOG(INFO) << GetLogPrefix() << "SplitAclnnRunner::CreateOutAclnnTensorList";
 
     std::vector<aclTensor *> outTensors;
-    size_t outTensorNum = atbVariantPack_.outTensors.size();
-    outTensors.reserve(outTensorNum);
-    outTensors.resize(outTensorNum);
+    outTensors.reserve(aclOutTensorNum_);
+    outTensors.resize(aclOutTensorNum_);
 
-    for (size_t i = 0; i < outTensorNum; i++) {
+    for (size_t i = 0; i < aclOutTensorNum_; i++) {
         Tensor atbTensor = atbVariantPack_.outTensors.at(atbOutTensorIndex_++);
         SVector<int64_t> strides = GetCopyTensorStride(atbTensor.desc.shape);
         std::shared_ptr<AclNNTensor> aclnnTensorPtr =
-            CreateAclnnTensor(atbTensor, OUT_ACLNN_TENSOR_LIST_IDX, atbTensor.desc.shape, strides);
+            CreateAclnnTensor(atbTensor, static_cast<int>(i), atbTensor.desc.shape, strides);
         if (!aclnnTensorPtr->tensor) {
             ATB_LOG(ERROR) << GetLogPrefix() << "out aclCreateTensor failed";
             return ERROR_INTERNAL_ERROR;
         }
+        aclnnTensorPtr->tensorListidx = 0;
         outTensors.at(i) = aclnnTensorPtr->tensor;
+        aclnnVariantPack_.aclOutTensors.at(aclOutTensorIndex_++) = aclnnTensorPtr;
     }
     aclTensorList *outTensorList = aclCreateTensorList(outTensors.data(), outTensors.size());
     if (outTensorList) {

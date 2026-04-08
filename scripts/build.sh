@@ -73,6 +73,21 @@ function fn_build_stub()
     git clone --depth 1 https://github.com/coolxv/cpp-stub.git
 }
 
+function fn_install_msmodelslim() {
+    if [ -d "$ASCEND_HOME_PATH/tools/msmodelslim/pytorch/weight_compression/compress_graph" ]; then
+        echo "$ASCEND_HOME_PATH/tools/msmodelslim/pytorch/weight_compression/compress_graph exists"
+        return 0
+    fi
+    mkdir -p $ASCEND_HOME_PATH/tools
+    if [ -d "$ASCEND_HOME_PATH/tools/msmodelslim" ]; then
+        rm -rf $ASCEND_HOME_PATH/tools/msmodelslim
+    fi
+    cd $THIRD_PARTY_DIR
+    git clone --depth 1 https://gitcode.com/Ascend/msmodelslim.git
+    cp -r msmodelslim/msmodelslim $ASCEND_HOME_PATH/tools/
+    rm -rf msmodelslim
+}
+
 function fn_build_doxygen()
 {
     if [ -d "$THIRD_PARTY_DIR/doxygen/bin" ]; then
@@ -815,6 +830,7 @@ function fn_main()
             ;;
         "testframework")
             COMPILE_OPTIONS="${COMPILE_OPTIONS} -DBUILD_TEST_FRAMEWORK=ON"
+            fn_install_msmodelslim
             fn_build
             generate_atb_version_info
             pack_testframework
@@ -886,6 +902,7 @@ function fn_main()
             COMPILE_OPTIONS="${COMPILE_OPTIONS} -DBUILD_PYBIND=$BUILD_PYBIND -DUSE_ALL_TEST=ON"
             CSVOPSTEST_OPTIONS="-i $CODE_ROOT/tests/apitest/opstest/csv/ -o $CODE_ROOT/output/atb/csvopstest -tt Function"
             fn_build_3rdparty_for_test
+            fn_install_msmodelslim
             fn_build
             fn_build_coverage
             ;;
