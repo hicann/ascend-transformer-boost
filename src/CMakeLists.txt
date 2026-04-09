@@ -24,10 +24,6 @@ file(GLOB_RECURSE ATB_FRAMEWORK_SOURCE "${atb_directory}/*.cpp")
 
 add_subdirectory(kernels)
 
-if(BUILD_PYBIND AND NOT USE_CXX11_ABI)
-    add_subdirectory(torch_atb)
-endif()
-
 add_library(atb SHARED ${INFER_OP_SOURCE} ${ATB_FRAMEWORK_SOURCE} ${COMMON_OP_SOURCE} ${C_INTERFACE_SOURCE})
 add_library(atb_static STATIC ${INFER_OP_SOURCE} ${ATB_FRAMEWORK_SOURCE} ${COMMON_OP_SOURCE} ${C_INTERFACE_SOURCE})
 add_library(atb_train SHARED ${TRAIN_OP_SOURCE} ${COMMON_OP_SOURCE})
