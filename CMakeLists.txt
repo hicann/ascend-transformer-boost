@@ -77,10 +77,6 @@ endif()
 set(CMAKE_INSTALL_PREFIX "${CMAKE_SOURCE_DIR}/output/atb/cxx_abi_${cxx_abi}")
 message(STATUS "CMAKE_INSTALL_PREFIX:${CMAKE_INSTALL_PREFIX}")
 
-if(BUILD_PYBIND AND NOT USE_CXX11_ABI)
-    add_subdirectory(${PROJECT_SOURCE_DIR}/3rdparty/pybind11)
-endif()
-
 include_directories(
     ${PROJECT_SOURCE_DIR}
     ${PROJECT_SOURCE_DIR}/include
