@@ -20,7 +20,7 @@
 #include "atb/types.h"
 #include "atb/atb_infer.h"
 #include "atb/operation.h"
-
+#include "hccl/hccl.h"
 
 #define CHECK_STATUS(status)                                                                                           \
     do {                                                                                                               \
@@ -191,7 +191,7 @@ atb::Status ExcuteImpl(atb::Operation *op, atb::VariantPack variantPack, atb::Co
     return atb::ErrorType::NO_ERROR;
 }
 
-atb::Status LinearParallelOneThread(int rank, int rankSize)
+atb::Status LinearParallelOneThread(int rank, int rankSize, HcclComm hcclComm)
 {
     int deviceId = rank;
     CHECK_STATUS(aclrtSetDevice(deviceId));
@@ -200,7 +200,7 @@ atb::Status LinearParallelOneThread(int rank, int rankSize)
     aclrtStream stream = nullptr;
     CHECK_STATUS(aclrtCreateStream(&stream));
     context->SetExecuteStream(stream);
-    
+
     atb::TensorDesc inputTensorDesc{
         .dtype = DATA_TYPE, .format = aclFormat::ACL_FORMAT_ND, .shape{.dims = {M, K}, .dimNum = 2}};
     atb::Tensor input = FillTensorDataRandomly(inputTensorDesc, -10, 10);
@@ -226,6 +226,7 @@ atb::Status LinearParallelOneThread(int rank, int rankSize)
     param.rankSize = rankSize;
     param.backend = "mc2";
     param.type = atb::infer::LinearParallelParam::ParallelType::LINEAR_REDUCE_SCATTER;
+    param.hcclComm = hcclComm;
     atb::Operation *op = nullptr;
     CHECK_STATUS(atb::CreateOperation(param, &op));
 
@@ -238,6 +239,7 @@ atb::Status LinearParallelOneThread(int rank, int rankSize)
     saveTensor(weight, "rank" + std::to_string(rank) + "_inTensor1.bin");
     saveTensor(output, "rank" + std::to_string(rank) + "_outTensor0.bin");
     // 资源释放
+    HcclCommDestroy(hcclComm);
     CHECK_STATUS(atb::DestroyOperation(op));    // 销毁op对象
     CHECK_STATUS(aclrtDestroyStream(stream));   // 销毁stream
     CHECK_STATUS(atb::DestroyContext(context)); // 销毁context
@@ -246,16 +248,24 @@ atb::Status LinearParallelOneThread(int rank, int rankSize)
 
 int main(int argc, const char *argv[])
 {
-    int ret = aclInit(nullptr);
-
+    CHECK_STATUS(aclInit(nullptr));
+    for (uint32_t rankId = 0; rankId < DEV_NUM; rankId++) {
+        CHECK_STATUS(aclrtSetDevice(rankId));
+    }
+    int32_t devices[DEV_NUM];
+    for (int i = 0; i < DEV_NUM; i++) {
+        devices[i] = i;
+    }
+    // 初始化集合通信域
+    HcclComm comms[DEV_NUM];
+    CHECK_STATUS(HcclCommInitAll(DEV_NUM, devices, comms));
     std::vector<std::unique_ptr<std::thread>> threads(DEV_NUM);
     for (size_t i = 0; i < DEV_NUM; i++) {
-        threads[i].reset(new (std::nothrow) std::thread(LinearParallelOneThread, i, DEV_NUM));
+        threads[i].reset(new (std::nothrow) std::thread(LinearParallelOneThread, i, DEV_NUM, comms[i]));
     }
     for (size_t i = 0; i < DEV_NUM; ++i) {
         threads[i]->join();
     }
-
     CHECK_STATUS(aclFinalize());
     return 0;
 }
