@@ -22,9 +22,8 @@ AtbOps::OpParam::UnpadFlashAttentionNz::PrecType ConvertKernelType(infer::SelfAt
 {
     switch (type) {
         case infer::SelfAttentionParam::KERNELTYPE_DEFAULT:
-            return AtbOps::OpParam::UnpadFlashAttentionNz::PrecType::BMM1_FP16_EXP_FP32;
         case infer::SelfAttentionParam::KERNELTYPE_HIGH_PRECISION:
-            return AtbOps::OpParam::UnpadFlashAttentionNz::PrecType::BMM1_FP32_EXP_FP32;
+            return AtbOps::OpParam::UnpadFlashAttentionNz::PrecType::BMM1_FP16_EXP_FP32;
         case infer::SelfAttentionParam::KERNELTYPE_EXP_M8V2:
             return AtbOps::OpParam::UnpadFlashAttentionNz::PrecType::BMM1_FP16_EXP_M8V2;
     }
