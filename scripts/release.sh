@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright (c) 2024 Huawei Technologies Co., Ltd.
+# Copyright (c) 2026 Huawei Technologies Co., Ltd.
 # This program is free software, you can redistribute it and/or modify it under the terms and conditions of
 # CANN Open Software License Agreement Version 2.0 (the "License").
 # Please refer to the License for details. You may not use this file except in compliance with the License.
@@ -100,6 +100,50 @@ function fn_build_catlass()
     git clone --branch $branch --depth 1 https://gitee.com/ascend/catlass.git
 }
 
+function select_compiler()
+{
+    if [[ -x "${GCC_PATH}/gcc" && -x "${GCC_PATH}/g++" ]]; then
+        echo "[INFO] Using compiler:"
+    else
+        GCC_PATH="/usr/bin"
+        echo "[INFO] Using default compiler:"
+    fi
+    export CC="${GCC_PATH}/gcc"
+    export CXX="${GCC_PATH}/g++"
+    echo "[INFO]   CC  = ${CC}"
+    if [[ -n "${CC:-}" ]]; then
+        "${CC}" --version | head -n 1
+    fi
+    echo "[INFO]   CXX = ${CXX}"
+    if [[ -n "${CXX:-}" ]]; then
+        "${CXX}" --version | head -n 1
+    fi
+}
+
+function fn_build_torch_atb()
+{
+    local TORCH_ATB_CODE_ROOT="$(realpath "${SCRIPT_DIR}/../src/torch_atb")"
+    local BUILD_DIR="${CODE_ROOT}/build/src/torch_atb"
+
+    rm -rf "${BUILD_DIR}"
+    mkdir -p "${BUILD_DIR}"
+
+    select_compiler
+
+    echo "[INFO] Running cmake configure..."
+    cmake -S "${TORCH_ATB_CODE_ROOT}" -B "${BUILD_DIR}" \
+        ${CC:+-DCMAKE_C_COMPILER="${CC}"} \
+        ${CXX:+-DCMAKE_CXX_COMPILER="${CXX}"} \
+        -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE
+
+    cmake --build "${BUILD_DIR}" --parallel ${COMPILE_VERBOSE}
+    cmake --install "${BUILD_DIR}"
+
+    # Unset CC and CXX so the main project will be built with default compiler
+    unset CC
+    unset CXX
+}
+
 function fn_init_env()
 {
     res=$(python3 -c "import torch" &> /dev/null || echo "torch_not_exist")
@@ -141,7 +185,7 @@ function fn_gen_atb_whl()
     cp -rf $CODE_ROOT/pyproject.toml .
     mkdir -p ./torch_atb
     cp -rf $CODE_ROOT/torch_atb/* ./torch_atb
-    cp -rf ./atb/cxx_abi_0/* ./torch_atb
+    cp -rf ./atb/cxx_abi_1/* ./torch_atb
     pip wheel --no-deps --no-build-isolation --wheel-dir ./whl .
     rename_whl_file
     rm -rf ./torch_atb
@@ -160,7 +204,8 @@ function fn_build()
     cmake $CODE_ROOT $COMPILE_OPTIONS
     cmake --build . --parallel $(nproc)
     cmake --install .
-    if [ "$USE_CXX11_ABI" != "ON" ]; then
+    if [ "$USE_CXX11_ABI" == "ON" -a "$USE_CXX11_ABI" == "ON" ]; then
+        fn_build_torch_atb
         fn_gen_atb_whl
     fi
 }
@@ -310,6 +355,10 @@ function fn_main()
             ;;
         "--local_release_compile")
             LOCAL_RELEASE_COMPILE=ON
+            ;;
+        --torch_atb_gcc_path=*)
+            GCC_PATH="${arg#*=}"
+            ;;
         esac
         shift
     }
@@ -354,6 +403,7 @@ LOG_NAME="cann_atb_install.log"
 ATB_DIR=$CODE_ROOT
 RELEASE_DIR=$CODE_ROOT/ci/release
 LOCAL_RELEASE_COMPILE=OFF
+GCC_PATH=""
 
 cann_default_install_path="/usr/local/Ascend/ascend-toolkit"
 

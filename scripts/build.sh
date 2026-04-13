@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright (c) 2024 Huawei Technologies Co., Ltd.
+# Copyright (c) 2026 Huawei Technologies Co., Ltd.
 # This program is free software, you can redistribute it and/or modify it under the terms and conditions of
 # CANN Open Software License Agreement Version 2.0 (the "License").
 # Please refer to the License for details. You may not use this file except in compliance with the License.
@@ -29,13 +29,14 @@ USE_ASCENDC_DUMP=OFF
 SKIP_BUILD=OFF
 BUILD_TBE_ADAPTER=OFF
 CSVOPSTEST_OPTIONS=""
-BUILD_PYBIND=OFF
+BUILD_TORCH_ATB=OFF
 SRC_ONLY=OFF
 MKI_BUILD_MODE=Test
 VERSION="8.5.0"
 LOG_PATH="/var/log/cann_atb_log/"
 LOG_NAME="cann_atb_install.log"
 ENV_FLAG=0
+GCC_PATH=""
 
 BUILD_OPTION_LIST="help default testframework unittest kernelunittest pythontest torchatbtest kernelpythontest csvopstest fuzztest infratest hitest alltest clean gendoc customizeops"
 BUILD_CONFIGURE_LIST=("--verbose" "--use_cxx11_abi=0" "--use_cxx11_abi=1"
@@ -318,7 +319,7 @@ function fn_build_3rdparty_for_compile()
     fn_build_catlass
     fn_build_cann_dependency
     fn_build_tbe_dependency
-    if [ "$BUILD_PYBIND" == "ON" -a "$USE_CXX11_ABI" != "ON" ]; then
+    if [ "$BUILD_TORCH_ATB" == "ON" ]; then
         fn_build_pybind11
     fi
     COMPILE_OPTIONS="${COMPILE_OPTIONS} -DBUILD_TBE_ADAPTER=$BUILD_TBE_ADAPTER"
@@ -332,6 +333,50 @@ function fn_build_3rdparty_for_doc()
     fi
     fn_build_doxygen
     fn_build_sphinx
+}
+
+function select_compiler()
+{
+    if [[ -x "${GCC_PATH}/gcc" && -x "${GCC_PATH}/g++" ]]; then
+        echo "[INFO] Using compiler:"
+    else
+        GCC_PATH="/usr/bin"
+        echo "[INFO] Using default compiler:"
+    fi
+    export CC="${GCC_PATH}/gcc"
+    export CXX="${GCC_PATH}/g++"
+    echo "[INFO]   CC  = ${CC}"
+    if [[ -n "${CC:-}" ]]; then
+        "${CC}" --version | head -n 1
+    fi
+    echo "[INFO]   CXX = ${CXX}"
+    if [[ -n "${CXX:-}" ]]; then
+        "${CXX}" --version | head -n 1
+    fi
+}
+
+function fn_build_torch_atb()
+{
+    local TORCH_ATB_CODE_ROOT="$(realpath "${SCRIPT_DIR}/../src/torch_atb")"
+    local BUILD_DIR="${CODE_ROOT}/build/src/torch_atb"
+
+    rm -rf "${BUILD_DIR}"
+    mkdir -p "${BUILD_DIR}"
+
+    select_compiler
+
+    echo "[INFO] Running cmake configure..."
+    cmake -S "${TORCH_ATB_CODE_ROOT}" -B "${BUILD_DIR}" \
+        ${CC:+-DCMAKE_C_COMPILER="${CC}"} \
+        ${CXX:+-DCMAKE_CXX_COMPILER="${CXX}"} \
+        -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE
+
+    cmake --build "${BUILD_DIR}" --parallel ${COMPILE_VERBOSE}
+    cmake --install "${BUILD_DIR}"
+
+    # Unset CC and CXX so the main project will be built with default compiler
+    unset CC
+    unset CXX
 }
 
 function export_atb_env()
@@ -441,7 +486,7 @@ function fn_gen_atb_whl()
     cp -rf $CODE_ROOT/pyproject.toml .
     mkdir -p ./torch_atb
     cp -rf $CODE_ROOT/torch_atb/* ./torch_atb
-    cp -rf ./atb/cxx_abi_0/* ./torch_atb
+    cp -rf ./atb/cxx_abi_1/* ./torch_atb
     pip wheel --no-deps --no-build-isolation --wheel-dir ./whl .
     rename_whl_file
     rm -rf ./torch_atb
@@ -497,6 +542,7 @@ function fn_build()
         fi
     fi
     fn_build_3rdparty_for_compile
+
     cd $CACHE_DIR
     if [ "$CMAKE_CXX_COMPILER_LAUNCHER" == "" ] && command -v ccache &> /dev/null; then
         COMPILE_OPTIONS="${COMPILE_OPTIONS} -DCMAKE_CXX_COMPILER_LAUNCHER=ccache"
@@ -509,7 +555,8 @@ function fn_build()
     cmake --build . --parallel $COMPILE_VERBOSE
     cmake --install .
 
-    if [ "$BUILD_PYBIND" == "ON" -a "$USE_CXX11_ABI" != "ON" ]; then
+    if [ "$BUILD_TORCH_ATB" == "ON" -a "$USE_CXX11_ABI" == "ON" ]; then
+        fn_build_torch_atb
         fn_gen_atb_whl
     fi
 }
@@ -783,7 +830,7 @@ function fn_main()
             [[ -d "$THIRD_PARTY_DIR" ]] && rm -rf $THIRD_PARTY_DIR
             ;;
         "--torch_atb")
-            BUILD_PYBIND=ON
+            BUILD_TORCH_ATB=ON
             ;;
         "--src-only")
             SRC_ONLY=ON
@@ -792,6 +839,9 @@ function fn_main()
             [[ ! -d "$THIRD_PARTY_DIR" ]] && mkdir $THIRD_PARTY_DIR
             fn_build_googletest
             COMPILE_OPTIONS="${COMPILE_OPTIONS} -DBUILD_CUSTOMIZE_OPS_TEST=ON"
+            ;;
+        --torch_atb_gcc_path=*)
+            GCC_PATH="${arg#*=}"
             ;;
         esac
         shift
@@ -804,7 +854,7 @@ function fn_main()
     fn_init_env
 
     COMPILE_OPTIONS="${COMPILE_OPTIONS} -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE \
-    -DUSE_CXX11_ABI=$USE_CXX11_ABI -DUSE_ASAN=$USE_ASAN -DBUILD_PYBIND=$BUILD_PYBIND -DUSE_MSSANITIZER=$USE_MSSANITIZER \
+    -DUSE_CXX11_ABI=$USE_CXX11_ABI -DUSE_ASAN=$USE_ASAN -DUSE_MSSANITIZER=$USE_MSSANITIZER \
     -DPACKAGE_COMPILE=OFF"
     case "${arg1}" in
         "default")
@@ -843,8 +893,8 @@ function fn_main()
             fn_run_kernel_pythontest
             ;;
         "torchatbtest")
-            BUILD_PYBIND=ON
-            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DBUILD_PYBIND=$BUILD_PYBIND -DUSE_TORCH_ATB_TEST=ON"
+            BUILD_TORCH_ATB=ON
+            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_TORCH_ATB_TEST=ON"
             fn_build
             fn_run_torchatbtest
             ;;
@@ -882,8 +932,8 @@ function fn_main()
             COVERAGE_TYPE="ALLTEST"
             fn_build_3rdparty_for_doc
             fn_gen_doc
-            BUILD_PYBIND=ON
-            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DBUILD_PYBIND=$BUILD_PYBIND -DUSE_ALL_TEST=ON"
+            BUILD_TORCH_ATB=ON
+            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_ALL_TEST=ON"
             CSVOPSTEST_OPTIONS="-i $CODE_ROOT/tests/apitest/opstest/csv/ -o $CODE_ROOT/output/atb/csvopstest -tt Function"
             fn_build_3rdparty_for_test
             fn_build

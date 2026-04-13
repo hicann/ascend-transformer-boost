@@ -10,6 +10,7 @@
 #ifndef TORCH_ATB_PROF_STATS_H
 #define TORCH_ATB_PROF_STATS_H
 
+#include <cstdint>
 #include <string>
 #include <map>
 #include <vector>
