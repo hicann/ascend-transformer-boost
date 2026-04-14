@@ -20,3 +20,5 @@ op_list.yaml
 op_desc_json_*.cpp
 *.bin
 attribute_utils.cpp
+oat_reports
+/log/
