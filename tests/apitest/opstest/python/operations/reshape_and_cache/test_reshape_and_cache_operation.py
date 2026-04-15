@@ -78,6 +78,7 @@ a = [print(tensor.dtype, tensor.device) for tensor in in_tensors]
  
 data1 = generate_data()
 in_tensors1 = [torch.from_numpy(tensor).bfloat16() for tensor in data1]
+in_tensors1[4] = torch.from_numpy(data1[4])
 in_tensors1 = [tensor.npu() for tensor in in_tensors1]
  
 class TestReshapeAndCacheOperation(operation_test.OperationTest):
@@ -107,7 +108,7 @@ class TestReshapeAndCacheOperationBF16(operation_test.OperationTest):
             print("this testcase only supports Ascend910B")
             return
         self.execute_out(OP_NAME, PARAM, [in_tensors1[0], in_tensors1[1], in_tensors1[2],
-                                              in_tensors1[3], in_tensors[4]], [in_tensors1[2], in_tensors1[3]])
+                                              in_tensors1[3], in_tensors1[4]], [in_tensors1[2], in_tensors1[3]])
  
  
 if __name__ == '__main__':
