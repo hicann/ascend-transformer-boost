@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Technologies Co., Ltd.
+ * Copyright (c) 2026 Huawei Technologies Co., Ltd.
  * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
  * CANN Open Software License Agreement Version 2.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@
 #include "add_rms_norm_aclnn_runner.h"
 #include "rms_norm_aclnn_runner.h"
 #include "rms_norm_ops_runner.h"
+#include "rms_norm_quant_aclnn_runner.h"
 
 namespace atb {
 static const uint32_t IN_TENSOR_COUNT_SIX = 6;
@@ -142,6 +143,11 @@ template <> Status CreateOperation(const infer::RmsNormParam &opParam, Operation
         st = AddRmsNormAclnnRunner::LoadAclnnFuncs();
         if (st != NO_ERROR) {
             ATB_LOG(ERROR) << "AddRmsNormAclnnRunner load aclnn functions failed!";
+            return st;
+        }
+        st = RmsNormQuantAclnnRunner::LoadAclnnFuncs();
+        if (st != NO_ERROR) {
+            ATB_LOG(ERROR) << "RmsNormQuantAclnnRunner load aclnn functions failed!";
             return st;
         }
     }
@@ -483,9 +489,15 @@ std::shared_ptr<Runner> RmsNormOperation::CreateRunner(Context &context) const
 {
     (void)context;
     if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
-        if (param_.layerType == infer::RmsNormParam::RMS_NORM_NORM && param_.normParam.quantType == infer::QUANT_UNQUANT) {
-            ATB_LOG(INFO) << GetLogPrefix() << "create RmsNormAclnnRunner";
-            return std::make_shared<RmsNormAclnnRunner>(param_);
+        if (param_.layerType == infer::RmsNormParam::RMS_NORM_NORM) {
+            if (param_.normParam.quantType == infer::QUANT_UNQUANT) {
+                ATB_LOG(INFO) << GetLogPrefix() << "create RmsNormAclnnRunner";
+                return std::make_shared<RmsNormAclnnRunner>(param_);
+            }
+            if (param_.normParam.quantType == infer::QUANT_INT8) {
+                ATB_LOG(INFO) << GetLogPrefix() << "create RmsNormQuantAclnnRunner";
+                return std::make_shared<RmsNormQuantAclnnRunner>(param_);
+            }
         }
         if (param_.layerType == infer::RmsNormParam::RMS_NORM_PRENORM) {
             ATB_LOG(INFO) << GetLogPrefix() << "create AddRmsNormAclnnRunner";
