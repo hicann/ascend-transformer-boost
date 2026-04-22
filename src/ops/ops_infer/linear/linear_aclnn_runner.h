@@ -13,11 +13,23 @@
 #include "atb/runner/aclnn_runner.h"
 
 using AclnnMatmulGetWorkspaceSizeFunc = aclnnStatus (*)(const aclTensor *, const aclTensor *, const aclTensor *, int8_t,
-    uint64_t *, aclOpExecutor **);
+                                                        uint64_t *, aclOpExecutor **);
 using AclnnMatmulExecuteFunc = aclnnStatus (*)(void *, uint64_t, aclOpExecutor *, aclrtStream);
 using AclnnAddmmGetWorkspaceSizeFunc = aclnnStatus (*)(const aclTensor *, const aclTensor *, const aclTensor *,
-    aclScalar *, aclScalar *, const aclTensor *, int8_t, uint64_t *, aclOpExecutor **);
+                                                       aclScalar *, aclScalar *, const aclTensor *, int8_t, uint64_t *,
+                                                       aclOpExecutor **);
 using AclnnAddmmExecuteFunc = aclnnStatus (*)(void *, uint64_t, aclOpExecutor *, aclrtStream);
+using AclnnMatmulWeightNzGetWorkspaceSizeFunc = aclnnStatus (*)(const aclTensor *, const aclTensor *, const aclTensor *,
+                                                                int8_t, uint64_t *, aclOpExecutor **);
+using AclnnMatmulWeightNzExecuteFunc = aclnnStatus (*)(void *, uint64_t, aclOpExecutor *, aclrtStream);
+using AclnnAddmmWeightNzGetWorkspaceSizeFunc = aclnnStatus (*)(const aclTensor *, const aclTensor *, const aclTensor *,
+                                                               aclScalar *, aclScalar *, const aclTensor *, int8_t,
+                                                               uint64_t *, aclOpExecutor **);
+using AclnnAddmmWeightNzExecuteFunc = aclnnStatus (*)(void *, uint64_t, aclOpExecutor *, aclrtStream);
+using AclnnBatchMatMulWeightNzGetWorkspaceSizeFunc = aclnnStatus (*)(const aclTensor *, const aclTensor *,
+                                                                     const aclTensor *, int8_t, uint64_t *,
+                                                                     aclOpExecutor **);
+using AclnnBatchMatMulWeightNzExecuteFunc = aclnnStatus (*)(void *, uint64_t, aclOpExecutor *, aclrtStream);
 
 namespace atb {
 class LinearAclnnRunner : public AclnnRunner {
@@ -43,14 +55,21 @@ private:
     Status CreateAddmmOutAclnnTensor();
     aclnnStatus SetAclnnMatmulWorkspaceExecutor();
     aclnnStatus SetAclnnAddmmWorkspaceExecutor();
+    aclnnStatus SetAclnnMatmulWeightNzWorkspaceExecutor();
+    aclnnStatus SetAclnnAddmmWeightNzWorkspaceExecutor();
+    aclnnStatus SetAclnnBatchMatMulWeightNzWorkspaceExecutor();
     std::shared_ptr<AclNNTensor> CreateXAclnnTensor(int aclnnTensorIndex);
     std::shared_ptr<AclNNTensor> CreateWeightAclnnTensor(int aclnnTensorIndex);
+    std::shared_ptr<AclNNTensor> CreateWeightNzAclnnTensor(int aclnnTensorIndex);
     std::shared_ptr<AclNNTensor> CreateBiasAclnnTensor(int aclnnTensorIndex);
     std::shared_ptr<AclNNTensor> CreateOutputAclnnTensor(int aclnnTensorIndex);
     std::shared_ptr<AclNNTensor> InitAclnnTensor(Tensor atbTensor, int aclnnTensorIndex);
 
 private:
     infer::LinearParam param_;
+
+    bool isWeightNz_ = false;
+    bool isBatch_ = false;
 
     size_t aclInTensorNum_ = 0;
     size_t aclOutTensorNum_ = 0;
@@ -79,6 +98,12 @@ private:
     static AclnnMatmulExecuteFunc aclnnMatmulExecuteFunc_;
     static AclnnAddmmGetWorkspaceSizeFunc aclnnAddmmGetWorkspaceSizeFunc_;
     static AclnnAddmmExecuteFunc aclnnAddmmExecuteFunc_;
+    static AclnnMatmulWeightNzGetWorkspaceSizeFunc aclnnMatmulWeightNzGetWorkspaceSizeFunc_;
+    static AclnnMatmulWeightNzExecuteFunc aclnnMatmulWeightNzExecuteFunc_;
+    static AclnnAddmmWeightNzGetWorkspaceSizeFunc aclnnAddmmWeightNzGetWorkspaceSizeFunc_;
+    static AclnnAddmmWeightNzExecuteFunc aclnnAddmmWeightNzExecuteFunc_;
+    static AclnnBatchMatMulWeightNzGetWorkspaceSizeFunc aclnnBatchMatMulWeightNzGetWorkspaceSizeFunc_;
+    static AclnnBatchMatMulWeightNzExecuteFunc aclnnBatchMatMulWeightNzExecuteFunc_;
 };
-}  // namespace atb
-#endif  // ATB_LINEAR_ACLNN_RUNNER_H
+} // namespace atb
+#endif // ATB_LINEAR_ACLNN_RUNNER_H

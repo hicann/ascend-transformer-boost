@@ -1049,35 +1049,31 @@ class MatmulCommon:
     @staticmethod
     def gen_weight(shapes, i, datatype, format, data_gen_ranges, transpose_b: bool):
         shape = shapes[i]
+        fixed_shape = ([shape[2], shape[1] * shape[3]] if shape[0] == 1 else [
+                       shape[0], shape[2], shape[1] * shape[3]]) if len(shape) == 4 else shape
         low, high = MatmulCommon.__get_data_range(data_gen_ranges)
         if datatype == MatmulCommon.datatype_fp16:
-            weight_cpu = (high - low) * torch.rand(shape, dtype=torch.float16) + low
+            weight_cpu = (high - low) * torch.rand(fixed_shape, dtype=torch.float16) + low
         elif datatype == MatmulCommon.datatype_bf16:
-            weight_cpu = (high - low) * torch.rand(shape, dtype=torch.bfloat16) + low
+            weight_cpu = (high - low) * torch.rand(fixed_shape, dtype=torch.bfloat16) + low
         elif datatype == MatmulCommon.datatype_float:
-            weight_cpu = (high - low) * torch.rand(shape, dtype=torch.float32) + low
+            weight_cpu = (high - low) * torch.rand(fixed_shape, dtype=torch.float32) + low
         elif datatype == MatmulCommon.datatype_int8:
             low_int = int(low)
             high_int = int(high)
-            weight_cpu = torch.randint(low=low_int, high=high_int, size=tuple(shape), dtype=torch.int8)
+            weight_cpu = torch.randint(low=low_int, high=high_int, size=tuple(fixed_shape), dtype=torch.int8)
         else:
             logging.error("inTensor1 datatype error!")
             return None
         weight_golden = weight_cpu
-        if len(shape) == 4:
-            weight_golden = torch.transpose(weight_cpu, 1, 2)
-            if shape[0] == 1:
-                weight_golden = weight_golden.reshape(weight_golden.size()[1],
-                                                      weight_golden.size()[2] * weight_golden.size()[3])
-            else:
-                weight_golden = weight_golden.reshape(weight_golden.size()[0], weight_golden.size()[1],
-                                                      weight_golden.size()[2] * weight_golden.size()[3])
         if transpose_b:
             dim_num = len(weight_golden.size())
             weight_golden = torch.transpose(weight_golden, 0, 1) if dim_num == 2 else torch.transpose(weight_golden, 1, 2)
         weight_npu = weight_cpu.npu()
         if format == "fractal_nz":
             weight_npu = torch_npu.npu_format_cast(weight_npu, 29)
+            if len(shape) == 4:
+                weight_npu = weight_npu.reshape(shape[0],shape[1],shape[2],shape[3])
         MatmulCommon.weight_golden = weight_golden
         return weight_npu
 

@@ -196,7 +196,7 @@ template <> Status CreateOperation(const infer::LinearParam &opParam, Operation 
         return ERROR_INVALID_PARAM;
     }
     OP_PARAM_RSV_CHECK(opParam);
-    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
+        if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
         if (LinearAclnnRunner::LoadAclnnFuncs() != NO_ERROR) {
             ATB_LOG(ERROR) << "Load aclnn function failed, please check your CANN version.";
             return ERROR_CANN_ERROR;
@@ -697,6 +697,14 @@ bool LinearOperation::XWeightDimNumCheck(const TensorDesc &xTensorDesc, const Te
         if (xTensorDesc.shape.dimNum == DIM_NUM_3 && weightTensorDesc.shape.dimNum == DIM_NUM_3 && param_.hasBias) {
             ATB_LOG(ERROR) << GetLogPrefix() << 
                 "On 950, if hasBias is true, inTensor0 and inTensor1 dim num should not be 3 at the same time";
+            return false;
+        }
+        if ((weightTensorDesc.shape.dimNum == DIM_NUM_3 ||
+             (weightTensorDesc.shape.dimNum == DIM_NUM_4 && weightTensorDesc.shape.dims[0] != 1)) &&
+            param_.hasBias) {
+            ATB_LOG(ERROR)
+                << GetLogPrefix()
+                << "On 950, if hasBias is true, inTensor1 not support batch";
             return false;
         }
     }

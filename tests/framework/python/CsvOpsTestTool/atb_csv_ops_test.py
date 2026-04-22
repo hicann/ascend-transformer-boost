@@ -247,7 +247,10 @@ class CsvOpsTest():
                 else:
                     logging.error("DataGenType only supports one/zero/random/customize but for this case it is %s", data_gen_type_list[i])
                     quit(1)
-            self.__dump_tensor(input_tensor.cpu(), 'input', i, 'index: {}'.format(i))
+            if self.args.soc_version == "Ascend950" and torch_npu.get_npu_format(input_tensor).name == "FRACTAL_NZ":
+                pass
+            else:
+                self.__dump_tensor(input_tensor.cpu(), 'input', i, 'index: {}'.format(i))
             self.input_tensor_list.append(input_tensor)
         if self.operation_name == "LinearOperation":
             json_data = json.loads(self.op_param_str)
@@ -371,8 +374,11 @@ class CsvOpsTest():
     def generate_golden_output_tensors(self):
         golden_input_tensors = []
         for tensor in self.input_tensor_list:
-            dtype = tensor.dtype
-            golden_input_tensors.append(tensor.cpu().to(dtype))
+            if self.args.soc_version == "Ascend950" and torch_npu.get_npu_format(tensor).name == "FRACTAL_NZ":
+                pass
+            else:
+                dtype = tensor.dtype
+                golden_input_tensors.append(tensor.cpu().to(dtype))
         golden_tensor_gen_func = 'data_generation.' + self.operation_name + '.golden'
         golden_output_tensors = eval(golden_tensor_gen_func)(golden_input_tensors, self.op_param_str)
         for i in range(len(golden_output_tensors)):
