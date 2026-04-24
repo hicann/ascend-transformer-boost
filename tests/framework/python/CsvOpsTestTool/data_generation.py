@@ -3883,7 +3883,7 @@ class ReshapeAndCacheOperation(DataGen):
                 slot_list = random.sample(range(range_min, num_slots), num_tokens_slots)
             slot_mapping = np.array(slot_list).astype(np.int32)
 
-            if soc_version == 'Ascend910B':
+            if soc_version == 'Ascend910B' or soc_version == 'Ascend950':
                 key_cache = np.zeros((num_blocks, block_size, num_heads_cache, head_size_cache)).astype(dtype)
                 key_expect = np.zeros((num_blocks, block_size, num_heads_cache, head_size_cache)).astype(dtype)
 

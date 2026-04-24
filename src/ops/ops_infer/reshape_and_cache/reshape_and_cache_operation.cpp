@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Technologies Co., Ltd.
+ * Copyright (c) 2026 Huawei Technologies Co., Ltd.
  * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
  * CANN Open Software License Agreement Version 2.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@
 #include "atb/operation/atb_operation_ir_cfg.h"
 #include "atb/operation/op_param_funcs.h"
 #include "reshape_and_cache_aclnn_runner.h"
+#include "reshape_and_cache_siso_aclnn_runner.h"
 
 namespace atb {
 
@@ -50,9 +51,11 @@ template <> Status CreateOperation(const infer::ReshapeAndCacheParam &opParam, O
             ATB_LOG(ERROR) << "head compress only support Atlas 800I A2 inference product";
             return ERROR_INVALID_PARAM;
         }
-        if (opParam.kvCacheCfg == infer::ReshapeAndCacheParam::KvCacheCfg::K_CACHE_V_BYPASS) {
-            ATB_LOG(ERROR) << "key_cache SISO only support Atlas 800I A2 inference product";
-            return ERROR_INVALID_PARAM;
+        if (Mki::PlatformInfo::Instance().GetPlatformType() != Mki::PlatformType::ASCEND_950) {
+            if (opParam.kvCacheCfg == infer::ReshapeAndCacheParam::KvCacheCfg::K_CACHE_V_BYPASS) {
+                ATB_LOG(ERROR) << "key_cache SISO only support Atlas 800I A2 inference product and Ascend950";
+                return ERROR_INVALID_PARAM;
+            }
         }
     }
     if (opParam.compressType < infer::ReshapeAndCacheParam::CompressType::COMPRESS_TYPE_UNDEFINED ||
@@ -78,7 +81,12 @@ template <> Status CreateOperation(const infer::ReshapeAndCacheParam &opParam, O
     if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
         Status st = ReshapeAndCacheAclnnRunner::LoadAclnnFuncs();
         if (st != NO_ERROR) {
-            ATB_LOG(ERROR) << "Load aclnn functions failed!";
+            ATB_LOG(ERROR) << "ReshapeAndCacheAclnnRunner load aclnn functions failed!";
+            return st;
+        }
+        st = ReshapeAndCacheSisoAclnnRunner::LoadAclnnFuncs();
+        if (st != NO_ERROR) {
+            ATB_LOG(ERROR) << "ReshapeAndCacheSisoAclnnRunner load aclnn functions failed!";
             return st;
         }
     }
@@ -94,7 +102,7 @@ ReshapeAndCacheOperation::ReshapeAndCacheOperation(const infer::ReshapeAndCacheP
     : OperationBase("ReshapeAndCacheOperation"), param_(param)
 {
     is910b_ = GetSingleton<Config>().Is910B();
-    if (!is910b_) {
+    if (!is910b_ && Mki::PlatformInfo::Instance().GetPlatformType() != Mki::PlatformType::ASCEND_950) {
         operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("ReshapeAndCacheOperationAtlas300");
     } else if (param_.kvCacheCfg == infer::ReshapeAndCacheParam::KvCacheCfg::K_CACHE_V_BYPASS) {
         operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("ReshapeAndCacheOperationSISO");
@@ -105,9 +113,6 @@ ReshapeAndCacheOperation::ReshapeAndCacheOperation(const infer::ReshapeAndCacheP
     } else if (param_.compressType == infer::ReshapeAndCacheParam::COMPRESS_TYPE_KVHEAD_ROPE) {
         operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("ReshapeAndCacheOperationKvHeadCompressRope");
     } else {
-        operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("ReshapeAndCacheOperation");
-    }
-    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
         operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("ReshapeAndCacheOperation");
     }
     ATB_LOG(INFO) << GetLogPrefix() << "ReshapeAndCacheParam compressType:" << param.compressType
@@ -405,6 +410,10 @@ std::shared_ptr<Runner> ReshapeAndCacheOperation::CreateRunner(Context &context)
 {
     (void)context;
     if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
+        if (param_.kvCacheCfg == infer::ReshapeAndCacheParam::KvCacheCfg::K_CACHE_V_BYPASS) {
+            ATB_LOG(INFO) << GetLogPrefix() << "create ReshapeAndCacheSisoAclnnRunner";
+            return std::make_shared<ReshapeAndCacheSisoAclnnRunner>(param_);
+        }
         ATB_LOG(INFO) << GetLogPrefix() << "create ReshapeAndCache AclnnRunner";
         return std::make_shared<ReshapeAndCacheAclnnRunner>(param_);
     }
