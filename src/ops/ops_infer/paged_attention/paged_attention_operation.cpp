@@ -78,8 +78,8 @@ bool Ascend950ParamCheck(const infer::PagedAttentionParam &opParam)
         ATB_LOG(ERROR) << "On Ascend950, param qkScale [" << opParam.qkScale << "] should be in range (0, 1]";
         return false;
     }
-    if (opParam.quantType != infer::PagedAttentionParam::QuantType::TYPE_QUANT_UNQUANT && opParam.quantType != infer::PagedAttentionParam::QuantType::TYPE_DEQUANT_FUSION) {
-        ATB_LOG(ERROR) << "On Ascend950, param quantType [" << opParam.quantType << "] should be TYPE_QUANT_UNQUANT or TYPE_DEQUANT_FUSION";
+    if (opParam.quantType != infer::PagedAttentionParam::QuantType::TYPE_QUANT_UNQUANT) {
+        ATB_LOG(ERROR) << "On Ascend950, param quantType [" << opParam.quantType << "] should be TYPE_QUANT_UNQUANT";
         return false;
     }
     if (opParam.inputLayout != infer::TYPE_BSND) {
@@ -379,9 +379,7 @@ PagedAttentionOperation::PagedAttentionOperation(const infer::PagedAttentionPara
     }
 
     if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
-        if (param_.quantType == infer::PagedAttentionParam::QuantType::TYPE_DEQUANT_FUSION) {
-            operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("PagedAttentionOperationDequantFusionAscend950");
-        } else {
+        if (param_.quantType == infer::PagedAttentionParam::QuantType::TYPE_QUANT_UNQUANT) {
             operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("PagedAttentionOperationAscend950");
         }
     }
@@ -719,11 +717,14 @@ Status PagedAttentionOperation::MaskFreeInferShapeCheck310P(const SVector<Tensor
     if (param_.maskType == atb::infer::PagedAttentionParam::MASK_TYPE_MASK_FREE) {
         if (GetSingleton<Config>().Is310P()) {
             if (inTensorDescs.at(5).shape.dimNum != 4) {
-                ATB_LOG(ERROR) << "When maskType is mask free on Altas 300I Duo inference products, mask dim num should be 4";
+                ATB_LOG(ERROR)
+                    << "When maskType is mask free on Altas 300I Duo inference products, mask dim num should be 4";
                 return ERROR_INVALID_TENSOR_DIM;
             }
-            if (inTensorDescs.at(5).shape.dims[0] != 1 || inTensorDescs.at(5).shape.dims[1] != 8 || inTensorDescs.at(5).shape.dims[2] != 128 || inTensorDescs.at(5).shape.dims[3] != 16) {
-                ATB_LOG(ERROR) << "When maskType is mask free on Altas 300I Duo inference products, mask dims should be [1,8,128,16]";
+            if (inTensorDescs.at(5).shape.dims[0] != 1 || inTensorDescs.at(5).shape.dims[1] != 8 ||
+                inTensorDescs.at(5).shape.dims[2] != 128 || inTensorDescs.at(5).shape.dims[3] != 16) {
+                ATB_LOG(ERROR) << "When maskType is mask free on Altas 300I Duo inference products, mask dims should "
+                                  "be [1,8,128,16]";
                 return ERROR_INVALID_TENSOR_DIM;
             }
             size_t kBlockSize = inTensorDescs.at(1).shape.dims[2];
@@ -744,13 +745,17 @@ Status PagedAttentionOperation::MaskFreeSetupCheck310P(const SVector<Tensor> &in
 {
     if (param_.maskType == atb::infer::PagedAttentionParam::MASK_TYPE_MASK_FREE) {
         if (GetSingleton<Config>().Is310P()) {
-            if (GetSingleton<Config>().Is310P() && param_.maskType == atb::infer::PagedAttentionParam::MASK_TYPE_MASK_FREE) {
+            if (GetSingleton<Config>().Is310P() &&
+                param_.maskType == atb::infer::PagedAttentionParam::MASK_TYPE_MASK_FREE) {
                 if (inTensor.at(5).desc.shape.dimNum != 4) {
-                    ATB_LOG(ERROR) << "When maskType is mask free on Altas 300I Duo inference products, mask dim num should be 4";
+                    ATB_LOG(ERROR)
+                        << "When maskType is mask free on Altas 300I Duo inference products, mask dim num should be 4";
                     return ERROR_INVALID_TENSOR_DIM;
                 }
-                if (inTensor.at(5).desc.shape.dims[0] != 1 || inTensor.at(5).desc.shape.dims[1] != 8 || inTensor.at(5).desc.shape.dims[2] != 128 || inTensor.at(5).desc.shape.dims[3] != 16) {
-                    ATB_LOG(ERROR) << "When maskType is mask free on Altas 300I Duo inference products, mask dims should be [1,8,128,16]";
+                if (inTensor.at(5).desc.shape.dims[0] != 1 || inTensor.at(5).desc.shape.dims[1] != 8 ||
+                    inTensor.at(5).desc.shape.dims[2] != 128 || inTensor.at(5).desc.shape.dims[3] != 16) {
+                    ATB_LOG(ERROR) << "When maskType is mask free on Altas 300I Duo inference products, mask dims "
+                                      "should be [1,8,128,16]";
                     return ERROR_INVALID_TENSOR_DIM;
                 }
             }
@@ -758,14 +763,15 @@ Status PagedAttentionOperation::MaskFreeSetupCheck310P(const SVector<Tensor> &in
                 size_t batch = inTensor.at(4).desc.shape.dims[0];
                 int *k_seqlen_list = static_cast<int *>(inTensor[4].hostData);
                 int *q_seqlen_list = static_cast<int *>(inTensor[6].hostData);
-        
+
                 for (size_t i = 0; i < batch; i++) {
                     if (k_seqlen_list[i] < q_seqlen_list[i]) {
                         ATB_LOG(ERROR) << "PagedAttentionOperation intensor4[i] should bigger than intensor6[i].";
                         return ERROR_INVALID_PARAM;
                     }
                     if ((k_seqlen_list[i] - q_seqlen_list[i]) % 128 != 0) {
-                        ATB_LOG(ERROR) << "PagedAttentionOperation (intensor4[i] - item in intensor6[i]) % 128 should be 0. ";
+                        ATB_LOG(ERROR)
+                            << "PagedAttentionOperation (intensor4[i] - item in intensor6[i]) % 128 should be 0. ";
                         return ERROR_INVALID_PARAM;
                     }
                 }
@@ -773,7 +779,7 @@ Status PagedAttentionOperation::MaskFreeSetupCheck310P(const SVector<Tensor> &in
                 ATB_LOG(ERROR) << "PagedAttentionOperation k_seqlen_list dims should be 1.";
                 return ERROR_INVALID_PARAM;
             }
-        
+
             size_t kBlockSize = inTensor.at(1).desc.shape.dims[2];
             size_t vBlockSize = inTensor.at(2).desc.shape.dims[2];
             if (kBlockSize != 128 || vBlockSize != 128) {

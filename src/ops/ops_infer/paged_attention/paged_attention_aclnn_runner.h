@@ -12,33 +12,29 @@
 #include "atb/infer_op_params.h"
 #include "atb/runner/aclnn_runner.h"
 
-using AclnnFusedInferAttentionScoreV3GetWorkspaceSizeFunc = aclnnStatus (*)(
-    const aclTensor *, const aclTensorList *, const aclTensorList *, const aclTensor *, const aclTensor *,
-    const aclIntArray *, const aclIntArray *, const aclTensor *, const aclTensor *, const aclTensor *,
-    const aclTensor *, const aclTensor *, const aclTensor *, const aclTensor *, const aclTensor *, const aclTensor *,
-    const aclTensor *, const aclTensor *, const aclTensor *, const aclTensor *, const aclTensor *, const aclTensor *,
-    const aclTensor *, const aclIntArray *, const aclTensor *, const aclTensor *, const aclTensor *, int64_t, double,
-    int64_t, int64_t, char *, int64_t, int64_t, int64_t, int64_t, int64_t, bool, int64_t, int64_t, const aclTensor *,
-    const aclTensor *, uint64_t *, aclOpExecutor **);
-using AclnnFusedInferAttentionScoreV3Func = aclnnStatus (*)(void *, uint64_t, aclOpExecutor *, const aclrtStream);
+using AclnnFusedInferAttentionScoreV5GetWorkspaceSizeFunc = aclnnStatus (*)(
+    const aclTensor *query, const aclTensorList *key, const aclTensorList *value, const aclTensor *pseShiftOptional,
+    const aclTensor *attenMaskOptional, const aclIntArray *actualSeqLengthsOptional,
+    const aclIntArray *actualSeqLengthsKvOptional, const aclTensor *deqScale1Optional,
+    const aclTensor *quantScale1Optional, const aclTensor *deqScale2Optional, const aclTensor *quantScale2Optional,
+    const aclTensor *quantOffset2Optional, const aclTensor *antiquantScaleOptional,
+    const aclTensor *antiquantOffsetOptional, const aclTensor *blockTableOptional,
+    const aclTensor *queryPaddingSizeOptional, const aclTensor *kvPaddingSizeOptional,
+    const aclTensor *keyAntiquantScaleOptional, const aclTensor *keyAntiquantOffsetOptional,
+    const aclTensor *valueAntiquantScaleOptional, const aclTensor *valueAntiquantOffsetOptional,
+    const aclTensor *keySharedPrefixOptional, const aclTensor *valueSharedPrefixOptional,
+    const aclIntArray *actualSharedPrefixLenOptional, const aclTensor *queryRopeOptional,
+    const aclTensor *keyRopeOptional, const aclTensor *keyRopeAntiquantScaleOptional,
+    const aclTensor *dequantScaleQueryOptional, const aclTensor *learnableSinkOptional,
+    const aclIntArray *qStartIdxOptional, const aclIntArray *kvStartIdxOptional, int64_t numHeads, double scaleValue,
+    int64_t preTokens, int64_t nextTokens, char *inputLayout, int64_t numKeyValueHeads, int64_t sparseMode,
+    int64_t innerPrecise, int64_t blockSize, int64_t antiquantMode, bool softmaxLseFlag, int64_t keyAntiquantMode,
+    int64_t valueAntiquantMode, int64_t queryQuantMode, int64_t pseType, const aclTensor *attentionOut,
+    const aclTensor *softmaxLse, uint64_t *workspaceSize, aclOpExecutor **executor);
+using AclnnFusedInferAttentionScoreV5Func = aclnnStatus (*)(void *workspace, uint64_t workspaceSize,
+                                                            aclOpExecutor *executor, const aclrtStream stream);
 
 namespace atb {
-struct AclnnFusedInferAttentionScoreV3Param {
-    int64_t numHeads = 0;
-    double scaleValue = 0.0;
-    int64_t preTokens = 0;
-    int64_t nextTokens = 0;
-    std::string inputLayoutStr = "";
-    int64_t numKeyValueHeads = 0;
-    int64_t sparseMode = 0;
-    int64_t innerPrecise = 1;
-    int64_t blockSize = 0;
-    int64_t antiquantMode = 0;
-    bool softmaxLseFlag = false;
-    int64_t keyAntiquantMode = 0;
-    int64_t valueAntiquantMode = 0;
-};
-
 class PagedAttentionAclnnRunner : public AclnnRunner {
 public:
     explicit PagedAttentionAclnnRunner(const infer::PagedAttentionParam &param);
@@ -53,16 +49,12 @@ protected:
 private:
     void GetTensorNum();
     void InitTensorIndex();
-    void InitAclnnParam();
     Status CreateQueryAclnnTensor();
     Status CreateKeyAclnnTensorList();
     Status CreateValueAclnnTensorList();
     Status CreateBlockTableAclnnTensor();
     Status CreateActualSeqLengthsKvAclIntArray();
-    Status CreateKeyAntiquantScaleAclnnTensor();
-    Status CreateValueAntiquantScaleAclnnTensor();
     Status CreateAttentionOutAclnnTensor();
-    std::shared_ptr<AclNNTensor> InitAclnnTensor(Tensor atbTensor, int aclnnTensorIndex);
 
 private:
     infer::PagedAttentionParam param_;
@@ -70,29 +62,26 @@ private:
     size_t aclInTensorNum_ = 0;
     size_t aclOutTensorNum_ = 0;
     size_t aclInTensorListNum_ = 0;
-    size_t aclOutTensorListNum_ = 0;
 
     size_t atbInTensorIndex_ = 0;
     size_t aclInTensorIndex_ = 0;
     size_t aclInTensorListIndex_ = 0;
     size_t atbOutTensorIndex_ = 0;
     size_t aclOutTensorIndex_ = 0;
-    size_t aclOutTensorListIndex_ = 0;
 
     size_t queryAclTensorIndex_ = 0;
     size_t keyAclTensorListIndex_ = 0;
     size_t valueAclTensorListIndex_ = 0;
     size_t blockTableAclTensorIndex_ = 0;
-    size_t keyAntiquantScaleAclTensorIndex_ = 0;
-    size_t valueAntiquantScaleAclTensorIndex_ = 0;
     size_t attentionOutAclTensorIndex_ = 0;
 
     aclIntArray *actualSeqLengthsKv_ = nullptr;
+    uint64_t batch_ = 0;
 
-    AclnnFusedInferAttentionScoreV3Param aclnnParam_;
+    int64_t blockSize_ = 0;
 
-    static AclnnFusedInferAttentionScoreV3GetWorkspaceSizeFunc aclnnFusedInferAttentionScoreV3GetWorkspaceSizeFunc_;
-    static AclnnFusedInferAttentionScoreV3Func aclnnFusedInferAttentionScoreV3Func_;
+    static AclnnFusedInferAttentionScoreV5GetWorkspaceSizeFunc aclnnFusedInferAttentionScoreV5GetWorkspaceSizeFunc_;
+    static AclnnFusedInferAttentionScoreV5Func aclnnFusedInferAttentionScoreV5Func_;
 };
 } // namespace atb
 #endif // ATB_PAGED_ATTENTION_ACLNN_RUNNER_H

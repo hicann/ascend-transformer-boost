@@ -5149,11 +5149,6 @@ class PagedAttentionOperation(DataGen):
                             PagedAttentionOperation.in_tensors[j] = \
                                 PagedAttentionOperation.in_tensors[j].to(PagedAttentionOperation.trans_dtype(datatype))
                         return torch_npu.npu_format_cast(PagedAttentionOperation.in_tensors[j], format_dict[format])
-        if get_soc_version() == "Ascend950" and i == 0:
-            if hasattr(PagedAttentionOperation, 'in_tensors'):
-                delattr(PagedAttentionOperation, 'in_tensors')
-            if hasattr(PagedAttentionOperation, 'golden_tensors'):
-                delattr(PagedAttentionOperation, 'golden_tensors')
         soc_version = get_soc_version()
         json_data = json.loads(op_params)
         if soc_version == "Ascend910B" or soc_version == "Ascend950":
@@ -5483,11 +5478,13 @@ class PagedAttentionOperation(DataGen):
         else:
             head_size_o = in_tensors[0].shape[2] if is_NZ else in_tensors[2].shape[3]
         out_shape = (in_tensors[0].shape[0], json_data["headNum"], head_size_o)
-        dtype = torch.float16
+        dtype = None
         if "outDataType" in json_data and json_data["outDataType"] == 1:
              dtype = torch.float16
         if "outDataType" in json_data and json_data["outDataType"] == 27:
              dtype = torch.bfloat16
+        if dtype == None:
+            dtype = in_tensors[0].dtype
         ref_output = torch.zeros(out_shape, dtype=dtype)
         maskType = 0
         if "maskType" in json_data:
@@ -5583,6 +5580,14 @@ class PagedAttentionOperation(DataGen):
         if hasattr(PagedAttentionOperation, 'golden_tensors'):
             delattr(PagedAttentionOperation, 'golden_tensors')
         return [ref_output.cpu()]
+
+    @staticmethod
+    def case_postprocess(op_params, operation, input_tensor_list, output_tensor_list):
+        if get_soc_version() == "Ascend950":
+            if hasattr(PagedAttentionOperation, 'in_tensors'):
+                delattr(PagedAttentionOperation, 'in_tensors')
+            if hasattr(PagedAttentionOperation, 'golden_tensors'):
+                delattr(PagedAttentionOperation, 'golden_tensors')
 
     @staticmethod
     def get_op_type(op_params):
