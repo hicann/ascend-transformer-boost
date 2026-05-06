@@ -49,7 +49,7 @@ function fn_build_googletest()
         return 0
     fi
     cd $THIRD_PARTY_DIR
-    [[ ! -d "googletest" ]] && git clone --branch v1.14.0 --depth 1 https://github.com/google/googletest.git
+    [[ ! -d "googletest" ]] && git clone --branch v1.14.0 --depth 1 https://gitcode.com/GitHub_Trending/go/googletest.git
     cd googletest
     rm -rf build && mkdir build && cd build
     if [ "$USE_CXX11_ABI" == "ON" ]
@@ -71,7 +71,7 @@ function fn_build_stub()
         return 0
     fi
     cd $THIRD_PARTY_DIR
-    git clone --depth 1 https://github.com/coolxv/cpp-stub.git
+    git clone --depth 1 https://gitcode.com/gh_mirrors/cp/cpp-stub.git
 }
 
 function fn_build_doxygen()
@@ -87,7 +87,7 @@ function fn_build_doxygen()
     fi
     cd $THIRD_PARTY_DIR
     if [ ! -d "$THIRD_PARTY_DIR/doxygen" ]; then
-        [[ ! -f "doxygen-1.9.6.src.tar.gz" ]] && wget --no-check-certificate https://github.com/doxygen/doxygen/releases/download/Release_1_9_6/doxygen-1.9.6.src.tar.gz
+        [[ ! -f "doxygen-1.9.6.src.tar.gz" ]] && wget --no-check-certificate https://gitcode.com/gh_mirrors/do/doxygen/releases/download/Release_1_9_6/doxygen-1.9.6.src.tar.gz
         tar -xzvf doxygen-1.9.6.src.tar.gz
         mv doxygen-1.9.6 doxygen
     fi
@@ -207,7 +207,7 @@ function fn_build_nlohmann_json()
         return 0
     fi
     cd $THIRD_PARTY_DIR
-    git clone --branch v3.11.3 --depth 1 https://github.com/nlohmann/json.git
+    git clone --branch v3.11.3 --depth 1 https://gitcode.com/GitHub_Trending/js/json.git
     mv json nlohmannJson
 }
 
@@ -217,7 +217,7 @@ function fn_build_pybind11()
         return 0
     fi
     cd $THIRD_PARTY_DIR
-    git clone --branch v2.13.6 --depth 1 https://github.com/pybind/pybind11.git
+    git clone --branch v2.13.6 --depth 1 https://gitcode.com/gh_mirrors/py/pybind11.git
 }
 
 function fn_build_secodefuzz()
