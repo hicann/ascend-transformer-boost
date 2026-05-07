@@ -109,6 +109,14 @@ static bool ParamCheck(const infer::MultiLatentAttentionParam &opParam)
         ATB_LOG(ERROR) << "only mtp(CALC_TYPE_SPEC) support mask";
         return false;
     }
+    if ((opParam.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC ||
+         opParam.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC_AND_RING) &&
+        opParam.maskType == infer::MultiLatentAttentionParam::MaskType::MASK_TYPE_SWA_NORM) {
+        ATB_LOG(ERROR) << "MLA decode (CALC_TYPE_SPEC) does not support SWA_NORM mask. "
+                        << "Kernel SoftmaxStage1 only handles mask_type=3 (LOOK_AHEAD) and 4 (MASK_FREE). "
+                        << "Use CALC_TYPE_PREFILL for SWA_NORM or set maskType to MASK_FREE.";
+        return false;
+    }
     if ((opParam.cacheMode == infer::MultiLatentAttentionParam::CacheMode::INT8_NZCACHE) &&
         (opParam.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_RING ||
          opParam.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC_AND_RING) &&
@@ -127,6 +135,12 @@ static bool ParamCheck(const infer::MultiLatentAttentionParam &opParam)
     if (opParam.maskUseStatusType == infer::MultiLatentAttentionParam::MaskUseStatusType::MASK_USE_STATUS_TYPE_BATCH_MASK) {
         if (opParam.calcType != infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC_AND_RING) {
             ATB_LOG(ERROR) << "MLA only supports maskUseStatus in mtp with ring (CALC_TYPE_SPEC_AND_RING), but got calcType: " << opParam.calcType;
+            return false;
+        }
+    }
+    if (opParam.maskType == infer::MultiLatentAttentionParam::MaskType::MASK_TYPE_SWA_NORM) {
+        if (opParam.windowSize <= 0) {
+            ATB_LOG(ERROR) << "windowSize in swa mode should be greater than 0";
             return false;
         }
     }

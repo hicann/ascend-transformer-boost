@@ -76,6 +76,14 @@ Status MultiLatentAttentionOpsRunner::SetupKernelGraph(const OpsTensorPack &opsT
     asdParam.tor = param_.qkScale;
     asdParam.kvHead = param_.kvHeadNum;
     asdParam.isRing = isRing ? 1 : 0;
+    asdParam.windowSize = static_cast<int32_t>(param_.windowSize);
+    if (param_.maskType == infer::MultiLatentAttentionParam::MaskType::MASK_TYPE_SPEC) {
+        asdParam.maskType = AtbOps::OpParam::MLA::MaskType::MASK_TYPE_LOOK_AHEAD;
+    } else if (param_.maskType == infer::MultiLatentAttentionParam::MaskType::MASK_TYPE_MASK_FREE) {
+        asdParam.maskType = AtbOps::OpParam::MLA::MaskType::MASK_TYPE_MASK_FREE;
+    } else if (param_.maskType == infer::MultiLatentAttentionParam::MaskType::MASK_TYPE_CAUSAL_MASK) {
+        asdParam.maskType = AtbOps::OpParam::MLA::MaskType::MASK_TYPE_CAUSAL_MASK;
+    }
     mlaNode.opDesc = {0, "MLAOperation", asdParam};
     mlaNode.inTensors = {&query, &queryRope, &kvCache, &kvCacheRope, &blockTables, mask, qkDescale, pvDescale};
     if (!isRing) {
@@ -131,11 +139,15 @@ Status MultiLatentAttentionOpsRunner::ModifyKernelGraph(const OpsTensorPack &ops
     asdParam.maskUseStatus = newParam_.maskUseStatus;
     asdParam.isRing = param_.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_RING || param_.
                       calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC_AND_RING;
+    asdParam.windowSize = static_cast<int32_t>(param_.windowSize);
     if (param_.maskType == infer::MultiLatentAttentionParam::MaskType::MASK_TYPE_SPEC) {
         asdParam.maskType = AtbOps::OpParam::MLA::MaskType::MASK_TYPE_LOOK_AHEAD;
     }
     if (param_.maskType == infer::MultiLatentAttentionParam::MaskType::MASK_TYPE_MASK_FREE) {
         asdParam.maskType = AtbOps::OpParam::MLA::MaskType::MASK_TYPE_MASK_FREE;
+    }
+    if (param_.maskType == infer::MultiLatentAttentionParam::MaskType::MASK_TYPE_CAUSAL_MASK) {
+        asdParam.maskType = AtbOps::OpParam::MLA::MaskType::MASK_TYPE_CAUSAL_MASK;
     }
     mlaNode.opDesc = {0, "MLAOperation", asdParam};
     return NO_ERROR;

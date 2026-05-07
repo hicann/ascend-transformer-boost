@@ -8448,8 +8448,76 @@ class MlaPreprocessOperation(DataGen):
 
 class MultiLatentAttentionOperation(DataGen):
     @staticmethod
+    def customize(shapes, i, datatype, format, data_gen_ranges, op_params):
+        if i != 0:
+            if i < len(MultiLatentAttentionOperation.in_tensors):
+                t = MultiLatentAttentionOperation.in_tensors[i]
+                if t.numel() > 0:
+                    return torch_npu.npu_format_cast(t, format_dict[format])
+        json_data = json.loads(op_params)
+        mask_type = json_data.get("maskType", 0)
+        num_tokens, num_heads, head_dim_q = shapes[0]
+        rope_dim = shapes[1][2]
+        num_blocks, block_size, kv_heads, kv_head_dim = shapes[2]
+        batch, max_blocks = shapes[4]
+        rope_head_dim = shapes[3][3]
+
+        low = float(data_gen_ranges.split(',')[0])
+        high = float(data_gen_ranges.split(',')[1])
+        query_np = np.random.uniform(low, high, size=(num_tokens, num_heads, head_dim_q)).astype(np.float32)
+        query_rope_np = np.random.uniform(low, high, size=(num_tokens, num_heads, rope_dim)).astype(np.float32)
+        kv_np = np.random.uniform(low, high, size=(num_blocks, block_size, kv_heads, kv_head_dim)).astype(np.float32)
+        kv_rope_np = np.random.uniform(low, high, size=(num_blocks, block_size, kv_heads, rope_head_dim)).astype(np.float32)
+        bt_np = np.zeros((batch, max_blocks), dtype=np.int32)
+        for b in range(batch):
+            for j in range(max_blocks):
+                idx = b * max_blocks + j
+                bt_np[b, j] = idx if idx < num_blocks else 0
+        ctx_np = np.full((batch,), block_size, dtype=np.int32)
+        qsl_np = np.ones((batch,), dtype=np.int32)
+
+        base_shape_idx = 6
+        has_mask = mask_type != 0
+        if has_mask:
+            m_shapes = shapes[base_shape_idx]
+            m_np = np.random.uniform(low, high, size=(m_shapes[0], m_shapes[1])).astype(np.float32)
+            base_shape_idx = 7
+
+        tensor_list = [
+            torch.from_numpy(query_np).to(dtype_dict[datatype]).npu(),
+            torch.from_numpy(query_rope_np).to(dtype_dict[datatype]).npu(),
+            torch.from_numpy(kv_np).to(dtype_dict[datatype]).npu(),
+            torch.from_numpy(kv_rope_np).to(dtype_dict[datatype]).npu(),
+            torch.from_numpy(bt_np).npu(),
+            torch.from_numpy(ctx_np).npu(),
+        ]
+        if has_mask:
+            tensor_list.append(torch.from_numpy(m_np).to(dtype_dict[datatype]).npu())
+        tensor_list.append(torch.from_numpy(qsl_np).npu())
+
+        MultiLatentAttentionOperation.in_tensors = tensor_list
+        return tensor_list[0]
+
+    @staticmethod
     def get_op_type(op_params) -> OpTypes:
-        return OpTypes.COMPUTE_FLOAT
+        return OpTypes.CV_FUSION
+
+    @staticmethod
+    def case_preprocess(op_params, operation, input_tensor_list):
+        json_data = json.loads(op_params)
+        host_dict = {}
+        host_dict["contextLens"] = input_tensor_list[5].tolist()
+        calc_type = json_data.get("calcType", 0)
+        if calc_type in [1, 3]:
+            mask_type = json_data.get("maskType", 0)
+            qseq_idx = 6 if mask_type == 0 else 7
+            host_dict["qSeqlen"] = input_tensor_list[qseq_idx].tolist()
+        if "maskType" in json_data:
+            host_dict["maskType"] = json_data["maskType"]
+        if "cacheMode" in json_data and json_data["cacheMode"] == 2:
+            host_dict["cacheType"] = 1
+        run_param = json.dumps(host_dict)
+        operation.set_varaintpack_param(run_param)
 
 class PagedCacheLoadOperation(DataGen):
     @staticmethod
