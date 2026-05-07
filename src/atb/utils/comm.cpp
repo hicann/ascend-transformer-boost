@@ -174,7 +174,7 @@ HcclComm Comm::CreateHcclCommByRankTableFile(int32_t rank, int32_t rankSize, con
         return newHcclComm;
     }
     ATB_LOG(INFO) << "rankTableFilePath is :" << resolvePath;
-    auto ret = HcclCommInitClusterInfo(rankTableFile, rank, &newHcclComm);
+    auto ret = HcclCommInitClusterInfo(resolvePath.c_str(), rank, &newHcclComm);
     if (ret != HCCL_SUCCESS || newHcclComm == nullptr) {
         ATB_LOG(ERROR) << "HCCL CommInitClusterInfo ERROR" << ret << " should check rankTableFile config";
         return nullptr;
@@ -212,7 +212,7 @@ std::shared_ptr<void> CreateHcclCommByClusterInfo(uint32_t subCommRankId, const 
         return std::shared_ptr<HcclComm>();
     }
     HcclComm newHcclComm = nullptr;
-    auto ret = HcclCommInitClusterInfo(rankTableFile, rankIds[subCommRankId], &newHcclComm);
+    auto ret = HcclCommInitClusterInfo(resolvePath.c_str(), rankIds[subCommRankId], &newHcclComm);
     if (ret != HCCL_SUCCESS || newHcclComm == nullptr) {
         ATB_LOG(ERROR) << "HcclCommInitClusterInfoConfig failed, should check rankTableFile config, error code:"
                        << ret;
