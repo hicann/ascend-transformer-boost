@@ -72,6 +72,10 @@ atb::Tensor ConvertToAtbTensor(torch::Tensor &torchTensor)
     if (atbTensor.desc.format == ACL_FORMAT_NCHW) {
         atbTensor.desc.format = ACL_FORMAT_ND;
     }
+    if (torchTensor.sizes().size() > atb::MAX_DIM) {
+        throw std::runtime_error("tensor dimNum " + std::to_string(torchTensor.sizes().size()) +
+                                 " is invalid, should be <= MAX_DIM(8)");
+    }
     atbTensor.desc.shape.dimNum = torchTensor.sizes().size();
     for (uint64_t i = 0; i < torchTensor.sizes().size(); i++) {
         atbTensor.desc.shape.dims[i] = torchTensor.sizes()[i];

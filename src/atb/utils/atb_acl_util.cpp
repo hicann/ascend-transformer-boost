@@ -47,6 +47,11 @@ atb::Status aclTensorToAtbTensor(const aclTensor *aclTensorSrc, atb::Tensor *atb
     ATB_CHECK(status == ACL_SUCCESS, "aclGetDataType failed!", return atb::ERROR_INVALID_TENSOR_DTYPE);
     status = aclGetFormat(aclTensorSrc, &format);
     ATB_CHECK(status == ACL_SUCCESS, "aclGetFormat failed!", return atb::ERROR_INVALID_TENSOR_FORMAT);
+    if (dimCount > atb::MAX_DIM) {
+        ATB_LOG(ERROR) << "tensor dimNum " << dimCount << " is invalid, should be <= MAX_DIM(8)";
+        delete[] dims;
+        return atb::ERROR_INVALID_TENSOR_DIM;
+    }
     atb::TensorDesc desc;
     desc.shape.dimNum = dimCount;
     for (size_t i = 0; i < dimCount; i++) {
@@ -87,6 +92,11 @@ atb::Status aclTensorToAtbTensorHost(const aclTensor *aclTensorSrc, atb::Tensor 
     ATB_CHECK(status == ACL_SUCCESS, "aclGetDataType failed!", return atb::ERROR_INVALID_TENSOR_DTYPE);
     status = aclGetFormat(aclTensorSrc, &format);
     ATB_CHECK(status == ACL_SUCCESS, "aclGetFormat failed!", return atb::ERROR_INVALID_TENSOR_FORMAT);
+    if (dimCount > atb::MAX_DIM) {
+        ATB_LOG(ERROR) << "tensor dimNum " << dimCount << " is invalid, should be <= MAX_DIM(8)";
+        delete[] dims;
+        return atb::ERROR_INVALID_TENSOR_DIM;
+    }
     atb::TensorDesc desc;
     desc.shape.dimNum = dimCount;
     for (size_t i = 0; i < dimCount; i++) {
