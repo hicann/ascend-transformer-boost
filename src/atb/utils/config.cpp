@@ -125,6 +125,11 @@ bool Config::Is310B() const
     return is310B_;
 }
 
+bool Config::Is310PRC() const
+{
+    return is310PRC_;
+}
+
 void Config::InitSocVersion()
 {
     const char *socName = aclrtGetSocName();
@@ -145,6 +150,13 @@ void Config::InitSocVersion()
                std::string(socName).length() == LEN_OF_ASCEND_910B) ||
               std::string(socName).find("Ascend910ProB") != std::string::npos ||
               std::string(socName).find("Ascend910PremiumA") != std::string::npos;
+    
+    aclrtRunMode runMode;
+    auto ret = aclrtGetRunMode(&runMode);
+    if (ret != 0) {
+        ATB_LOG(ERROR) << "aclrtGetRunMode failed!";
+    }
+    is310PRC_ = (runMode == ACL_DEVICE);
 }
 
 std::string Config::GetAtbHomePath() const

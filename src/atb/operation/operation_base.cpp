@@ -675,7 +675,9 @@ void OperationBase::RegProfArray(ProfilingFuncName profFuncType, std::string pro
 Status OperationBase::SetupPrepare()
 {
     setUpSuccess_ = false;
-    GetGlobalMemAllocationSolver()->Reset();
+    if (!GetSingleton<Config>().Is310PRC()) {
+        GetGlobalMemAllocationSolver()->Reset();
+    }
     if (operationBaseIds_.at(0) == -1) {
         operationBaseIds_.at(0) = GetNewOperationBaseId();
         ResetLogPrefix();
