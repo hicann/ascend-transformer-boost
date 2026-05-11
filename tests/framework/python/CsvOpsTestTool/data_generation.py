@@ -479,21 +479,21 @@ class LinearOperation(DataGen):
         matmultype = MatmulCommon.get_param_value(op_params, "matmulType", 0)
         quantMode = MatmulCommon.get_param_value(op_params, "quantMode", 0)
 
-        x = MatmulCommon.input_golden.cpu() if MatmulCommon.input_golden is not None else None
-        weight = MatmulCommon.weight_golden.cpu() if MatmulCommon.weight_golden is not None else None
-        bias = MatmulCommon.bias_golden.cpu() if MatmulCommon.bias_golden is not None else None
-        deq_scale = MatmulCommon.deq_golden.cpu() if MatmulCommon.deq_golden is not None else None
-        accum = MatmulCommon.accum_golden.cpu() if MatmulCommon.accum_golden is not None else None
-        pertoken_scale = MatmulCommon.pertoken_scale_golden.cpu() if MatmulCommon.pertoken_scale_golden is not None else None
-        
+        x = MatmulCommon.input_golden
+        weight = MatmulCommon.weight_golden
+        bias = MatmulCommon.bias_golden
+        deq_scale = MatmulCommon.deq_golden
+        accum = MatmulCommon.accum_golden
+        pertoken_scale = MatmulCommon.pertoken_scale_golden
+
         if out_data_type == -1:
-            if bias is not None and bias.dtype == torch.bfloat16:
+            if bias is not None and MatmulCommon.bias_golden.dtype == torch.bfloat16:
                 x = x.to(torch.float64)
                 weight = weight.to(torch.float64)
             else:
                 x = x.to(torch.float)
                 weight = weight.to(torch.float)
-            if bias is not None and x.dtype != torch.float16:
+            if bias is not None and MatmulCommon.input_golden.dtype != torch.float16:
                 bias = bias.to(torch.float)
         else:
             x = x.to(torch.int32)
@@ -514,7 +514,7 @@ class LinearOperation(DataGen):
                 x_i = x[i:i + 1, :].squeeze(0)
                 weight_i = weight[i:i + 1, :].squeeze(0)
                 output_i = torch.matmul(x_i, weight_i)
-                if bias is not None and bias.dtype == torch.bfloat16:
+                if bias is not None and MatmulCommon.bias_golden.dtype == torch.bfloat16:
                     output_i = output_i.to(torch.bfloat16)
                 if bias is not None:
                     output_i = output_i.to(bias.dtype) + bias[i:i + 1, :]
@@ -532,7 +532,7 @@ class LinearOperation(DataGen):
         else:
             golden_result = torch.matmul(x, weight)
             if bias is not None:
-                if bias.dtype == torch.bfloat16 and get_soc_version() != "Ascend950":
+                if MatmulCommon.bias_golden.dtype == torch.bfloat16 and get_soc_version() != "Ascend950":
                     golden_result = golden_result.to(torch.bfloat16)
                 golden_result = golden_result.to(bias.dtype) + bias
             if deq_scale is not None:
@@ -544,7 +544,7 @@ class LinearOperation(DataGen):
                 golden_result = golden_result + accum
         if accum is None:
             if out_data_type == -1:
-                if bias is not None and bias.dtype == torch.bfloat16:
+                if bias is not None and MatmulCommon.bias_golden.dtype == torch.bfloat16:
                     golden_result = golden_result.to(torch.bfloat16)
                 else:
                     golden_result = golden_result.to(torch.float32)
