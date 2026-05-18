@@ -10,6 +10,7 @@
 #ifndef ATB_STATISTIC_H
 #define ATB_STATISTIC_H
 #include <string>
+#include <cstdint>
 
 namespace atb {
 struct OpSetupStatistic {
