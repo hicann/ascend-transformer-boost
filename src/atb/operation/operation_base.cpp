@@ -1377,4 +1377,9 @@ Status OperationBase::CopyArgsToDevice(Context *context) const
     }
     return st;
 }
+
+Mki::OperationIr* OperationBase::GetOperationIr() const
+{
+    return operationIr_;
+}
 } // namespace atb

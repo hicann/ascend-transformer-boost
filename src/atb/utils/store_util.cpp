@@ -93,6 +93,33 @@ void StoreUtil::SaveVariantPack(aclrtStream stream, const RunnerVariantPack &run
     }
 }
 
+void StoreUtil::SaveVariantPack(aclrtStream stream, const RunnerVariantPack &runnerVariantPack,
+                                const std::string &dirPath, const Mki::OperationIr *operationIr)
+{
+    if (!operationIr) {
+        SaveVariantPack(stream, runnerVariantPack, dirPath);
+        return;
+    }
+    if (Probe::IsSaveTensorData()) {
+        int ret = aclrtSynchronizeStream(stream);
+        ATB_LOG_IF(ret != 0, ERROR) << "aclrtSynchronizeStream fail, ret:" << ret;
+    }
+
+    const Mki::SVector<Mki::TensorInfoIr> inTensorInfoIrs = operationIr->GetInTensorInfoIrs();
+    const Mki::SVector<Mki::TensorInfoIr> outTensorInfoIrs = operationIr->GetOutTensorInfoIrs();
+    for (size_t i = 0; i < runnerVariantPack.inTensors.size(); ++i) {
+        std::string fileName = "intensor" + std::to_string(i) + "_" + inTensorInfoIrs.at(i).name + TENSOR_FILE_NAME_EXT;
+        std::string filePath = Mki::FileSystem::Join({dirPath, fileName});
+        SaveTensor(runnerVariantPack.inTensors.at(i), filePath);
+    }
+
+    for (size_t i = 0; i < runnerVariantPack.outTensors.size(); ++i) {
+        std::string fileName = "outtensor" + std::to_string(i) + "_" + outTensorInfoIrs.at(i).name + TENSOR_FILE_NAME_EXT;
+        std::string filePath = Mki::FileSystem::Join({dirPath, fileName});
+        SaveTensor(runnerVariantPack.outTensors.at(i), filePath);
+    }
+}
+
 void StoreUtil::SaveLaunchParam(aclrtStream stream, const Mki::LaunchParam &launchParam, const std::string &dirPath)
 {
     if (Probe::IsSaveTensorData()) {

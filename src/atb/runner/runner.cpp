@@ -101,19 +101,32 @@ Status Runner::PreExecute(RunnerVariantPack &runnerVariantPack)
 
 Status Runner::Execute(RunnerVariantPack &runnerVariantPack)
 {
+    OperationBase *opBase = dynamic_cast<OperationBase *>(operation_);
+    Mki::OperationIr* operationIr = nullptr;
+    if (opBase) {
+        operationIr = opBase->GetOperationIr();
+    }
+
     if (IsSaveTensor() && Probe::IsSaveTensorBefore()) {
         std::string tensorDir = tensorDir_ + "/before";
-        StoreUtil::SaveVariantPack(GetExecuteStream(runnerVariantPack.context), runnerVariantPack, tensorDir);
+        if (operationIr) {
+            StoreUtil::SaveVariantPack(GetExecuteStream(runnerVariantPack.context), runnerVariantPack, tensorDir, operationIr);
+        } else {
+            StoreUtil::SaveVariantPack(GetExecuteStream(runnerVariantPack.context), runnerVariantPack, tensorDir);
+        }
         ATB_LOG(INFO) << GetLogPrefix() << " save variant pack at " << tensorDir;
     }
     Status st = ExecuteImpl(runnerVariantPack);
     if (IsSaveTensor() && Probe::IsSaveTensorAfter()) {
         std::string tensorDir = tensorDir_ + "/after";
-        StoreUtil::SaveVariantPack(GetExecuteStream(runnerVariantPack.context), runnerVariantPack, tensorDir);
+        if (operationIr) {
+            StoreUtil::SaveVariantPack(GetExecuteStream(runnerVariantPack.context), runnerVariantPack, tensorDir, operationIr);
+        } else {
+            StoreUtil::SaveVariantPack(GetExecuteStream(runnerVariantPack.context), runnerVariantPack, tensorDir);
+        }
         ATB_LOG(INFO) << GetLogPrefix() << " save variant pack at " << tensorDir;
     }
     if (IsSaveTensor() && Probe::IsSaveParam()) {
-        OperationBase *opBase = dynamic_cast<OperationBase *>(operation_);
         if (opBase) {
             nlohmann::json opParamJson = opBase->GetParamJson();
             if (!opParamJson.empty()) {

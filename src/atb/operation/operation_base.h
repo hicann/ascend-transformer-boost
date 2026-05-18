@@ -47,6 +47,7 @@ public:
     virtual void SetExecuteStreamId(uint32_t streamId);
     virtual uint32_t GetExecuteStreamId() const;
     aclrtStream GetExecuteStream(Context *context) const;
+    Mki::OperationIr* GetOperationIr() const;
 
 protected:
     virtual Status InferShapeImpl(const SVector<TensorDesc> &inTensorDescs,

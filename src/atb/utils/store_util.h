@@ -13,6 +13,7 @@
 #include <string>
 #include <mki/tensor.h>
 #include <mki/utils/bin_file/bin_file.h>
+#include <mki/utils/operationir/operation_ir.h>
 #include <mki/launch_param.h>
 #include "atb/types.h"
 #include "atb/utils/runner_variant_pack.h"
@@ -24,6 +25,8 @@ public:
     static void SaveVariantPack(aclrtStream stream, const VariantPack &variantPack, const std::string &dirPath);
     static void SaveVariantPack(aclrtStream stream, const RunnerVariantPack &runnerVariantPack,
                                 const std::string &dirPath);
+    static void SaveVariantPack(aclrtStream stream, const RunnerVariantPack &runnerVariantPack,
+                                const std::string &dirPath, const Mki::OperationIr *operationIr);
     static void SaveLaunchParam(aclrtStream stream, const Mki::LaunchParam &launchParam, const std::string &dirPath);
 
 private:
