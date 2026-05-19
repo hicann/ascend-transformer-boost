@@ -16,6 +16,7 @@
 #include "atb/utils/config.h"
 #include "atb/utils/param_to_json.h"
 #include "linear_aclnn_runner.h"
+#include "linear_einsum_aclnn_runner.h"
 #include "linear_ops_runner.h"
 #include "atb/utils/singleton.h"
 #include "atb/operation/op_param_funcs.h"
@@ -78,11 +79,6 @@ bool MatmulEinParamCheck(const infer::LinearParam &opParam, ExternalError &error
     } else if (opParam.outDataType != ACL_DT_UNDEFINED) {
         error.errorDesc = "When MatmulEin is used, outDataType should be ACL_DT_UNDEFINED,";
         error.solutionDesc = "Please check the value of input params.";
-        ATB_LOG(ERROR) << error;
-        return false;
-    } else if (!GetSingleton<Config>().Is910B()) {
-        error.errorDesc = "Platform is not Atlas 800I A2 inference product, MatmulType should be 0,";
-        error.solutionDesc = "Please check the platform and value of input params.";
         ATB_LOG(ERROR) << error;
         return false;
     }
@@ -196,8 +192,12 @@ template <> Status CreateOperation(const infer::LinearParam &opParam, Operation 
         return ERROR_INVALID_PARAM;
     }
     OP_PARAM_RSV_CHECK(opParam);
-        if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
         if (LinearAclnnRunner::LoadAclnnFuncs() != NO_ERROR) {
+            ATB_LOG(ERROR) << "Load aclnn function failed, please check your CANN version.";
+            return ERROR_CANN_ERROR;
+        }
+        if (LinearEinsumAclnnRunner::LoadAclnnFuncs() != NO_ERROR) {
             ATB_LOG(ERROR) << "Load aclnn function failed, please check your CANN version.";
             return ERROR_CANN_ERROR;
         }
@@ -214,9 +214,14 @@ template <> Status CreateOperation(const infer::LinearParam &opParam, Operation 
                 ATB_LOG(ERROR) << "On 950, quantMode should be QUANT_UNDEFINED";
                 return ERROR_INVALID_PARAM;
             }
-        } else {
-            ATB_LOG(ERROR) << "On 950, matmulType should be MATMUL_UNDEFINED";
-            return ERROR_INVALID_PARAM;
+        } else if (opParam.matmulType == infer::LinearParam::MATMUL_EIN_SUM) {
+            ExternalError error;
+            error.errorType = ERROR_INVALID_PARAM;
+            error.errorData = OperationUtil::ConcatInfo("outDataType = ", opParam.outDataType);
+            error.solutionDesc = "Please check the value of input params.";
+            if (!MatmulEinParamCheck(opParam, error)) {
+                return ERROR_INVALID_PARAM;
+            }
         }
         *operation = new (std::nothrow) LinearOperation(opParam);
         if (*operation == nullptr) {
@@ -231,6 +236,12 @@ template <> Status CreateOperation(const infer::LinearParam &opParam, Operation 
     error.solutionDesc = "Please check the value of input params.";
     if (opParam.matmulType == infer::LinearParam::MATMUL_EIN_SUM) {
         if (!MatmulEinParamCheck(opParam, error)) {
+            return ERROR_INVALID_PARAM;
+        }
+        if (!GetSingleton<Config>().Is910B()) {
+            error.errorDesc = "Platform is not Atlas 800I A2 inference product, MatmulType should be 0,";
+            error.solutionDesc = "Please check the platform and value of input params.";
+            ATB_LOG(ERROR) << error;
             return ERROR_INVALID_PARAM;
         }
     } else if (opParam.matmulType == infer::LinearParam::MATMUL_UNDEFINED) {
@@ -285,7 +296,9 @@ LinearOperation::LinearOperation(const infer::LinearParam &param) : OperationBas
     }
     operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr(opIrKey.str());
     if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
-        if (param_.hasBias) {
+        if (param_.matmulType == infer::LinearParam::MATMUL_EIN_SUM) {
+            operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("LinearOperationMatmulEinSumAscend950");
+        } else if (param_.hasBias) {
             operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("LinearOperationMatmulWithBiasAscend950");
         } else {
             operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("LinearOperationMatmulAscend950");
@@ -364,6 +377,9 @@ std::shared_ptr<Runner> LinearOperation::CreateRunner(Context &context) const
 {
     (void)context;
     if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
+        if (param_.matmulType == infer::LinearParam::MATMUL_EIN_SUM) {
+            return std::make_shared<LinearEinsumAclnnRunner>(param_);
+        }
         return std::make_shared<LinearAclnnRunner>(param_);
     }
     return std::make_shared<LinearOpsRunner>(param_);
