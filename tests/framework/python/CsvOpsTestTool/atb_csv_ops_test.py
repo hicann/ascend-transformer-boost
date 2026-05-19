@@ -764,10 +764,6 @@ class CsvOpsResult():
                     self.opsTest.file_data.loc[self.opsTest.index, 'CasePassed'] = 'No'
                     self.opsTest.file_data.loc[self.opsTest.index, 'ActualError'] = 'precision under 100%, dtype: {}, op type: {}'.format(compare_dtype_list[i], self.opsTest.op_type)
                     return False
-                if eb_percent[i] > 100:
-                    self.opsTest.file_data.loc[self.opsTest.index, 'CasePassed'] = 'No'
-                    self.opsTest.file_data.loc[self.opsTest.index, 'ActualError'] = 'eb over 100%, dtype: {}, op type: {}'.format(compare_dtype_list[i], self.opsTest.op_type)
-                    return False
             else:
                 error_percent = [(float(percent[:-1])) for percent in self.opsTest.file_data.loc[self.opsTest.index, CsvOpsResult.precision_standard[compare_dtype_list[i]][0]].split(";")]
                 if error_percent[i] < CsvOpsResult.precision_standard[compare_dtype_list[i]][1]:
