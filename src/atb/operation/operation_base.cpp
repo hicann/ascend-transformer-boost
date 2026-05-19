@@ -157,7 +157,7 @@ void OperationBase::InitEmptyOutTensorPerms() const
     }
     ATB_LOG(INFO) << GetLogPrefix() << "InitEmptyOutTensorPerms finished:" << emptyOutTensorPerms_;
 }
- 
+
 SVector<bool> OperationBase::GetEmptyOutTensorPermissions() const
 {
     if (emptyOutTensorPerms_.size() == 0) {
@@ -301,9 +301,16 @@ Status OperationBase::InferShapeCheck(const SVector<TensorDesc> &inTensorDescs) 
         return st;
     }
     if (!CheckIniMatch(inTensorDescs)) {
-        ATB_LOG(ERROR) << GetLogPrefix()
-                       << "CheckIniMatch Failed! Supported "
-                          "Combs: \n"
+        std::string actualInputs;
+        for (size_t i = 0; i < inTensorDescs.size(); ++i) {
+            if (i > 0) {
+                actualInputs += ", ";
+            }
+            actualInputs += "inTensor" + std::to_string(i) + "(" + Mki::GetStrWithDType(inTensorDescs.at(i).dtype) +
+                            ", " + Mki::GetStrWithFormat(inTensorDescs.at(i).format) + ")";
+        }
+        ATB_LOG(ERROR) << GetLogPrefix() << "CheckIniMatch Failed! Actual Inputs: " << actualInputs
+                       << "\nSupported Combs: \n"
                        << operationIr_->GetCombString();
         return ERROR_INVALID_TENSOR_INI_MATCH;
     }
@@ -381,9 +388,25 @@ Status OperationBase::CheckVariantPack(const VariantPack &variantPack) const
         return st;
     }
     if (!CheckIniMatch(variantPack.inTensors, variantPack.outTensors)) {
-        ATB_LOG(ERROR) << GetLogPrefix()
-                       << "CheckIniMatch Failed! Supported "
-                          "Combs: \n"
+        std::string actualInputs;
+        for (size_t i = 0; i < variantPack.inTensors.size(); ++i) {
+            if (i > 0) {
+                actualInputs += ", ";
+            }
+            actualInputs += "inTensor" + std::to_string(i) + "(" +
+                            Mki::GetStrWithDType(variantPack.inTensors.at(i).desc.dtype) + ", " +
+                            Mki::GetStrWithFormat(variantPack.inTensors.at(i).desc.format) + ")";
+        }
+        for (size_t i = 0; i < variantPack.outTensors.size(); ++i) {
+            if (!actualInputs.empty() || i > 0) {
+                actualInputs += ", ";
+            }
+            actualInputs += "outTensor" + std::to_string(i) + "(" +
+                            Mki::GetStrWithDType(variantPack.outTensors.at(i).desc.dtype) + ", " +
+                            Mki::GetStrWithFormat(variantPack.outTensors.at(i).desc.format) + ")";
+        }
+        ATB_LOG(ERROR) << GetLogPrefix() << "CheckIniMatch Failed! Actual Inputs: " << actualInputs
+                       << "\nSupported Combs: \n"
                        << operationIr_->GetCombString();
         return ERROR_INVALID_TENSOR_INI_MATCH;
     }
@@ -946,10 +969,13 @@ Status OperationBase::GraphModePreLaunch(const VariantPack &variantPack, uint8_t
         } else if (workspace > runnerVariantPack_.workspaceBuffer) {
             // 如果workspace发生了变化，计算workspace变化带来的偏移量时需要再加上workspaceBufferSize才是中间tensor对应内存的起始地址
             runnerVariantPack_.intermediateBuffer = workspace -
-            reinterpret_cast<uint64_t>(runnerVariantPack_.workspaceBuffer) + runnerVariantPack_.workspaceBufferSize;
+                                                    reinterpret_cast<uint64_t>(runnerVariantPack_.workspaceBuffer) +
+                                                    runnerVariantPack_.workspaceBufferSize;
 #ifdef _DEBUG
-            ATB_LOG(INFO) << GetLogPrefix() << "changing the old workspace: " << static_cast<void *>(runnerVariantPack_.workspaceBuffer)
-                          << " to new workspace: " << static_cast<void *>(workspace) << ", and the runnerVariantPack_.intermediateBuffer: "
+            ATB_LOG(INFO) << GetLogPrefix()
+                          << "changing the old workspace: " << static_cast<void *>(runnerVariantPack_.workspaceBuffer)
+                          << " to new workspace: " << static_cast<void *>(workspace)
+                          << ", and the runnerVariantPack_.intermediateBuffer: "
                           << static_cast<void *>(runnerVariantPack_.intermediateBuffer);
 #endif
             runnerVariantPack_.workspaceBuffer = workspace;
@@ -957,10 +983,13 @@ Status OperationBase::GraphModePreLaunch(const VariantPack &variantPack, uint8_t
             st = runner_->UpdateWorkspaceBuffer(runnerVariantPack_);
         } else {
             runnerVariantPack_.intermediateBuffer = runnerVariantPack_.workspaceBuffer -
-            reinterpret_cast<uint64_t>(workspace) + runnerVariantPack_.workspaceBufferSize;
+                                                    reinterpret_cast<uint64_t>(workspace) +
+                                                    runnerVariantPack_.workspaceBufferSize;
 #ifdef _DEBUG
-            ATB_LOG(INFO) << GetLogPrefix() << "changing the old workspace: " << static_cast<void *>(runnerVariantPack_.workspaceBuffer)
-                          << " to new workspace: " << static_cast<void *>(workspace) << ", and the runnerVariantPack_.intermediateBuffer: "
+            ATB_LOG(INFO) << GetLogPrefix()
+                          << "changing the old workspace: " << static_cast<void *>(runnerVariantPack_.workspaceBuffer)
+                          << " to new workspace: " << static_cast<void *>(workspace)
+                          << ", and the runnerVariantPack_.intermediateBuffer: "
                           << static_cast<void *>(runnerVariantPack_.intermediateBuffer);
 #endif
             runnerVariantPack_.workspaceBuffer = workspace;
@@ -1228,7 +1257,8 @@ void OperationBase::FillHostTilingBuffer()
         }
 
         Mki::Timer runnerFillHostTilingTimer;
-        Status st = runner_->FillHostTilingBuffer(hostTilingBuffer_, runnerVariantPack_.tilingBufferSize, runnerVariantPack_.context);
+        Status st = runner_->FillHostTilingBuffer(hostTilingBuffer_, runnerVariantPack_.tilingBufferSize,
+                                                  runnerVariantPack_.context);
         if (st != NO_ERROR) {
             ATB_LOG(ERROR) << GetLogPrefix() << "fill host tiling buffer fail";
             return;
@@ -1240,7 +1270,7 @@ void OperationBase::FillHostTilingBuffer()
 uint64_t OperationBase::GetTotalWorkspaceBufferSize()
 {
     uint64_t totalWorkspaceBufferSize = 0;
-    const std::vector<uint64_t> & getWorkspaceBufferSize = runner_->GetWorkspaceBufferSize();
+    const std::vector<uint64_t> &getWorkspaceBufferSize = runner_->GetWorkspaceBufferSize();
     for (size_t i = 0; i < getWorkspaceBufferSize.size(); i++) {
         totalWorkspaceBufferSize += getWorkspaceBufferSize.at(i);
         ATB_LOG(INFO) << GetLogPrefix() << "runner.workspaceBufferSize: " << getWorkspaceBufferSize.at(i)
@@ -1357,7 +1387,7 @@ Status OperationBase::CopyArgsToDevice(Context *context) const
     }
 #ifdef _DEBUG
     ATB_LOG(DEBUG) << GetLogPrefix() << "args in graphMode is:";
-    const size_t counter =  argsBufferSize_ / sizeof(void *);
+    const size_t counter = argsBufferSize_ / sizeof(void *);
     for (size_t i = 0; i < counter; i++) {
         ATB_LOG(DEBUG) << ((void **)(hostArgsBuffer_))[i];
     }
