@@ -21,6 +21,7 @@
 #include "atb/operation/op_param_funcs.h"
 #include "layer_norm_aclnn_runner.h"
 #include "layer_norm_ops_runner.h"
+#include "mki/utils/platform/platform_info.h"
 
 
 namespace atb {
@@ -128,6 +129,22 @@ template <> Status CreateOperation(const infer::LayerNormParam &opParam, Operati
     } else {
         ATB_LOG(ERROR) << "layerType is not supported, only support NORM/PRENORM/POSTNORM";
         return ERROR_INVALID_PARAM;
+    }
+    // Ascend950 仅支持 NORM + 无量化模式，拦截 PRENORM/POSTNORM/量化
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
+        if (opParam.layerType != infer::LayerNormParam::LAYER_NORM_NORM) {
+            ATB_LOG(ERROR) << "Ascend950 only supports LAYER_NORM_NORM, layerType: " << opParam.layerType;
+            return ERROR_INVALID_PARAM;
+        }
+        if (opParam.normParam.quantType != infer::QUANT_UNQUANT) {
+            ATB_LOG(ERROR) << "Ascend950 does not support quant, quantType: " << opParam.normParam.quantType;
+            return ERROR_INVALID_PARAM;
+        }
+        Status loadStatus = LayerNormAclnnRunner::LoadMethod();
+        if (loadStatus != NO_ERROR) {
+            ATB_LOG(ERROR) << "LayerNormAclnnRunner LoadMethod failed";
+            return loadStatus;
+        }
     }
     *operation = new (std::nothrow) LayerNormOperation(opParam);
     if (*operation == nullptr) {
@@ -313,12 +330,15 @@ Status LayerNormOperation::ParamCheck(const TensorDesc &xTensorDesc, const Tenso
             ATB_LOG(ERROR) << GetLogPrefix() << "gammaTensor dimNum should be smaller or equal to xTensor.";
             return ERROR_INVALID_TENSOR_DIM;
         }
-        if ((beginNormAxis >= 0 && static_cast<uint64_t>(beginNormAxis) + gammaTensorDimNum != xTensorDimNum) ||
-            (beginNormAxis < 0 && static_cast<uint64_t>(-beginNormAxis) != gammaTensorDimNum)) {
-            ATB_LOG(ERROR) << GetLogPrefix()
-                           << "Invalid param: beginNormAxis,"
-                              "beginNormAxis should not larger than xTensorDimNum or beginNormAxis can be negative,"
-                              "but beginNormAxis+xTensorDimNum cannot be negative.";
+        if (beginNormAxis >= 0 && static_cast<uint64_t>(beginNormAxis) + gammaTensorDimNum != xTensorDimNum) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "beginNormAxis(" << beginNormAxis << ") + gammaTensorDimNum("
+                           << gammaTensorDimNum << ") != xTensorDimNum(" << xTensorDimNum
+                           << "), beginNormAxis must make remaining dims match gamma shape";
+            return ERROR_INVALID_PARAM;
+        }
+        if (beginNormAxis < 0 && static_cast<uint64_t>(-beginNormAxis) != gammaTensorDimNum) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "beginNormAxis(" << beginNormAxis << ") is negative, abs value ("
+                           << -beginNormAxis << ") must equal gammaTensorDimNum(" << gammaTensorDimNum << ")";
             return ERROR_INVALID_PARAM;
         }
     }
@@ -328,6 +348,11 @@ Status LayerNormOperation::ParamCheck(const TensorDesc &xTensorDesc, const Tenso
 std::shared_ptr<Runner> LayerNormOperation::CreateRunner(Context &context) const
 {
     (void)context;
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950 &&
+        param_.layerType == infer::LayerNormParam::LAYER_NORM_NORM &&
+        param_.normParam.quantType == infer::QUANT_UNQUANT) {
+        return std::make_shared<LayerNormAclnnRunner>(param_);
+    }
     return std::make_shared<LayerNormOpsRunner>(param_);
 }
 
@@ -398,12 +423,10 @@ Status LayerNormOperation::LastDimCheck(const SVector<TensorDesc> &inTensorDescs
 Status LayerNormOperation::InTensorsDimCheck(const SVector<TensorDesc> inTensorDescs) const
 {
     Status result = NO_ERROR;
-    if (param_.layerType == infer::LayerNormParam::LAYER_NORM_NORM &&
-        param_.normParam.quantType == infer::QUANT_INT8 &&
-        param_.normParam.dynamicQuantType == infer::DYNAMIC_QUANT_SYMMETRIC &&
-        inTensorDescs.at(0).shape.dimNum < 2) {
-            ATB_LOG(ERROR) << GetLogPrefix() << "dim numbers of inTensor[0] should be greater than one";
-            return ERROR_INVALID_TENSOR_DIM;
+    if (param_.layerType == infer::LayerNormParam::LAYER_NORM_NORM && param_.normParam.quantType == infer::QUANT_INT8 &&
+        param_.normParam.dynamicQuantType == infer::DYNAMIC_QUANT_SYMMETRIC && inTensorDescs.at(0).shape.dimNum < 2) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "dim numbers of inTensor[0] should be greater than one";
+        return ERROR_INVALID_TENSOR_DIM;
     }
     if (param_.layerType == infer::LayerNormParam::LAYER_NORM_PRENORM ||
         param_.layerType == infer::LayerNormParam::LAYER_NORM_POSTNORM) {
