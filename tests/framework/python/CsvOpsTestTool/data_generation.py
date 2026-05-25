@@ -486,6 +486,31 @@ class LinearOperation(DataGen):
         accum = MatmulCommon.accum_golden
         pertoken_scale = MatmulCommon.pertoken_scale_golden
 
+        if get_soc_version() == "Ascend950":
+            if matmultype == 0:
+                if out_data_type == -1:
+                    if len(x.shape) ==  3 and len(weight.shape) == 3:
+                        if bias == None:
+                            golden_result = torch.bmm(x, weight)
+                        else:
+                            x = x.to(bias.dtype)
+                            weight = weight.to(bias.dtype)
+                            golden_result = torch.addbmm(bias, x, weight)
+                    else:
+                        x_ori_shape = []
+                        if len(x.shape) == 3 and len(weight.shape) == 2:
+                            x_ori_shape = x.shape
+                            x = x.reshape(-1, x.shape[-1])
+                        if bias == None:
+                            golden_result = torch.matmul(x, weight)
+                        else:
+                            x = x.to(bias.dtype)
+                            weight = weight.to(bias.dtype)
+                            golden_result = torch.addmm(bias, x, weight)
+                        if x_ori_shape != []:
+                            golden_result = golden_result.reshape(x_ori_shape[0], x_ori_shape[1], golden_result.shape[-1])
+            return [golden_result]
+
         if out_data_type == -1:
             if bias is not None and MatmulCommon.bias_golden.dtype == torch.bfloat16:
                 x = x.to(torch.float64)
