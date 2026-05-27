@@ -469,8 +469,9 @@ function fn_init_env()
 
 function rename_whl_file() {
     python_version=$(python -c 'import sys; print(".".join(map(str, sys.version_info[:2])))')
-    version_suffix="cp${python_version//./}"
-    echo "DEBUG: Current Python version: $python_version, setting wheel file tag: $version_suffix"
+    abi_tag=$([[ "$USE_CXX11_ABI" == "ON" ]] && echo 1 || echo 0)
+    version_suffix="cp${python_version//./}-abi${abi_tag}"
+    echo "DEBUG: Current Python version: $python_version, ABI: $abi_tag, setting wheel file tag: $version_suffix"
     for whl in ./whl/*.whl; do
         if [[ "$whl" == *"py3"* ]]; then
             new_name="${whl/py3/${version_suffix}}"
@@ -721,7 +722,8 @@ function fn_install_torch_atb()
         exit 1
     fi
 
-    wheel_file="torch_atb-0.0.1-cp${py_major_version}${py_minor_version}-none-any.whl"
+    abi_tag=$([[ "$USE_CXX11_ABI" == "ON" ]] && echo 1 || echo 0)
+    wheel_file="torch_atb-0.0.1-cp${py_major_version}${py_minor_version}-abi${abi_tag}-none-any.whl"
     wheel_path="${OUTPUT_DIR}/whl/${wheel_file}"
 
     if [ ! -f "$wheel_path" ]; then

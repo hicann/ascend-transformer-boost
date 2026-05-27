@@ -180,8 +180,9 @@ function fn_init_env()
 
 function rename_whl_file() {
     python_version=$(python -c 'import sys; print(".".join(map(str, sys.version_info[:2])))')
-    version_suffix="cp${python_version//./}"
-    echo "DEBUG: Current Python version: $python_version, setting wheel file tag: $version_suffix"
+    abi_tag=$([[ "$USE_CXX11_ABI" == "ON" ]] && echo 1 || echo 0)
+    version_suffix="cp${python_version//./}-abi${abi_tag}"
+    echo "DEBUG: Current Python version: $python_version, ABI: $abi_tag, setting wheel file tag: $version_suffix"
     for whl in ./whl/*.whl; do
         if [[ "$whl" == *"py3"* ]]; then
             new_name="${whl/py3/${version_suffix}}"
@@ -216,7 +217,7 @@ function fn_build()
     cmake $CODE_ROOT $COMPILE_OPTIONS
     cmake --build . --parallel $(nproc)
     cmake --install .
-    if [ "$USE_CXX11_ABI" == "ON" -a "$USE_CXX11_ABI" == "ON" ]; then
+    if [ "$USE_CXX11_ABI" == "ON" ]; then
         fn_build_torch_atb
         fn_gen_atb_whl
     fi

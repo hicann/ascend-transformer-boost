@@ -98,7 +98,8 @@ function switch_to_new_version()
     py_version=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
     py_major_version=${py_version%%.*}
     py_minor_version=${py_version##*.}
-    wheel_file="torch_atb-0.0.1-cp${py_major_version}${py_minor_version}-none-any.whl"
+    abi_tag=$([[ "$USE_CXX11_ABI" == "ON" ]] && echo 1 || echo 0)
+    wheel_file="torch_atb-0.0.1-cp${py_major_version}${py_minor_version}-abi${abi_tag}-none-any.whl"
     wheel_path="latest/whl/${wheel_file}"
     if [ -n "$torch_atb_flag" ]; then
         if pip3 install --force-reinstall "$wheel_path" > /dev/null 2>&1; then

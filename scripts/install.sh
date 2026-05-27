@@ -594,7 +594,8 @@ function install_torch_atb() {
         exit 1
     fi
 
-    wheel_file="torch_atb-0.0.1-cp${py_major_version}${py_minor_version}-none-any.whl"
+    abi_tag=$([[ "$USE_CXX11_ABI" == "ON" ]] && echo 1 || echo 0)
+    wheel_file="torch_atb-0.0.1-cp${py_major_version}${py_minor_version}-abi${abi_tag}-none-any.whl"
     wheel_path="${sourcedir}/whl/${wheel_file}"
 
     if [ ! -f "$wheel_path" ]; then
