@@ -580,6 +580,42 @@ function upgrade() {
     print "INFO" "Ascend-cann-atb upgrade success!"
 }
 
+function get_torch_cxx11_abi() {
+    local abi
+
+    abi=$(TORCH_DEVICE_BACKEND_AUTOLOAD=0 python -W ignore - <<'PY'
+import sys
+import torch
+
+if not hasattr(torch, "compiled_with_cxx11_abi"):
+    print("ERROR: torch.compiled_with_cxx11_abi() is not available in current torch.", file=sys.stderr)
+    print(f"ERROR: torch version: {getattr(torch, '__version__', 'unknown')}", file=sys.stderr)
+    print(f"ERROR: torch path: {getattr(torch, '__file__', 'unknown')}", file=sys.stderr)
+    sys.exit(1)
+
+print(1 if torch.compiled_with_cxx11_abi() else 0)
+PY
+)
+    local ret=$?
+
+    if [ $ret -ne 0 ]; then
+        echo "ERROR: failed to get torch CXX11 ABI, python return code: $ret" >&2
+        return $ret
+    fi
+
+    if [ -z "$abi" ]; then
+        echo "ERROR: failed to get torch CXX11 ABI, empty output." >&2
+        return 1
+    fi
+
+    if [ "$abi" != "0" ] && [ "$abi" != "1" ]; then
+        echo "ERROR: invalid torch CXX11 ABI value: $abi" >&2
+        return 1
+    fi
+
+    echo "$abi"
+}
+
 function install_torch_atb() {
     if [ "${torch_atb_flag}" != "y" ]; then
         return 0
@@ -594,8 +630,11 @@ function install_torch_atb() {
         exit 1
     fi
 
-    abi_tag=$([[ "$USE_CXX11_ABI" == "ON" ]] && echo 1 || echo 0)
-    wheel_file="torch_atb-0.0.1-cp${py_major_version}${py_minor_version}-abi${abi_tag}-none-any.whl"
+    abi_tag=$(get_torch_cxx11_abi) || {
+        echo "ERROR: get_torch_cxx11_abi failed." >&2
+        exit 1
+    }
+    wheel_file="torch_atb-0.0.1+abi${abi_tag}-cp${py_major_version}${py_minor_version}-none-any.whl"
     wheel_path="${sourcedir}/whl/${wheel_file}"
 
     if [ ! -f "$wheel_path" ]; then
