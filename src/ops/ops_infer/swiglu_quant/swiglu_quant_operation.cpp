@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Huawei Technologies Co., Ltd.
+ * Copyright (c) 2026 Huawei Technologies Co., Ltd.
  * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
  * CANN Open Software License Agreement Version 2.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
@@ -9,8 +9,8 @@
  */
 
 #include "swiglu_quant_operation.h"
-#include <algorithm>
 #include "swiglu_quant_ops_runner.h"
+#include "swiglu_quant_aclnn_runner.h"
 #include "atb/utils/tensor_check.h"
 #include "atb/utils.h"
 #include "atb/utils/operation_util.h"
@@ -20,6 +20,7 @@
 #include "atb/operation/atb_operation_ir_cfg.h"
 #include "atb/utils/singleton.h"
 #include "atb/operation/op_param_funcs.h"
+#include "mki/utils/platform/platform_info.h"
 
 namespace atb {
 static const int32_t IN_TENSOR_NUM = 1;
@@ -27,6 +28,7 @@ static const int32_t OUT_TENSOR_NUM = 2;
 static const uint64_t INPUT_TENSOR_DIM_NUM = 2;
 static const int64_t HIDDEN_SIZE_DIM_BASE = 32;
 static const int64_t HIDDEN_SIZE_BYTE_SIZE_FACTOR = 2;
+static const int64_t MAX_LAST_DIM_ACLNN_950 = 10145; // ACLNN V2 on 950: last dim must be < 10146
 static const int64_t MAX_UB_SIZE = 192LL * 1024LL; // 192KB
 static const int64_t UB_FACTOR = 25;
 
@@ -36,14 +38,23 @@ template <> Status CreateOperation(const infer::SwigluQuantParam &opParam, Opera
         return ERROR_INVALID_PARAM;
     }
     OP_PARAM_RSV_CHECK(opParam);
-    if (!GetSingleton<Config>().Is910B()) {
-        ATB_LOG(ERROR) << "SwigluQuant only supports 800I A2/A3 inference products";
+    bool is910B = GetSingleton<Config>().Is910B();
+    bool is950 = (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950);
+    if (!is910B && !is950) {
+        ATB_LOG(ERROR) << "SwigluQuant only supports 910B/950 devices";
         return ERROR_INVALID_PARAM;
     }
     ATB_LOG(INFO) << "CreateOperation SwigluQuantParam quantType: " << opParam.quantType;
     if (opParam.quantType != infer::SwigluQuantParam::QUANT_TYPE_PER_TOKEN) {
         ATB_LOG(ERROR) << "param quantType should be QUANT_TYPE_PER_TOKEN";
         return ERROR_INVALID_PARAM;
+    }
+    if (is950) {
+        Status loadStatus = SwigluQuantAclnnRunner::LoadMethod();
+        if (loadStatus != NO_ERROR) {
+            ATB_LOG(ERROR) << "SwigluQuantAclnnRunner LoadMethod failed";
+            return loadStatus;
+        }
     }
     *operation = new (std::nothrow) SwigluQuantOperation(opParam);
     if (*operation == nullptr) {
@@ -87,12 +98,20 @@ Status SwigluQuantOperation::InferShapeCheckImpl(const SVector<TensorDesc> &inTe
     if (st != NO_ERROR) {
         return st;
     }
-    int64_t hiddenSize = inTensorDescs.at(0).shape.dims[INPUT_TENSOR_DIM_NUM - 1];
-    if (hiddenSize % HIDDEN_SIZE_BYTE_SIZE_FACTOR != 0) {
-        ATB_LOG(ERROR) << "Expected inTensor dims[1] to be a multiple of 2, but got: " << hiddenSize;
+    int64_t lastDim = inTensorDescs.at(0).shape.dims[INPUT_TENSOR_DIM_NUM - 1];
+    if (lastDim % HIDDEN_SIZE_BYTE_SIZE_FACTOR != 0) {
+        ATB_LOG(ERROR) << "Expected inTensor dims[1] to be a multiple of 2, but got: " << lastDim;
         return ERROR_INVALID_TENSOR_DIM;
     }
-    hiddenSize /= 2; // 2: inTensor dim: [ntokens, 2 * hidden_size]
+    bool is950 = (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950);
+    if (is950) {
+        if (lastDim > MAX_LAST_DIM_ACLNN_950) {
+            ATB_LOG(ERROR) << "ACLNN V2 on 950 requires last dim < 10146, but got: " << lastDim;
+            return ERROR_INVALID_TENSOR_DIM;
+        }
+        return NO_ERROR;
+    }
+    int64_t hiddenSize = lastDim / 2;
     int64_t dataItemSize = static_cast<int64_t>(UtilsInternal::GetDataTypeSize(inTensorDescs.at(0).dtype));
     if (dataItemSize == 0) {
         return ERROR_INVALID_TENSOR_DIM;
@@ -143,6 +162,9 @@ Status SwigluQuantOperation::InferShapeImpl(const SVector<TensorDesc> &inTensorD
 std::shared_ptr<Runner> SwigluQuantOperation::CreateRunner(Context &context) const
 {
     (void)context;
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
+        return std::make_shared<SwigluQuantAclnnRunner>(param_);
+    }
     return std::make_shared<SwigluQuantOpsRunner>(param_);
 }
 

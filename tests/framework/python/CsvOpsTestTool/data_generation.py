@@ -2614,40 +2614,51 @@ class SwigluQuantOperation(DataGen):
         return in_tensors
 
     @staticmethod
-    def golden(in_tensors, op_params):
-        def sigmoid(x):
-            return 1 / (1 + np.exp(-x))
+    def _sigmoid(x):
+        return 1 / (1 + np.exp(-x))
 
-        def do_swiglu(a, b):
-            sigmoid_mul_a = sigmoid(a) * a
-            swiglu_y = sigmoid_mul_a * b
-            return swiglu_y
+    @staticmethod
+    def _swiglu(a, b):
+        return SwigluQuantOperation._sigmoid(a) * a * b
 
-        def do_quant(swiglu_y):
-            y_tmp = swiglu_y
-            y_tmp = np.array(y_tmp)
-            y_max = np.amax(np.abs(y_tmp), axis=1)  # 动态量化依赖于每一行的最大值来调整缩放因子
-            dynamic_scale_tmp = 127 / y_max
-            dynamic_scale = dynamic_scale_tmp.reshape(-1, 1)  # 将一维行向量转换为二维，如(256)转为(256,1)
-            y_tmp = y_tmp * dynamic_scale
-            quant_y_tmp = np.round(y_tmp)  # 使用 numpy 进行乘法和四舍五入
-            quant_y = quant_y_tmp.astype(np.int8)  # 转换为 int8 类型
-            dynamic_scale_output = np.array([])
-            dynamic_scale = 1 / dynamic_scale
-            dynamic_scale_output = np.append(dynamic_scale_output, dynamic_scale)
-            return quant_y,dynamic_scale_output
-
-        def SwiGluQuantGolden(x_golden):
-            x_golden = np.array(x_golden.cpu().float()).astype(np.float32)
-            a, b = np.split(x_golden, 2, axis=1)
-            wiglu_y = do_swiglu(a, b)
-            quant_y, dynamic_scale = do_quant(wiglu_y)
-            return torch.from_numpy(quant_y).npu(), torch.from_numpy(dynamic_scale).npu()
-
+    @staticmethod
+    def _prepare_input(in_tensors):
         if in_tensors[0].dtype == torch.bfloat16:
             in_tensors[0] = in_tensors[0].to(torch.float32)
-        golden_res = SwiGluQuantGolden(in_tensors[0].cpu())
-        return [golden_res[0].to('cpu'), golden_res[1].to('cpu')]
+        x_np = np.array(in_tensors[0].cpu().float()).astype(np.float32)
+        a, b = np.split(x_np, 2, axis=1)
+        return SwigluQuantOperation._swiglu(a, b)
+
+    @staticmethod
+    def _quant_golden_910b(swiglu_y):
+        """910B OpsRunner: round int8, dequant scale (y_max/127)."""
+        y_tmp = np.array(swiglu_y)
+        y_max = np.amax(np.abs(y_tmp), axis=1)
+        scale_tmp = 127.0 / y_max
+        scale = scale_tmp.reshape(-1, 1)
+        quant_y = np.round(y_tmp * scale).astype(np.int8)
+        scale_out = (1.0 / scale).reshape(-1)
+        return quant_y, scale_out.astype(np.float32)
+
+    @staticmethod
+    def _quant_golden_950(swiglu_y):
+        """950 AclnnRunner: clip int8 (ACLNN kernel); dequant scale after InplaceReciprocal."""
+        y_tmp = np.array(swiglu_y).astype(np.float32)
+        y_max = np.amax(np.abs(y_tmp), axis=1)
+        scale_tmp = 127.0 / y_max
+        scale = scale_tmp.reshape(-1, 1)
+        quant_y = np.clip(np.round(y_tmp * scale), -128, 127).astype(np.int8)
+        scale_out = (1.0 / scale).reshape(-1)
+        return quant_y, scale_out.astype(np.float32)
+
+    @staticmethod
+    def golden(in_tensors, op_params):
+        swiglu_y = SwigluQuantOperation._prepare_input(in_tensors)
+        if get_soc_version() == "Ascend950":
+            quant_y, scale_out = SwigluQuantOperation._quant_golden_950(swiglu_y)
+        else:
+            quant_y, scale_out = SwigluQuantOperation._quant_golden_910b(swiglu_y)
+        return [torch.from_numpy(quant_y).to('cpu'), torch.from_numpy(scale_out).to('cpu')]
 
     @staticmethod
     def get_op_type(op_params):
