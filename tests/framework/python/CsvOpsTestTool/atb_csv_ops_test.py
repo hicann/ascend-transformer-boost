@@ -1056,8 +1056,9 @@ def get_device_properties():
         quit(1)
     device_count = torch.npu.device_count()
     DEVICE_ID = os.environ.get("SET_NPU_DEVICE")
-    if DEVICE_ID is not None:
-        torch.npu.set_device(torch.device(f"npu:{DEVICE_ID}"))
+    if not DEVICE_ID:
+        DEVICE_ID = 0
+    torch.npu.set_device(torch.device(f"npu:{DEVICE_ID}"))
     current_device = torch.npu.current_device()
     logging.info("Device Properties: device_name: %s, soc_version: %s, device_count: %d, current_device: %d",
                  device_name, soc_version, device_count, current_device)
