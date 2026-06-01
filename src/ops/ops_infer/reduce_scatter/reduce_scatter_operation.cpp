@@ -9,6 +9,7 @@
  */
 
 #include "reduce_scatter_operation.h"
+#include <mki/utils/platform/platform_info.h>
 #include "atb/utils/config.h"
 #include "reduce_scatter_lccl_runner.h"
 #include "reduce_scatter_hccl_runner.h"
@@ -38,6 +39,16 @@ template <> Status CreateOperation(const infer::ReduceScatterParam &opParam, Ope
     if (GetSingleton<Config>().Is310P()) {
         ATB_LOG(ERROR) << "ReduceScatter is not support in Atlas 300I Duo inference products";
         return ERROR_INVALID_PARAM;
+    }
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
+        if (opParam.backend != "hccl") {
+            ATB_LOG(ERROR) << "At 950, backend only supports hccl, now backend is: " << opParam.backend;
+            return ERROR_INVALID_PARAM;
+        }
+        if (opParam.reduceType == "prod") {
+            ATB_LOG(ERROR) << "At 950, reduceType prod is not supported";
+            return ERROR_INVALID_PARAM;
+        }
     }
     if (opParam.reduceType != "sum" && opParam.reduceType != "prod" && opParam.reduceType != "max" &&
         opParam.reduceType != "min") {

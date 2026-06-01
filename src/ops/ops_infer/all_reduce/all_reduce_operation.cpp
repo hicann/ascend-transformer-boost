@@ -9,6 +9,7 @@
  */
 
 #include "all_reduce_operation.h"
+#include <mki/utils/platform/platform_info.h>
 #include "atb/utils/config.h"
 #include "all_reduce_hccl_runner.h"
 #include "all_reduce_lccl_runner.h"
@@ -61,6 +62,16 @@ Status CheckAllReduceParamValidity(const infer::AllReduceParam &opParam)
     if (opParam.backend == "lccl" && GetSingleton<Config>().Is310P()) {
         ATB_LOG(ERROR) << "AllReduce lccl is not support in Atlas inference products";
         return ERROR_INVALID_PARAM;
+    }
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
+        if (opParam.backend != "hccl") {
+            ATB_LOG(ERROR) << "At 950, backend only supports hccl, now backend is: " << opParam.backend;
+            return ERROR_INVALID_PARAM;
+        }
+        if (opParam.allReduceType == "prod") {
+            ATB_LOG(ERROR) << "At 950, allReduceType prod is not supported";
+            return ERROR_INVALID_PARAM;
+        }
     }
     if (OperationUtil::DistributedInitCheck<infer::AllReduceParam>(opParam) != NO_ERROR) {
         ATB_LOG(ERROR) << "AllReduceOperation DistributedInitCheck failed";

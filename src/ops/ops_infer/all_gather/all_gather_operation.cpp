@@ -9,6 +9,7 @@
  */
 
 #include "all_gather_operation.h"
+#include <mki/utils/platform/platform_info.h>
 #include "atb/utils/config.h"
 #include "all_gather_hccl_runner.h"
 #include "all_gather_lccl_runner.h"
@@ -38,6 +39,12 @@ template <> Status CreateOperation(const infer::AllGatherParam &opParam, Operati
     if (opParam.backend == "lccl" && GetSingleton<Config>().Is310P()) {
         ATB_LOG(ERROR) << "AllGather lccl is not support in Atlas inference products";
         return ERROR_INVALID_PARAM;
+    }
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
+        if (opParam.backend != "hccl") {
+            ATB_LOG(ERROR) << "At 950, backend only supports hccl, now backend is: " << opParam.backend;
+            return ERROR_INVALID_PARAM;
+        }
     }
     if (OperationUtil::DistributedInitCheck<infer::AllGatherParam>(opParam) != NO_ERROR) {
         ATB_LOG(ERROR) << "AllGatherOperation DistributedInitCheck failed";
