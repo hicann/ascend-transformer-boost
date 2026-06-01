@@ -16,6 +16,7 @@
 #include "atb/utils/config.h"
 #include "atb/utils/param_to_json.h"
 #include "linear_aclnn_runner.h"
+#include "linear_dequant_aclnn_runner.h"
 #include "linear_einsum_aclnn_runner.h"
 #include "linear_ops_runner.h"
 #include "atb/utils/singleton.h"
@@ -186,12 +187,47 @@ bool MatmulUndefindCheck(const infer::LinearParam &opParam, ExternalError &error
     return true;
 }
 
+bool MatmulUndefindCheck950(const infer::LinearParam &opParam, ExternalError &error)
+{
+    if (opParam.enAccum) {
+        error.errorDesc = "On 950, enAccum should be false.";
+        error.solutionDesc = "Please check the value of input params.";
+        ATB_LOG(ERROR) << error;
+        return false;
+    }
+    switch (opParam.outDataType) {
+        case ACL_DT_UNDEFINED:
+            if (opParam.quantMode != infer::LinearParam::QUANT_UNDEFINED) {
+                error.errorDesc = "On 950, when outDataType is undefind, quantMode should be QUANT_UNDEFINED.";
+                error.solutionDesc = "Please check the value of input params.";
+                ATB_LOG(ERROR) << error;
+                return false;
+            }
+            break;
+        case ACL_FLOAT16:
+        case ACL_BF16:
+            if (opParam.quantMode == infer::LinearParam::PER_TOKEN && opParam.hasBias) {
+                error.errorDesc = "PER_TOKEN quantMode is not supported when hasBias is true";
+                error.solutionDesc = "Please check the value of input params.";
+                ATB_LOG(ERROR) << error;
+                return false;
+            }
+            break;
+        default:
+            error.errorDesc = "outDataType should be ACL_DT_UNDEFINED/ACL_FLOAT16/ACL_BF16.";
+            ATB_LOG(ERROR) << error;
+            return false;
+    }
+    return true;
+}
+
 template <> Status CreateOperation(const infer::LinearParam &opParam, Operation **operation)
 {
     if (operation == nullptr) {
         return ERROR_INVALID_PARAM;
     }
     OP_PARAM_RSV_CHECK(opParam);
+
     if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
         if (LinearAclnnRunner::LoadAclnnFuncs() != NO_ERROR) {
             ATB_LOG(ERROR) << "Load aclnn function failed, please check your CANN version.";
@@ -201,28 +237,31 @@ template <> Status CreateOperation(const infer::LinearParam &opParam, Operation 
             ATB_LOG(ERROR) << "Load aclnn function failed, please check your CANN version.";
             return ERROR_CANN_ERROR;
         }
-        if (opParam.matmulType == infer::LinearParam::MATMUL_UNDEFINED) {
-            if (opParam.enAccum) {
-                ATB_LOG(ERROR) << "On 950, enAccum should be false";
-                return ERROR_INVALID_PARAM;
-            }
-            if (opParam.outDataType != ACL_DT_UNDEFINED) {
-                ATB_LOG(ERROR) << "On 950, outDataType should be ACL_DT_UNDEFINED";
-                return ERROR_INVALID_PARAM;
-            }
-            if (opParam.quantMode != infer::LinearParam::QUANT_UNDEFINED) {
-                ATB_LOG(ERROR) << "On 950, quantMode should be QUANT_UNDEFINED";
-                return ERROR_INVALID_PARAM;
-            }
-        } else if (opParam.matmulType == infer::LinearParam::MATMUL_EIN_SUM) {
-            ExternalError error;
-            error.errorType = ERROR_INVALID_PARAM;
-            error.errorData = OperationUtil::ConcatInfo("outDataType = ", opParam.outDataType);
-            error.solutionDesc = "Please check the value of input params.";
+        if (LinearDequantAclnnRunner::LoadAclnnFuncs() != NO_ERROR) {
+            ATB_LOG(ERROR) << "Load dequant aclnn function failed, please check your CANN version.";
+            return ERROR_CANN_ERROR;
+        }
+
+        ExternalError error;
+        error.errorType = ERROR_INVALID_PARAM;
+        error.errorData = OperationUtil::ConcatInfo("outDataType = ", opParam.outDataType);
+        error.solutionDesc = "Please check the value of input params.";
+
+        if (opParam.matmulType == infer::LinearParam::MATMUL_EIN_SUM) {
             if (!MatmulEinParamCheck(opParam, error)) {
                 return ERROR_INVALID_PARAM;
             }
+        } else if (opParam.matmulType == infer::LinearParam::MATMUL_UNDEFINED) {
+            if (!MatmulUndefindCheck950(opParam, error)) {
+                return ERROR_INVALID_PARAM;
+            }
+        } else {
+            error.errorDesc = "matmulType uses an nonexistent type.";
+            error.errorData = OperationUtil::ConcatInfo(error.errorData, ", matmulType = ", opParam.matmulType);
+            ATB_LOG(ERROR) << error;
+            return ERROR_INVALID_PARAM;
         }
+
         *operation = new (std::nothrow) LinearOperation(opParam);
         if (*operation == nullptr) {
             ATB_LOG(ERROR) << "failed to new operation";
@@ -230,6 +269,7 @@ template <> Status CreateOperation(const infer::LinearParam &opParam, Operation 
         }
         return NO_ERROR;
     }
+
     ExternalError error;
     error.errorType = ERROR_INVALID_PARAM;
     error.errorData = OperationUtil::ConcatInfo("outDataType = ", opParam.outDataType);
@@ -268,6 +308,7 @@ LinearOperation::LinearOperation(const infer::LinearParam &param) : OperationBas
 {
     commonCheckParam_ = param_;
     std::stringstream opIrKey;
+    bool is950 = Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950;
     opIrKey << "LinearOperationMatmul";
     if (param_.matmulType == infer::LinearParam::MATMUL_EIN_SUM) {
         opIrKey << "EinSum";
@@ -295,8 +336,21 @@ LinearOperation::LinearOperation(const infer::LinearParam &param) : OperationBas
         }
     }
     operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr(opIrKey.str());
-    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
-        if (param_.matmulType == infer::LinearParam::MATMUL_EIN_SUM) {
+    if (is950) {
+        if (param_.outDataType != ACL_DT_UNDEFINED) {
+            std::stringstream opIrKey950;
+            opIrKey950 << "LinearOperationMatmul";
+            opIrKey950 << (param_.hasBias ? "DequantWithBias" : "Dequant");
+            if (param_.quantMode == infer::LinearParam::PER_TOKEN) {
+                opIrKey950 << "PerToken";
+            }
+            if (param_.outDataType == ACL_FLOAT16) {
+                opIrKey950 << "Float16Ascend950";
+            } else if (param_.outDataType == ACL_BF16) {
+                opIrKey950 << "Bf16Ascend950";
+            }
+            operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr(opIrKey950.str());
+        } else if (param_.matmulType == infer::LinearParam::MATMUL_EIN_SUM) {
             operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("LinearOperationMatmulEinSumAscend950");
         } else if (param_.hasBias) {
             operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("LinearOperationMatmulWithBiasAscend950");
@@ -379,6 +433,9 @@ std::shared_ptr<Runner> LinearOperation::CreateRunner(Context &context) const
     if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
         if (param_.matmulType == infer::LinearParam::MATMUL_EIN_SUM) {
             return std::make_shared<LinearEinsumAclnnRunner>(param_);
+        }
+        if (param_.outDataType != ACL_DT_UNDEFINED) {
+            return std::make_shared<LinearDequantAclnnRunner>(param_);
         }
         return std::make_shared<LinearAclnnRunner>(param_);
     }
@@ -710,18 +767,29 @@ bool LinearOperation::XWeightDimNumCheck(const TensorDesc &xTensorDesc, const Te
         return false;
     }
     if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
-        if (xTensorDesc.shape.dimNum == DIM_NUM_3 && weightTensorDesc.shape.dimNum == DIM_NUM_3 && param_.hasBias) {
+        bool isDequant = param_.outDataType != ACL_DT_UNDEFINED;
+        if (!isDequant && xTensorDesc.shape.dimNum == DIM_NUM_3 && weightTensorDesc.shape.dimNum == DIM_NUM_3 &&
+            param_.hasBias) {
             ATB_LOG(ERROR) << GetLogPrefix() << 
                 "On 950, if hasBias is true, inTensor0 and inTensor1 dim num should not be 3 at the same time";
             return false;
         }
-        if ((weightTensorDesc.shape.dimNum == DIM_NUM_3 ||
+        if (!isDequant && (weightTensorDesc.shape.dimNum == DIM_NUM_3 ||
              (weightTensorDesc.shape.dimNum == DIM_NUM_4 && weightTensorDesc.shape.dims[0] != 1)) &&
             param_.hasBias) {
             ATB_LOG(ERROR)
                 << GetLogPrefix()
                 << "On 950, if hasBias is true, inTensor1 not support batch";
             return false;
+        }
+        if (isDequant && param_.quantMode != infer::LinearParam::PER_TOKEN) {
+            int64_t weightBatch = OperationUtil::GetTensorBatch(weightTensorDesc,
+                                                                infer::LinearParam::MATMUL_UNDEFINED);
+            if (weightBatch > 1) {
+                ATB_LOG(ERROR) << GetLogPrefix()
+                    << "On 950, dequant per-channel not support weight batch > 1";
+                return false;
+            }
         }
     }
     return true;
