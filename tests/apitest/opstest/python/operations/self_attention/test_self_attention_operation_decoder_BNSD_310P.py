@@ -434,7 +434,6 @@ class TestFlashAttentionNzDataGenerator():
         return [self.q_atb, self.k, self.v, self.mask, self.kv_seqlen, self.q_seqlen, self.layer_id, self.golden_out]
 
 
-
 class TestFlashAttentionEncoderOperationBNSD910A(operation_test.OperationTest):
     def golden_calc(self, input_tensors):
         return [self.in_tensors[-1]]

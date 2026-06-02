@@ -22,9 +22,8 @@ AtbOps::OpParam::UnpadFlashAttentionNz::PrecType ConvertKernelType(infer::SelfAt
 {
     switch (type) {
         case infer::SelfAttentionParam::KERNELTYPE_DEFAULT:
-            return AtbOps::OpParam::UnpadFlashAttentionNz::PrecType::BMM1_FP16_EXP_FP32;
         case infer::SelfAttentionParam::KERNELTYPE_HIGH_PRECISION:
-            return AtbOps::OpParam::UnpadFlashAttentionNz::PrecType::BMM1_FP32_EXP_FP32;
+            return AtbOps::OpParam::UnpadFlashAttentionNz::PrecType::BMM1_FP16_EXP_FP32;
         case infer::SelfAttentionParam::KERNELTYPE_EXP_M8V2:
             return AtbOps::OpParam::UnpadFlashAttentionNz::PrecType::BMM1_FP16_EXP_M8V2;
     }
@@ -49,11 +48,24 @@ void TransQKVEncoderViewFunc910a(const Mki::SVector<int64_t> &oldDims, Mki::SVec
     }
 }
 
+void TransMaskEncoderViewFunc910a(const Mki::SVector<int64_t> &oldDims, Mki::SVector<int64_t> &newDims)
+{
+    // 4D: [batch, headNum, maxSeqLen, maxSeqLen] -> [batch*headNum, maxSeqLen, maxSeqLen]
+    // flatten前两维使Transdata产出正确NZ形状 [batch*headNum, maxSeqLen/16, maxSeqLen, 16]
+    // 3D: 已展平, 不变
+    if (oldDims.size() == 4) {
+        newDims = {oldDims.at(0) * oldDims.at(1), oldDims.at(2), oldDims.at(3)};
+    } else if (oldDims.size() == 3) {
+        newDims = oldDims;
+    }
+}
+
 SelfAttentionEncoderFusionOpsRunner910A::SelfAttentionEncoderFusionOpsRunner910A(const infer::SelfAttentionParam &param)
     : OpsRunner("SelfAttentionEncoderFusionOpsRunner910A"), param_(param)
 {
     needKernelGraphModify_ = true;
-    ATB_LOG(INFO) << GetLogPrefix() << "SelfAttentionEncoderFusionOpsRunner910A::SelfAttentionEncoderFusionOpsRunner910A called";
+    ATB_LOG(INFO) << GetLogPrefix()
+                  << "SelfAttentionEncoderFusionOpsRunner910A::SelfAttentionEncoderFusionOpsRunner910A called";
 }
 
 Status SelfAttentionEncoderFusionOpsRunner910A::SetupKernelGraph(const OpsTensorPack &opsTensorPack)
@@ -169,6 +181,8 @@ Status SelfAttentionEncoderFusionOpsRunner910A::SetupKernelGraph(const OpsTensor
             AsdOps::OpParam::Transdata({AsdOps::OpParam::Transdata::ND_TO_FRACTAL_NZ, {0, 0}})};
         attnMaskTransdataNode.inTensors = {mask};
         attnMaskTransdataNode.outTensors = {attnMaskNz};
+        attnMaskTransdataNode.inTensorViewFuncs.resize(attnMaskTransdataNode.inTensors.size());
+        attnMaskTransdataNode.inTensorViewFuncs[0] = &TransMaskEncoderViewFunc910a;
     }
     auto &flashAttentionEncoderNode = kernelGraph_.nodes.at(nodeId++);
 
@@ -183,6 +197,7 @@ Status SelfAttentionEncoderFusionOpsRunner910A::SetupKernelGraph(const OpsTensor
         flashAttentionEncoderNode.inTensors = {&queryNz, &keyNz, &valueNz, layerId, mask, slopes, logN};
     }
     flashAttentionEncoderNode.outTensors = {&outNz};
+    flashAttentionEncoderNode.inTensorViewFuncs.clear();
     auto &transdataOutNode = kernelGraph_.nodes.at(nodeId++);
     transdataOutNode.opDesc = {
         0, "TransdataOperation",
@@ -193,6 +208,7 @@ Status SelfAttentionEncoderFusionOpsRunner910A::SetupKernelGraph(const OpsTensor
         launchParam.SetParam(
             AsdOps::OpParam::Transdata({AsdOps::OpParam::Transdata::FRACTAL_NZ_TO_ND, {qDim1_, qDim2_}}));
     };
+    transdataOutNode.inTensorViewFuncs.clear();
     return NO_ERROR;
 }
 

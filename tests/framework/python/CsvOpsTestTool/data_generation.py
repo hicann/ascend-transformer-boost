@@ -5773,6 +5773,195 @@ class SelfAttentionOperation(DataGen):
         logging.debug(score.shape)
         return score
 
+    @staticmethod
+    def _is_encoder_cache_calc_type1(json_data):
+        return (json_data.get("calcType") == 1
+                and "kvcacheCfg" not in json_data
+                and "mlaVHeadSize" not in json_data
+                and json_data.get("maskType", 0) in (1, 7, 8))
+
+    @staticmethod
+    def _golden_cpu(tensor):
+        if isinstance(tensor, torch.Tensor):
+            return tensor.detach().cpu()
+        return tensor
+
+    @staticmethod
+    def _golden_cpu_list(tensors):
+        return [SelfAttentionOperation._golden_cpu(t) for t in tensors]
+
+    @staticmethod
+    def _round_up_sa(x, align):
+        if align == 0:
+            return -1
+        return (x + align - 1) // align * align
+
+    @staticmethod
+    def _nd_to_nz_2d_sa(in_tensor):
+        aux_dims = [1, SelfAttentionOperation._round_up_sa(in_tensor.size(0), 16), 0, 16]
+        aux_dims[2] = SelfAttentionOperation._round_up_sa(in_tensor.size(1), 16) // 16
+        pad_dims = [0, SelfAttentionOperation._round_up_sa(in_tensor.size(1), 16) - in_tensor.size(1),
+                    0, SelfAttentionOperation._round_up_sa(in_tensor.size(0), 16) - in_tensor.size(0)]
+        return torch.transpose(
+            torch.reshape(torch.nn.functional.pad(in_tensor, pad_dims), aux_dims), 1, 2).contiguous()
+
+    @staticmethod
+    def _gen_axes_for_transpose_sa(offset, base):
+        return [x for x in range(offset)] + [x + offset for x in base]
+
+    @staticmethod
+    def _shape_nd_to_nz_sa(shape):
+        batch = shape[:-2]
+        a, b = shape[-2], shape[-1]
+        return list(batch) + [math.ceil(b / 16), math.ceil(a / 16), 16, 16]
+
+    @staticmethod
+    def _convert_nd_to_nz_sa(x):
+        array_trans = SelfAttentionOperation._gen_axes_for_transpose_sa(len(x.shape) - 2, [2, 0, 1, 3])
+        x_shape = SelfAttentionOperation._shape_nd_to_nz_sa(x.shape)
+        *_, n1, m1, m0, n0 = x_shape
+        return x.reshape(x_shape[:-4] + [m1, m0, n1, n0]).permute(*array_trans)
+
+    @staticmethod
+    def _cast_kv_cache_nz_sa(cache_tensor, layer, batch, kv_head, embed, max_seq):
+        if not cache_tensor.is_npu:
+            cache_tensor = cache_tensor.npu()
+        cache_nz = SelfAttentionOperation._convert_nd_to_nz_sa(cache_tensor.contiguous()).reshape(
+            layer, batch, kv_head * embed // 16, max_seq, 16)
+        return torch_npu.npu_format_cast(cache_nz.contiguous(), 29)
+
+    @staticmethod
+    def _cast_mask_nz_sa(mask):
+        if not mask.is_npu:
+            mask = mask.npu()
+        return torch_npu.npu_format_cast(
+            SelfAttentionOperation._nd_to_nz_2d_sa(mask.contiguous().to(torch.float16)), 29)
+
+    @staticmethod
+    def _cast_alibi_mask_to_nz_sa(mask, batch, heads, max_seq):
+        """将4D alibi ND mask [batch, heads, maxSeq, maxSeq] 预转换为正确的NZ格式
+           产出形状: [batch*heads, maxSeq//16, maxSeq, 16]
+        """
+        if not mask.is_npu:
+            mask = mask.npu()
+        mask_2d = mask.contiguous().to(torch.float16).reshape(batch * heads * max_seq, max_seq)
+        mask_nz = SelfAttentionOperation._nd_to_nz_2d_sa(mask_2d)
+        mask_nz = mask_nz.reshape(batch * heads, max_seq // 16, max_seq, 16)
+        return torch_npu.npu_format_cast(mask_nz.contiguous(), 29)
+
+    @staticmethod
+    def calc_expect_func_encoder_cache_gqa(layer, batch, seqlen, max_seq, heads, kv_head, embed,
+                                           datatype=torch.float16, window_size=0, compress_mask=False):
+        q_seqlen, _, q_ntokens = SelfAttentionOperation.gen_seq_len(batch, seqlen)
+        kv_seqlen = q_seqlen
+        max_s = int(np.max(q_seqlen))
+
+        q = np.random.uniform(-1.0, 1.0, size=(q_ntokens, heads * embed)).astype(np.float16)
+        k = np.random.uniform(-1.0, 1.0, size=(q_ntokens, kv_head * embed)).astype(np.float16)
+        v = np.random.uniform(-1.0, 1.0, size=(q_ntokens, kv_head * embed)).astype(np.float16)
+        layer_id = np.array([layer - 1], dtype=np.int32)
+        token_offset = q_seqlen.astype(np.int32)
+        k_max = np.zeros((layer, batch * max_seq, kv_head * embed), dtype=np.float16)
+        v_max = np.zeros((layer, batch * max_seq, kv_head * embed), dtype=np.float16)
+
+        if compress_mask:
+            comp_size = 512
+            mask_nd = np.ones((comp_size, comp_size), dtype=np.float16)
+            mask_nd = np.triu(mask_nd, 1) + np.tril(mask_nd, -window_size)
+            mask_nd *= -10000.0
+        else:
+            mask_nd = np.ones((1, max_seq, max_seq), dtype=np.float16)
+            mask_nd = np.triu(mask_nd, 1) + np.tril(mask_nd, -window_size)
+            mask_nd *= -10000.0
+            mask_nd = mask_nd.reshape(max_seq, max_seq)
+
+        tor = np.float16(1.0 / math.sqrt(embed))
+        q_offset = k_offset = v_offset = 0
+        out = None
+        for idx in range(batch):
+            q_s = int(q_seqlen[idx])
+            kv_s = int(kv_seqlen[idx])
+            q_slice = np.transpose(q[q_offset:q_offset + q_s].reshape(q_s, heads, embed), (1, 0, 2))
+            k_slice = k[k_offset:k_offset + kv_s].reshape(kv_s, kv_head, embed)
+            k_slice_t = np.transpose(np.transpose(k_slice, (1, 0, 2)), (0, 2, 1))
+            v_slice = np.transpose(v[v_offset:v_offset + kv_s].reshape(kv_s, kv_head, embed), (1, 0, 2))
+            score = SelfAttentionOperation.group_matmul(heads, kv_head, q_slice, k_slice_t)
+            score = score * tor
+            if compress_mask:
+                score = score + mask_nd[:q_s, :kv_s]
+            else:
+                score = score + mask_nd[:q_s, :kv_s]
+            score_max = np.max(score, axis=-1)
+            score_exp = np.exp((score - score_max.reshape((heads, q_s, 1))).astype(np.float32))
+            score_sum = np.sum(score_exp, axis=-1)
+            p = score_exp.astype(np.float16)
+            out_sub = SelfAttentionOperation.group_matmul(heads, kv_head, p, v_slice)
+            out_sub = out_sub / score_sum.reshape((heads, q_s, 1)).astype(np.float16)
+            out_sub = np.ascontiguousarray(np.transpose(out_sub.reshape(heads, q_s, embed), (1, 0, 2)))
+            out = out_sub if out is None else np.concatenate((out, out_sub), 0)
+            q_offset += q_s
+            k_offset += kv_s
+            v_offset += kv_s
+
+        out = out.astype(np.float16).reshape(q_ntokens, heads * embed)
+        mask_torch = torch.from_numpy(mask_nd.astype(np.float16))
+        return (
+            torch.from_numpy(q), torch.from_numpy(k), torch.from_numpy(v),
+            torch.from_numpy(k_max), torch.from_numpy(v_max), mask_torch,
+            torch.from_numpy(q_seqlen.astype(np.int32)),
+            torch.from_numpy(token_offset), torch.from_numpy(layer_id),
+            torch.from_numpy(out),
+        )
+
+    @staticmethod
+    def calc_expect_func_pa_swa_gqa(batch, seqlen, max_seqlen, heads, kv_head, embed, window_size,
+                                    datatype=torch.float16, shapes=None):
+        q_seqlen, _, q_ntokens = SelfAttentionOperation.gen_seq_len(batch, seqlen)
+        kv_seqlen = q_seqlen
+        max_s = int(np.max(q_seqlen))
+        q = np.random.uniform(-1.0, 1.0, size=(q_ntokens, heads * embed)).astype(np.float16)
+        k = np.random.uniform(-1.0, 1.0, size=(q_ntokens, kv_head * embed)).astype(np.float16)
+        v = np.random.uniform(-1.0, 1.0, size=(q_ntokens, kv_head * embed)).astype(np.float16)
+        mask_nd = (np.triu(np.ones((1, max_s, max_s), dtype=np.float16), 1) +
+                   np.tril(np.ones((1, max_s, max_s), dtype=np.float16), -window_size)) * -10000.0
+        tor = np.float16(1.0 / math.sqrt(embed))
+        q_offset = k_offset = v_offset = 0
+        out = None
+        for idx in range(batch):
+            q_s = int(q_seqlen[idx])
+            kv_s = int(kv_seqlen[idx])
+            q_slice = np.transpose(q[q_offset:q_offset + q_s].reshape(q_s, heads, embed), (1, 0, 2))
+            k_slice = k[k_offset:k_offset + kv_s].reshape(kv_s, kv_head, embed)
+            k_slice_t = np.transpose(np.transpose(k_slice, (1, 0, 2)), (0, 2, 1))
+            v_slice = np.transpose(v[v_offset:v_offset + kv_s].reshape(kv_s, kv_head, embed), (1, 0, 2))
+            score = SelfAttentionOperation.group_matmul(heads, kv_head, q_slice, k_slice_t)
+            score = score * tor + mask_nd[:, :q_s, :kv_s]
+            score_max = np.max(score, axis=-1)
+            score_exp = np.exp((score - score_max.reshape((heads, q_s, 1))).astype(np.float32))
+            score_sum = np.sum(score_exp, axis=-1)
+            p = score_exp.astype(np.float16)
+            out_sub = SelfAttentionOperation.group_matmul(heads, kv_head, p, v_slice)
+            out_sub = out_sub / score_sum.reshape((heads, q_s, 1)).astype(np.float16)
+            out_sub = np.ascontiguousarray(np.transpose(out_sub.reshape(heads, q_s, embed), (1, 0, 2)))
+            out = out_sub if out is None else np.concatenate((out, out_sub), 0)
+            q_offset += q_s
+            k_offset += kv_s
+            v_offset += kv_s
+
+        q_t = torch.from_numpy(q.reshape(-1, heads, embed)).to(datatype)
+        k_t = torch.from_numpy(k.reshape(-1, kv_head, embed)).to(datatype)
+        v_t = torch.from_numpy(v.reshape(-1, kv_head, embed)).to(datatype)
+        mask_t = torch.from_numpy(mask_nd.reshape(max_s, max_s)).to(datatype)
+        q_len = torch.from_numpy(q_seqlen.astype(np.int32))
+        out_t = torch.from_numpy(out.reshape(-1, heads, embed)).to(datatype)
+        ret_data = [q_t, k_t, v_t, mask_t, q_len, out_t]
+        if shapes:
+            for idx in range(len(shapes)):
+                ret_data[idx] = ret_data[idx].view(shapes[idx])
+            if len(shapes[0]) == 2:
+                ret_data[-1] = ret_data[-1].reshape(q_ntokens, heads * embed)
+        return ret_data
+
     def get_shape(container, indices):
         current = container
         for idx in indices:
@@ -6094,7 +6283,12 @@ class SelfAttentionOperation(DataGen):
     def case_preprocess(op_params, operation, input_tensor_list):
         json_data = json.loads(op_params)
         run_param = None
-        if json_data["calcType"] == 3:
+        if SelfAttentionOperation._is_encoder_cache_calc_type1(json_data):
+            run_param = json.dumps({
+                "seqLen": input_tensor_list[6].tolist(),
+                "tokenOffset": input_tensor_list[7].tolist(),
+            })
+        elif json_data["calcType"] == 3:
             seqLen_id = 4
             if json_data["maskType"] == 0:
                 seqLen_id -= 1
@@ -6227,16 +6421,56 @@ class SelfAttentionOperation(DataGen):
                 return SelfAttentionOperation.in_tensors_encoder[0]
             else:
                 return SelfAttentionOperation.in_tensors_encoder[i]
+        if SelfAttentionOperation._is_encoder_cache_calc_type1(json_data):
+            if i == 0:
+                heads = json_data["headNum"]
+                kv_head = json_data.get("kvHeadNum", heads)
+                layer = __class__.get_shape(shapes, [3, 0])
+                batch = __class__.get_shape(shapes, [3, 1])
+                max_seq = __class__.get_shape(shapes, [3, 3])
+                embed = __class__.get_shape(shapes, [0, 1]) // heads
+                q_ntokens = __class__.get_shape(shapes, [0, 0])
+                seqlen = q_ntokens // batch if batch > 0 else q_ntokens
+                window_size = json_data.get("windowSize", 0)
+                compress_mask = json_data.get("maskType") == 8
+                data = SelfAttentionOperation.calc_expect_func_encoder_cache_gqa(
+                    layer, batch, seqlen, max_seq, heads, kv_head, embed,
+                    datatype=torch_data_type, window_size=window_size, compress_mask=compress_mask)
+                in_tensors = [data[0], data[1], data[2]]
+                use_nz = get_soc_version() not in ("Ascend910B", "Ascend950")
+                if use_nz:
+                    in_tensors.append(SelfAttentionOperation._cast_kv_cache_nz_sa(
+                        data[3], layer, batch, kv_head, embed, max_seq))
+                    in_tensors.append(SelfAttentionOperation._cast_kv_cache_nz_sa(
+                        data[4], layer, batch, kv_head, embed, max_seq))
+                    in_tensors.append(SelfAttentionOperation._cast_mask_nz_sa(data[5]))
+                else:
+                    in_tensors.extend([data[3], data[4], data[5]])
+                in_tensors.extend([data[6], data[7], data[8]])
+                SelfAttentionOperation.in_tensors_encoder_cache = [tensor.npu() for tensor in in_tensors]
+                SelfAttentionOperation.encoder_cache_golden_out = SelfAttentionOperation._golden_cpu(data[9])
+                SelfAttentionOperation.encoder_cache_golden_high_pre = SelfAttentionOperation._golden_cpu(data[9].float())
+                return SelfAttentionOperation.in_tensors_encoder_cache[0]
+            return SelfAttentionOperation.in_tensors_encoder_cache[i]
         if 'kvcacheCfg' in json_data.keys() and json_data['kvcacheCfg'] == 1: 
             MASK_TYPE_NO_HEAD_DECODER = 5
             mask_type =MASK_TYPE_NO_HEAD_DECODER
             data_type = torch.float16
-            batch = 8
-            kv_head = 32        # kv_head num
-            SelfAttentionOperation.is_decoder = 1       # prefill or decoder
-            heads = 32          # llama7b  hidden_size 4096
-            embeddim = 128
-            max_seq = 256
+            heads = json_data["headNum"]
+            if len(shapes[0]) == 3:
+                embeddim = __class__.get_shape(shapes, [0, 2])
+            elif len(shapes[0]) == 2:
+                embeddim = int(__class__.get_shape(shapes, [0, 1]) // heads)
+            else:
+                embeddim = 128
+            if len(shapes[1]) >= 4:
+                cache_hidden = __class__.get_shape(shapes, [1, -1])
+                kv_head = cache_hidden // embeddim if embeddim > 0 else json_data.get("kvHeadNum", heads)
+            else:
+                kv_head = json_data.get("kvHeadNum", heads)
+            batch = __class__.get_shape(shapes, [4, 0]) if len(shapes) > 4 else 8
+            max_seq = __class__.get_shape(shapes, [1, 2]) if len(shapes[1]) >= 3 else 256
+            SelfAttentionOperation.is_decoder = 1
             tor = 1
             SelfAttentionOperation.dynamic_batch = False
             kv_seqLen = [114] * batch
@@ -6260,6 +6494,7 @@ class SelfAttentionOperation(DataGen):
             SelfAttentionOperation.qk_scale = tor
             SelfAttentionOperation.batch = batch
             SelfAttentionOperation.heads = heads
+            SelfAttentionOperation.kv_head = kv_head
             SelfAttentionOperation.embeddim = embeddim
             SelfAttentionOperation.max_seq = max_seq
             SelfAttentionOperation.clamp_min = clamp_min
@@ -6271,6 +6506,24 @@ class SelfAttentionOperation(DataGen):
             if i == 0:
                 qhead = json_data["headNum"]
                 kv_head = json_data["kvHeadNum"] if "kvHeadNum" in json_data else json_data["headNum"]
+                if json_data.get("maskType") == 7:
+                    batch = __class__.get_shape(shapes, [4, 0])
+                    seqlen = __class__.get_shape(shapes, [0, 0]) // batch if batch > 0 else __class__.get_shape(shapes, [0, 0])
+                    head_dims = __class__.get_shape(shapes, [0, 2]) if len(shapes[0]) == 3 else __class__.get_shape(shapes, [0, 1]) // qhead
+                    max_seqlen = __class__.get_shape(shapes, [3, 0]) if len(shapes[3]) == 2 else __class__.get_shape(shapes, [3, 1])
+                    window_size = json_data.get("windowSize", max_seqlen)
+                    data = SelfAttentionOperation.calc_expect_func_pa_swa_gqa(
+                        batch, seqlen, max_seqlen, qhead, kv_head, head_dims, window_size,
+                        datatype=torch_data_type, shapes=shapes)
+                    in_tensors = list(data[:-1])
+                    if get_soc_version() not in ("Ascend910B", "Ascend950"):
+                        in_tensors[3] = SelfAttentionOperation._cast_mask_nz_sa(in_tensors[3])
+                    SelfAttentionOperation.in_tensors_encoder = [tensor.npu() for tensor in in_tensors]
+                    golden_out = SelfAttentionOperation._golden_cpu(data[-1])
+                    SelfAttentionOperation.in_tensors_encoder.append(golden_out)
+                    SelfAttentionOperation.pa_swa_golden_out = golden_out
+                    SelfAttentionOperation.pa_swa_golden_high_pre = golden_out.float()
+                    return SelfAttentionOperation.in_tensors_encoder[0]
                 
                 # golden mask type
                 golden_mask_type = 0
@@ -6312,11 +6565,23 @@ class SelfAttentionOperation(DataGen):
 
                 param_seqlen = data[seqlen_index].tolist()
                 in_tensors = data
+                # 保存 alibi mask 的 batch, heads 信息，供 i==3 且 format==nz 时预转换使用
+                if json_data.get("maskType") == 2:
+                    SelfAttentionOperation._alibi_nz_mask_batch = int(batch)
+                    SelfAttentionOperation._alibi_nz_mask_heads = int(qhead)
                 SelfAttentionOperation.in_tensors_encoder = [tensor.npu() for tensor in in_tensors]
                 for i, tensor in enumerate(in_tensors):
                     logging.debug(f"customize, i {i} dtype {tensor.dtype} shape {tensor.shape}")
                 return SelfAttentionOperation.in_tensors_encoder[0]
             else:
+                if (i == 3 and json_data.get("maskType") == 2 and format == "fractal_nz"):
+                    mask_nd = SelfAttentionOperation.in_tensors_encoder[3]
+                    SelfAttentionOperation._alibi_nd_mask_for_golden = SelfAttentionOperation._golden_cpu(mask_nd)
+                    return SelfAttentionOperation._cast_alibi_mask_to_nz_sa(
+                        mask_nd,
+                        SelfAttentionOperation._alibi_nz_mask_batch,
+                        SelfAttentionOperation._alibi_nz_mask_heads,
+                        int(mask_nd.shape[2]))
                 return SelfAttentionOperation.in_tensors_encoder[i]
         elif json_data["clampType"] == 1:
             if i != 0:
@@ -6407,11 +6672,17 @@ class SelfAttentionOperation(DataGen):
                 out_index = 4 # 4: q, k, v, seqlen, out
                 if "maskType" in json_data and json_data["maskType"] in supported_mask_sofar950:
                     out_index += 1 # 1: mask
+                elif json_data.get("maskType") == 7:
+                    out_index = 5  # PA SWA: q, k, v, mask, seqlen, golden_out
                 shape = SelfAttentionOperation.in_tensors_encoder[out_index].shape
                 data = torch.zeros(shape, dtype=dtype_dict[datatype]).npu()
                 return torch_npu.npu_format_cast(data, format_dict[format])
             elif json_data["clampType"] == 1:
                 shape = SelfAttentionOperation.in_tensors_clamp[0].shape
+                data = torch.zeros(shape, dtype=dtype_dict[datatype]).npu()
+                return torch_npu.npu_format_cast(data, format_dict[format])
+            elif SelfAttentionOperation._is_encoder_cache_calc_type1(json_data):
+                shape = SelfAttentionOperation.in_tensors_encoder_cache[0].shape
                 data = torch.zeros(shape, dtype=dtype_dict[datatype]).npu()
                 return torch_npu.npu_format_cast(data, format_dict[format])
             else:
@@ -6771,7 +7042,7 @@ class SelfAttentionOperation(DataGen):
         
         mask = None
         if is_mask:
-            mask = in_tensors[3]
+            mask = mask_in
 
         scale = qk_scale
         if len(q.shape) == 2:
@@ -6888,6 +7159,14 @@ class SelfAttentionOperation(DataGen):
     @staticmethod
     def golden(in_tensors, op_params):
         json_data = json.loads(op_params)
+        if SelfAttentionOperation._is_encoder_cache_calc_type1(json_data):
+            out = SelfAttentionOperation.encoder_cache_golden_out
+            high_pre = SelfAttentionOperation.encoder_cache_golden_high_pre
+            if len(out.shape) == 3:
+                dim0, dim1, dim2 = out.shape
+                out = out.view(dim0, dim1 * dim2)
+                high_pre = high_pre.view(dim0, dim1 * dim2)
+            return SelfAttentionOperation._golden_cpu_list([out, high_pre])
         if 'kvcacheCfg' in json_data.keys() and json_data['kvcacheCfg'] == 1:
             q_offset = 0
             k_offset = 0
@@ -6900,7 +7179,8 @@ class SelfAttentionOperation(DataGen):
             max_seq = SelfAttentionOperation.max_seq
             q_seqlen = in_tensors[5].tolist()
             kv_seqlen = in_tensors[4].tolist()
-            kv_head = SelfAttentionOperation.heads
+            kv_head = getattr(SelfAttentionOperation, 'kv_head',
+                              json_data.get("kvHeadNum", SelfAttentionOperation.heads))
             mask = in_tensors[3]
             is_mask = True
             q = in_tensors[0]
@@ -6978,8 +7258,12 @@ class SelfAttentionOperation(DataGen):
             # golden data
             out = out.view(q_ntokens, heads * embed)
             golden_out = out.to(q.dtype)
-            return [golden_out]
+            return SelfAttentionOperation._golden_cpu_list([golden_out])
         if "calcType" in json_data and json_data["calcType"] == 3:
+            if json_data.get("maskType") == 7:
+                out = SelfAttentionOperation.pa_swa_golden_out
+                high_pre = SelfAttentionOperation.pa_swa_golden_high_pre
+                return SelfAttentionOperation._golden_cpu_list([out, high_pre])
             q = in_tensors[0]
             k = in_tensors[1]
             v = in_tensors[2]
@@ -7007,6 +7291,8 @@ class SelfAttentionOperation(DataGen):
             pseShift = None
             if json_data["maskType"] != 0:
                 mask = in_tensors[3]
+                if json_data.get("maskType") == 2 and hasattr(SelfAttentionOperation, '_alibi_nd_mask_for_golden'):
+                    mask = SelfAttentionOperation._alibi_nd_mask_for_golden
                 seq_len = in_tensors[4]
                 batch = len(in_tensors[4])
                 kv_seqLen_tesnor = in_tensors[4]
@@ -7027,23 +7313,24 @@ class SelfAttentionOperation(DataGen):
             kv_head = json_data['kvHeadNum'] if 'kvHeadNum' in json_data else json_data['headNum']
             if mask is not None:
                 if get_soc_version() != "Ascend910B" and get_soc_version() != "Ascend950":
-                    mask = mask.contiguous().permute(0, 2, 1, 3)
-                    dim0, dim1, dim2, dim3 = mask.shape
-                    mask = mask.contiguous().view(dim0, dim1, dim2*dim3)
-                    mask = mask[:, :, : dim1]
-                    batch =len(seq_len)
-                    if dim0 == 1:
-                        mask = mask.contiguous().view(dim1, dim1)
-                    elif dim0 != batch:
-                        if dim1 > dim2 * dim3:
-                            # alibi mask compress
-                            step = dim2 * dim3
-                            mask_padded = -10000 * torch.ones(dim0, dim1 * 2, dim1)
-                            for i in range(dim1 // step):
-                                dim1_offset = i * step
-                                dim2_offset = i * step
-                                mask_padded[:, dim1_offset : dim1_offset + dim1, dim2_offset : dim2_offset + step ] = mask
-                            mask = mask_padded[:, : dim1, : dim1]
+                    if json_data.get("maskType") != 2:
+                        mask = mask.contiguous().permute(0, 2, 1, 3)
+                        dim0, dim1, dim2, dim3 = mask.shape
+                        mask = mask.contiguous().view(dim0, dim1, dim2*dim3)
+                        mask = mask[:, :, : dim1]
+                        batch =len(seq_len)
+                        if dim0 == 1:
+                            mask = mask.contiguous().view(dim1, dim1)
+                        elif dim0 != batch:
+                            if dim1 > dim2 * dim3:
+                                # alibi mask compress
+                                step = dim2 * dim3
+                                mask_padded = -10000 * torch.ones(dim0, dim1 * 2, dim1)
+                                for i in range(dim1 // step):
+                                    dim1_offset = i * step
+                                    dim2_offset = i * step
+                                    mask_padded[:, dim1_offset : dim1_offset + dim1, dim2_offset : dim2_offset + step ] = mask
+                                mask = mask_padded[:, : dim1, : dim1]
             asdops_params = SelfAttentionOperation.get_asdops_param(q, k, v, mask, seq_len, op_params)
             if get_soc_version() == "Ascend950":
                 return [SelfAttentionOperation.calc_golden_encoder_950(q, k, v, pseShift, mask, seq_len, asdops_params).cpu()]
@@ -7054,7 +7341,7 @@ class SelfAttentionOperation(DataGen):
                 dim0, dim1, dim2 = out.shape
                 out = out.view(dim0, dim1 * dim2)
                 ref_output = ref_output.view(dim0, dim1 * dim2)
-            return [out, ref_output]
+            return SelfAttentionOperation._golden_cpu_list([out, ref_output])
         elif "clampType" in json_data and json_data["clampType"] == 1:
             layerid = int(in_tensors[8][0])
             mixed_q = in_tensors[0]
@@ -7142,7 +7429,7 @@ class SelfAttentionOperation(DataGen):
                 cur_q = (cur_q * q_scale).view(cur_seqlen, head_num, head_size).transpose(0, 1)
                 cur_k = cur_k.view(cur_token_offset, head_num, head_size).permute(1, 2, 0)
                 cur_qk = torch.bmm(cur_q.float(), cur_k.float()) # [head_num, seqlen, token_offset]
-                cur_qk = torch.clamp(cur_qk.npu(), clampMin, clampMax).cpu()
+                cur_qk = torch.clamp(cur_qk, clampMin, clampMax)
                 if attention_mask.ndim == 3: # masked_fill
                     cur_qk = cur_qk + attention_mask[i, :cur_seqlen, :cur_token_offset]
                 else:
@@ -7157,7 +7444,7 @@ class SelfAttentionOperation(DataGen):
                 offset = next_offset
 
             context = torch.concat(context_list, dim=0)
-            return [context]
+            return SelfAttentionOperation._golden_cpu_list([context])
         else:
 
             layerid = int(in_tensors[8][0])
@@ -7259,7 +7546,7 @@ class SelfAttentionOperation(DataGen):
                 offset = next_offset
             context = torch.concat(context_list, dim=0)
             logging.debug(context.shape)
-            return [context]
+            return SelfAttentionOperation._golden_cpu_list([context])
 
     @staticmethod
     def truth_value(in_tensors, op_params):
