@@ -16,6 +16,7 @@
 #include <mki/utils/math/tensor_utils.h>
 #include <mki/utils/checktensor/check_tensor.h>
 #include <mki/utils/platform/platform_info.h>
+#include <algorithm>
 #include "atbops/params/params.h"
 #include "mixkernels/multi_latent_attention/tiling/mla_tiling.h"
 #include "mixkernels/multi_latent_attention/tiling/mla_tiling_dependency.h"

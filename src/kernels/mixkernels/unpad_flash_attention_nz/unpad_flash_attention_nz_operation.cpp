@@ -12,6 +12,7 @@
 #include <mki/utils/const/op_const.h>
 #include <mki_loader/op_register.h>
 #include <mki/utils/checktensor/check_tensor.h>
+#include <algorithm>
 #include "atbops/params/params.h"
 
 static constexpr int32_t LONG_SEQ_LEN = 128;

@@ -13,6 +13,7 @@
 #include <mki/utils/math/math.h>
 #include <mki/utils/math/tensor_utils.h>
 #include <mki/utils/checktensor/check_tensor.h>
+#include <algorithm>
 #include "atbops/params/params.h"
 #include "tiling/flash_attention_nz_tiling.h"
 #include "tiling/flash_attention_nz_tiling_dependency.h"

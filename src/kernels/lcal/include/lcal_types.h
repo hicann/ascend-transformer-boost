@@ -12,6 +12,7 @@
 
 #include <map>
 #include <string>
+#include <cstdint> 
 
 namespace Lcal {
 constexpr int LCAL_SUCCESS = 0;
