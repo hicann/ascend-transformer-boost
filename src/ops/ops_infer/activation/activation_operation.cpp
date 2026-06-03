@@ -19,6 +19,7 @@
 #include "atb/utils/singleton.h"
 #include "atb/operation/op_param_funcs.h"
 #include "swiglu_forward_aclnn_runner.h"
+#include "gelu_aclnn_runner.h"
 
 namespace {
 static const uint32_t IN_TENSOR_NUM = 1;
@@ -50,9 +51,14 @@ template <> Status CreateOperation(const infer::ActivationParam &opParam, Operat
         return ERROR_INVALID_PARAM;
     }
     if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_950) {
-        if (opParam.activationType == atb::infer::ActivationType::ACTIVATION_GELU ||
-            opParam.activationType == atb::infer::ActivationType::ACTIVATION_SWISH ||
-            opParam.activationType == atb::infer::ActivationType::ACTIVATION_SIGMOID) {
+        if (opParam.activationType == atb::infer::ActivationType::ACTIVATION_GELU) {
+            Status status = GeluAclnnRunner::LoadMethod();
+            if (status != NO_ERROR) {
+                ATB_LOG(ERROR) << "load GELU aclnn funcs failed.";
+                return ERROR_CANN_ERROR;
+            }
+        } else if (opParam.activationType == atb::infer::ActivationType::ACTIVATION_SWISH ||
+                   opParam.activationType == atb::infer::ActivationType::ACTIVATION_SIGMOID) {
             Status status = ActivationAclnnRunner::LoadAclnnFunctions();
             if (status != NO_ERROR) {
                 ATB_LOG(ERROR) << "load aclnn funcs failed.";
@@ -283,6 +289,9 @@ std::shared_ptr<Runner> ActivationOperation::CreateRunner(Context &context) cons
         if (param_.activationType == atb::infer::ActivationType::ACTIVATION_SWIGLU_FORWARD) {
             ATB_LOG(INFO) << GetLogPrefix() << "create SwigluForward AclnnRunner";
             return std::make_shared<SwigluForwardAclnnRunner>(param_);
+        } else if (param_.activationType == atb::infer::ActivationType::ACTIVATION_GELU) {
+            ATB_LOG(INFO) << GetLogPrefix() << "create Gelu AclnnRunner";
+            return std::make_shared<GeluAclnnRunner>(param_);
         } else {
             ATB_LOG(INFO) << GetLogPrefix() << "create Activation AclnnRunner";
             return std::make_shared<ActivationAclnnRunner>(param_);
