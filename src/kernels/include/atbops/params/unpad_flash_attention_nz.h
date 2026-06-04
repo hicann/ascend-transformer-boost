@@ -84,6 +84,7 @@ struct UnpadFlashAttentionNz {
 
     uint32_t isAlibiMaskSqrt = 0;
     bool compressHead = false;
+    bool normCompress2048 = false;
     bool operator==(const UnpadFlashAttentionNz &other) const
     {
         return this->type == other.type && this->headSize == other.headSize && this->qSeqLen == other.qSeqLen &&
@@ -93,7 +94,8 @@ struct UnpadFlashAttentionNz {
                this->compressHead == other.compressHead && this->batchRunStatus == other.batchRunStatus &&
                this->alibiLeftAlign == other.alibiLeftAlign && this->dataDimOrder == other.dataDimOrder &&
                this->scaleType == other.scaleType && this->windowSize == other.windowSize &&
-               this->precType == other.precType && this->cacheType == other.cacheType;
+               this->precType == other.precType && this->cacheType == other.cacheType &&
+               this->normCompress2048 == other.normCompress2048;
     }
 };
 } // namespace OpParam

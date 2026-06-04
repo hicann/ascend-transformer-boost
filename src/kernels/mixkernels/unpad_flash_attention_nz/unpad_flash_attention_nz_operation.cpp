@@ -16,6 +16,7 @@
 #include "atbops/params/params.h"
 
 static constexpr int32_t LONG_SEQ_LEN = 128;
+static constexpr int32_t LONG_COMPRESS_LEN = 2048;
 static constexpr int32_t SWA_COMPRESS_MASK_SIZE = 512;
 
 namespace AtbOps {
@@ -133,6 +134,19 @@ private:
         uint32_t batch;
     };
 
+    bool IsNormCompressNzMask(const SVector<int64_t> &currentShape) const
+    {
+        return currentShape.size() == DIM_4 && currentShape[DIM_0] == 1 &&
+               currentShape[DIM_1] == LONG_COMPRESS_LEN / FP16_ALIGN_NUM &&
+               currentShape[DIM_2] == LONG_COMPRESS_LEN && currentShape[DIM_3] == FP16_ALIGN_NUM;
+    }
+
+    bool IsNormCompressNdMask(const SVector<int64_t> &currentShape) const
+    {
+        return currentShape.size() == DIM_2 && currentShape[DIM_0] == LONG_COMPRESS_LEN &&
+               currentShape[DIM_1] == LONG_COMPRESS_LEN;
+    }
+
     bool FindMask(std::vector<std::pair<SVector<int64_t>, bool>> &pairs, SVector<int64_t> &curShape,
                   bool nz) const
     {
@@ -182,13 +196,19 @@ private:
         auto alibi = param.maskType == OpParam::UnpadFlashAttentionNz::MASK_TYPE_ALIBI;
         auto norm = param.maskType == OpParam::UnpadFlashAttentionNz::MASK_TYPE_NORM;
         auto lookAhead = param.maskType == OpParam::UnpadFlashAttentionNz::MASK_TYPE_LOOK_AHEAD;
-        auto isLongSeq = (param.isTriuMask == 1) && (maskLen == LONG_SEQ_LEN);
+        const bool isNormCompressMask = IsNormCompressNdMask(currentShape) && param.normCompress2048;
+        // maskLen == LONG_COMPRESS_LEN(2048) 只有在 310P normCompress 特性下才视为长序列，
+        // 否则保持主线行为(仅 LONG_SEQ_LEN)，避免误伤普通 norm/triu 的 2048 mask 用例。
+        auto isLongSeq = ((param.isTriuMask == 1) && maskLen == LONG_SEQ_LEN) ||
+                         (isNormCompressMask && maskLen == LONG_COMPRESS_LEN);
         auto kvHead = param.kvHead == 0 ? headSize : param.kvHead;
         auto isAlibiCompress = maskLen == LONG_SEQ_LEN && currentShape[sz - DIM_2] != maskLen && alibi;
         std::vector<std::pair<SVector<int64_t>, bool>> supports = {
-            {{maxQ, maxKv}, true},
-            {{LONG_SEQ_LEN, LONG_SEQ_LEN}, isLongSeq},
-            {{batch, LONG_SEQ_LEN, LONG_SEQ_LEN}, isLongSeq},
+            {{LONG_COMPRESS_LEN, LONG_COMPRESS_LEN}, isLongSeq && maskLen == LONG_COMPRESS_LEN},
+            {{LONG_SEQ_LEN, LONG_SEQ_LEN}, isLongSeq && maskLen == LONG_SEQ_LEN},
+            {{maxQ, maxKv}, !isLongSeq},
+            {{batch, LONG_COMPRESS_LEN, LONG_COMPRESS_LEN}, isLongSeq && maskLen == LONG_COMPRESS_LEN},
+            {{batch, LONG_SEQ_LEN, LONG_SEQ_LEN}, isLongSeq && maskLen == LONG_SEQ_LEN},
             {{longSeqAlibiLen, longSeqAlibiLen}, alibi && sz == DIM_2},
             {{q.desc.dims[DIM_0], maxKv}, lookAhead},
             {{batch, maxQ, maxKv}, norm},
@@ -214,7 +234,11 @@ private:
         MKI_CHECK(sz == DIM_4, "mask invalid, please check.", return false);
         auto maskLen = currentShape[DIM_2];
         auto alibi = param.maskType == OpParam::UnpadFlashAttentionNz::MASK_TYPE_ALIBI;
-        auto isLongSeq = (param.isTriuMask == 1) && (maskLen == LONG_SEQ_LEN);
+        const bool isNormCompressMask = IsNormCompressNzMask(currentShape) && param.normCompress2048;
+        // maskLen == LONG_COMPRESS_LEN(2048) 只有在 310P normCompress 特性下才视为长序列，
+        // 否则保持主线行为(仅 LONG_SEQ_LEN)，避免误伤普通 norm/triu 的 2048 mask 用例。
+        auto isLongSeq = ((param.isTriuMask == 1) && maskLen == LONG_SEQ_LEN) ||
+                         (isNormCompressMask && maskLen == LONG_COMPRESS_LEN);
         constexpr int32_t MAX_SAFE_VALUE = FP16_ALIGN_NUM - 1;
         MKI_CHECK(shapePara.maxQ <= INT32_MAX - MAX_SAFE_VALUE,
                 "shapePara.maxQ is too large, please check", return false);
@@ -229,10 +253,13 @@ private:
                          currentShape[DIM_2] == longSeqAlibiLen && alibi;
         auto isSwaCompress = param.maskType == OpParam::UnpadFlashAttentionNz::MASK_TYPE_SWA_COMPRESS;
         std::vector<std::pair<SVector<int64_t>, bool>> supports = {
-            {{1, maxKv / FP16_ALIGN_NUM, maxNzQ, FP16_ALIGN_NUM}, true},
+            {{1, LONG_COMPRESS_LEN / FP16_ALIGN_NUM, LONG_COMPRESS_LEN, FP16_ALIGN_NUM},
+             isLongSeq && maskLen == LONG_COMPRESS_LEN},
+            {{1, LONG_SEQ_LEN / FP16_ALIGN_NUM, LONG_SEQ_LEN, FP16_ALIGN_NUM},
+             isLongSeq && maskLen == LONG_SEQ_LEN},
             {{1, longSeqAlibiLen / FP16_ALIGN_NUM, longSeqAlibiLen, FP16_ALIGN_NUM}, alibiDim2},
-            {{1, LONG_SEQ_LEN / FP16_ALIGN_NUM, LONG_SEQ_LEN, FP16_ALIGN_NUM}, isLongSeq},
-            {{batch, maxKv / FP16_ALIGN_NUM, maxNzQ, FP16_ALIGN_NUM}, true},
+            {{1, maxKv / FP16_ALIGN_NUM, maxNzQ, FP16_ALIGN_NUM}, !isLongSeq},
+            {{batch, maxKv / FP16_ALIGN_NUM, maxNzQ, FP16_ALIGN_NUM}, !isLongSeq},
             {{headSize, LONG_SEQ_LEN / FP16_ALIGN_NUM, maxNzQ, FP16_ALIGN_NUM}, isAlibiCompress},
             {{headSize, maxKv / FP16_ALIGN_NUM, maxNzQ, FP16_ALIGN_NUM}, alibi},
             {{static_cast<int32_t>(batch) * headSize, maxKv / FP16_ALIGN_NUM, maxNzQ, FP16_ALIGN_NUM}, alibi},

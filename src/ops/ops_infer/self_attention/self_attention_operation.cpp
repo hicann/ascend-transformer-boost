@@ -50,6 +50,8 @@ static const int BYPASS_BIT = 0x00008;
 static const int SCALE_BIT = 0x00010;
 static constexpr int64_t COMPRESS_MASK_SIZE = 128;
 static constexpr int64_t COMPRESS_MASK_SIZE_950 = 2048;
+static constexpr int64_t LONG_COMPRESS_LEN = 2048;
+static constexpr int64_t LONG_COMPRESS_NZ_DIM1 = LONG_COMPRESS_LEN / 16;
 static constexpr int64_t BYTE2_ALIGN = 16;
 
 bool ParamCheck950(const infer::SelfAttentionParam &opParam);
@@ -230,6 +232,13 @@ bool BNSDParamCheck(const infer::SelfAttentionParam &opParam)
 
 bool DeviceParamCheck(const infer::SelfAttentionParam &opParam)
 {
+    if (opParam.maskType == infer::SelfAttentionParam::MASK_TYPE_NORM_COMPRESS &&
+        GetSingleton<Config>().Is310P()) {
+        if (opParam.quantType != infer::SelfAttentionParam::TYPE_QUANT_UNDEFINED) {
+            ATB_LOG(ERROR) << "MASK_TYPE_NORM_COMPRESS does not support quantization";
+            return false;
+        }
+    }
     if (!GetSingleton<Config>().Is910B()) {
         if (opParam.maskType == infer::SelfAttentionParam::MASK_TYPE_ALIBI_COMPRESS_LEFT_ALIGN) {
             ATB_LOG(ERROR) << "MASK_TYPE_ALIBI_COMPRESS_LEFT_ALIGN only support Atlas 800I A2 inference product";
@@ -560,6 +569,10 @@ void SelfAttentionOperation::InitMlaFaOpIni()
 SelfAttentionOperation::SelfAttentionOperation(const infer::SelfAttentionParam &param)
     : OperationBase("SelfAttentionOperation"), param_(param)
 {
+    if (param_.maskType == infer::SelfAttentionParam::MASK_TYPE_NORM_COMPRESS &&
+        GetSingleton<Config>().Is310P()) {
+        param_.isTriuMask = 1;
+    }
     isMla_ = param_.mlaVHeadSize > 0;
     hasMask_ = (param_.maskType != infer::SelfAttentionParam::MASK_TYPE_UNDEFINED
                 && param_.maskType != infer::SelfAttentionParam::MASK_TYPE_CAUSAL_MASK) &&
@@ -1323,20 +1336,34 @@ Status SelfAttentionOperation::NormMaskDimCheck(const SVector<TensorDesc> &inTen
     if (param_.maskType == infer::SelfAttentionParam::MaskType::MASK_TYPE_NORM_COMPRESS) {
         int64_t maskDim = 2;
         if (maskFormat == ACL_FORMAT_FRACTAL_NZ) {
-            // 310p, norm compress shape: [1, 128/16, 128, 16] -> [1, 8, 128, 16]
-            maskDim = 4; // 4: [1,8,128,16]
+            maskDim = 4;
             if (actualMaskDim != maskDim) {
                 ATB_LOG(ERROR) << GetLogPrefix() << "invalid compress mask dimNum, expect: " << maskDim
                                << ", but got: " << actualMaskDim;
                 return ERROR_INVALID_TENSOR_SIZE;
             }
-            if (inTensorDescs.at(maskId_).shape.dims[0] != 1 || // 1 : compress mask shape
-                inTensorDescs.at(maskId_).shape.dims[1] !=
-                    COMPRESS_MASK_SIZE / BYTE2_ALIGN ||                          // 128 / 16 = 8: compress mask shape
-                inTensorDescs.at(maskId_).shape.dims[2] != COMPRESS_MASK_SIZE || // 2: dim2 128 : compress mask shape
-                inTensorDescs.at(maskId_).shape.dims[3] != BYTE2_ALIGN) {        // 3: dim3 16 : compress mask shape
-                ATB_LOG(ERROR) << GetLogPrefix() << "invalid compress mask shape";
+            const auto &dims = inTensorDescs.at(maskId_).shape.dims;
+            // 310P legacy: [1, 8, 128, 16]; 310P long window: [1, 128, 2048, 16]
+            const bool legacy128 = (dims[0] == 1 && dims[1] == COMPRESS_MASK_SIZE / BYTE2_ALIGN &&
+                                    dims[2] == COMPRESS_MASK_SIZE && dims[3] == BYTE2_ALIGN);
+            const bool long2048 = (dims[0] == 1 && dims[1] == LONG_COMPRESS_NZ_DIM1 &&
+                                   dims[2] == LONG_COMPRESS_LEN && dims[3] == BYTE2_ALIGN);
+            if (!legacy128 && !long2048) {
+                ATB_LOG(ERROR) << GetLogPrefix() << "invalid compress mask shape, expect [1,8,128,16] or [1,"
+                               << LONG_COMPRESS_NZ_DIM1 << "," << LONG_COMPRESS_LEN << ",16]";
                 return ERROR_INVALID_TENSOR_DIM;
+            }
+            if (long2048) {
+                if (!GetSingleton<Config>().Is310P()) {
+                    ATB_LOG(ERROR) << GetLogPrefix()
+                                   << "MASK_TYPE_NORM_COMPRESS long mask [1,128,2048,16] only supports "
+                                      "Atlas 300I Duo inference product";
+                    return ERROR_INVALID_PARAM;
+                }
+                if (inTensorDescs.at(maskId_).dtype != ACL_FLOAT16) {
+                    ATB_LOG(ERROR) << GetLogPrefix() << "MASK_TYPE_NORM_COMPRESS long mask requires fp16 mask dtype";
+                    return ERROR_INVALID_TENSOR_DTYPE;
+                }
             }
         } else if (maskFormat == ACL_FORMAT_ND) {
             // 910b, 950

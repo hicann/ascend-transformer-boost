@@ -35,6 +35,7 @@ constexpr int32_t UB_FLOAT_BUF_SIZE = 8192;
 constexpr int32_t FLOAT_BLOCK_SIZE = 8;
 constexpr int32_t CUBE_MATRIX_SIZE = 256;
 constexpr int32_t BASE_MASK_SIZE = 128;
+constexpr int32_t LONG_COMPRESS_LEN = 2048;
 constexpr int32_t STRIDE_UPPER_BOUND = 65535;
 constexpr int64_t L1_UINT8_BLOCK_SIZE = 131072;   // 128K
 constexpr int64_t UB_UINT8_BLOCK_SIZE = 32768;    // 128 * 128 * 2 = 32K
@@ -57,11 +58,31 @@ enum AttentonMaskType {
     MASK_TYPE_SWA_NORM = 4,
     MASK_TYPE_SWA_COMPRESS = 5
 };
-enum PrecType { 
-    BMM1_FP16_EXP_FP32 = 0, 
-    BMM1_FP32_EXP_FP32 = 1, 
-    BMM1_FP16_EXP_M8V2 = 3, 
-    BMM2_ONLINE_SOFTMAX_FP16 = 4 
+
+// long_seq 由 tiling 计算并传入，且仅在 310P normCompress 特性(param.normCompress2048)开启时
+// 才会对 2048 mask 置 1。普通 NORM/BNSD 的 2048 mask 其 long_seq 为 0，因此用 long_seq 作守护，
+// 避免仅凭 mask_stride==2048 把普通用例误判为 normCompress 模式。
+__aicore__ inline bool IsNormCompressMaskMode(uint32_t mask_type, uint32_t mask_stride, uint32_t long_seq)
+{
+    return long_seq == 1 && mask_type == static_cast<uint32_t>(AttentonMaskType::MASK_TYPE_NORM) &&
+           mask_stride == static_cast<uint32_t>(LONG_COMPRESS_LEN);
+}
+
+// Shift-invariant diagonal read for shared [1,128,2048,16] mask (paged attention S10).
+// The causal stencil on a diagonal tile depends only on (row - col) within the tile, so the
+// same 2048x2048 canvas corner serves every diagonal tile regardless of its absolute position
+// (including q >= 2048). For the prefix case (kvSeqlen > qSeqlen) we shift the read left so the
+// diagonal still lines up with the canvas.
+__aicore__ inline int64_t NormCompressMaskOffset(int64_t currMaskOffset, int32_t n_idx, int32_t pp_n)
+{
+    return currMaskOffset - static_cast<int64_t>(n_idx) * pp_n * BLOCK_SIZE;
+}
+
+enum PrecType {
+    BMM1_FP16_EXP_FP32 = 0,
+    BMM1_FP32_EXP_FP32 = 1,
+    BMM1_FP16_EXP_M8V2 = 3,
+    BMM2_ONLINE_SOFTMAX_FP16 = 4
 };
 __aicore__ inline void SyncStart()
 {
@@ -253,6 +274,51 @@ public:
         }
     }
 
+    __aicore__ inline void SetNormCompressBlockContext(uint32_t mask_type, uint32_t mask_stride, uint32_t long_seq,
+                                                       uint32_t q_seqlen_real, uint32_t kv_seqlen_real, int32_t m_idx,
+                                                       int32_t n_idx, int32_t pp_m, int32_t pp_n, int64_t cur_bms,
+                                                       int64_t head_mask_stride, int32_t head_idx, int32_t &add_mask_n0,
+                                                       int32_t &add_mask_n1, int64_t &mask_offset0,
+                                                       int64_t &mask_offset1)
+    {
+        normCompressMode = 0;
+        normCompressPrefixBlk = 0;
+
+        if (!IsNormCompressMaskMode(mask_type, mask_stride, long_seq)) {
+            return;
+        }
+        normCompressMode = 1;
+
+        const int32_t seqDiff = static_cast<int32_t>(kv_seqlen_real) - static_cast<int32_t>(q_seqlen_real);
+        const int32_t prefixLen = seqDiff > 0 ? seqDiff : 0;
+        normCompressPrefixBlk =
+            (static_cast<int32_t>(kv_seqlen_real) > LONG_COMPRESS_LEN) ? (prefixLen / pp_n) : 0;
+
+        // The causal stencil is shift-invariant along the diagonal, so any diagonal tile (even
+        // q >= 2048) reads the same canvas corner. We therefore gate purely on the diagonal
+        // condition; tiles strictly below the diagonal need no mask, tiles strictly above are
+        // skipped by the is_triu loop. Columns past kvSeqlen in the last tile are already
+        // excluded by the __n0 tail handling in softmax, so no extra masking is required here.
+        const bool diag0 = (long_seq == 0) || ((long_seq == 1) && (n_idx == m_idx));
+        const bool diag1 = (long_seq == 0) || ((long_seq == 1) && (n_idx + 1 == m_idx));
+        const bool prefixOk0 = (n_idx >= normCompressPrefixBlk);
+        const bool prefixOk1 = ((n_idx + 1) >= normCompressPrefixBlk);
+        add_mask_n0 = (diag0 && prefixOk0) ? 1 : 0;
+        add_mask_n1 = (diag1 && prefixOk1) ? 1 : 0;
+
+        const int64_t maskBase = cur_bms + head_mask_stride * head_idx;
+        const int64_t currMaskOffset = static_cast<int64_t>(prefixLen) * BLOCK_SIZE;
+        mask_offset0 = maskBase;
+        mask_offset1 = maskBase;
+        if (add_mask_n0 == 1) {
+            mask_offset0 = (prefixLen > 0) ? (maskBase + NormCompressMaskOffset(currMaskOffset, n_idx, pp_n)) : maskBase;
+        }
+        if (add_mask_n1 == 1) {
+            mask_offset1 = (prefixLen > 0) ? (maskBase + NormCompressMaskOffset(currMaskOffset, n_idx + 1, pp_n))
+                                           : maskBase;
+        }
+    }
+
     __aicore__ inline void InitKVgmBatchwise(uint64_t kBatchPtr, uint64_t vBatchPtr)
     {
         gmSrck = reinterpret_cast<__gm__ uint8_t *>(kBatchPtr);
@@ -363,7 +429,7 @@ public:
                              (subMask << 40) + (subMask << 24) + (subMask << 8);
         SetVectorMask<int8_t>(0x0, maskValue);
     }
-    
+
     __aicore__  void SoftmaxExpV8(
                             AscendC::LocalTensor<half> src,
                             AscendC::LocalTensor<half> tmp,
@@ -623,6 +689,8 @@ public:
     int64_t srcmOffset1 = 0;
     int64_t lognOffset = 0;
     int32_t maskStride = 0;
+    int32_t normCompressMode = 0;
+    int32_t normCompressPrefixBlk = 0;
     int32_t initG = 0;
     int32_t wrapO = 0;
     int32_t isSqrt = 0;

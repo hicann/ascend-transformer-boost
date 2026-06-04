@@ -18,13 +18,24 @@
 
 namespace atb {
 
+namespace {
+constexpr int64_t LONG_COMPRESS_LEN = 2048;
+
+bool IsNormCompressMaskTensor(const Mki::Tensor &mask)
+{
+    const auto &dims = mask.desc.dims;
+    return dims.size() == 4 && dims[0] == 1 && dims[1] == LONG_COMPRESS_LEN / 16 &&
+           dims[2] == LONG_COMPRESS_LEN && dims[3] == 16;
+}
+} // namespace
+
 AtbOps::OpParam::UnpadFlashAttentionNz::PrecType ConvertKernelType(infer::SelfAttentionParam::KernelType type)
 {
     switch (type) {
         case infer::SelfAttentionParam::KERNELTYPE_DEFAULT:
         case infer::SelfAttentionParam::KERNELTYPE_HIGH_PRECISION:
             return AtbOps::OpParam::UnpadFlashAttentionNz::PrecType::BMM1_FP16_EXP_FP32;
-        case infer::SelfAttentionParam::KERNELTYPE_EXP_M8V2:
+                case infer::SelfAttentionParam::KERNELTYPE_EXP_M8V2:
             return AtbOps::OpParam::UnpadFlashAttentionNz::PrecType::BMM1_FP16_EXP_M8V2;
     }
     ATB_LOG(ERROR) << "SelfAttentionEncoderFusionOpsRunner910A got unexpected kernelType: " << type;
@@ -241,6 +252,10 @@ Status SelfAttentionEncoderFusionOpsRunner910A::ModifyKernelGraph(const OpsTenso
                                   3); // 4, 3: flashAttentionEncoder节点位置
     AtbOps::OpParam::UnpadFlashAttentionNz faEncoderNzCacheParam;
     SetFAParam(faEncoderNzCacheParam);
+    if (IsNormCompressMaskTensor(opsTensorPack.inTensors.at(3)) && param_.maskType == infer::SelfAttentionParam::MASK_TYPE_NORM_COMPRESS) {
+        faEncoderNzCacheParam.isTriuMask = 1;
+        faEncoderNzCacheParam.normCompress2048 = true;
+    }
     faEncoderNzCacheParam.qSeqLen = newParam_.seqLen;
     faEncoderNzCacheParam.kvSeqLen = newParam_.tokenOffset;
     faEncoderNzCacheParam.batchRunStatus = {};
@@ -280,7 +295,9 @@ void SelfAttentionEncoderFusionOpsRunner910A::SetFAParam(AtbOps::OpParam::UnpadF
     flashAttentionParam.isAlibiMaskSqrt = (param_.maskType == infer::SelfAttentionParam::MASK_TYPE_ALIBI_COMPRESS_SQRT);
     flashAttentionParam.alibiLeftAlign =
         (param_.maskType == infer::SelfAttentionParam::MASK_TYPE_ALIBI_COMPRESS_LEFT_ALIGN);
-    flashAttentionParam.isTriuMask = param_.isTriuMask;
+    flashAttentionParam.isTriuMask = (param_.maskType == infer::SelfAttentionParam::MASK_TYPE_NORM_COMPRESS) ?
+                                         1 :
+                                         param_.isTriuMask;
     flashAttentionParam.scaleType = param_.scaleType == atb::infer::SelfAttentionParam::SCALE_TYPE_LOGN ?
                                         AtbOps::OpParam::UnpadFlashAttentionNz::SCALE_LOGN :
                                         AtbOps::OpParam::UnpadFlashAttentionNz::SCALE_TOR;

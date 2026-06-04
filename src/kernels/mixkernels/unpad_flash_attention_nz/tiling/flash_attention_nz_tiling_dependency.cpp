@@ -173,7 +173,15 @@ Status FillTilingParamRealCore(const UnpadFlashAttentionNzInfo &mmInfo, const ui
         tilingParam[batchOffset + NZ_INDEX_13] = static_cast<uint32_t>(qSeqLen);
         tilingParam[batchOffset + NZ_INDEX_14] = static_cast<uint32_t>(kvSeqLen);
         tilingParam[batchOffset + NZ_INDEX_15] = batchProc;
-        if (!mmInfo.batchContinuous) {
+        if (mmInfo.isNormCompress != 0 && mmInfo.batchContinuous) {
+            int32_t prefixLen = kvSeqLen - qSeqLen;
+            if (prefixLen < 0) {
+                prefixLen = 0;
+            }
+            uint64_t batchMaskRowOffset = static_cast<uint64_t>(prefixLen) * NZ_BLOCK_SIZE;
+            tilingParam[batchOffset + NZ_INDEX_16] = GetHigh32Bit(batchMaskRowOffset);
+            tilingParam[batchOffset + NZ_INDEX_17] = GetLow32Bit(batchMaskRowOffset);
+        } else if (!mmInfo.batchContinuous) {
             FillSplitBatchPtr(mmInfo, batchOffset, seqIdx, tilingParam);
         }
         if (mmInfo.dataDimOrder == OpParam::UnpadFlashAttentionNz::TYPE_BNSD &&

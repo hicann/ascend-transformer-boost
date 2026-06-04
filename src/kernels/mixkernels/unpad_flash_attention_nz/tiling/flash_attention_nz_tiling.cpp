@@ -173,8 +173,21 @@ Status FlashAttentionNzMaskInfo(UnpadFlashAttentionNzInfo &mmInfo, const LaunchP
         case OpParam::UnpadFlashAttentionNz::MASK_TYPE_ALIBI:
             OP_TILING_CHECK_STATUS_RETURN(SetAlibiMaskInfo(mmInfo, launchParam, param));
             break;
-        case OpParam::UnpadFlashAttentionNz::MASK_TYPE_NORM:
-            mmInfo.isLongSeq = ((mmInfo.isTriu == 1) && (mmInfo.maskStride == LONG_SEQ_LEN)) ? 1 : 0;
+        case OpParam::UnpadFlashAttentionNz::MASK_TYPE_NORM: {
+            const bool isNormCompressMask =
+                (maskShape.size() == DIM_4 && maskShape.at(DIM_0) == 1 &&
+                 maskShape.at(DIM_1) == LONG_COMPRESS_LEN / NZ_BLOCK_SIZE &&
+                 maskShape.at(DIM_2) == LONG_COMPRESS_LEN && maskShape.at(DIM_3) == NZ_BLOCK_SIZE && param.normCompress2048);
+            if (isNormCompressMask) {
+                mmInfo.isTriu = 1;
+            }
+            // 仅在 310P normCompress 特性(normCompress2048)下才允许 2048 走长序列分支，
+            // 否则保持主线行为：只有 maskStride == LONG_SEQ_LEN 才是长序列，避免误伤普通 norm/BNSD 用例。
+            const bool allowCompressLongSeq = isNormCompressMask && mmInfo.maskStride == LONG_COMPRESS_LEN;
+            mmInfo.isLongSeq =
+                ((mmInfo.isTriu == 1) && (mmInfo.maskStride == LONG_SEQ_LEN || allowCompressLongSeq)) ? 1 : 0;
+            mmInfo.isNormCompress =
+                (mmInfo.isLongSeq == 1 && mmInfo.maskStride == LONG_COMPRESS_LEN && param.normCompress2048) ? 1 : 0;
             mmInfo.headMaskStride = 0;
             mmInfo.batchMaskStride = static_cast<uint32_t>(
                 ((maskDimZero == static_cast<int64_t>(param.qSeqLen.size())) && (mmInfo.isLongSeq == 0))
@@ -184,6 +197,7 @@ Status FlashAttentionNzMaskInfo(UnpadFlashAttentionNzInfo &mmInfo, const LaunchP
                 OP_TILING_CHECK_STATUS_RETURN(CheckSeqLen(param, maskShape.at(DIM_1) * maskShape.at(DIM_3)));
             }
             break;
+        }
         default: return Status::FailStatus(ERROR_INVALID_VALUE, "Invalid MaskType");
     }
     return Status::OkStatus();
