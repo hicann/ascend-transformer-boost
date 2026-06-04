@@ -253,7 +253,8 @@ public:
 
     __aicore__ inline void Init(int64_t srcqOffsetReal, int64_t srckOffsetReal, int64_t srcvOffsetReal,
                                 int64_t srckOffsetReal1, int64_t srcvOffsetReal1, int64_t srcmOffsetReal,
-                                int64_t dstoOffsetReal, int32_t initGReal, int32_t wrapOReal)
+                                int64_t dstoOffsetReal, int32_t initGReal, int32_t wrapOReal,
+                                int64_t srcmOffsetPongReal = -1)
     {
         srcqOffset = srcqOffsetReal;
         srckOffset = srckOffsetReal;
@@ -261,6 +262,7 @@ public:
         srckOffset1 = srckOffsetReal1;
         srcvOffset1 = srcvOffsetReal1;
         srcmOffset = srcmOffsetReal;
+        srcmOffsetPong = (srcmOffsetPongReal >= 0) ? srcmOffsetPongReal : (srcmOffsetReal + blockSize);
         dstoOffset = dstoOffsetReal;
 
         initG = initGReal;
@@ -275,7 +277,15 @@ public:
 
     __aicore__ inline void DecodeParallel(const int32_t fm, const int32_t fn, const int32_t fk,
                                           const int32_t bn, const int32_t m_actual, const int32_t n0_actual,
-                                          const int32_t n1_actual, const uint32_t maskType, const int32_t nIdx, const int32_t mask_n, const int32_t is_ping);
+                                          const int32_t n1_actual, const uint32_t maskType, const int32_t nIdx,
+                                          const int32_t mask_n, const int32_t is_ping,
+                                          const int32_t prefixBlk = 0,
+                                          // NORM_COMPRESS only: global Q-row index of tile's first row.
+                                          // Per-block global K-col index is computed as nIdx*blockSize
+                                          // (ping) / (nIdx+1)*blockSize (pong). Used to decide which
+                                          // (cg, br) 16x16 sub-blocks fall entirely below the causal
+                                          // diagonal and can be skipped.
+                                          const int32_t globalR0 = 0);
 
 private:
     int32_t l1PingpongFlag = 0;
@@ -359,6 +369,7 @@ private:
     int64_t srcvOffset1 = 0;
     int64_t dstoOffset = 0;
     int64_t srcmOffset = 0;
+    int64_t srcmOffsetPong = 0;  // NORM_COMPRESS: separate pong offset (shift-aware)
     int64_t maskStride = 0;
 
     int32_t initG = 0;

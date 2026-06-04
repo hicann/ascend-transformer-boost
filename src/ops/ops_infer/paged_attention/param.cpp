@@ -67,6 +67,21 @@ bool PagedAttentionFusionVariantPackParam::BuildFromTensor310P(const SVector<Mki
     batchRunStatus.clear();
     contextLens.clear();
     qLens.clear();
+    // NORM_COMPRESS needs both kvLens (for per-batch mask row offset =
+    // kvSeqLen[b] - qSeqLen[b]) and qLens. Parse contextLens (input index 4)
+    // when its hostData is available; harmless for the other 310P mask types
+    // because they ignore the populated kvSeqLen vector.
+    constexpr int CONTEXT_LENS_INDEX = 4;
+    if (static_cast<int>(inTensors.size()) > CONTEXT_LENS_INDEX) {
+        const Mki::Tensor &contextLensTensor = inTensors.at(CONTEXT_LENS_INDEX);
+        if (contextLensTensor.hostData != nullptr) {
+            contextLens.resize(contextLensTensor.Numel());
+            const int32_t *src = reinterpret_cast<const int32_t *>(contextLensTensor.hostData);
+            for (size_t i = 0; i < contextLens.size(); ++i) {
+                contextLens[i] = src[i];
+            }
+        }
+    }
     if (needQLens) {
         if (!ParseQLens(inTensors, qLensIndex)) {
             return false;

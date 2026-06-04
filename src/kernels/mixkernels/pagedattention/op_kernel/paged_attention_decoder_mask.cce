@@ -25,6 +25,87 @@
 #include "paged_attention_decoder.h"
 
 
+// Add an ND mask (m_actual rows x fn cols, packed row-major, row stride = fn halves)
+// to a NZ S tile (fn/16 col-blocks x fm rows x 16 cols, stored col-block major) in UB.
+// Per col-block:
+//   S block base   = s_base + cg * fm * 16
+//   mask block base = m_base + cg * 16             (in halves)
+// add_v processes 128 halves per repeat = 8 rows of 16 halves.
+//   - dst/src0 (NZ): consecutive 16-half blocks within a col-block; block stride 1, repeat stride 8
+//   - src1 (ND):     16-half slices stepped by fn halves; block stride fn/16, repeat stride 8*fn/16
+// Add an ND mask (m_actual rows x fn cols, packed row-major, row stride = fn halves)
+// to an NZ S tile (fn/16 column-blocks x fm rows x 16 cols, column-block major).
+//
+// Strategy: one add_v per row, walking the column-block dimension with the per-block
+// stride. Within a row, NZ col blocks are at offsets cg * fm * 16 halves (= cg * fm
+// 32B blocks); the ND mask 16-col chunks are at cg * 16 halves (= cg 32B blocks).
+// We split each row into mini-passes of up to MAX_BLKS_PER_PASS column blocks (= 8
+// per the 128-halves-per-repeat limit when running with repeat = 1) and chain passes
+// for fn > MAX_BLKS_PER_PASS * 16.
+// Add an ND mask (m_actual rows x fn cols, packed row-major, row stride = fn halves)
+// to an NZ S tile (fn/16 column-blocks x fm rows x 16 cols, column-block major).
+//
+// For NORM_COMPRESS (isCompress=true) the mask in UB only contains valid rows that
+// correspond to the current m-tile's global query rows R0..R0+m_actual-1 and the
+// current n-tile's global key cols C0..C0+n_actual-1. Blocks of the (fm x fn) tile
+// that fall entirely below the causal diagonal (i.e. all keys c <= all queries q)
+// have mask == 0 and can be skipped. Skipping is mandatory for correctness in
+// addition to being a perf win, because the UB region may contain stale/garbage
+// data for rows/cols that the GM load did not actually cover.
+//
+// For non-compress masks (or when block context is not provided) we add every
+// column-block of every row band. globalR0 and globalC0 are the absolute Q/K
+// indices of the (0,0) corner of the tile in attention space; pass -1 (or use
+// the simpler overload) to disable the skip optimisation.
+template <ArchType ArchTag>
+__aicore__ inline void apply_nd_mask_to_nz(
+    AscendC::LocalTensor<half> sUb, AscendC::LocalTensor<half> maskUb,
+    int32_t fm, int32_t fn,
+    int32_t globalR0, int32_t globalC0, bool isCompress)
+{
+    const int32_t blkPerRow = fn / 16;
+    const int32_t rowBands = (fm + 7) / 8;       // groups of 8 rows
+    for (int32_t cg = 0; cg < blkPerRow; ++cg) {
+        int32_t colLo = globalC0 + cg * 16;
+        int32_t colHi = colLo + 15;
+        for (int32_t br = 0; br < rowBands; ++br) {
+            int32_t rowStart = br * 8;
+            int32_t rowLo = globalR0 + rowStart;
+            int32_t rowHi = rowLo + 7;
+            if (isCompress) {
+                if (colHi <= rowLo) {
+                    // Entire 8x16 block below diagonal — mask is 0, no add needed.
+                    continue;
+                }
+                if (colLo > rowHi) {
+                    // Entire 8x16 block above diagonal — mask is uniformly -60000.
+                    int32_t sBase = cg * fm * 16 + rowStart * 16;
+                    adds_v<ArchTag, half>(
+                        sUb[sBase], sUb[sBase], static_cast<half>(-60000.0f),
+                        /*repeat=*/1,
+                        /*dstBlockStride=*/1,
+                        /*srcBlockStride=*/1,
+                        /*dstRepeatStride=*/0,
+                        /*srcRepeatStride=*/0);
+                    continue;
+                }
+            }
+            int32_t sBase = cg * fm * 16 + rowStart * 16;
+            int32_t mBase = rowStart * fn + cg * 16;
+            add_v<ArchTag, half>(
+                sUb[sBase], sUb[sBase], maskUb[mBase],
+                /*repeat=*/1,
+                /*dstBlockStride=*/1,
+                /*src0BlockStride=*/1,
+                /*src1BlockStride=*/static_cast<uint8_t>(blkPerRow),
+                /*dstRepeatStride=*/0,
+                /*src0RepeatStride=*/0,
+                /*src1RepeatStride=*/0);
+        }
+    }
+}
+
+
 template<>
 __aicore__ inline void PagedAttentionDecoder<CalcMode::CALC_MODE_DEFAULT>::Decode(const int32_t fm, const int32_t fn,
                                                                                  const int32_t fk, const int32_t bn,
@@ -98,36 +179,93 @@ __aicore__ inline void PagedAttentionDecoder<CalcMode::CALC_MODE_DEFAULT>::Decod
     // Mask Preload
     if (maskType != 0) {
         // load mask ping gm -> l1
+        // NORM_COMPRESS: GM mask is ND [2048,2048] with row stride = maskStride (2048).
+        // V200 (310P) has no hardware ND->NZ Nd2Nz on GM->L1, so we keep ND on chip and
+        // manually convert ND->NZ in UB after the L1->UB copy.
         WAIT_FLAG(MTE1, MTE2, Pingflag + 2);
-        gm_to_l1<ArchType::ASCEND_V200, half, DataFormat::NZ, DataFormat::NZ>(
-            l1maskBufAddr_tensor[Pingflag * L0AB_HALF_BUF_SIZE], // Nz load
-            gmSrcm_tensor[srcmOffset], 1, 1, maskStride,
-            fn, // lenBurst
-            fn, fn);
+        if (maskType == 5) {
+            int32_t MaskShape = 2048;
+            // m_actual rows of fn halves with GM row stride = maskStride halves.
+            // Reuse the NZ->NZ template (which underneath issues one DataCopy with the
+            // right nBurst=m_actual, lenBurst=fn/16 32B blocks, srcStride=(maskStride-fn)/16).
+            gm_to_l1<ArchType::ASCEND_V200, half, DataFormat::NZ, DataFormat::NZ>(
+                l1maskBufAddr_tensor[Pingflag * L0AB_HALF_BUF_SIZE],
+                gmSrcm_tensor[srcmOffset],
+                /*nTileActual=*/0,
+                /*nTileCeil=*/MaskShape / BLOCK_SIZE,
+                /*nVal=*/maskStride / BLOCK_SIZE,
+                /*dTileActual=*/0,
+                /*dTileCeil=*/m_actual * BLOCK_SIZE,
+                /*dVal=*/0);
+        } else {
+            gm_to_l1<ArchType::ASCEND_V200, half, DataFormat::NZ, DataFormat::NZ>(
+                l1maskBufAddr_tensor[Pingflag * L0AB_HALF_BUF_SIZE], // Nz load
+                gmSrcm_tensor[srcmOffset], 1, 1, maskStride,
+                fn, // lenBurst
+                fn, fn);
+        }
         SET_FLAG(MTE2, MTE1, Pingflag + 2);
         WAIT_FLAG(MTE2, MTE1, Pingflag + 2);
         // load mask ping l1 -> ub
         WAIT_FLAG(V, MTE1, Pingflag);
-        l1_to_ub<ArchType::ASCEND_V200, half>(
-            maskUbuf_tensor[Pingflag * LS_PINGPONG_SIZE],
-            l1maskBufAddr_tensor[Pingflag * L0AB_HALF_BUF_SIZE], 1, fn / BLOCK_SIZE, 0, 0);
+        if (maskType == 5 && m_actual == 1) {
+            // Single row ND == NZ (since each row fits in one 16-wide block); direct load.
+            l1_to_ub<ArchType::ASCEND_V200, half>(
+                maskUbuf_tensor[Pingflag * LS_PINGPONG_SIZE],
+                l1maskBufAddr_tensor[Pingflag * L0AB_HALF_BUF_SIZE], 1, fn / BLOCK_SIZE, 0, 0);
+        } else if (maskType == 5) {
+            // Multi-row NORM_COMPRESS: keep ND in UB. The mask is laid out as m_actual
+            // rows x fn halves packed contiguously. add_v below uses per-block strides to
+            // index into this ND layout while adding to the NZ S tile.
+            l1_to_ub<ArchType::ASCEND_V200, half>(
+                maskUbuf_tensor[Pingflag * LS_PINGPONG_SIZE],
+                l1maskBufAddr_tensor[Pingflag * L0AB_HALF_BUF_SIZE],
+                1, static_cast<uint16_t>(m_actual * fn / BLOCK_SIZE), 0, 0);
+        } else {
+            l1_to_ub<ArchType::ASCEND_V200, half>(
+                maskUbuf_tensor[Pingflag * LS_PINGPONG_SIZE],
+                l1maskBufAddr_tensor[Pingflag * L0AB_HALF_BUF_SIZE], 1, fn / BLOCK_SIZE, 0, 0);
+        }
         SET_FLAG(MTE1, V, Pingflag);
         SET_FLAG(MTE1, MTE2, Pingflag + 2);
         if (n1_actual != -1) {
             // load mask pong gm -> l1
             WAIT_FLAG(MTE1, MTE2, Pongflag + 2);
-            gm_to_l1<ArchType::ASCEND_V200, half, DataFormat::NZ, DataFormat::NZ>(
-                l1maskBufAddr_tensor[Pongflag * L0AB_HALF_BUF_SIZE], // Nz load
-                gmSrcm_tensor[srcmOffset + maskStride * blockSize],1, 1, maskStride,
-                bn, // lenBurst
-                bn, bn);
+            if (maskType == 5) {
+                gm_to_l1<ArchType::ASCEND_V200, half, DataFormat::NZ, DataFormat::NZ>(
+                    l1maskBufAddr_tensor[Pongflag * L0AB_HALF_BUF_SIZE],
+                    gmSrcm_tensor[srcmOffsetPong],
+                    /*nTileActual=*/0,
+                    /*nTileCeil=*/bn / BLOCK_SIZE,
+                    /*nVal=*/maskStride / BLOCK_SIZE,
+                    /*dTileActual=*/0,
+                    /*dTileCeil=*/m_actual * BLOCK_SIZE,
+                    /*dVal=*/0);
+            } else {
+                gm_to_l1<ArchType::ASCEND_V200, half, DataFormat::NZ, DataFormat::NZ>(
+                    l1maskBufAddr_tensor[Pongflag * L0AB_HALF_BUF_SIZE], // Nz load
+                    gmSrcm_tensor[srcmOffset + maskStride * blockSize],1, 1, maskStride,
+                    bn, // lenBurst
+                    bn, bn);
+            }
             SET_FLAG(MTE2, MTE1, Pongflag + 2);
             WAIT_FLAG(MTE2, MTE1, Pongflag + 2);
             // load mask pong l1 -> ub
             WAIT_FLAG(V, MTE1, Pongflag);
-            l1_to_ub<ArchType::ASCEND_V200, half>(
-                maskUbuf_tensor[Pongflag * LS_PINGPONG_SIZE],
-                l1maskBufAddr_tensor[Pongflag * L0AB_HALF_BUF_SIZE], 1, bn / BLOCK_SIZE, 0, 0);
+            if (maskType == 5 && m_actual == 1) {
+                l1_to_ub<ArchType::ASCEND_V200, half>(
+                    maskUbuf_tensor[Pongflag * LS_PINGPONG_SIZE],
+                    l1maskBufAddr_tensor[Pongflag * L0AB_HALF_BUF_SIZE], 1, bn / BLOCK_SIZE, 0, 0);
+            } else if (maskType == 5) {
+                l1_to_ub<ArchType::ASCEND_V200, half>(
+                    maskUbuf_tensor[Pongflag * LS_PINGPONG_SIZE],
+                    l1maskBufAddr_tensor[Pongflag * L0AB_HALF_BUF_SIZE],
+                    1, static_cast<uint16_t>(m_actual * bn / BLOCK_SIZE), 0, 0);
+            } else {
+                l1_to_ub<ArchType::ASCEND_V200, half>(
+                    maskUbuf_tensor[Pongflag * LS_PINGPONG_SIZE],
+                    l1maskBufAddr_tensor[Pongflag * L0AB_HALF_BUF_SIZE], 1, bn / BLOCK_SIZE, 0, 0);
+            }
             SET_FLAG(MTE1, V, Pongflag);
             SET_FLAG(MTE1, MTE2, Pongflag + 2);
         }
@@ -833,7 +971,9 @@ __aicore__ inline void PagedAttentionDecoder<CalcMode::CALC_MODE_DEFAULT>::Decod
                                                                                  const int32_t n0_actual,
                                                                                  const int32_t n1_actual,
                                                                                  const uint32_t maskType, const int32_t nIdx,
-                                                                                 const int32_t mask_n, const int32_t is_ping)
+                                                                                 const int32_t mask_n, const int32_t is_ping,
+                                                                                 const int32_t prefixBlk,
+                                                                                 const int32_t globalR0)
 {
     int32_t Pingflag = 0; // manual PingPong attempt
     int32_t Pongflag = 1;
@@ -881,39 +1021,82 @@ __aicore__ inline void PagedAttentionDecoder<CalcMode::CALC_MODE_DEFAULT>::Decod
             SET_FLAG(MTE2, MTE1, Pongflag);
         }
     }
-    // Mask Preload
-    if (maskType != 0) {
+    // Mask Preload (prefixBlk: below-diagonal blocks fully attended for kvS>2048 — skip mask load; load through diagonal)
+    if (maskType != 0 && (nIdx + 1) >= prefixBlk) {
         // load mask ping gm -> l1
+        // NORM_COMPRESS: GM mask is ND [2048,2048]; V200 has no hardware ND->NZ on GM->L1,
+        // so we keep ND on chip and convert ND->NZ in UB after L1->UB.
         WAIT_FLAG(MTE1, MTE2, Pingflag + 2);
-        gm_to_l1<ArchType::ASCEND_V200, half, DataFormat::NZ, DataFormat::NZ>(
-            l1maskBufAddr_tensor[Pingflag * L0AB_HALF_BUF_SIZE], // Nz load
-            gmSrcm_tensor[srcmOffset], fm, fm, maskStride,
-            fn, // lenBurst
-            fn, fn);
+        if (maskType == 5) {
+            gm_to_l1<ArchType::ASCEND_V200, half, DataFormat::NZ, DataFormat::NZ>(
+                l1maskBufAddr_tensor[Pingflag * L0AB_HALF_BUF_SIZE],
+                gmSrcm_tensor[srcmOffset],
+                /*nTileActual=*/0,
+                /*nTileCeil=*/fn / BLOCK_SIZE,
+                /*nVal=*/maskStride / BLOCK_SIZE,
+                /*dTileActual=*/0,
+                /*dTileCeil=*/m_actual * BLOCK_SIZE,
+                /*dVal=*/0);
+        } else {
+            gm_to_l1<ArchType::ASCEND_V200, half, DataFormat::NZ, DataFormat::NZ>(
+                l1maskBufAddr_tensor[Pingflag * L0AB_HALF_BUF_SIZE], // Nz load
+                gmSrcm_tensor[srcmOffset], fm, fm, maskStride,
+                fn, // lenBurst
+                fn, fn);
+        }
         SET_FLAG(MTE2, MTE1, Pingflag + 2);
         WAIT_FLAG(MTE2, MTE1, Pingflag + 2);
         // load mask ping l1 -> ub
         WAIT_FLAG(V, MTE1, Pingflag);
-        l1_to_ub<ArchType::ASCEND_V200, half>(
-            maskUbuf_tensor[Pingflag * LS_PINGPONG_SIZE],
-            l1maskBufAddr_tensor[Pingflag * L0AB_HALF_BUF_SIZE], 1, fm * fn / BLOCK_SIZE, 0, 0);
+        if (maskType == 5) {
+            // NORM_COMPRESS: keep ND (m_actual rows x fn halves) in UB; add_v below
+            // uses per-block strides to add it to the NZ S tile.
+            l1_to_ub<ArchType::ASCEND_V200, half>(
+                maskUbuf_tensor[Pingflag * LS_PINGPONG_SIZE],
+                l1maskBufAddr_tensor[Pingflag * L0AB_HALF_BUF_SIZE],
+                1, static_cast<uint16_t>(m_actual * fn / BLOCK_SIZE), 0, 0);
+        } else {
+            l1_to_ub<ArchType::ASCEND_V200, half>(
+                maskUbuf_tensor[Pingflag * LS_PINGPONG_SIZE],
+                l1maskBufAddr_tensor[Pingflag * L0AB_HALF_BUF_SIZE], 1, fm * fn / BLOCK_SIZE, 0, 0);
+        }
         SET_FLAG(MTE1, V, Pingflag);
         SET_FLAG(MTE1, MTE2, Pingflag + 2);
         if (n1_actual != -1) {
             // load mask pong gm -> l1
             WAIT_FLAG(MTE1, MTE2, Pongflag + 2);
-            gm_to_l1<ArchType::ASCEND_V200, half, DataFormat::NZ, DataFormat::NZ>(
-                l1maskBufAddr_tensor[Pongflag * L0AB_HALF_BUF_SIZE], // Nz load
-                gmSrcm_tensor[srcmOffset + maskStride * blockSize], fm, fm, maskStride,
-                bn, // lenBurst
-                bn, bn);
+            if (maskType == 5) {
+                gm_to_l1<ArchType::ASCEND_V200, half, DataFormat::NZ, DataFormat::NZ>(
+                    l1maskBufAddr_tensor[Pongflag * L0AB_HALF_BUF_SIZE],
+                    gmSrcm_tensor[srcmOffsetPong],
+                    /*nTileActual=*/0,
+                    /*nTileCeil=*/bn / BLOCK_SIZE,
+                    /*nVal=*/maskStride / BLOCK_SIZE,
+                    /*dTileActual=*/0,
+                    /*dTileCeil=*/m_actual * BLOCK_SIZE,
+                    /*dVal=*/0);
+            } else {
+                gm_to_l1<ArchType::ASCEND_V200, half, DataFormat::NZ, DataFormat::NZ>(
+                    l1maskBufAddr_tensor[Pongflag * L0AB_HALF_BUF_SIZE], // Nz load
+                    gmSrcm_tensor[srcmOffset + maskStride * blockSize], fm, fm, maskStride,
+                    bn, // lenBurst
+                    bn, bn);
+            }
             SET_FLAG(MTE2, MTE1, Pongflag + 2);
             WAIT_FLAG(MTE2, MTE1, Pongflag + 2);
             // load mask pong l1 -> ub
             WAIT_FLAG(V, MTE1, Pongflag);
-            l1_to_ub<ArchType::ASCEND_V200, half>(
-                maskUbuf_tensor[Pongflag * LS_PINGPONG_SIZE],
-                l1maskBufAddr_tensor[Pongflag * L0AB_HALF_BUF_SIZE], 1, fm * bn / BLOCK_SIZE, 0, 0);
+            if (maskType == 5) {
+                // ND in UB: m_actual rows x bn halves packed contiguous.
+                l1_to_ub<ArchType::ASCEND_V200, half>(
+                    maskUbuf_tensor[Pongflag * LS_PINGPONG_SIZE],
+                    l1maskBufAddr_tensor[Pongflag * L0AB_HALF_BUF_SIZE],
+                    1, static_cast<uint16_t>(m_actual * bn / BLOCK_SIZE), 0, 0);
+            } else {
+                l1_to_ub<ArchType::ASCEND_V200, half>(
+                    maskUbuf_tensor[Pongflag * LS_PINGPONG_SIZE],
+                    l1maskBufAddr_tensor[Pongflag * L0AB_HALF_BUF_SIZE], 1, fm * bn / BLOCK_SIZE, 0, 0);
+            }
             SET_FLAG(MTE1, V, Pongflag);
             SET_FLAG(MTE1, MTE2, Pongflag + 2);
         }
@@ -1094,11 +1277,24 @@ __aicore__ inline void PagedAttentionDecoder<CalcMode::CALC_MODE_DEFAULT>::Decod
                                         1, 1,            // dstBlockStride, srcBlockStride
                                         8, 8);
     PIPE_BARRIER(V);
-    if (maskType != 0) {
+    if (maskType != 0 && (nIdx + 1) >= prefixBlk) {
         WAIT_FLAG(MTE1, V, Pingflag);
-        add_v<ArchType::ASCEND_V200, half>(
-            lsUbuf_tensor[Pingflag * LS_PINGPONG_SIZE], lsUbuf_tensor[Pingflag * LS_PINGPONG_SIZE],
-            maskUbuf_tensor[Pingflag * LS_PINGPONG_SIZE], pSize / VECTOR_SIZE, 1, 1, 1, 8, 8, 8);
+        if (maskType == 5) {
+            // NORM_COMPRESS: pass global Q-row + K-col of this tile's (0,0) so the
+            // helper can skip 16x16 sub-tiles that lie entirely below the causal
+            // diagonal (mask is all-zero there and stale UB data must not be added).
+            apply_nd_mask_to_nz<ArchType::ASCEND_V200>(
+                lsUbuf_tensor[Pingflag * LS_PINGPONG_SIZE],
+                maskUbuf_tensor[Pingflag * LS_PINGPONG_SIZE],
+                fm, fn,
+                globalR0,
+                0,
+                true);
+        } else {
+            add_v<ArchType::ASCEND_V200, half>(
+                lsUbuf_tensor[Pingflag * LS_PINGPONG_SIZE], lsUbuf_tensor[Pingflag * LS_PINGPONG_SIZE],
+                maskUbuf_tensor[Pingflag * LS_PINGPONG_SIZE], pSize / VECTOR_SIZE, 1, 1, 1, 8, 8, 8);
+        }
         PIPE_BARRIER(V);
         SET_FLAG(V, MTE1, Pingflag);
     }
@@ -1298,11 +1494,21 @@ __aicore__ inline void PagedAttentionDecoder<CalcMode::CALC_MODE_DEFAULT>::Decod
         muls_v<ArchType::ASCEND_V200, half>(lsUbuf_tensor[Pongflag * LS_PINGPONG_SIZE],
                                             lsUbuf_tensor[Pongflag * LS_PINGPONG_SIZE], tor, pSize_b / 128, 1, 1, 8, 8);
         PIPE_BARRIER(V);
-        if (maskType != 0) {
+        if (maskType != 0 && (nIdx + 1) >= prefixBlk) {
             WAIT_FLAG(MTE1, V, Pongflag);
-            add_v<ArchType::ASCEND_V200, half>(
-                lsUbuf_tensor[Pongflag * LS_PINGPONG_SIZE], lsUbuf_tensor[Pongflag * LS_PINGPONG_SIZE],
-                maskUbuf_tensor[Pongflag * LS_PINGPONG_SIZE], pSize_b / VECTOR_SIZE, 1, 1, 1, 8, 8, 8);
+            if (maskType == 5) {
+                apply_nd_mask_to_nz<ArchType::ASCEND_V200>(
+                    lsUbuf_tensor[Pongflag * LS_PINGPONG_SIZE],
+                    maskUbuf_tensor[Pongflag * LS_PINGPONG_SIZE],
+                    fm, bn,
+                    globalR0 - (int32_t)blockSize,
+                    0,
+                    true);
+            } else {
+                add_v<ArchType::ASCEND_V200, half>(
+                    lsUbuf_tensor[Pongflag * LS_PINGPONG_SIZE], lsUbuf_tensor[Pongflag * LS_PINGPONG_SIZE],
+                    maskUbuf_tensor[Pongflag * LS_PINGPONG_SIZE], pSize_b / VECTOR_SIZE, 1, 1, 1, 8, 8, 8);
+            }
             PIPE_BARRIER(V);
             SET_FLAG(V, MTE1, Pongflag);
         }
@@ -1754,7 +1960,9 @@ __aicore__ inline void PagedAttentionDecoder<CalcMode::CALC_MODE_PREFILL>::Decod
                                                                                           const int32_t bn, const int32_t m_actual,
                                                                                           const int32_t n0_actual, const int32_t n1_actual,
                                                                                           const uint32_t maskType, const int32_t nIdx,
-                                                                                          const int32_t mask_n, const int32_t is_ping)
+                                                                                          const int32_t mask_n, const int32_t is_ping,
+                                                                                          const int32_t prefixBlk,
+                                                                                          const int32_t globalR0)
 {
     int32_t Pingflag = 0; // manual PingPong attempt
     int32_t Pongflag = 1;
@@ -1818,9 +2026,25 @@ __aicore__ inline void PagedAttentionDecoder<CalcMode::CALC_MODE_PREFILL>::Decod
     //  Mask Preload L1
     if (maskType != 0) {
         WAIT_FLAG(MTE1, MTE2, Pingflag + 2);
-        gm_to_l1<ArchType::ASCEND_V200, half, DataFormat::NZ, DataFormat::NZ>(
-            l1maskBufAddr_tensor[Pingflag * L0AB_HALF_BUF_SIZE], gmSrcm_tensor[srcmOffset], fm, fm, maskStride, fn,
-            fn, fn);
+        if (maskType == 5) {
+            // NORM_COMPRESS (V200): no hardware ND->NZ Nd2Nz; keep ND on chip and convert
+            // in UB later. The NZ->NZ template emits a single DataCopy whose burst params
+            // line up exactly with an ND strided row load: m_actual bursts of (fn/16) 32B
+            // blocks with srcStride = (maskStride - fn)/16 blocks.
+            gm_to_l1<ArchType::ASCEND_V200, half, DataFormat::NZ, DataFormat::NZ>(
+                l1maskBufAddr_tensor[Pingflag * L0AB_HALF_BUF_SIZE],
+                gmSrcm_tensor[srcmOffset],
+                /*nTileActual=*/0,
+                /*nTileCeil=*/fn / BLOCK_SIZE,
+                /*nVal=*/maskStride / BLOCK_SIZE,
+                /*dTileActual=*/0,
+                /*dTileCeil=*/m_actual * BLOCK_SIZE,
+                /*dVal=*/0);
+        } else {
+            gm_to_l1<ArchType::ASCEND_V200, half, DataFormat::NZ, DataFormat::NZ>(
+                l1maskBufAddr_tensor[Pingflag * L0AB_HALF_BUF_SIZE], gmSrcm_tensor[srcmOffset], fm, fm, maskStride, fn,
+                fn, fn);
+        }
         SET_FLAG(MTE2, MTE1, Pingflag + 2);
         if (n1_actual != -1) {
             WAIT_FLAG(MTE1, MTE2, Pongflag + 2);
@@ -1829,6 +2053,17 @@ __aicore__ inline void PagedAttentionDecoder<CalcMode::CALC_MODE_PREFILL>::Decod
                 l1maskBufAddr_tensor[Pongflag * L0AB_HALF_BUF_SIZE],
                 gmSrcm_tensor[0], fm, fm, maskStride, bn, bn,
                 bn);
+            } else if (maskType == 5) {
+                // NORM_COMPRESS pong: same ND strided row load.
+                gm_to_l1<ArchType::ASCEND_V200, half, DataFormat::NZ, DataFormat::NZ>(
+                    l1maskBufAddr_tensor[Pongflag * L0AB_HALF_BUF_SIZE],
+                    gmSrcm_tensor[srcmOffsetPong],
+                    /*nTileActual=*/0,
+                    /*nTileCeil=*/bn / BLOCK_SIZE,
+                    /*nVal=*/maskStride / BLOCK_SIZE,
+                    /*dTileActual=*/0,
+                    /*dTileCeil=*/m_actual * BLOCK_SIZE,
+                    /*dVal=*/0);
             } else {
                 gm_to_l1<ArchType::ASCEND_V200, half, DataFormat::NZ, DataFormat::NZ>(
                 l1maskBufAddr_tensor[Pongflag * L0AB_HALF_BUF_SIZE],
@@ -2045,27 +2280,42 @@ __aicore__ inline void PagedAttentionDecoder<CalcMode::CALC_MODE_PREFILL>::Decod
     // Mask Ping Load UB
     if (maskType != 0) {
         WAIT_FLAG(MTE2, MTE1, Pingflag + 2);
-        l1_to_ub<ArchType::ASCEND_V200, half>(loUbuf_tensor.ReinterpretCast<half>()[Pingflag * L0AB_HALF_BUF_SIZE],
-                                              l1maskBufAddr_tensor[Pingflag * L0AB_HALF_BUF_SIZE],
-                                              1,                    // nBurst, 次数
-                                              fm * fn / BLOCK_SIZE, // lenBurst
-                                              0,                    // srcStride，尾-头,32byte
-                                              0);
+        if (maskType == 5) {
+            // NORM_COMPRESS: ND in L1 -> ND in UB (m_actual rows x fn halves packed).
+            // The matching add_v below uses per-16x16-block strides to add ND mask to NZ S.
+            l1_to_ub<ArchType::ASCEND_V200, half>(loUbuf_tensor.ReinterpretCast<half>()[Pingflag * L0AB_HALF_BUF_SIZE],
+                                                  l1maskBufAddr_tensor[Pingflag * L0AB_HALF_BUF_SIZE],
+                                                  1, static_cast<uint16_t>(m_actual * fn / BLOCK_SIZE), 0, 0);
+        } else {
+            l1_to_ub<ArchType::ASCEND_V200, half>(loUbuf_tensor.ReinterpretCast<half>()[Pingflag * L0AB_HALF_BUF_SIZE],
+                                                  l1maskBufAddr_tensor[Pingflag * L0AB_HALF_BUF_SIZE],
+                                                  1, fm * fn / BLOCK_SIZE, 0, 0);
+        }
         SET_FLAG(MTE1, MTE2, Pingflag + 2);
         SET_FLAG(MTE1, V, Pingflag);
         WAIT_FLAG(MTE1, V, Pingflag);
         if ((maskType == 4 && is_ping == 1 &&  mask_n == nIdx) || maskType != 4) {
-            add_v<ArchType::ASCEND_V200, half>(lsUbuf_tensor[Pingflag * L0AB_HALF_BUF_SIZE],
-                                           lsUbuf_tensor[Pingflag * L0AB_HALF_BUF_SIZE],
-                                           loUbuf_tensor.ReinterpretCast<half>()[Pingflag * L0AB_HALF_BUF_SIZE],
-                                           fm * fn / VECTOR_SIZE, // repeat
-                                           1,                     // dstBlockStride
-                                           1,                     // src0BlockStride
-                                           1,                     // src1BlockStride
-                                           8,                     // dstRepeatStride
-                                           8,                     // src0RepeatStride
-                                           8                      // src1RepeatStride
-            );
+            if (maskType == 5) {
+                apply_nd_mask_to_nz<ArchType::ASCEND_V200>(
+                    lsUbuf_tensor[Pingflag * L0AB_HALF_BUF_SIZE],
+                    loUbuf_tensor.ReinterpretCast<half>()[Pingflag * L0AB_HALF_BUF_SIZE],
+                    fm, fn,
+                    globalR0,
+                    0,
+                    true);
+            } else {
+                add_v<ArchType::ASCEND_V200, half>(lsUbuf_tensor[Pingflag * L0AB_HALF_BUF_SIZE],
+                                               lsUbuf_tensor[Pingflag * L0AB_HALF_BUF_SIZE],
+                                               loUbuf_tensor.ReinterpretCast<half>()[Pingflag * L0AB_HALF_BUF_SIZE],
+                                               fm * fn / VECTOR_SIZE, // repeat
+                                               1,                     // dstBlockStride
+                                               1,                     // src0BlockStride
+                                               1,                     // src1BlockStride
+                                               8,                     // dstRepeatStride
+                                               8,                     // src0RepeatStride
+                                               8                      // src1RepeatStride
+                );
+            }
         }
 
         PIPE_BARRIER(V);
@@ -2321,27 +2571,41 @@ __aicore__ inline void PagedAttentionDecoder<CalcMode::CALC_MODE_PREFILL>::Decod
         if (maskType != 0) {
             // Mask Pong Load UB
             WAIT_FLAG(MTE2, MTE1, Pongflag + 2);
-            l1_to_ub<ArchType::ASCEND_V200, half>(loUbuf_tensor.ReinterpretCast<half>()[Pongflag * L0AB_HALF_BUF_SIZE],
-                                                  l1maskBufAddr_tensor[Pongflag * L0AB_HALF_BUF_SIZE],
-                                                  1,                    // nBurst, 次数
-                                                  fm * bn / BLOCK_SIZE, // lenBurst
-                                                  0,                    // srcStride，尾-头,32byte
-                                                  0);
+            if (maskType == 5) {
+                // NORM_COMPRESS: ND in L1 -> ND in UB (m_actual rows x bn halves packed).
+                l1_to_ub<ArchType::ASCEND_V200, half>(loUbuf_tensor.ReinterpretCast<half>()[Pongflag * L0AB_HALF_BUF_SIZE],
+                                                      l1maskBufAddr_tensor[Pongflag * L0AB_HALF_BUF_SIZE],
+                                                      1, static_cast<uint16_t>(m_actual * bn / BLOCK_SIZE), 0, 0);
+            } else {
+                l1_to_ub<ArchType::ASCEND_V200, half>(loUbuf_tensor.ReinterpretCast<half>()[Pongflag * L0AB_HALF_BUF_SIZE],
+                                                      l1maskBufAddr_tensor[Pongflag * L0AB_HALF_BUF_SIZE],
+                                                      1, fm * bn / BLOCK_SIZE, 0, 0);
+            }
             SET_FLAG(MTE1, MTE2, Pongflag + 2);
             SET_FLAG(MTE1, V, Pongflag);
             WAIT_FLAG(MTE1, V, Pongflag);
             if((maskType == 4 && is_ping == 0 &&  mask_n == nIdx)|| maskType != 4) {
-                add_v<ArchType::ASCEND_V200, half>(lsUbuf_tensor[Pongflag * L0AB_HALF_BUF_SIZE],
-                                               lsUbuf_tensor[Pongflag * L0AB_HALF_BUF_SIZE],
-                                               loUbuf_tensor.ReinterpretCast<half>()[Pongflag * L0AB_HALF_BUF_SIZE],
-                                               fm * bn / VECTOR_SIZE, // repeat
-                                               1,                     // dstBlockStride
-                                               1,                     // src0BlockStride
-                                               1,                     // src1BlockStride
-                                               8,                     // dstRepeatStride
-                                               8,                     // src0RepeatStride
-                                               8                      // src1RepeatStride
-                );
+                if (maskType == 5) {
+                    apply_nd_mask_to_nz<ArchType::ASCEND_V200>(
+                        lsUbuf_tensor[Pongflag * L0AB_HALF_BUF_SIZE],
+                        loUbuf_tensor.ReinterpretCast<half>()[Pongflag * L0AB_HALF_BUF_SIZE],
+                        fm, bn,
+                        globalR0 - (int32_t)blockSize,
+                        0,
+                        true);
+                } else {
+                    add_v<ArchType::ASCEND_V200, half>(lsUbuf_tensor[Pongflag * L0AB_HALF_BUF_SIZE],
+                                                   lsUbuf_tensor[Pongflag * L0AB_HALF_BUF_SIZE],
+                                                   loUbuf_tensor.ReinterpretCast<half>()[Pongflag * L0AB_HALF_BUF_SIZE],
+                                                   fm * bn / VECTOR_SIZE, // repeat
+                                                   1,                     // dstBlockStride
+                                                   1,                     // src0BlockStride
+                                                   1,                     // src1BlockStride
+                                                   8,                     // dstRepeatStride
+                                                   8,                     // src0RepeatStride
+                                                   8                      // src1RepeatStride
+                    );
+                }
             }
             PIPE_BARRIER(V);
         }
@@ -3279,17 +3543,52 @@ __aicore__ inline void RunParallel(uint32_t startBlk, uint32_t endBlk, uint32_t 
             int32_t mask_n = 0;
 
             int64_t maskOffset = currMaskOffset + nIdx * blockSize * maskStride;
+            int64_t maskOffsetPong = maskOffset + blockSize;
+            // NORM_COMPRESS (ND [2048,2048]).
+            //   For kvSeqLen <= 2048: standard read at row=prefix, col=nIdx*blockSize.
+            //   For kvSeqLen >  2048: shift-invariant retreat (port of the NZ trick from
+            //   commit 0231bc62) — read row=prefix-nIdx*blockSize, col=0. The causal
+            //   triangle pattern is translation-invariant along the diagonal.
+            if (maskType == 5) {
+                int32_t prefix = (int32_t)contextLen - (int32_t)q_seqlen_real;
+                if (prefix < 0) prefix = 0;
+                int32_t gC = nIdx * (int32_t)blockSize;
+                if ((int32_t)contextLen <= 2048) {
+                    maskOffset = (int64_t)prefix * (int64_t)maskStride + (int64_t)gC;
+                    maskOffsetPong = maskOffset + (int64_t)blockSize;
+                } else {
+                    maskOffset = (int64_t)(prefix - gC) * (int64_t)maskStride;
+                    maskOffsetPong = (int64_t)(prefix - gC - (int32_t)blockSize) * (int64_t)maskStride;
+                }
+            }
             if ((nIdx + 1) == (nLoop)) {
                 n1_actual = -1;
             }
-            pa.Init(qOffset, kvOffset0, kvOffset0, kvOffset1, kvOffset1, maskOffset, qOffset, initG, wrapO);
+            pa.Init(qOffset, kvOffset0, kvOffset0, kvOffset1, kvOffset1, maskOffset, qOffset, initG, wrapO, maskOffsetPong);
+            // For the helper's causal-diagonal skip: with shift-invariant read the loaded
+            // mask tile virtually starts at attention coords (gR' = prefix - nIdx*blockSize,
+            // gC' = 0). Cells (c > r) within that virtual tile match the true mask values.
+            int32_t globalR0 = 0;
+            if (maskType == 5) {
+                int32_t prefix = (int32_t)contextLen - (int32_t)q_seqlen_real;
+                if (prefix < 0) prefix = 0;
+                globalR0 = prefix - nIdx * (int32_t)blockSize;
+            }
             if (m_actual == 1) {
-                pa.Decode(roundM, roundN0, roundK, roundN1, m_actual, n0_actual, n1_actual, maskType, wrapO);
+                uint32_t effMaskType = maskType;
+                if (maskType == 5 && contextLen > 2048) {
+                    int32_t effRow = (int32_t)(contextLen - q_seqlen_real) - (int32_t)(nIdx * blockSize);
+                    if (effRow < 0 || effRow >= 2048) {
+                        effMaskType = 0;
+                    }
+                }
+                pa.Decode(roundM, roundN0, roundK, roundN1, m_actual, n0_actual, n1_actual, effMaskType, wrapO);
             } else if (m_actual <= 16) {
-                pa.DecodeParallel(roundM, roundN0, roundK, roundN1, m_actual, n0_actual, n1_actual, maskType, nIdx, mask_n, is_ping);
+                int32_t prefixBlk = (maskType == 5 && (int32_t)contextLen > 2048) ? (contextLen - q_seqlen_real) / blockSize : 0;
+                pa.DecodeParallel(roundM, roundN0, roundK, roundN1, m_actual, n0_actual, n1_actual, maskType, nIdx, mask_n, is_ping, prefixBlk, globalR0);
             } else {
-                paPrefill.Init(qOffset, kvOffset0, kvOffset0, kvOffset1, kvOffset1, maskOffset, qOffset, initG, wrapO);
-                paPrefill.DecodeParallel(roundM, roundN0, roundK, roundN1, m_actual, n0_actual, n1_actual, maskType, nIdx, mask_n, is_ping);
+                paPrefill.Init(qOffset, kvOffset0, kvOffset0, kvOffset1, kvOffset1, maskOffset, qOffset, initG, wrapO, maskOffsetPong);
+                paPrefill.DecodeParallel(roundM, roundN0, roundK, roundN1, m_actual, n0_actual, n1_actual, maskType, nIdx, mask_n, is_ping, 0, globalR0);
             }
         }
     }
@@ -3376,7 +3675,49 @@ __aicore__ inline void RunPrefill(uint32_t startBlk, uint32_t endBlk, uint32_t n
                 kvOffset1 = numBlocksId1 * blockSize * kvHeads * embeddingSize + (headId / groupNum) * strideKV;
             }
             int64_t qOffset = curQOffset + headId * strideQO + mIdx * pp_m_scalar * BLOCK_SIZE;
-            int64_t maskOffset = curBatchMaskStride + mIdx * pp_m_scalar * BLOCK_SIZE + nIdx * maskStride * blockSize;
+            // For non-NORM_COMPRESS masks (NZ in GM) the historic formula keeps NZ row+col strides.
+            // For NORM_COMPRESS (ND [2048,2048]) the GM offset must address the compressed mask:
+            //   globalR = prefix + mIdx * pp_m_scalar   (absolute Q-row in attention space)
+            //   globalC = nIdx * blockSize              (absolute K-col)
+            //   compR = min(globalR, 2047)              (compressed mask is only [2048,2048])
+            //   shift = globalR - compR                 (>0 only when kvSeq > 2048)
+            //   compC = max(0, globalC - shift)         (shift cols left so causal diagonal stays
+            //                                            inside the [2048,2048] window)
+            //   GM offset (halves) = compR * maskStride + compC
+            // The same compR/compC are used to compute globalR0/globalC0 for the helper's
+            // diagonal-skip check so it matches the data we actually loaded.
+            int64_t maskOffset;
+            int64_t maskOffsetPong;
+            if (maskType == 5) {
+                // NORM_COMPRESS ND read.
+                //   Within the [2048,2048] window (kvSeq <= 2048): straightforward
+                //     row = prefix + mIdx*pp_m_scalar, col = nIdx*blockSize.
+                //   Beyond it (kvSeq > 2048): shift-invariant — retreat the row by
+                //     gC and read at col 0; the triangle pattern is translation
+                //     invariant along the diagonal so the mask data is identical.
+                int32_t prefix = (int32_t)kv_seqlen_real - (int32_t)q_seqlen_real;
+                if (prefix < 0) prefix = 0;
+                int32_t gR = prefix + mIdx * pp_m_scalar;
+                int32_t gC = nIdx * (int32_t)blockSize;
+                if ((int32_t)kv_seqlen_real <= 2048) {
+                    maskOffset = (int64_t)gR * (int64_t)maskStride + (int64_t)gC;
+                    maskOffsetPong = maskOffset + (int64_t)blockSize;
+                } else {
+                    // Clamp negative (above-diagonal tiles) to 0 so the GM load stays in
+                    // range; the helper's diagonal check will still skip the per-sub-block
+                    // add for genuinely-zero positions, and above-diagonal tiles have
+                    // already been short-circuited by the wrapO/continue logic above.
+                    int32_t off_ping = gR - gC;
+                    if (off_ping < 0) off_ping = 0;
+                    int32_t off_pong = gR - gC - (int32_t)blockSize;
+                    if (off_pong < 0) off_pong = 0;
+                    maskOffset = (int64_t)off_ping * (int64_t)maskStride;
+                    maskOffsetPong = (int64_t)off_pong * (int64_t)maskStride;
+                }
+            } else {
+                maskOffset = curBatchMaskStride + mIdx * pp_m_scalar * BLOCK_SIZE + nIdx * maskStride * blockSize;
+                maskOffsetPong = maskOffset + blockSize;
+            }
             int32_t wrapO = (nIdx == (nLoop - 1) || (nIdx + 1) == (nLoop - 1)) ? 1 : 0;
             int32_t initG = (nIdx == 0) ? 1 : 0;
             int32_t m_actual = (mIdx == (mLoop - 1)) ? (q_seqlen_real - mIdx * pp_m_scalar) : pp_m_scalar;
@@ -3410,8 +3751,26 @@ __aicore__ inline void RunPrefill(uint32_t startBlk, uint32_t endBlk, uint32_t n
                 }
                 is_ping = (prefix_size % 2 == mIdx % 2) ? 1 : 0;
             }
-            paPrefill.Init(qOffset, kvOffset0, kvOffset0, kvOffset1, kvOffset1, maskOffset, qOffset, initG, wrapO);
-            paPrefill.DecodeParallel(roundM, roundN0, roundK, roundN1, m_actual, n0_actual, n1_actual, maskType, nIdx,  mask_n, is_ping);
+            paPrefill.Init(qOffset, kvOffset0, kvOffset0, kvOffset1, kvOffset1, maskOffset, qOffset, initG, wrapO, maskOffsetPong);
+            // NORM_COMPRESS: skip tiles whose entire (m_actual x blockSize) area lies
+            // below the causal diagonal — mask is all zero there, and the shift-invariant
+            // GM offset would also go out of range. globalR0/globalC0 are passed in
+            // shift-invariant (col=0) space; the helper still applies the same diagonal
+            // check on remaining 16x16 sub-tiles.
+            int32_t globalR0 = 0;
+            int32_t prefixBlkPrefill = 0;
+            if (maskType == 5) {
+                int32_t prefix = (int32_t)kv_seqlen_real - (int32_t)q_seqlen_real;
+                if (prefix < 0) prefix = 0;
+                int32_t gR = prefix + mIdx * pp_m_scalar;
+                globalR0 = gR - nIdx * (int32_t)blockSize;
+                // Tile (mIdx, n) is fully below the causal diagonal when
+                //   (n+1)*blockSize <= gR + 1, i.e. n+1 <= (gR+1)/blockSize. We want to
+                // skip the mask load+add for those tiles; mask is all 0 there.
+                int32_t lastBelow = (gR + (int32_t)pp_m_scalar) / (int32_t)blockSize; // tiles with (nIdx+1) <= lastBelow are below
+                prefixBlkPrefill = lastBelow;
+            }
+            paPrefill.DecodeParallel(roundM, roundN0, roundK, roundN1, m_actual, n0_actual, n1_actual, maskType, nIdx,  mask_n, is_ping, prefixBlkPrefill, globalR0);
         }
         if (cur_q_blk_id == cur_proc_num - 1) {
             curBatch += 1;

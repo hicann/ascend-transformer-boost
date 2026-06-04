@@ -77,7 +77,11 @@ Status PagedAttentionOpsRunner910A::SetupKernelGraph(const OpsTensorPack &opsTen
 
     auto attnMaskFormat = needMask ? opsTensorPack.inTensors.at(5).desc.format :
                                      static_cast<Mki::TensorFormat>(ACL_FORMAT_UNDEFINED); // 5: attnMask tensor
-    bool needTransdataMask = (attnMaskFormat == static_cast<Mki::TensorFormat>(ACL_FORMAT_ND)) && needMask;
+    // NORM_COMPRESS mask is fed to the kernel in ND [2048,2048] fp16 layout; the kernel converts
+    // ND->NZ on load (gm_to_l1<ND,NZ>). So we must NOT host-transdata it to NZ here.
+    bool isNormCompress = (param_.maskType == atb::infer::PagedAttentionParam::MASK_TYPE_NORM_COMPRESS);
+    bool needTransdataMask =
+        (attnMaskFormat == static_cast<Mki::TensorFormat>(ACL_FORMAT_ND)) && needMask && !isNormCompress;
     size_t internalTensorSize = INTERNAL_TENSOR_BASE_SIZE; // 2: transdata q, transdata output
     if (needTransdataMask) {
         internalTensorSize++;
@@ -125,8 +129,9 @@ Status PagedAttentionOpsRunner910A::SetupKernelGraph(const OpsTensorPack &opsTen
         mulsQNode.outTensors = {divOut};
     }
 
-    // Convert attentionMask from ND format to NZ format
-    if ((attnMaskFormat == static_cast<Mki::TensorFormat>(ACL_FORMAT_ND)) && needMask) {
+    // Convert attentionMask from ND format to NZ format.
+    // Skip for NORM_COMPRESS: its ND [2048,2048] mask is converted ND->NZ inside the kernel.
+    if (needTransdataMask) {
         auto &transdataAttnMaskNode = kernelGraph_.nodes[nodeId++];
         transdataAttnMaskNode.opDesc = {
             0, "TransdataOperation",
@@ -145,12 +150,16 @@ Status PagedAttentionOpsRunner910A::SetupKernelGraph(const OpsTensorPack &opsTen
     inPagedAttention.scaleType = (param_.scaleType == atb::infer::PagedAttentionParam::SCALE_TYPE_LOGN) ?
                                      AtbOps::OpParam::PagedAttention::SCALE_LOGN :
                                      AtbOps::OpParam::PagedAttention::SCALE_TOR;
+    if (param_.maskType == atb::infer::PagedAttentionParam::MASK_TYPE_NORM_COMPRESS) {
+        inPagedAttention.isTriuMask = 1;
+    }
     pagedAttentionNode.opDesc = {0, "PagedAttentionOperation", inPagedAttention};
 
-    if (needMask && (attnMaskFormat == static_cast<Mki::TensorFormat>(ACL_FORMAT_ND))) {
+    if (needTransdataMask) {
         pagedAttentionNode.inTensors = {
             divOut, &keyCache, &valueCache, &blockTables, &contextLens, transdataAttnMaskTensor, logN};
     } else {
+        // NORM_COMPRESS (and any non-ND mask) is passed through unchanged; the kernel does ND->NZ on load.
         pagedAttentionNode.inTensors = {divOut, &keyCache, &valueCache, &blockTables, &contextLens, mask, logN};
     }
     pagedAttentionNode.outTensors = {context};
@@ -188,11 +197,16 @@ Status PagedAttentionOpsRunner910A::ModifyKernelGraph(const OpsTensorPack &opsTe
     }
     auto attnMaskFormat =
         needMask ? opsTensorPack.inTensors.at(5).desc.format : static_cast<Mki::TensorFormat>(ACL_FORMAT_UNDEFINED);
+    // Mirror SetupKernelGraph: NORM_COMPRESS keeps its ND mask (no host transdata node), so the PA
+    // node index does not get shifted by a mask-transdata node for that mask type.
+    bool isNormCompress = (param_.maskType == atb::infer::PagedAttentionParam::MASK_TYPE_NORM_COMPRESS);
+    bool needTransdataMask =
+        (attnMaskFormat == static_cast<Mki::TensorFormat>(ACL_FORMAT_ND)) && needMask && !isNormCompress;
     int paNodeId = PA_NODE_BASE_IDX;
     if (needQScale_) {
         paNodeId++;
     }
-    if (needMask && (attnMaskFormat == static_cast<Mki::TensorFormat>(ACL_FORMAT_ND))) {
+    if (needTransdataMask) {
         paNodeId++;
     }
     auto &pagedAttentionNode = kernelGraph_.nodes.at(paNodeId);
@@ -205,11 +219,18 @@ Status PagedAttentionOpsRunner910A::ModifyKernelGraph(const OpsTensorPack &opsTe
     inPagedAttention.scaleType = (param_.scaleType == atb::infer::PagedAttentionParam::SCALE_TYPE_LOGN) ?
                                      AtbOps::OpParam::PagedAttention::SCALE_LOGN :
                                      AtbOps::OpParam::PagedAttention::SCALE_TOR;
+    if (param_.maskType == atb::infer::PagedAttentionParam::MASK_TYPE_NORM_COMPRESS) {
+        inPagedAttention.isTriuMask = 1;
+        // Tiling/kernel need per-batch (kvSeqLen[b] - qSeqLen[b]) to compute
+        // the row offset into the shared [2048,2048] compressed mask.
+        inPagedAttention.kvSeqLen = newParam_.contextLens;
+    }
     inPagedAttention.qSeqLen = newParam_.qLens;
     pagedAttentionNode.opDesc = {0, "PagedAttentionOperation", inPagedAttention};
     ATB_LOG(INFO) << GetLogPrefix() << " update AtbOps::OpParam::PagedAttention.headNum:" << param_.headNum
                   << ", qkScale:" << param_.qkScale << ", kvHead:" << param_.kvHeadNum
-                  << ", qLens: " << newParam_.qLens.size();
+                  << ", qLens: " << newParam_.qLens.size()
+                  << ", kvLens: " << newParam_.contextLens.size();
     return NO_ERROR;
 }
 

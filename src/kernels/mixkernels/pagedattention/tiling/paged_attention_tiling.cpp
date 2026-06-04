@@ -265,6 +265,13 @@ Status GetPagedAttentionNzMaskInfo(const LaunchParam &launchParam, PagedAttentio
                 break;
             case OpParam::PagedAttention::MASK_TYPE_MASK_FREE:
                 break;
+            case OpParam::PagedAttention::MASK_TYPE_NORM_COMPRESS:
+                // Fixed ND [2048, 2048] upper-triangular mask shared across all
+                // batches/heads; converted ND->NZ on the GM->L1 load in the kernel.
+                mmInfo.maxPromptLen = LONG_COMPRESS_LEN;
+                mmInfo.headStride = 0;
+                mmInfo.batchStride = 0;
+                break;
             default:
                 return Status::FailStatus(ERROR_INVALID_VALUE, "Invalid MaskType");
         }
@@ -309,6 +316,11 @@ Status GetPagedAttentionNzInfo(const LaunchParam &launchParam, PagedAttentionInf
     mmInfo.batch = (param.qSeqLen.size() > 0) ? static_cast<int32_t>(param.qSeqLen.size()) : mmInfo.numTokens;
     if (param.qSeqLen.size() > 0) {
         mmInfo.qSeqLen = const_cast<int32_t*>(param.qSeqLen.data());
+    }
+    if (param.kvSeqLen.size() > 0) {
+        // NORM_COMPRESS needs per-batch kvSeqLen to compute the mask row
+        // offset = (kvSeqLen[b] - qSeqLen[b]) into the shared compressed mask.
+        mmInfo.kvSeqLen = const_cast<int32_t*>(param.kvSeqLen.data());
     }
     mmInfo.numHeads = head;
     mmInfo.embeddingSize = qShape.at(1) * NZ_BLOCK_SIZE / param.headSize;
@@ -392,7 +404,8 @@ Status GetPaParallelCheck(const uint32_t *tilingParam, const OpParam::PagedAtten
         } else if (param.type == OpParam::PagedAttention::PAGED_ATTENTION_NZ_MASK) {
             MKI_CHECK(param.maskType == OpParam::PagedAttention::MASK_TYPE_LOOK_AHEAD ||
                 param.maskType == OpParam::PagedAttention::MASK_TYPE_NONE ||
-                param.maskType == OpParam::PagedAttention::MASK_TYPE_MASK_FREE,
+                param.maskType == OpParam::PagedAttention::MASK_TYPE_MASK_FREE ||
+                param.maskType == OpParam::PagedAttention::MASK_TYPE_NORM_COMPRESS,
                 "prefill pa only support no mask and lookahead mask",
                  return Status::FailStatus(ERROR_INVALID_VALUE));
             MKI_CHECK(mmInfo.embeddingSize > 0 && mmInfo.embeddingSizeV == 0,

@@ -514,7 +514,14 @@ private:
         if (CheckEmptyTensor(mask)) {
             return true;
         }
+        // NORM_COMPRESS mask is now ND [2048,2048] fp16 (kernel converts ND->NZ via gm_to_l1<ND,NZ>).
+        // Validate it as ND directly and bypass the NZ-decoder shape logic below, even when the caller
+        // forced nzFlag=true (310P nz-decoder path). CheckMaskPre's nz dtype constraints (q.dtype ==
+        // mask.dtype, both fp16) are satisfied by NORM_COMPRESS, so we still run it for consistency.
         MKI_CHECK_NO_LOG(CheckMaskPre(mask, q, nzFlag), return false);
+        if (param.maskType == OpParam::PagedAttention::MASK_TYPE_NORM_COMPRESS) {
+            return CheckNormCompressNdMask(mask);
+        }
         auto head = param.headSize;
         auto qSeqLen = param.qSeqLen;
         auto kvSeqLen = param.kvSeqLen;
@@ -565,6 +572,26 @@ private:
         return nzFlag ? CheckNzMask(tensorMask, shapePara, param) : CheckNdMask(tensorMask, q, shapePara, param);
     }
 
+    bool CheckNormCompressNdMask(const Tensor &tensorMask) const
+    {
+        // Fixed [2048,2048] fp16 compressed causal mask for 310P, accepted in ND layout
+        // (also 3D [1,2048,2048] and 4D [1,1,2048,2048] views of the same logical tensor).
+        constexpr int64_t NORM_COMPRESS_LEN = 2048;
+        MKI_CHECK(tensorMask.desc.dtype == TENSOR_DTYPE_FLOAT16,
+                     "NORM_COMPRESS mask dtype should be float16", return false);
+        auto currentShape = tensorMask.desc.dims;
+        auto sz = currentShape.size();
+        bool ok2d = (sz == DIM_2 && currentShape[DIM_0] == NORM_COMPRESS_LEN &&
+                     currentShape[DIM_1] == NORM_COMPRESS_LEN);
+        bool ok3d = (sz == DIM_3 && currentShape[DIM_0] == 1 && currentShape[DIM_1] == NORM_COMPRESS_LEN &&
+                     currentShape[DIM_2] == NORM_COMPRESS_LEN);
+        bool ok4d = (sz == DIM_4 && currentShape[DIM_0] == 1 && currentShape[DIM_1] == 1 &&
+                     currentShape[DIM_2] == NORM_COMPRESS_LEN && currentShape[DIM_3] == NORM_COMPRESS_LEN);
+        MKI_CHECK(ok2d || ok3d || ok4d,
+                     "NORM_COMPRESS mask must be ND [2048,2048] / [1,2048,2048] / [1,1,2048,2048]", return false);
+        return true;
+    }
+
     bool CheckNzMask(const Tensor &tensorMask, const ShapeParam &shapePara, const OpParam::PagedAttention &param) const
     {
         auto headSize = param.headSize;
@@ -582,8 +609,13 @@ private:
             currentShape[DIM_1] * currentShape[DIM_3] == LONG_SEQ_LEN && currentShape[DIM_2] > LONG_SEQ_LEN && alibi;
         auto alibiDim2 = currentShape[DIM_1] * currentShape[DIM_3] == longSeqAlibiLen &&
                          currentShape[DIM_2] == longSeqAlibiLen && alibi;
+        // NORM_COMPRESS uses a fixed [1, 2048/16, 2048, 16] compressed causal mask whose DIM_1 is
+        // independent of kvSeqLen. The S8 tiling clamp bounds the in-kernel mask row into [0, 2048),
+        // so kvS > 2048 stays in-window; accept the compressed shape regardless of maxKv.
+        auto isNormCompress = param.maskType == OpParam::PagedAttention::MASK_TYPE_NORM_COMPRESS;
         std::vector<std::pair<SVector<int64_t>, bool>> supports = {
             {{1, maxKv / FP16_ALIGN_NUM, maxNzQ, FP16_ALIGN_NUM}, true},
+            {{1, currentShape[DIM_1], maxNzQ, FP16_ALIGN_NUM}, isNormCompress},
             {{1, longSeqAlibiLen / FP16_ALIGN_NUM, longSeqAlibiLen, FP16_ALIGN_NUM}, alibiDim2},
             {{1, LONG_SEQ_LEN / FP16_ALIGN_NUM, LONG_SEQ_LEN, FP16_ALIGN_NUM}, isLongSeq},
             {{batch, maxKv / FP16_ALIGN_NUM, maxNzQ, FP16_ALIGN_NUM}, true},

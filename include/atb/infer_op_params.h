@@ -1873,7 +1873,8 @@ struct PagedAttentionParam {
         MASK_TYPE_NORM,  //!< 倒三角mask
         MASK_TYPE_ALIBI, //!< alibi mask
         MASK_TYPE_SPEC,   //!< 并行解码mask
-        MASK_TYPE_MASK_FREE //! mask_free 只支持fp16
+        MASK_TYPE_MASK_FREE, //! mask_free 只支持fp16
+        MASK_TYPE_NORM_COMPRESS
     };
     //! mask类型
     MaskType maskType = UNDEFINED;

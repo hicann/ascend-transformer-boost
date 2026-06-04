@@ -807,6 +807,7 @@ void GetPaBatchTiling(const OpParam::PagedAttention &param, const PagedAttention
         return;
     }
     auto maskType = param.maskType;
+    const bool isNormCompress = (maskType == OpParam::PagedAttention::MASK_TYPE_NORM_COMPRESS);
     uint64_t maskOffset = 0;
     uint64_t qOffset = 0;
     int32_t maxQ = 0;
@@ -827,16 +828,42 @@ void GetPaBatchTiling(const OpParam::PagedAttention &param, const PagedAttention
         tilingParam[TILING_HEAD_SIZE_NZ + batchIdx * TILING_PARA_SIZE_NZ + NUM2] = qBlkNum * mmInfo.numHeads;
         tilingParam[TILING_HEAD_SIZE_NZ + batchIdx * TILING_PARA_SIZE_NZ + NUM3] = GetHigh32Bit(qOffset);
         tilingParam[TILING_HEAD_SIZE_NZ + batchIdx * TILING_PARA_SIZE_NZ + NUM4] = GetLoww32Bit(qOffset);
-        tilingParam[TILING_HEAD_SIZE_NZ + batchIdx * TILING_PARA_SIZE_NZ + NUM5] = GetHigh32Bit(maskOffset);
-        tilingParam[TILING_HEAD_SIZE_NZ + batchIdx * TILING_PARA_SIZE_NZ + NUM6] = GetLoww32Bit(maskOffset);
+        // NORM_COMPRESS: per-batch row offset into the shared ND [2048,2048] mask.
+        // The fixed compressed causal mask is shared across all batches/heads, so the
+        // per-batch base is the prefix (= kvSeqLen[b] - qSeqLen[b]) measured in mask
+        // rows, times the mask row stride (LONG_COMPRESS_LEN = 2048 fp16 elements).
+        // For decode (qSeqLen == 1) prefix = kvSeqLen - 1; for prefill prefix is the
+        // pre-cached context length. The kernel adds (mIdx * pp_m_scalar) * stride for
+        // the per-tile row and (nIdx * blockSize) for the column.
+        uint64_t batchMaskOffset = maskOffset;
+        if (isNormCompress) {
+            int32_t kvSeqLen = (mmInfo.kvSeqLen != nullptr) ? *(mmInfo.kvSeqLen + batchIdx) : qSeqLen;
+            int32_t prefix = kvSeqLen - qSeqLen;
+            if (prefix < 0) {
+                prefix = 0;
+            }
+            // No clamp: the kernel reads shift-invariantly (retreats row by nIdx*blockSize
+            // and stays at col 0) so the diagonal triangle stays in-buffer for any kvSeqLen.
+            batchMaskOffset = static_cast<uint64_t>(prefix) * static_cast<uint64_t>(LONG_COMPRESS_LEN);
+        }
+        tilingParam[TILING_HEAD_SIZE_NZ + batchIdx * TILING_PARA_SIZE_NZ + NUM5] = GetHigh32Bit(batchMaskOffset);
+        tilingParam[TILING_HEAD_SIZE_NZ + batchIdx * TILING_PARA_SIZE_NZ + NUM6] = GetLoww32Bit(batchMaskOffset);
         tilingParam[TILING_HEAD_SIZE_NZ + batchIdx * TILING_PARA_SIZE_NZ + NUM7] = static_cast<uint32_t>(mSlice);
         uint64_t incOffset = static_cast<uint64_t>(qSeqLen) * NZ_BLOCK_SIZE;
         qOffset += incOffset;
-        maskOffset += incOffset;
+        maskOffset += incOffset;  // unused for NORM_COMPRESS but kept for other paths.
     }
     if (maskType == OpParam::PagedAttention::MASK_TYPE_MASK_FREE) {
         tilingParam[TILING_MASK_STRIDE] = 128;
         tilingParam[TILING_DECODE_TYPE] = maxQ >= maxMSlice ? static_cast<uint32_t>(CalcType::CALC_TYPE_PREFILL) :
+                                      static_cast<uint32_t>(CalcType::CALC_TYPE_MIX);
+    } else if (isNormCompress) {
+        // NORM_COMPRESS shared ND [2048,2048] mask. maskStride is the source ND
+        // row stride (=2048), passed to gm_to_l1<ND,NZ> as srcDValue so the
+        // hardware Nd2Nz reads each mask row from GM at the correct stride.
+        // Per-batch row offset is supplied separately via currMaskOffset.
+        tilingParam[TILING_MASK_STRIDE] = static_cast<uint32_t>(LONG_COMPRESS_LEN);
+        tilingParam[TILING_DECODE_TYPE] = maxQ > maxMSlice ? static_cast<uint32_t>(CalcType::CALC_TYPE_PREFILL) :
                                       static_cast<uint32_t>(CalcType::CALC_TYPE_MIX);
     } else {
         tilingParam[TILING_MASK_STRIDE] = (maskType == OpParam::PagedAttention::MASK_TYPE_LOOK_AHEAD) ?

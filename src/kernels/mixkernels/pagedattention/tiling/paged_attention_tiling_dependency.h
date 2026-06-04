@@ -24,6 +24,7 @@ constexpr int32_t TILING_PARA_SIZE_NZ = 8;
 constexpr int32_t M_LIMIT = 128;
 constexpr int32_t FLOAT_LIMIT = 64;
 constexpr int32_t MAX_EMBEDDING = 576;
+constexpr int32_t LONG_COMPRESS_LEN = 2048;
 constexpr int32_t ND_BATCH_LIMIT = INT32_MAX;
 constexpr int32_t BLOCK_LIMIT = 128 * 128;
 constexpr int32_t BLOCK_LIMIT_NO_PINGPONG = 128 * 256;

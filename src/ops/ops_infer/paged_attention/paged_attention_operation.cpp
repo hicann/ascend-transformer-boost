@@ -144,6 +144,16 @@ template <> Status CreateOperation(const infer::PagedAttentionParam &opParam, Op
 
 bool DeviceParamCheck(const infer::PagedAttentionParam &opParam)
 {
+    if (opParam.maskType == infer::PagedAttentionParam::MaskType::MASK_TYPE_NORM_COMPRESS) {
+        if (!GetSingleton<Config>().Is310P()) {
+            ATB_LOG(ERROR) << "MASK_TYPE_NORM_COMPRESS only supported on Atlas 300I Duo inference product";
+            return false;
+        }
+        if (opParam.quantType != infer::PagedAttentionParam::QuantType::TYPE_QUANT_UNQUANT) {
+            ATB_LOG(ERROR) << "MASK_TYPE_NORM_COMPRESS does not support quantization";
+            return false;
+        }
+    }
     if (!GetSingleton<Config>().Is910B()) {
         if (opParam.batchRunStatusEnable) {
             ATB_LOG(ERROR) << "dynamic batch only support Atlas 800I A2 inference product";
@@ -226,8 +236,9 @@ bool CalcParamCheck(const infer::PagedAttentionParam &opParam)
         } else {
             if (opParam.maskType != atb::infer::PagedAttentionParam::MaskType::MASK_TYPE_SPEC &&
                 opParam.maskType != atb::infer::PagedAttentionParam::MaskType::UNDEFINED &&
-                opParam.maskType != atb::infer::PagedAttentionParam::MaskType::MASK_TYPE_MASK_FREE) {
-                ATB_LOG(ERROR) << "SPEC func only support no mask,spec mask or mask free";
+                opParam.maskType != atb::infer::PagedAttentionParam::MaskType::MASK_TYPE_MASK_FREE &&
+                opParam.maskType != atb::infer::PagedAttentionParam::MaskType::MASK_TYPE_NORM_COMPRESS) {
+                ATB_LOG(ERROR) << "SPEC func only supports no mask, spec mask, mask free, or norm_compress";
                 return false;
             }
         }
@@ -712,8 +723,49 @@ Status PagedAttentionOperation::InferShapeDimCheckBNSD910B(const SVector<TensorD
     return NO_ERROR;
 }
 
+// Compressed causal mask for 310P (fixed [2048,2048] fp16). NZ encoding
+// is [1, 128, 2048, 16] = (1, kvS/16, qS, 16).
+static constexpr int64_t LONG_COMPRESS_LEN = 2048;
+static constexpr int64_t LONG_COMPRESS_NZ_DIM1 = LONG_COMPRESS_LEN / 16;
+
+static Status CheckNormCompressMaskShape310P(const TensorDesc &maskDesc)
+{
+    if (maskDesc.dtype != ACL_FLOAT16) {
+        ATB_LOG(ERROR) << "MASK_TYPE_NORM_COMPRESS requires fp16 mask dtype";
+        return ERROR_INVALID_TENSOR_DTYPE;
+    }
+    const auto dimNum = maskDesc.shape.dimNum;
+    const auto &dims = maskDesc.shape.dims;
+    if (maskDesc.format == ACL_FORMAT_FRACTAL_NZ) {
+        if (dimNum != 4 || dims[0] != 1 || dims[1] != LONG_COMPRESS_NZ_DIM1 ||
+            dims[2] != LONG_COMPRESS_LEN || dims[3] != 16) {
+            ATB_LOG(ERROR) << "MASK_TYPE_NORM_COMPRESS NZ mask must be [1," << LONG_COMPRESS_NZ_DIM1
+                           << "," << LONG_COMPRESS_LEN << ",16]";
+            return ERROR_INVALID_TENSOR_DIM;
+        }
+        return NO_ERROR;
+    }
+    bool ok2d = (dimNum == 2 && dims[0] == LONG_COMPRESS_LEN && dims[1] == LONG_COMPRESS_LEN);
+    bool ok3d = (dimNum == 3 && dims[0] == 1 && dims[1] == LONG_COMPRESS_LEN && dims[2] == LONG_COMPRESS_LEN);
+    bool ok4d = (dimNum == 4 && dims[0] == 1 && dims[1] == 1 && dims[2] == LONG_COMPRESS_LEN &&
+                 dims[3] == LONG_COMPRESS_LEN);
+    if (!(ok2d || ok3d || ok4d)) {
+        ATB_LOG(ERROR) << "MASK_TYPE_NORM_COMPRESS ND mask must be [" << LONG_COMPRESS_LEN
+                       << "," << LONG_COMPRESS_LEN << "] / [1,..] / [1,1,..]";
+        return ERROR_INVALID_TENSOR_DIM;
+    }
+    return NO_ERROR;
+}
+
 Status PagedAttentionOperation::MaskFreeInferShapeCheck310P(const SVector<TensorDesc> &inTensorDescs) const
 {
+    if (param_.maskType == atb::infer::PagedAttentionParam::MASK_TYPE_NORM_COMPRESS) {
+        if (!GetSingleton<Config>().Is310P()) {
+            ATB_LOG(ERROR) << "MASK_TYPE_NORM_COMPRESS only supported on Atlas 300I Duo inference product";
+            return ERROR_INVALID_PARAM;
+        }
+        return CheckNormCompressMaskShape310P(inTensorDescs.at(5));
+    }
     if (param_.maskType == atb::infer::PagedAttentionParam::MASK_TYPE_MASK_FREE) {
         if (GetSingleton<Config>().Is310P()) {
             if (inTensorDescs.at(5).shape.dimNum != 4) {
@@ -743,6 +795,13 @@ Status PagedAttentionOperation::MaskFreeInferShapeCheck310P(const SVector<Tensor
 
 Status PagedAttentionOperation::MaskFreeSetupCheck310P(const SVector<Tensor> &inTensor) const
 {
+    if (param_.maskType == atb::infer::PagedAttentionParam::MASK_TYPE_NORM_COMPRESS) {
+        if (!GetSingleton<Config>().Is310P()) {
+            ATB_LOG(ERROR) << "MASK_TYPE_NORM_COMPRESS only supported on Atlas 300I Duo inference product";
+            return ERROR_INVALID_PARAM;
+        }
+        return CheckNormCompressMaskShape310P(inTensor.at(5).desc);
+    }
     if (param_.maskType == atb::infer::PagedAttentionParam::MASK_TYPE_MASK_FREE) {
         if (GetSingleton<Config>().Is310P()) {
             if (GetSingleton<Config>().Is310P() &&
