@@ -87,6 +87,7 @@ SelfAttention在Atlas A2/A3系列仅支持部分场景，且Encoder场景在Atla
 | `layerId`       | int32    | nd       | [1]                 | npu     |
 | **Output**      |
 | `output`        | float16  | nd       | [160, 2048]         | npu     |
+
 + q，k，v第一维度为总词元长度，即`sum(seqlen)`
 + q，k，v第二维度headNum，headSize合轴，实际为headNum(32) $\times$ headSize(128)
 
@@ -151,7 +152,7 @@ SelfAttention在Atlas A2/A3系列仅支持部分场景，且Encoder场景在Atla
 | **Output**      |
 | `output`        | float16  | nd       | [3072, 32, 128] | npu     |
 
-####  self_attention_pa_encoder_qwen_demo.cpp
+#### self_attention_pa_encoder_qwen_demo.cpp
 
 + 场景：FA使用PA Encoder的场景，使用FA输入，只需传入key，value
   + 传入不同的headNum，kvHeadNum且headNum可以被kvHeadNum整除时，开启GQA（Grouped Query Attention）。

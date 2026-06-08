@@ -47,6 +47,7 @@ tests/apitest/opstest/python/operations/reshape_and_cache/
 ### 场景说明
 
 提供demo分别对应不同产品的基础场景，编译运行时需要对应更改build脚本：
+
 1. Atlas A2/A3：  
    **参数设置：**
 

@@ -47,6 +47,7 @@ tests/apitest/opstest/python/operations/linear/
 ### 场景说明
 
 提供demo分别对应，编译运行时需要对应更改build脚本：
+
 1. 基础场景：
     linear_parallel_demo.cpp
     - 默认编译脚本可编译运行

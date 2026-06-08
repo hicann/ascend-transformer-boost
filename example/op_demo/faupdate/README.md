@@ -21,6 +21,7 @@
     ```
 
     **注意**：
+
     - 使用cxx_abi=0（默认）时，设置`D_GLIBCXX_USE_CXX11_ABI`为0，即：
 
         ```sh
@@ -47,6 +48,7 @@ faupdate仅支持Atlas A2/A3系列产品。
 ## 场景说明
 
 所给Demo的场景说明如下：  
+
 - faupdate_demo.cpp  
   该demo仅支持在Atlas A2/A3系列产品上运行。  
     **参数设置**
@@ -63,4 +65,3 @@ faupdate仅支持Atlas A2/A3系列产品。
     | `lse`      | float    | nd       | [8, 16384]      | npu     |
     | `localout` | float    | nd       | [8, 16384, 128] | npu     |
     | `output`   | float    | nd       | [16384, 128]    | npu     |
-

@@ -47,6 +47,7 @@ tests/apitest/opstest/python/operations/mla_preprocess/
     `dtype`对应input的数据类型，分别支持float16/bf16，对应下面数据规格的两列。
 
 mlapo_demo.cpp：
+
 + 场景：MLAPO int8量化叠加rope切分
   + ctkv和qNope经过per_head静态对称量化为int8类型；并使用rope拆分kvcache和query，并且krope和ctkv转为NZ格式输出，ctkv和qNope经过per_head静态对称量化为int8类型。
 
@@ -94,6 +95,7 @@ mlapo_demo.cpp：
 > 默认值：`dtype = float16`, `tokenNum = 4`, `headNum = 128`
 
 mlapo_ds_demo.cpp：
+
 + 场景：MLAPO deepSeek场景
   + 使用rope拆分kvcache和query，per_tensor静态非对称量化。
 
