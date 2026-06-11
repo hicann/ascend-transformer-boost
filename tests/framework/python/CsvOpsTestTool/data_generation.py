@@ -489,13 +489,17 @@ class LinearOperation(DataGen):
         if get_soc_version() == "Ascend950":
             if matmultype == 0:
                 if out_data_type == -1:
-                    if len(x.shape) ==  3 and len(weight.shape) == 3:
+                    if bias is not None and MatmulCommon.bias_golden.dtype == torch.bfloat16:
+                        x = x.to(torch.float64)
+                        weight = weight.to(torch.float64)
+                    else:
+                        x = x.to(torch.float)
+                        weight = weight.to(torch.float)
+                    if len(x.shape) == 3 and len(weight.shape) == 3:
                         if bias == None:
                             golden_result = torch.bmm(x, weight)
                         else:
-                            x = x.to(bias.dtype)
-                            weight = weight.to(bias.dtype)
-                            golden_result = torch.addbmm(bias, x, weight)
+                            golden_result = torch.addbmm(bias.to(x.dtype), x, weight)
                     else:
                         x_ori_shape = []
                         if len(x.shape) == 3 and len(weight.shape) == 2:
@@ -504,11 +508,35 @@ class LinearOperation(DataGen):
                         if bias == None:
                             golden_result = torch.matmul(x, weight)
                         else:
-                            x = x.to(bias.dtype)
-                            weight = weight.to(bias.dtype)
-                            golden_result = torch.addmm(bias, x, weight)
+                            golden_result = torch.addmm(bias.to(x.dtype), x, weight)
                         if x_ori_shape != []:
                             golden_result = golden_result.reshape(x_ori_shape[0], x_ori_shape[1], golden_result.shape[-1])
+                else:
+                    x = x.to(torch.int32)
+                    weight = weight.to(torch.int32)
+                    x_ori_shape = []
+                    if len(x.shape) == 3 and len(weight.shape) == 2:
+                        x_ori_shape = x.shape
+                        x = x.reshape(-1, x.shape[-1])
+                    golden_result = torch.matmul(x, weight)
+                    if bias is not None:
+                        golden_result = golden_result + bias.to(torch.int32)
+                    golden_result = golden_result.to(torch.float32)
+                    if deq_scale is not None:
+                        golden_result = golden_result * deq_scale
+                    if pertoken_scale is not None and quantMode == 2:
+                        golden_result = golden_result * pertoken_scale.unsqueeze(-1)
+                    if x_ori_shape != []:
+                        golden_result = golden_result.reshape(x_ori_shape[0], x_ori_shape[1], golden_result.shape[-1])
+                    if out_data_type == 27:
+                        golden_result = golden_result.to(torch.bfloat16)
+                    else:
+                        golden_result = golden_result.to(torch.float16)
+            elif matmultype == 1:
+                if len(weight.shape) == 2:
+                    golden_result = torch.einsum('mbk,kn->mbn', x, weight)
+                else:
+                    golden_result = torch.einsum('mbk,bkn->mbn', x, weight)
             return [golden_result]
 
         if out_data_type == -1:
