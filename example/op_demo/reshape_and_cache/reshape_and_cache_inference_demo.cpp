@@ -91,12 +91,12 @@ atb::Status PrepareVariantPack(atb::Context *contextPtr, aclrtStream stream, atb
                                         {NUM_TOKENS, NUM_HEAD, V_HEAD_SIZE}, tensorValue));
     // 创建kvCache tensor
     // std::vector<float> kCacheData(NUM_BLOCKS * BLOCK_SIZE * NUM_HEAD * K_HEAD_SIZE, 0);
-    std::vector<unsigned int16_t> kCacheData(NUM_BLOCKS * BLOCK_SIZE * NUM_HEAD * K_HEAD_SIZE, 0);
+    std::vector<int16_t> kCacheData(NUM_BLOCKS * BLOCK_SIZE * NUM_HEAD * K_HEAD_SIZE, 0);
     atb::Tensor tensorKCache;
     CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, kCacheData, ACL_FLOAT16, aclFormat::ACL_FORMAT_FRACTAL_NZ,
                                         {NUM_BLOCKS, NUM_HEAD * K_HEAD_SIZE / 16, BLOCK_SIZE, 16}, tensorKCache,
                                         ACL_FLOAT16));
-    std::vector<unsigned int16_t> vCacheData(NUM_BLOCKS * BLOCK_SIZE * NUM_HEAD * V_HEAD_SIZE, 0);
+    std::vector<int16_t> vCacheData(NUM_BLOCKS * BLOCK_SIZE * NUM_HEAD * V_HEAD_SIZE, 0);
     atb::Tensor tensorVCache;
     CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, vCacheData, ACL_FLOAT16, aclFormat::ACL_FORMAT_FRACTAL_NZ,
                                         {NUM_BLOCKS, NUM_HEAD * V_HEAD_SIZE / 16, BLOCK_SIZE, 16}, tensorVCache,
