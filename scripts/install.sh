@@ -582,6 +582,26 @@ function upgrade() {
 
 function get_torch_cxx11_abi() {
     local abi
+    local res
+    local pip_ret
+    local torch_install_timeout=300
+    local torch_http_timeout=60
+
+    res=$(TORCH_DEVICE_BACKEND_AUTOLOAD=0 python -W ignore -c "import torch" 2>/dev/null || echo "torch_not_exist")
+    if [ "$res" == "torch_not_exist" ]; then
+        print "WARNING" "Torch is not installed, installing torch 2.9 by default..." >&2
+        timeout "${torch_install_timeout}" pip install --timeout "${torch_http_timeout}" "torch>=2.9.0,<2.10.0" > /dev/null 2>&1
+        pip_ret=$?
+        if [ $pip_ret -ne 0 ]; then
+            if [ $pip_ret -eq 124 ]; then
+                print "WARNING" "Torch installation timed out after ${torch_install_timeout}s, using default CXX11 ABI: 1." >&2
+            else
+                print "WARNING" "Failed to install torch, using default CXX11 ABI: 1." >&2
+            fi
+            echo "1"
+            return 0
+        fi
+    fi
 
     abi=$(TORCH_DEVICE_BACKEND_AUTOLOAD=0 python -W ignore - <<'PY'
 import sys
