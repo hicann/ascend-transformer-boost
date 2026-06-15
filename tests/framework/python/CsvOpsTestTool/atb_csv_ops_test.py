@@ -29,6 +29,7 @@ import ml_dtypes
 from en_dtypes import hifloat8
 from multiprocessing.connection import Client
 
+torch.npu.config.allow_internal_format = True
 dtype_enum_dict = {-1: "undefined", 0: "float", 1: "float16", 2: "int8", 3: "int32", 4: "uint8",
                     6: "int16", 7: "uint16", 8: "uint32", 9: "int64", 10: "uint64",
                     11: "double", 12: "bool", 13: "string", 16: "complex64", 17: "complex128", 27: "bf16",
