@@ -1,2 +1,6 @@
+numpy
+pandas
 openpyxl
 scipy
+ml_dtypes
+en_dtypes
