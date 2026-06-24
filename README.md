@@ -134,13 +134,13 @@ chmod +x Ascend-cann-${chip_type}-ops_${VERSION}_linux-$(arch).run  #其中${chi
 
    您可自行选择需要的分支。
  - 环境变量设置  
-    在编译前，需要安装nnal软件包（安装方法请查看[常见问题与回答](docs/常见问题与回答.md#run-package-usage)），并根据nnal安装路径设置环境变量`ATB_BUILD_DEPENDENCY_PATH`：
+    在编译前，需要安装nnal软件包。若 nnal 安装在默认位置（`/usr/local/Ascend/nnal/...`），无需设置`ATB_BUILD_DEPENDENCY_PATH`，脚本会按检测到的 ABI 自动使用该路径。若安装在非默认位置，需手动设置（其中`{cxx_abi_version}`取`0`或`1`）。详见[常见问题与回答](docs/常见问题与回答.md)。
 
     ```sh
     export ATB_BUILD_DEPENDENCY_PATH={nnal install path}/nnal/atb/latest/atb/cxx_abi_{cxx_abi_version}
     ```
 
-    注：未设置将使用默认路径`/usr/local/Ascend/nnal/atb/latest/atb/cxx_abi_{cxx_abi_version}`  
+    注：若此前已用其他 ABI 编译过，切换 ABI 后须执行`bash scripts/build.sh --clean-first`清理编译缓存再重新编译，否则残留的 CMake 缓存与已拷贝的`libtbe_adapter.so`会导致 ABI 不匹配或链接错误。同样，若安装或更换 PyTorch 导致 ABI 判别结果改变，也需重新设置`ATB_BUILD_DEPENDENCY_PATH`并`--clean-first`全量重编译。
  - 加速库编译  
     编译加速库，设置加速库环境变量：
 
