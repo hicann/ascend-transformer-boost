@@ -6,15 +6,29 @@ source /usr/local/Ascend/ascend-toolkit/set_env.sh
 0
 sudo chmod 777 /home/install
 0
+pip uninstall -y torch_atb > /dev/null 2>&1 || true
+0
 [ ! -d "/home/install/atb" ]
 0
-bash SCPTS_PACK_NAME --quiet --install --install-path=/home/install
+bash SCPTS_PACK_NAME --quiet --install --install-path=/home/install --torch_atb
 0
 [ -d "/home/install/atb" ]
+0
+pip show torch_atb
+0
+bash SCPTS_PACK_NAME --quiet --upgrade --install-path=/home/install --torch_atb
+0
+[ -d "/home/install/atb" ]
+0
+pip show torch_atb
 0
 bash SCPTS_PACK_NAME --uninstall --install-path=/home/install
 0
 [ ! -d "/home/install/atb" ]
 0
+pip show torch_atb
+1
 [ ! -d "/home/install/atb" ] || sudo rm -rf /home/install/atb
+0
+[ ! -d "/home/install" ] || sudo rm -rf /home/install
 0
