@@ -528,15 +528,13 @@ class LinearOperation(DataGen):
                         golden_result = golden_result * pertoken_scale.unsqueeze(-1)
                     if x_ori_shape != []:
                         golden_result = golden_result.reshape(x_ori_shape[0], x_ori_shape[1], golden_result.shape[-1])
-                    if out_data_type == 27:
-                        golden_result = golden_result.to(torch.bfloat16)
-                    else:
-                        golden_result = golden_result.to(torch.float16)
             elif matmultype == 1:
+                x = x.npu()
+                weight = weight.npu()
                 if len(weight.shape) == 2:
-                    golden_result = torch.einsum('mbk,kn->mbn', x, weight)
+                    golden_result = torch.einsum('mbk,kn->mbn', x, weight).cpu()
                 else:
-                    golden_result = torch.einsum('mbk,bkn->mbn', x, weight)
+                    golden_result = torch.einsum('mbk,bkn->mbn', x, weight).cpu()
             return [golden_result]
 
         if out_data_type == -1:

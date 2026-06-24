@@ -583,9 +583,9 @@ std::shared_ptr<AclNNTensor> LinearAclnnRunner::CreateWeightNzAclnnTensor(int ac
     } else if (storageShape.dimNum == 3) {
         Dims oldShape = storageShape;
         storageShape.dims[0] = oldShape.dims[0];
-        storageShape.dims[1] = 1;
-        storageShape.dims[2] = UtilsInternal::AlignUp(oldShape.dims[2], DEFAULT_ALIGN) / DEFAULT_ALIGN;
-        storageShape.dims[3] = UtilsInternal::AlignUp(oldShape.dims[1], DEFAULT_ALIGN);
+        storageShape.dims[1] = UtilsInternal::AlignUp(oldShape.dims[2], DEFAULT_ALIGN) / DEFAULT_ALIGN;
+        storageShape.dims[2] = UtilsInternal::AlignUp(oldShape.dims[1], DEFAULT_ALIGN) / DEFAULT_ALIGN;
+        storageShape.dims[3] = DEFAULT_ALIGN;
         storageShape.dims[4] = DEFAULT_ALIGN;
         storageShape.dimNum = 5;
         ATB_LOG(INFO) << GetLogPrefix() << "storageShape: [" << storageShape.dims[0] << ", " << storageShape.dims[1]
@@ -595,14 +595,23 @@ std::shared_ptr<AclNNTensor> LinearAclnnRunner::CreateWeightNzAclnnTensor(int ac
         if (isBatch_) {
             Dims oldShape = storageShape;
             storageShape.dims[0] = oldShape.dims[0];
-            storageShape.dims[1] = 1;
-            storageShape.dims[2] = oldShape.dims[1];
-            storageShape.dims[3] = oldShape.dims[2];
-            storageShape.dims[4] = oldShape.dims[3];
+            storageShape.dims[1] = oldShape.dims[1];
+            storageShape.dims[2] = UtilsInternal::AlignUp(oldShape.dims[2], DEFAULT_ALIGN) / DEFAULT_ALIGN;
+            storageShape.dims[3] = DEFAULT_ALIGN;
+            storageShape.dims[4] = DEFAULT_ALIGN;
             storageShape.dimNum = 5;
             ATB_LOG(INFO) << GetLogPrefix() << "storageShape: [" << storageShape.dims[0] << ", " << storageShape.dims[1]
                           << ", " << storageShape.dims[2] << ", " << storageShape.dims[3] << ", "
                           << storageShape.dims[4] << "]";
+        } else {
+            Dims oldShape = storageShape;
+            storageShape.dims[0] = oldShape.dims[1];
+            storageShape.dims[1] = UtilsInternal::AlignUp(oldShape.dims[2], DEFAULT_ALIGN) / DEFAULT_ALIGN;
+            storageShape.dims[2] = DEFAULT_ALIGN;
+            storageShape.dims[3] = DEFAULT_ALIGN;
+            storageShape.dimNum = 4;
+            ATB_LOG(INFO) << GetLogPrefix() << "storageShape: [" << storageShape.dims[0] << ", " << storageShape.dims[1]
+                          << ", " << storageShape.dims[2] << ", " << storageShape.dims[3] << "]";
         }
     }
     aclnnTensorPtr->tensor =
