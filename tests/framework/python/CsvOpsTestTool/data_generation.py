@@ -489,12 +489,10 @@ class LinearOperation(DataGen):
         if get_soc_version() == "Ascend950":
             if matmultype == 0:
                 if out_data_type == -1:
-                    if bias is not None and MatmulCommon.bias_golden.dtype == torch.bfloat16:
-                        x = x.to(torch.float64)
-                        weight = weight.to(torch.float64)
-                    else:
-                        x = x.to(torch.float)
-                        weight = weight.to(torch.float)
+                    x = x.npu()
+                    weight = weight.npu()
+                    if bias is not None:
+                        bias = bias.npu()
                     if len(x.shape) == 3 and len(weight.shape) == 3:
                         if bias == None:
                             golden_result = torch.bmm(x, weight)
@@ -511,6 +509,7 @@ class LinearOperation(DataGen):
                             golden_result = torch.addmm(bias.to(x.dtype), x, weight)
                         if x_ori_shape != []:
                             golden_result = golden_result.reshape(x_ori_shape[0], x_ori_shape[1], golden_result.shape[-1])
+                    golden_result = golden_result.cpu()
                 else:
                     x = x.to(torch.int32)
                     weight = weight.to(torch.int32)
