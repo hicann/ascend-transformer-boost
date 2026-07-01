@@ -23,8 +23,10 @@ constexpr uint32_t CONST_3 = 3;
 constexpr uint32_t CONST_4 = 4;
 constexpr uint32_t CONST_16 = 16;
 constexpr uint32_t CONST_32 = 32;
+constexpr uint32_t CONST_128 = 128;
 constexpr uint32_t CONST_256 = 256;
 constexpr uint32_t CONST_512 = 512;
+constexpr uint32_t CONST_2048 = 2048;
 
 const std::map<TensorDType, uint32_t> G_DTYPE_MAP = {
     {TENSOR_DTYPE_INT8, 0u}, {TENSOR_DTYPE_FLOAT16, 1u}, {TENSOR_DTYPE_BF16, 2u}, {TENSOR_DTYPE_FLOAT, 3u}};
@@ -143,6 +145,12 @@ void GetPpMatmulTiling(const MatMulInfo &mmInfo, const HardwareInfo &hwInfo, uin
         TilingFunc<false, OpShape, PpTilingData, HardwareInfo, MatMulInfo>(opShape, tilingData, hwInfo, mmInfo);
     } else {
         TilingFunc<true, OpShape, PpTilingData, HardwareInfo, MatMulInfo>(opShape, tilingData, hwInfo, mmInfo);
+    }
+    if (opShape.m == 1 && opShape.n == CONST_2048 &&
+        mmInfo.formatA == TENSOR_FORMAT_ND && mmInfo.formatB == TENSOR_FORMAT_FRACTAL_NZ &&
+        PlatformInfo::Instance().GetPlatformType() != PlatformType::ASCEND_310P) {
+        opShape.n0 = CONST_128;
+        tilingData.SetBaseOp(hwInfo.coreNum, opShape.m0, opShape.n0, mmInfo);
     }
     uint32_t direct = Swizzl<PpTilingData>(tilingData);
     blockDim = tilingData.End(mmInfo);
