@@ -1,3 +1,5 @@
+# CANN 社区 PR 常见问题
+
 
 #### 1.  **请问提交PR后出现cann-cla/no红色标签，如何处理？**
 
@@ -10,7 +12,7 @@
 3）如果是以一家已签署企业CLA的企业员工名义贡献，请选择“法人贡献者登记”；
 
 签署后会收到主题是Signing CLA on project of xx的邮件，请联系邮件内容里的Corporation Managers进行审批，审批通过后，在PR评论区评论/check-cla，重新触发CLA检查就会打上cann-cla/yes标签。CLA检查是使用commit信息中的committer邮箱作为检查凭证的。该邮箱可以通过git log --pretty=fuller查询到。
-		
+
 <table>
 <tbody><tr>
 <th>场景</th>
@@ -64,5 +66,5 @@ CANN开发者不允许直接push代码到社区仓库，只有仓库管理员可
 CI未及时触发通常有两种情况：
 
 - 第一种可能是网络原因或系统任务调度原因，导致从代码仓库发出的webhook通知事件没有及时到达目标服务，所以没有触发CI构建；这种情况可以通过在PR评论区评论 **/compile** 重新触发。
-	
+
 - 第二种可能是代码仓库创建以后短时间内提交PR，此时jenkins服务器侧尚未创建CI构建工程，所以触发不到CI构建，评论 **/compile** 也不生效，这种情况请稍等一下系统自动构建工程。

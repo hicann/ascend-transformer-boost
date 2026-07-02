@@ -21,7 +21,7 @@ ATB的架构图如上图所示，其接口功能主要分成三部分：
 
 ATB库的目录结构如下：
 
-```
+```text
 ascend-transformer-boost
 ├── 3rdparty            //第三方依赖库文件夹
 ├── build               //可存放构建生成的文件

@@ -9,7 +9,7 @@
 ### 函数介绍
 
 ```CPP
-atb::Status TransdataOp(atb::Context *contextPtr, aclrtStream stream, const atb::Tensor inTensor,
+atb::Status TransdataOp(atb::Context*contextPtr, aclrtStream stream, const atb::Tensor inTensor,
                         const aclDataType tensorType, atb::Tensor &outTensor, std::vector<int64_t> shape)
 ```
 
@@ -17,7 +17,7 @@ atb::Status TransdataOp(atb::Context *contextPtr, aclrtStream stream, const atb:
 
 | 参数名称| 含义 |
 | --- | --- |
-|`contextPtr` | 指向`atb::Context `的指针，用于提供上下文信息 |
+|`contextPtr` | 指向`atb::Context`的指针，用于提供上下文信息 |
 |`stream`  |  用于执行操作的流 |
 |`inTensor`| 待转换的 ND 格式的tensor |
 |`tensorType`| 输入 tensor 的数据类型|
@@ -77,7 +77,7 @@ atb::Status GetShape(const aclDataType tensorType, const std::vector<int64_t> &i
  * @param outTensor 返回创建的tensor
  */
 template <typename T>
-atb::Status CreateTensorFromVector(atb::Context *contextPtr, aclrtStream stream, std::vector<T> data,
+atb::Status CreateTensorFromVector(atb::Context*contextPtr, aclrtStream stream, std::vector<T> data,
                                    const aclDataType outTensorType, const aclFormat format, std::vector<int64_t> shape,
                                    atb::Tensor &outTensor, const aclDataType inTensorType = ACL_DT_UNDEFINED)
 {

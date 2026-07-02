@@ -19,6 +19,7 @@
     ```sh
     bash build.sh
     ```
+
     **注意**：
 
     - 使用cxx_abi=0（默认）时，设置`D_GLIBCXX_USE_CXX11_ABI`为0，即：
@@ -33,7 +34,7 @@
         g++ -D_GLIBCXX_USE_CXX11_ABI=1 -I ...
         ```
 
-  - 提供的build脚本仅用于编译和运行linear_demo.cpp，如需编译其他demo，需要替换“linear_demo”为对应的cpp文件名
+    - 提供的build脚本仅用于编译和运行linear_demo.cpp，如需编译其他demo，需要替换“linear_demo”为对应的cpp文件名
 
 ## 额外说明
 
@@ -199,8 +200,6 @@
         | `bias`     | int32    | nd       | [1, 2]   | npu     |
         | `deqScale` | float    | nd       | [1, 2]   | npu     |
         | `output`   | bf16     | nd       | [2, 2]   | npu     |
-
-
     - linear_dequant_ds_demo.cpp  
 
         该demo支持在<term>Atlas A2 训练系列产品/Atlas A2 推理系列产品</term>、<term>Atlas A3 训练系列产品/Atlas A3 推理系列产品</term>和<term>Atlas 推理系列产品</term>上运行。  

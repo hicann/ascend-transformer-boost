@@ -85,7 +85,7 @@ SelfAttention在Atlas A2/A3系列仅支持部分场景，且Encoder场景在Atla
 | `tokenOffset`   | int32    | nd       | [10]                | cpu     |
 | `seqLen`        | int32    | nd       | [10]                | cpu     |
 | `layerId`       | int32    | nd       | [1]                 | npu     |
-| **Output**      |
+| **Output**      |         |        |                    |       |
 | `output`        | float16  | nd       | [160, 2048]         | npu     |
 
 + q，k，v第一维度为总词元长度，即`sum(seqlen)`
@@ -119,7 +119,7 @@ SelfAttention在Atlas A2/A3系列仅支持部分场景，且Encoder场景在Atla
 | `tokenOffset` | int32    | nd       | [1]                 | cpu     |
 | `seqLen`      | int32    | nd       | [1]                 | cpu     |
 | `layerId`     | int32    | nd       | [1]                 | npu     |
-| **Output**    |
+| **Output**    |         |        |                    |       |
 | `output`      | float16  | nd       | [16, 256]           | npu     |
 
 #### self_attention_pa_encoder_demo.cpp
@@ -149,7 +149,7 @@ SelfAttention在Atlas A2/A3系列仅支持部分场景，且Encoder场景在Atla
 | `value`         | float16  | nd       | [3072, 16, 128] | npu     |
 | `attentionMask` | float16  | nd       | [4, 1024, 1024] | npu     |
 | `seqLen`        | int32    | nd       | [4]             | cpu     |
-| **Output**      |
+| **Output**      |         |        |                    |       |
 | `output`        | float16  | nd       | [3072, 32, 128] | npu     |
 
 #### self_attention_pa_encoder_qwen_demo.cpp
@@ -180,7 +180,7 @@ SelfAttention在Atlas A2/A3系列仅支持部分场景，且Encoder场景在Atla
 | `value`         | float16  | nd       | [1024, 1, 128] | npu     |
 | `attentionMask` | float16  | nd       | [128, 128]     | npu     |
 | `seqLen`        | int32    | nd       | [1]            | cpu     |
-| **Output**      |
+| **Output**      |         |        |                    |       |
 | `output`        | float16  | nd       | [1024, 5, 128] | npu     |
 
 #### self_attention_prefix_encoder_demo.cpp
@@ -215,5 +215,5 @@ SelfAttention在Atlas A2/A3系列仅支持部分场景，且Encoder场景在Atla
 | `seqLen`      | int32    | nd       | [4]                | cpu     |
 | `kvSeqLen`    | int32    | nd       | [4]                | cpu     |
 | `slopes`      | float32  | nd       | [128]              | npu     |
-| **Output**    |
+| **Output**    |         |        |                    |       |
 | `output`      | float16  | nd       | [96, 32, 128]      | npu     |

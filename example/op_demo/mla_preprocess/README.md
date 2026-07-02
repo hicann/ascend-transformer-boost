@@ -61,7 +61,7 @@ mlapo_demo.cpp：
 
 | tensor名字     | 数据类型     | 数据格式 | 维度信息                        |
 | -------------- | ------------ | -------- | ------------------------------- |
-| **Input**      |
+| **Input**      |           |        |                             |
 | `input`        | float16/bf16 | nd       | [tokenNum, 7168]                |
 | `gamma0`       | float16/bf16 | nd       | [7168]                          |
 | `beta0`        | float16/bf16 | nd       | [7168]                          |
@@ -86,7 +86,7 @@ mlapo_demo.cpp：
 | `slotmapping`  | int32        | nd       | [tokenNum]                      |
 | `ctkvScale`    | float16/bf16 | nd       | [1]                             |
 | `qNopeScale`   | float16/bf16 | nd       | [headNum]                       |
-| **Output**     |
+| **Output**     |           |        |                             |
 | `qOut0`        | int8         | nd       | [tokenNum, headNum, 512]        |
 | `kvCacheOut0`  | int8         | nz       | [64, headNum * 512/32, 128, 32] |
 | `qOut1`        | float16/bf16 | nd       | [tokenNum, headNum, 64]         |
@@ -118,7 +118,7 @@ mlapo_ds_demo.cpp：
 
 | tensor名字     | 数据类型     | 数据格式 | 维度信息                 |
 | -------------- | ------------ | -------- | ------------------------ |
-| **Input**      |
+| **Input**      |           |        |                             |
 | `input`        | float16/bf16 | nd       | [tokenNum, 7168]         |
 | `gamma0`       | float16/bf16 | nd       | [7168]                   |
 | `beta0`        | float16/bf16 | nd       | [7168]                   |
@@ -143,7 +143,7 @@ mlapo_ds_demo.cpp：
 | `slotmapping`  | int32        | nd       | [tokenNum]               |
 | `ctkvScale`    | float16/bf16 | nd       | [1]                      |
 | `qNopeScale`   | float16/bf16 | nd       | [1]                      |
-| **Output**     |
+| **Output**     |           |        |                             |
 | `qOut0`        | int8         | nd       | [tokenNum, headNum, 512] |
 | `kvCacheOut0`  | int8         | nz       | [161, 128, 1, 512]       |
 | `qOut1`        | float16/bf16 | nd       | [tokenNum, headNum, 64]  |

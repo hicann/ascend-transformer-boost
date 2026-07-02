@@ -30,7 +30,7 @@
 
     <img src="./images/原理3.png" alt="Infershape示例" style="width: 600; height:auto;">
 
-    例如上述一个简单的Matmul算子， 左矩阵Shape为M * K，右矩阵为K * N， 可以推导输出矩阵Shape为M * N。
+    例如上述一个简单的Matmul算子， 左矩阵Shape为M \* K，右矩阵为K \* N， 可以推导输出矩阵Shape为M * N。
 
 3. 计算Tiling
 

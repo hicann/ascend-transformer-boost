@@ -86,7 +86,7 @@ RingMLA仅Atlas A2/A3系列
 | `value`      | bf16     | nd       | [828, 8, 128]   | npu     |
 | `mask`       | bf16     | nd       | [512, 512]      | npu     |
 | `seqLen`     | int32    | nd       | [2, 3]          | cpu     |
-| **Output**   |
+| **Output**   |         |        |                    |       |
 | `output`     | bf16     | nd       | [1228, 16, 128] | npu     |
 | `softmaxLse` | float    | nd       | [16, 1228]      | npu     |
 
@@ -121,7 +121,7 @@ RingMLA仅Atlas A2/A3系列
 | `seqLen`      | bf16     | nd       | [2, 3]          | cpu     |
 | **`prevOut`** | bf16     | nd       | [1228, 16, 128] | npu     |
 | **`prevLse`** | float    | nd       | [16, 1228]      | npu     |
-| **Output**    |
+| **Output**    |         |        |                    |       |
 | `output`      | bf16     | nd       | [1228, 16, 128] | npu     |
 | `softmaxLse`  | float    | nd       | [16, 1228]      | npu     |
 
