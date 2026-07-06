@@ -37,7 +37,7 @@ atb::Status TransdataOp(atb::Context*contextPtr, aclrtStream stream, const atb::
 
 ### 函数介绍
 
-```
+```cpp
 atb::Status GetShape(const aclDataType tensorType, const std::vector<int64_t> &inShape, std::vector<int64_t> &ndShape,
                      std::vector<int64_t> &nzShape)
 ```

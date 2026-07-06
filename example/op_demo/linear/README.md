@@ -200,6 +200,7 @@
         | `bias`     | int32    | nd       | [1, 2]   | npu     |
         | `deqScale` | float    | nd       | [1, 2]   | npu     |
         | `output`   | bf16     | nd       | [2, 2]   | npu     |
+
     - linear_dequant_ds_demo.cpp  
 
         该demo支持在<term>Atlas A2 训练系列产品/Atlas A2 推理系列产品</term>、<term>Atlas A3 训练系列产品/Atlas A3 推理系列产品</term>和<term>Atlas 推理系列产品</term>上运行。  
