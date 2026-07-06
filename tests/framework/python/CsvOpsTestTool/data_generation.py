@@ -1471,6 +1471,17 @@ class AllReduceOperation(DataGen):
 
     def sum_cal(inTensors, op_params):
         json_data = json.loads(op_params)
+        if get_soc_version() == "Ascend950" :
+            data_size = inTensors[0].nbytes
+            threshold = 1024 * 1024 * len(inTensors) * len(inTensors)
+            is_high_precision = data_size <= threshold
+            if ("quantType" in json_data and json_data["quantType"] != 0) or (inTensors[0].dtype == torch.bfloat16 and is_high_precision):
+                result = inTensors[0].clone().to(torch.float)
+            else:
+                result = inTensors[0].clone()
+            for i in range(1, len(inTensors)):
+                result += inTensors[i]
+            return [result.to(torch.bfloat16) if inTensors[0].dtype == torch.bfloat16 else result]
         if ("quantType" in json_data and json_data["quantType"] != 0) or inTensors[0].dtype == torch.bfloat16:
             result = inTensors[0].clone().to(torch.float)
         else:
