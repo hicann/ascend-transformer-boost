@@ -1364,6 +1364,11 @@ Status SelfAttentionOperation::NormMaskDimCheck(const SVector<TensorDesc> &inTen
                     ATB_LOG(ERROR) << GetLogPrefix() << "MASK_TYPE_NORM_COMPRESS long mask requires fp16 mask dtype";
                     return ERROR_INVALID_TENSOR_DTYPE;
                 }
+                if (param_.scaleType != infer::SelfAttentionParam::SCALE_TYPE_TOR) {
+                    ATB_LOG(ERROR) << GetLogPrefix() 
+                                   << "MASK_TYPE_NORM_COMPRESS long 2048 mask only supports SCALE_TYPE_TOR";
+                    return ERROR_INVALID_PARAM;
+                }
             }
         } else if (maskFormat == ACL_FORMAT_ND) {
             // 910b, 950
