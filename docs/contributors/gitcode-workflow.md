@@ -1,20 +1,20 @@
 # Gitcode 工作流说明
 
-### 1. 开展工作流前的准备
+## 1. 开展工作流前的准备
 
 - 安装Git：请先确保您的电脑上已经安装了Git软件。如您需了解Git，可以在Google、baidu或其他搜索引擎上求助相关内容。
 - 在开展Gitcode的工作流之前，您需要先在CANN的代码托管平台上找到[ATB](https://gitcode.com/cann/ascend-transformer-boost)仓库。
 
-### 2. 准备本地代码
+## 2. 准备本地代码
 
-#### 2.1 Fork个人分支
+### 2.1 Fork个人分支
 
 1) 找到并打开对应的开放项目的首页
 2) 点击右上角的 `Fork` 按钮，按照指引，建立一个属于"**个人**"的云上fork分支。
 
   ![gitcode-fork](../images/gitcode-fork.png)   
 
-#### 2.2 把fork分支克隆到本地
+### 2.2 把fork分支克隆到本地
 
 请按照以下的复制过程将repository内的代码下载到您的计算机上。
 
@@ -22,7 +22,7 @@
 
 您需要创建本地工作目录，以便于本地代码的查找和管理
 
-```
+```shell
 mkdir ${your_working_dir}
 ```
 
@@ -30,13 +30,13 @@ mkdir ${your_working_dir}
 
 把git上的 `user` 设置成您gitcode的个人名称：
 
-```
+```shell
 git config --global user.name "your Gitcode Name"
 ```
 
 配置您的git邮箱
 
-```
+```shell
 git config --global user.email "email@your_email.com"
 ```
 
@@ -57,7 +57,7 @@ git config --global user.email "email@your_email.com"
 
   在个人电脑上完成gitcode在SSH上的注册
 
-  ```
+  ```shell
   ssh -T git@gitcode.com
   ```
 
@@ -68,7 +68,7 @@ git config --global user.email "email@your_email.com"
 
 - ① **切换到本地路径**
 
-  ```
+  ```shell
   cd $your_working_dir
   ```
   
@@ -80,18 +80,18 @@ git config --global user.email "email@your_email.com"
 
   - 在本地电脑执行如下命令：
 
-    ```
+    ```shell
     # 下载远程仓库到本地
     git clone https://gitcode.com/$user_name/ascend-transformer-boost.git
     # 设置本地工作目录的上游源（原始仓库）
     git remote add upstream https://gitcode.com/cann/ascend-transformer-boost.git
     ```
 
-#### 2.3 拉分支
+### 2.3 拉分支
 
 更新您的本地分支
 
-```
+```shell
 git fetch upstream
 git checkout master
 git rebase upstream/master
@@ -99,19 +99,19 @@ git rebase upstream/master
 
 创建本地个人分支:
 
-```
+```shell
 git checkout -b myfeature
 ```
 
  `myfeature` 为个人分支名称，后续在此分支上编辑和修改代码。
 
-### 3. 本地构建和验证
+## 3. 本地构建和验证
 
 本地构建和验证参见[构建与测试](../开发指南.md#构建)。
 
-### 4. 保持您的分支和master的同步
+## 4. 保持您的分支和master的同步
 
-```
+```shell
 # While on your myfeature branch
 git fetch upstream
 git rebase upstream/master
@@ -119,26 +119,26 @@ git rebase upstream/master
 
 执行merge的时候，请不要使用 `git pull` 替代上面的 `fetch` / `rebase`。因为这种方式会使提交历史变得混乱，并使代码更难被理解。您可以通过修改 `.git/config` 文件或使用 `git config branch.autoSetupRebase always` 命令来改变 `git pull` 的行为，使其默认使用 `rebase`。
 
-### 5. 在本地工作目录提交变更
+## 5. 在本地工作目录提交变更
 
 提交您的变更
 
-```
+```shell
 git add .
 git commit -m "提交内容描述"
 ```
 
 您可能会在前次提交的基础上，继续编辑构建并测试更多内容，可以使用 `git commit --amend` 继续添加提交。
 
-### 6. 将变更推送到您的远端目录
+## 6. 将变更推送到您的远端目录
 
 准备进行审查（或只是建立工作的异地备份）时，将分支推到您在`gitcode.com`的fork分支:
 
-```
+```shell
 git push -f origin myfeature
 ```
 
-### 7. 在Gitcode上创建一个 pull request
+## 7. 在Gitcode上创建一个 pull request
 
 1. 访问您在 `https://gitcode.com/$user/ascend-transformer-boost` 的页面，单击 `+Pull Request`。
    
@@ -148,7 +148,7 @@ git push -f origin myfeature
 
    提交 PR 是对项目主分支的一次合并，为保证合并的质量，请谨慎操作。
 
-### 8. 将pull request与处理的Issue进行关联
+## 8. 将pull request与处理的Issue进行关联
 
 1. 访问仓库的`Issue`列表，进入您本次pull request所处理的对应Issue页面。
 
@@ -158,7 +158,7 @@ git push -f origin myfeature
    
    ![Issue关联PR](../images/issue-link-pr.png)
 
-### 9. 查看门禁状态以及代码检视意见
+## 9. 查看门禁状态以及代码检视意见
 
 - 查看门禁状态
 
@@ -178,9 +178,9 @@ git push -f origin myfeature
 
    ![](../images/pr-list.png)
 
-### 常用操作
+## 常用操作
 
-#### 回退一个提交
+### 回退一个提交
 
 如果您想回退提交，请采用下面的方式
 
@@ -188,7 +188,7 @@ git push -f origin myfeature
 
 - 创建一个分支并用upstream进行同步
 
-  ```
+  ```shell
   # create a branch
   git checkout -b myrevert
   
@@ -201,27 +201,27 @@ git push -f origin myfeature
 
   - **merge commit:**
 
-    ```
+    ```shell
     # SHA is the hash of the merge commit you wish to revert
     git revert -m 1 SHA
     ```
 
   - **single commit:**
 
-    ```
+    ```shell
     # SHA is the hash of the single commit you wish to revert
     git revert SHA
     ```
 
 - 这将创建一个新的提交以回退到更新前。 push这次提交到远程工作目录
 
-```
+```shell
 git push ${your_remote_name} myrevert
 ```
 
 - 用这个分支创建一个PR.
 
-#### 处理提交冲突
+### 处理提交冲突
 
 如果您发现提交的PR带有以下的标记，说明您提交的PR和您本地存在冲突，您需要处理冲突。
 
@@ -229,7 +229,7 @@ git push ${your_remote_name} myrevert
 
 1. 先将分支切换到master上，并完成master的rebase
 
-   ```
+   ```shell
    git checkout master
    git fetch upstream
    git rebase upstream/master
@@ -237,7 +237,7 @@ git push ${your_remote_name} myrevert
 
 2. 再将分支切换到您使用的分支上，并开始rebase
 
-   ```
+   ```shell
    git checkout yourbranch
    git rebase master
    ```
@@ -246,25 +246,25 @@ git push ${your_remote_name} myrevert
 
 4. 解决冲突以后，再把修改提交上去
 
-   ```
+   ```shell
    git add .
    git rebase --continue
    git push -f origin yourbranch
    ```
 
-#### 合并提交
+### 合并提交
 
 如果您提交了一个PR以后，根据检视意见完成修改并再次提交了PR，您不想让审阅者看到多次提交的PR，因为这不便于继续在检视中修改，那么您可以合并提交的PR。合并提交的PR是通过压缩Commit来实现的。
 
 1. 先在本地分支上查看日志。
 
-   ```
+   ```shell
    git log
    ```
 
 2. 然后把顶部的n个提交记录聚合到一起进入，注意n是一个数字。
 
-   ```
+   ```shell
    git rebase -i HEAD~n
    ```
 
@@ -274,7 +274,7 @@ git push ${your_remote_name} myrevert
 
 4. 最后完成提交
 
-   ```
+   ```shell
    git push -f origin yourbranch
    ```
 

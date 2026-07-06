@@ -26,13 +26,13 @@
 
 | 类型  | 开源代码地址 | 文件名                     | 公网IP地址/公网URL地址/域名/邮箱地址/压缩文件地址                                           | 用途说明                                         |
 | :---: | :----------: | :------------------------- | :------------------------------------------------------------------------------------------ | :----------------------------------------------- |
-| 依赖  |    不涉及    | 3rdparty/pybind11          | https://github.com/pybind/pybind11.git                                                      | 从github下载源码，作用编译依赖                   |
-| 依赖  |    不涉及    | 3rdparty/nlohmannjson      | https://github.com/nlohmann/json.git                                                        | 从github下载nlohmann/json源码，作用编译依赖      |
-| 依赖  |    不涉及    | 3rdparty/catlass           | https://gitcode.com/cann/catlass.git                                                        | 从gitcode下载catlass源码，作用编译依赖           |
-| 依赖  |    不涉及    | 3rdparty/ascend-boost-comm | https://gitcode.com/cann/ascend-boost-comm.git                                              | 从gitcode下载ascend-boost-comm源码，作用编译依赖 |
-| 依赖  |    不涉及    | 3rdparty/doxygen           | https://github.com/doxygen/doxygen/releases/download/Release_1_9_6/doxygen-1.9.6.src.tar.gz | 从github下载doxygen-1.9.6源码，作用编译依赖      |
-| 依赖  |    不涉及    | 3rdparty/cpp-stub          | https://github.com/coolxv/cpp-stub.git                                                      | 从github下载cpp-stub源码，作用编译依赖           |
-| 依赖  |    不涉及    | 3rdparty/googletest        | https://github.com/google/googletest.git                                                    | 从github下载googletest源码，作用编译依赖         |
+| 依赖  |    不涉及    | 3rdparty/pybind11          | <https://github.com/pybind/pybind11.git>                                                      | 从github下载源码，作用编译依赖                   |
+| 依赖  |    不涉及    | 3rdparty/nlohmannjson      | <https://github.com/nlohmann/json.git>                                                        | 从github下载nlohmann/json源码，作用编译依赖      |
+| 依赖  |    不涉及    | 3rdparty/catlass           | <https://gitcode.com/cann/catlass.git>                                                        | 从gitcode下载catlass源码，作用编译依赖           |
+| 依赖  |    不涉及    | 3rdparty/ascend-boost-comm | <https://gitcode.com/cann/ascend-boost-comm.git>                                              | 从gitcode下载ascend-boost-comm源码，作用编译依赖 |
+| 依赖  |    不涉及    | 3rdparty/doxygen           | <https://github.com/doxygen/doxygen/releases/download/Release_1_9_6/doxygen-1.9.6.src.tar.gz> | 从github下载doxygen-1.9.6源码，作用编译依赖      |
+| 依赖  |    不涉及    | 3rdparty/cpp-stub          | <https://github.com/coolxv/cpp-stub.git>                                                      | 从github下载cpp-stub源码，作用编译依赖           |
+| 依赖  |    不涉及    | 3rdparty/googletest        | <https://github.com/google/googletest.git>                                                    | 从github下载googletest源码，作用编译依赖         |
 
 ---
 

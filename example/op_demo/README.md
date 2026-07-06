@@ -17,7 +17,7 @@ atb::Status TransdataOp(atb::Context *contextPtr, aclrtStream stream, const atb:
 
 | 参数名称| 含义 |
 | --- | --- |
-|`contextPtr` | 指向`atb::Context `的指针，用于提供上下文信息 |
+|`contextPtr` | 指向`atb::Context`的指针，用于提供上下文信息 |
 |`stream`  |  用于执行操作的流 |
 |`inTensor`| 待转换的 ND 格式的tensor |
 |`tensorType`| 输入 tensor 的数据类型|
@@ -37,7 +37,7 @@ atb::Status TransdataOp(atb::Context *contextPtr, aclrtStream stream, const atb:
 
 ### 函数介绍
 
-```
+```cpp
 atb::Status GetShape(const aclDataType tensorType, const std::vector<int64_t> &inShape, std::vector<int64_t> &ndShape,
                      std::vector<int64_t> &nzShape)
 ```

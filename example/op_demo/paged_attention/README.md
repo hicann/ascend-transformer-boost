@@ -81,7 +81,7 @@ tests/apitest/opstest/python/operations/paged_attention/
         | `mask`        | int32    | nd       | [2, 1, 1024]       | npu     |
         | `attnOut`     | float16  | nd       | [2, 32, 128]       | npu     |
 
-   - paged_attention_qwen_demo.cpp  
+    - paged_attention_qwen_demo.cpp  
 
         该demo仅支持在Atlas A2/A3系列上运行。  
         
