@@ -51,7 +51,6 @@ if [[ -f "$set_env_path" ]] && [[ "$set_env_path" =~ (^|/)set_env\.sh$ ]];then
     export LD_LIBRARY_PATH=$ATB_HOME_PATH/lib:$ATB_HOME_PATH/examples:$ATB_HOME_PATH/tests/atbopstest:$LD_LIBRARY_PATH
     export PATH=$ATB_HOME_PATH/bin:$PATH
 
-    #加速库环境变量
     export ATB_STREAM_SYNC_EVERY_KERNEL_ENABLE=0 #每个Kernel的Execute时就做同步
     export ATB_STREAM_SYNC_EVERY_RUNNER_ENABLE=0 #每个Runner的Execute时就做同步
     export ATB_STREAM_SYNC_EVERY_OPERATION_ENABLE=0 #每个Operation的Execute时就做同步
@@ -61,11 +60,9 @@ if [[ -f "$set_env_path" ]] && [[ "$set_env_path" =~ (^|/)set_env\.sh$ ]];then
     export ATB_COMPARE_TILING_EVERY_KERNEL=0 #每个Kernel运行后，比较运行前和后的NPU上tiling内容是否变化
     export ATB_SHARE_MEMORY_NAME_SUFFIX="" #共享内存命名后缀，多用户同时使用通信算子时，需通过设置该值进行共享内存的区分
     export ATB_MATMUL_SHUFFLE_K_ENABLE=1 #Shuffle-K使能，默认开
-
-    #算子库环境变量
     export LCCL_DETERMINISTIC=0 #LCCL确定性AllReduce(保序加)是否开启，0关闭，1开启。
     export LCCL_PARALLEL=0 #LCCL多通信域并行，0关闭，1开启。
-    
+
 else
     echo "There is no 'set_env.sh' to import"
 fi
