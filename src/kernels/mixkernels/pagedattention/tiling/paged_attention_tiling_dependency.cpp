@@ -1,12 +1,12 @@
 /*
-* Copyright (c) 2024 Huawei Technologies Co., Ltd.
-* This program is free software, you can redistribute it and/or modify it under the terms and conditions of
-* CANN Open Software License Agreement Version 2.0 (the "License").
-* Please refer to the License for details. You may not use this file except in compliance with the License.
-* THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
-* INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
-* See LICENSE in the root of the software repository for the full text of the License.
-*/
+ * Copyright (c) 2024 Huawei Technologies Co., Ltd.
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
 #include <array>
 #include <chrono>
 #include <vector>
@@ -134,13 +134,13 @@ const int32_t PP_INDEX = 16;
 const int32_t PP_MM_NUM = 8;
 const int32_t PP_NN_NUM = 16;
 const int32_t PP_BLOCK_BUFFER_SIZE = 128 * 128;
-constexpr std::array<int32_t, PP_MM_NUM> PP_MM = { 16, 32, 48, 64, 80, 96, 112, 128 };
-constexpr std::array<int32_t, NUM6> QN_TILE_LIST = { 128, 64, 32, 16, 8, 1 };
+constexpr std::array<int32_t, PP_MM_NUM> PP_MM = {16, 32, 48, 64, 80, 96, 112, 128};
+constexpr std::array<int32_t, NUM6> QN_TILE_LIST = {128, 64, 32, 16, 8, 1};
 
 using IndexArr = std::array<int32_t, NUM4>;
 
-void SplitCoreND(const PagedAttentionInfo &mmInfo, uint32_t &blockDim,
-    uint32_t *tilingParam, uint32_t decoderBatchSize, bool isMLA);
+void SplitCoreND(const PagedAttentionInfo &mmInfo, uint32_t &blockDim, uint32_t *tilingParam, uint32_t decoderBatchSize,
+                 bool isMLA);
 Status GetNdPagedAttentionTiling(const PagedAttentionInfo &mmInfo, uint32_t &blockDim, uint32_t *tilingParam);
 void CalcuHeadNd(const PagedAttentionInfo &mmInfo, uint32_t &blockDim, uint32_t *tilingParam);
 uint32_t SplitCoreBNSND(const PagedAttentionInfo &mmInfo, uint32_t &blockDim, uint32_t *tilingParam, bool isLongSeq,
@@ -148,11 +148,17 @@ uint32_t SplitCoreBNSND(const PagedAttentionInfo &mmInfo, uint32_t &blockDim, ui
 uint32_t SplitCoreBNND(const PagedAttentionInfo &mmInfo, uint32_t &blockDim, uint32_t *tilingParam,
                        const OpParam::PagedAttention &param, const bool isMLA);
 void GetBlockSizeCalc(const PagedAttentionInfo &mmInfo, uint32_t *tilingParam, const bool isMLA,
-                      const bool& mlaOptimization);
-void CalcuEmbedSplitNd(const PagedAttentionInfo &mmInfo, uint32_t *tilingParam, const bool& mlaOptimization);
+                      const bool &mlaOptimization);
+void CalcuEmbedSplitNd(const PagedAttentionInfo &mmInfo, uint32_t *tilingParam, const bool &mlaOptimization);
 
-inline uint32_t GetHigh32Bit(uint64_t v) { return static_cast<uint32_t>(v >> HIGH_32BIT); }
-inline uint32_t GetLoww32Bit(uint64_t v) { return static_cast<uint32_t>(v); }
+inline uint32_t GetHigh32Bit(uint64_t v)
+{
+    return static_cast<uint32_t>(v >> HIGH_32BIT);
+}
+inline uint32_t GetLoww32Bit(uint64_t v)
+{
+    return static_cast<uint32_t>(v);
+}
 
 inline int32_t ConvertValueToIndexMM(int32_t val, int32_t idxBound)
 {
@@ -160,16 +166,13 @@ inline int32_t ConvertValueToIndexMM(int32_t val, int32_t idxBound)
 }
 
 static const std::unordered_map<PlatformType, IndexArr> TILING_HEAD_OFFSET_MAP{
-    { PlatformType::ASCEND_910A, { INDEX190, INDEX191, TILING_MASK_TYPE_910A, TILING_SCALE_TYPE_910A } },
-    { PlatformType::ASCEND_310P, { INDEX126, INDEX127, TILING_MASK_TYPE, TILING_SCALE_TYPE } }
-};
+    {PlatformType::ASCEND_910A, {INDEX190, INDEX191, TILING_MASK_TYPE_910A, TILING_SCALE_TYPE_910A}},
+    {PlatformType::ASCEND_310P, {INDEX126, INDEX127, TILING_MASK_TYPE, TILING_SCALE_TYPE}}};
 
 static const std::unordered_map<PlatformType, IndexArr> g_nzTilingOffsetMap{
-    { PlatformType::ASCEND_910A,
-      { TILING_HEAD_NUM_LIMIT_910A, TILING_MASK_STRIDE_910A, TILING_DECODE_TYPE_910A, TILING_UNUSED_INDEX } },
-    { PlatformType::ASCEND_310P,
-      { TILING_HEAD_NUM_LIMIT, TILING_MASK_STRIDE, TILING_DECODE_TYPE, TILING_UNUSED_INDEX } }
-};
+    {PlatformType::ASCEND_910A,
+     {TILING_HEAD_NUM_LIMIT_910A, TILING_MASK_STRIDE_910A, TILING_DECODE_TYPE_910A, TILING_UNUSED_INDEX}},
+    {PlatformType::ASCEND_310P, {TILING_HEAD_NUM_LIMIT, TILING_MASK_STRIDE, TILING_DECODE_TYPE, TILING_UNUSED_INDEX}}};
 
 inline IndexArr GetTilingHeadOffset()
 {
@@ -180,11 +183,11 @@ inline IndexArr GetNzTilingOffset()
     return g_nzTilingOffsetMap.at(PlatformInfo::Instance().GetPlatformType());
 }
 
-void SplitCoreND(const PagedAttentionInfo &mmInfo, uint32_t &blockDim,
-                 uint32_t *tilingParam, uint32_t decoderBatchSize, bool isMLA, const OpParam::PagedAttention &param)
+void SplitCoreND(const PagedAttentionInfo &mmInfo, uint32_t &blockDim, uint32_t *tilingParam, uint32_t decoderBatchSize,
+                 bool isMLA, const OpParam::PagedAttention &param)
 {
     bool isLongSeq = (tilingParam[TILING_MAX_KVSEQLEN] >= blockDim * KV_SEQLEN_SLICE * NUM2) &&
-        (decoderBatchSize <= blockDim * SPLITKV_RATION);
+                     (decoderBatchSize <= blockDim * SPLITKV_RATION);
     uint32_t decoderTaskNum = 0;
     if (isMLA || (decoderBatchSize * mmInfo.numHeads >= blockDim * SPLITKV_RATION && !isLongSeq)) {
         MKI_LOG(INFO) << "split Core BN begin";
@@ -198,13 +201,13 @@ void SplitCoreND(const PagedAttentionInfo &mmInfo, uint32_t &blockDim,
         kvRealHeads == mmInfo.numHeads && mmInfo.type != TilingKeyType::TILING_INT8_CUBE_QUANT) {
         tilingParam[TILING_HEADNUM_MOVE] = 2; // 2 improve bandwidth utilization
         if ((mmInfo.type == TilingKeyType::TILING_QUANT_FP16OUT ||
-            mmInfo.type == TilingKeyType::TILING_QUANT_BF16OUT)) {
+             mmInfo.type == TilingKeyType::TILING_QUANT_BF16OUT)) {
             tilingParam[TILING_HEADNUM_MOVE] = 4; // 4 improve bandwidth utilization
         }
     } else {
         tilingParam[TILING_HEADNUM_MOVE] = 1;
     }
-    MKI_LOG(INFO) <<"tiling headnum move is : "<< tilingParam[TILING_HEADNUM_MOVE];
+    MKI_LOG(INFO) << "tiling headnum move is : " << tilingParam[TILING_HEADNUM_MOVE];
     MKI_LOG(INFO) << "total task num:" << mmInfo.numHeads * tilingParam[TILING_TOTAL_BLOCK_NUM] + decoderTaskNum;
 }
 
@@ -220,29 +223,29 @@ uint32_t SetTilingKeyMlaMtp(const PagedAttentionInfo &mmInfo, uint32_t maxQseqle
 }
 
 void SetTilingKey(const PagedAttentionInfo &mmInfo, uint32_t *tilingParam, bool isMLA,
-    const OpParam::PagedAttention &param, const bool &mlaOptimization, uint32_t maxQseqlen)
+                  const OpParam::PagedAttention &param, const bool &mlaOptimization, uint32_t maxQseqlen)
 {
     constexpr uint32_t dataShapeTypeMask = 0x03;
     uint32_t isParallePa = isMLA ? 0 : (tilingParam[TILING_PREFILL_BS] >= 1);
     uint32_t isSplitKey = isMLA ? 0 : (tilingParam[TILING_KVCORENUM] > 1);
     uint32_t isSplitBlock = 0;
-    if (mmInfo.blockSize >= KV_SEQLEN_SLICE && (mmInfo.embeddingSize == KV_SEQLEN_SLICE_256 &&
-        mmInfo.embeddingSizeV == KV_SEQLEN_SLICE_256)) {
-            isSplitBlock = 1;
-        }
+    if (mmInfo.blockSize >= KV_SEQLEN_SLICE &&
+        (mmInfo.embeddingSize == KV_SEQLEN_SLICE_256 && mmInfo.embeddingSizeV == KV_SEQLEN_SLICE_256)) {
+        isSplitBlock = 1;
+    }
     uint32_t tilingKey = 0;
     if (param.type == OpParam::PagedAttention::PAGED_MULTI_LATENT_ATTENTION_COMBINE_CACHE_MASK_ND) {
-    // 目前9bit数据 0 00 00 00 00
-    // optfeature (compressHead isMLA):2bit (dataFormat isParallePa splitkv):4bit quantmode:2bit (dequantCube, dequantVec, dequantMsd, quant)
-    // qdatatype:2bit(FP16/BF16/INT8)
+        // 目前9bit数据 0 00 00 00 00
+        // optfeature (compressHead isMLA):2bit (dataFormat isParallePa splitkv):4bit quantmode:2bit (dequantCube,
+        // dequantVec, dequantMsd, quant) qdatatype:2bit(FP16/BF16/INT8)
         tilingKey = (static_cast<uint32_t>(isMLA) << NUM8) + (isParallePa << NUM5) + (isSplitKey << NUM4) +
                     static_cast<uint32_t>(mmInfo.type);
         if (mlaOptimization) {
             tilingKey += 1 << NUM10;
         }
     } else if (param.type == OpParam::PagedAttention::PAGED_MULTI_LATENT_ATTENTION_MULTI_TOKEN_PREDICTION_MASK_ND) {
-    // 目前5bit数据 0 0 00 0
-    // workmode : 1bit, vector part precision : 1bit, date type : 2bit, embed spec : 1bit
+        // 目前5bit数据 0 0 00 0
+        // workmode : 1bit, vector part precision : 1bit, date type : 2bit, embed spec : 1bit
         tilingKey = SetTilingKeyMlaMtp(mmInfo, maxQseqlen);
     } else {
         tilingKey = (static_cast<uint32_t>(mmInfo.compressHead) << NUM9) +
@@ -255,10 +258,10 @@ void SetTilingKey(const PagedAttentionInfo &mmInfo, uint32_t *tilingParam, bool 
     MKI_LOG(INFO) << "tilingKey: " << tilingKey;
 }
 
-void CalcuEmbedSplitNd(const PagedAttentionInfo &mmInfo, uint32_t *tilingParam, const bool& mlaOptimization)
+void CalcuEmbedSplitNd(const PagedAttentionInfo &mmInfo, uint32_t *tilingParam, const bool &mlaOptimization)
 {
-    bool isQuant = (mmInfo.type == TilingKeyType::TILING_QUANT_FP16OUT ||
-        mmInfo.type == TilingKeyType::TILING_QUANT_BF16OUT);
+    bool isQuant =
+        (mmInfo.type == TilingKeyType::TILING_QUANT_FP16OUT || mmInfo.type == TilingKeyType::TILING_QUANT_BF16OUT);
     uint32_t embedQKSplit = 0;
     uint32_t embedVOSplit = 0;
     uint32_t embedVOSplitVectorFormer = 0;
@@ -291,13 +294,13 @@ void CalcuEmbedSplitNd(const PagedAttentionInfo &mmInfo, uint32_t *tilingParam, 
     tilingParam[TILING_HEADDIM_V_SPLIT] = embedVOSplit;
     tilingParam[TILING_HEADDIM_V_SPLIT_VECTOR_FORMER] = embedVOSplitVectorFormer;
     tilingParam[TILING_HEADDIM_V_SPLIT_VECTOR_TAIL] = embedVOSplitVectorTail;
-    MKI_LOG(INFO) << "embedQKSplit: " << embedQKSplit
-        << " embedVOSplit: " << embedVOSplit << " embedVOSplitVectorFormer: " << embedVOSplitVectorFormer
-        << " embedVOSplitVectorTail: " << embedVOSplitVectorTail;
+    MKI_LOG(INFO) << "embedQKSplit: " << embedQKSplit << " embedVOSplit: " << embedVOSplit
+                  << " embedVOSplitVectorFormer: " << embedVOSplitVectorFormer
+                  << " embedVOSplitVectorTail: " << embedVOSplitVectorTail;
 }
 
 void InitEmbedQKVOSplit(bool isMLA, const PagedAttentionInfo &mmInfo, uint32_t *tilingParam, uint32_t &embedQKSplit,
-    uint32_t &embedVOSplit)
+                        uint32_t &embedVOSplit)
 {
     if (isMLA) {
         embedQKSplit = tilingParam[TILING_HEADDIM_K_SPLIT];
@@ -309,13 +312,13 @@ void InitEmbedQKVOSplit(bool isMLA, const PagedAttentionInfo &mmInfo, uint32_t *
 }
 
 void InitEmbeddingSize(const PagedAttentionInfo &mmInfo, uint32_t *tilingParam, uint32_t embedQKSplit,
-    uint32_t embedVOSplit)
+                       uint32_t embedVOSplit)
 {
     if (mmInfo.blockSize <= KV_SEQLEN_SLICE / NUM2 && mmInfo.blockSize * NUM2 * embedQKSplit <= BLOCK_LIMIT &&
         mmInfo.blockSize * NUM2 * embedVOSplit <= BLOCK_LIMIT) {
         tilingParam[TILING_BLOCKSIZE_CALC] = mmInfo.blockSize * NUM2;
-    } else if (mmInfo.blockSize >= KV_SEQLEN_SLICE && (mmInfo.embeddingSize == KV_SEQLEN_SLICE_256 &&
-        mmInfo.embeddingSizeV == KV_SEQLEN_SLICE_256)) {
+    } else if (mmInfo.blockSize >= KV_SEQLEN_SLICE &&
+               (mmInfo.embeddingSize == KV_SEQLEN_SLICE_256 && mmInfo.embeddingSizeV == KV_SEQLEN_SLICE_256)) {
         tilingParam[TILING_BLOCKSIZE_CALC] = KV_SEQLEN_SLICE;
     } else {
         tilingParam[TILING_BLOCKSIZE_CALC] = mmInfo.blockSize;
@@ -360,7 +363,7 @@ void GetBlockSizeCalc(const PagedAttentionInfo &mmInfo, uint32_t *tilingParam, c
 }
 
 void CalcuHeadNd(const PagedAttentionInfo &mmInfo, uint32_t &formerHeadSplit, uint32_t &tailHeadSplit,
-    uint32_t *tilingParam)
+                 uint32_t *tilingParam)
 {
     uint32_t groupNum = mmInfo.numHeads / ((mmInfo.kvHeads == 0) ? mmInfo.numHeads : mmInfo.kvHeads);
     uint32_t formerGroupNumMove = 1;
@@ -368,37 +371,35 @@ void CalcuHeadNd(const PagedAttentionInfo &mmInfo, uint32_t &formerHeadSplit, ui
 
     if (formerHeadSplit % groupNum == 0) {
         formerGroupNumMove = groupNum;
-    } else if ((formerHeadSplit < groupNum) &&
-        ((mmInfo.kvHeads == 1) || (groupNum % formerHeadSplit == 0))) {
+    } else if ((formerHeadSplit < groupNum) && ((mmInfo.kvHeads == 1) || (groupNum % formerHeadSplit == 0))) {
         formerGroupNumMove = formerHeadSplit;
     }
 
     if ((tailHeadSplit != 0) && (tailHeadSplit % groupNum == 0)) {
         tailGroupNumMove = groupNum;
     } else if ((tailHeadSplit != 0) && (tailHeadSplit < groupNum) &&
-        ((mmInfo.kvHeads == 1) || (groupNum % tailHeadSplit == 0))) {
+               ((mmInfo.kvHeads == 1) || (groupNum % tailHeadSplit == 0))) {
         tailGroupNumMove = tailHeadSplit;
     }
 
     tilingParam[TILING_GROUPNUM] = static_cast<uint32_t>(groupNum);
     tilingParam[TILING_FORMER_GROUP_MOVE] = static_cast<uint32_t>(formerGroupNumMove);
     tilingParam[TILING_TAIL_GROUP_MOVE] = static_cast<uint32_t>(tailGroupNumMove);
-    MKI_LOG(INFO) <<"groupNum: "<< groupNum <<
-    " formerGroupNumMove: " << formerGroupNumMove << " tailGroupNumMove:" << tailGroupNumMove;
+    MKI_LOG(INFO) << "groupNum: " << groupNum << " formerGroupNumMove: " << formerGroupNumMove
+                  << " tailGroupNumMove:" << tailGroupNumMove;
 }
 
-uint32_t GetHeadLimit(
-    const PagedAttentionInfo &mmInfo, const OpParam::PagedAttention &param, const uint32_t &blockDim)
+uint32_t GetHeadLimit(const PagedAttentionInfo &mmInfo, const OpParam::PagedAttention &param, const uint32_t &blockDim)
 {
     uint32_t kvheadLimit = std::min(DEQUANT_HIDDEN_LIMIT / mmInfo.embeddingSize, HEADNUM_LIMIT);
     uint32_t taskNumMLA = mmInfo.numTokens * (mmInfo.numHeads + HEADNUM_LIMIT - 1) / HEADNUM_LIMIT;
     uint32_t headLimitMLA = (taskNumMLA >= blockDim) ? HEADNUM_LIMIT : HEADNUM_LIMIT_REGU;
     uint32_t regularLimit =
         (param.type == OpParam::PagedAttention::PAGED_ATTENTION_MASK_ND) ? HEADNUM_LIMIT_REGU : headLimitMLA;
-    uint32_t headLimit =
-        (mmInfo.type == TilingKeyType::TILING_INT8_VEC_QUANT || mmInfo.type == TilingKeyType::TILING_INT8_VEC_QUANTBF16)
-            ? kvheadLimit
-            : regularLimit;
+    uint32_t headLimit = (mmInfo.type == TilingKeyType::TILING_INT8_VEC_QUANT ||
+                          mmInfo.type == TilingKeyType::TILING_INT8_VEC_QUANTBF16) ?
+                             kvheadLimit :
+                             regularLimit;
     return headLimit;
 }
 
@@ -441,9 +442,9 @@ uint32_t SplitCoreBNSND(const PagedAttentionInfo &mmInfo, uint32_t &blockDim, ui
     tilingParam[TILING_KVSPLIT] = kvSplitPerCore;
     tilingParam[TILING_KVCORENUM] = kvSplitCoreNum;
     blockDim = (block < blockDim) ? block : blockDim;
-    MKI_LOG(INFO) << "split Core BNS end formerbatch: " << formerBatch << " formerHeadSplit: " << formerHeadSplit <<
-        " tailBatch:" << tailBatch << " kvSplitPerCore: " << kvSplitPerCore << " kvSplitCoreNum:" << kvSplitCoreNum <<
-        " blockDim:" << blockDim;
+    MKI_LOG(INFO) << "split Core BNS end formerbatch: " << formerBatch << " formerHeadSplit: " << formerHeadSplit
+                  << " tailBatch:" << tailBatch << " kvSplitPerCore: " << kvSplitPerCore
+                  << " kvSplitCoreNum:" << kvSplitCoreNum << " blockDim:" << blockDim;
     CalcuHeadNd(mmInfo, formerHeadSplit, tailHeadSplit, tilingParam);
     return block;
 }
@@ -453,8 +454,8 @@ uint32_t SplitCoreBNND(const PagedAttentionInfo &mmInfo, uint32_t &blockDim, uin
 {
     uint32_t decoderBatch = tilingParam[TILING_DECODER_BS];
     uint32_t coreNumPerBatch = (blockDim + decoderBatch - 1) / decoderBatch;
-    bool isQuant = (mmInfo.type == TilingKeyType::TILING_QUANT_FP16OUT ||
-        mmInfo.type == TilingKeyType::TILING_QUANT_BF16OUT);
+    bool isQuant =
+        (mmInfo.type == TilingKeyType::TILING_QUANT_FP16OUT || mmInfo.type == TilingKeyType::TILING_QUANT_BF16OUT);
     if (blockDim * SPLITKV_RATION <= decoderBatch && decoderBatch <= blockDim && isQuant && mmInfo.kvHeads == 1) {
         coreNumPerBatch = 1;
     }
@@ -493,7 +494,7 @@ uint32_t SplitCoreBNND(const PagedAttentionInfo &mmInfo, uint32_t &blockDim, uin
         }
         if (adjLastHead) {
             if (isMLA && isQuant) {
-                coreNumPerBatch = blockDim /  tailBatch;
+                coreNumPerBatch = blockDim / tailBatch;
             } else {
                 coreNumPerBatch = (blockDim + tailBatch - 1) / tailBatch;
             }
@@ -512,9 +513,9 @@ uint32_t SplitCoreBNND(const PagedAttentionInfo &mmInfo, uint32_t &blockDim, uin
     tilingParam[TILING_KVSPLIT] =
         Utils::RoundUp(tilingParam[TILING_MAX_KVSEQLEN], static_cast<uint32_t>(mmInfo.blockSize));
     tilingParam[TILING_KVCORENUM] = 1;
-    MKI_LOG(INFO) << "split Core BN end formerbatch: " << formerBatch << " formerHeadSplit: " << formerHeadSplit <<
-        " tailBatch:" << tailBatch << " kvSplitPerCore: " << tilingParam[TILING_KVSPLIT] << " kvSplitCoreNum:" << 1 <<
-        " blockDim:" << blockDim;
+    MKI_LOG(INFO) << "split Core BN end formerbatch: " << formerBatch << " formerHeadSplit: " << formerHeadSplit
+                  << " tailBatch:" << tailBatch << " kvSplitPerCore: " << tilingParam[TILING_KVSPLIT]
+                  << " kvSplitCoreNum:" << 1 << " blockDim:" << blockDim;
     CalcuHeadNd(mmInfo, formerHeadSplit, tailHeadSplit, tilingParam);
     return block;
 }
@@ -524,18 +525,18 @@ void GetLOffsetInfo(uint32_t *tilingParam, const PagedAttentionInfo &mmInfo, uin
 {
     uint32_t curdecoderbatch = 0;
     uint32_t paOnly = (mmInfo.qSeqLen == nullptr) ? 1 : 0;
-    
+
     for (int32_t seqIdx = 0; seqIdx < mmInfo.batch; seqIdx++) {
         int32_t qSeqlen = (paOnly == 1) ? 1 : *(mmInfo.qSeqLen + seqIdx);
         qSeqlen = (*(mmInfo.kvSeqLen + seqIdx) == 0) ? 0 : qSeqlen;
-        int32_t tilingOffset = static_cast<int32_t>(prefillBatchSize + curdecoderbatch) *
-            TILING_PARA_SIZE + TILING_HEAD_SIZE;
+        int32_t tilingOffset =
+            static_cast<int32_t>(prefillBatchSize + curdecoderbatch) * TILING_PARA_SIZE + TILING_HEAD_SIZE;
         if (qSeqlen <= 1) {
             uint64_t addressOffset = static_cast<uint64_t>(mmInfo.numHeads * mmInfo.embeddingSize * qSeqlen);
             tilingParam[tilingOffset + NUM11] = GetHigh32Bit(addrOffsets.addrLSeqOffset);
             tilingParam[tilingOffset + NUM12] = GetLoww32Bit(addrOffsets.addrLSeqOffset);
-            addrOffsets.addrLSeqOffset += static_cast<uint64_t>(static_cast<int64_t>(tilingParam[TILING_KVCORENUM]) *
-                mmInfo.numHeads * qSeqlen);
+            addrOffsets.addrLSeqOffset +=
+                static_cast<uint64_t>(static_cast<int64_t>(tilingParam[TILING_KVCORENUM]) * mmInfo.numHeads * qSeqlen);
             tilingParam[tilingOffset + NUM15] = GetHigh32Bit(addrOffsets.addrOFdSeqOffset);
             tilingParam[tilingOffset + NUM16] = GetLoww32Bit(addrOffsets.addrOFdSeqOffset);
             addrOffsets.addrOFdSeqOffset += addressOffset;
@@ -554,14 +555,14 @@ void GetLookaheadTilingHead(uint32_t *tilingParam, const PagedAttentionInfo &mmI
 }
 
 uint64_t GetLookaheadMaskOffset(const PagedAttentionInfo &mmInfo, const OpParam::PagedAttention &param,
-    uint32_t kvSeqLen, uint32_t qSeqLen, uint32_t preqSeqLen)
+                                uint32_t kvSeqLen, uint32_t qSeqLen, uint32_t preqSeqLen)
 {
     uint32_t maskOffset = 0;
     auto maskType = param.maskType;
     if (mmInfo.isMaskSquare == 1) {
         maskOffset = (kvSeqLen - qSeqLen) * mmInfo.maxPromptLen;
     } else if (maskType == OpParam::PagedAttention::MASK_TYPE_LOOK_AHEAD) {
-        maskOffset = (preqSeqLen) * mmInfo.maxPromptLen;
+        maskOffset = (preqSeqLen)*mmInfo.maxPromptLen;
     } else {
         maskOffset = 0;
     }
@@ -579,7 +580,7 @@ void GetAddrOffset(uint32_t *tilingParam, const AddrOffsets addrOffsets, const i
 }
 
 void GetLookaheadBatchTiling(uint32_t *tilingParam, const OpParam::PagedAttention &param,
-    const PagedAttentionInfo &mmInfo, std::vector<uint32_t> indices, AddrOffsets addrOffsets)
+                             const PagedAttentionInfo &mmInfo, std::vector<uint32_t> indices, AddrOffsets addrOffsets)
 {
     uint32_t totalQBlkNum = 0;
     uint32_t curPrefillBatchId = 0;
@@ -593,9 +594,9 @@ void GetLookaheadBatchTiling(uint32_t *tilingParam, const OpParam::PagedAttentio
         int32_t qSeqlenAligned = (qSeqLen + BLOCK_SIZE - 1) / BLOCK_SIZE * BLOCK_SIZE;
         int32_t kvSeqlen = *(mmInfo.kvSeqLen + seqIdx);
         maxKVseqLen = std::max(maxKVseqLen, kvSeqlen);
-        int32_t mUbd =
-            std::min((PP_BLOCK_BUFFER_SIZE / std::max(mmInfo.embeddingSize, mmInfo.blockSize) /
-            BLOCK_SIZE) * BLOCK_SIZE, qSeqlenAligned);
+        int32_t mUbd = std::min((PP_BLOCK_BUFFER_SIZE / std::max(mmInfo.embeddingSize, mmInfo.blockSize) / BLOCK_SIZE) *
+                                    BLOCK_SIZE,
+                                qSeqlenAligned);
         int32_t mIbd = ConvertValueToIndexMM(mUbd, PP_MM_NUM - 1);
         int32_t tilingOffset = TILING_HEAD_SIZE;
         if (qSeqLen > 1) {
@@ -604,8 +605,8 @@ void GetLookaheadBatchTiling(uint32_t *tilingParam, const OpParam::PagedAttentio
             tilingOffset += static_cast<int32_t>(curPrefillBatchId * TILING_PARA_SIZE);
             curPrefillBatchId += 1;
         } else {
-            tilingOffset += static_cast<int32_t>((tilingParam[TILING_PREFILL_BS] + curDecoderBatchId) *
-                TILING_PARA_SIZE);
+            tilingOffset +=
+                static_cast<int32_t>((tilingParam[TILING_PREFILL_BS] + curDecoderBatchId) * TILING_PARA_SIZE);
             tilingParam[tilingOffset + NUM13] = tilingParam[TILING_PREFILL_BS] + indices.at(curDecoderBatchId);
             curDecoderBatchId++;
         }
@@ -615,10 +616,10 @@ void GetLookaheadBatchTiling(uint32_t *tilingParam, const OpParam::PagedAttentio
         tilingParam[tilingOffset + NUM3] = static_cast<uint32_t>(mmInfo.blockSize);
         tilingParam[tilingOffset + NUM8] = static_cast<uint32_t>(seqIdx);
         tilingParam[tilingOffset + NUM9] = totalQBlkNum;
-        tilingParam[tilingOffset + NUM10] = GetHigh32Bit(GetLookaheadMaskOffset(mmInfo, param, kvSeqlen,
-        qSeqLen, preqSeqlen));
-        tilingParam[tilingOffset + NUM14] = GetLoww32Bit(GetLookaheadMaskOffset(mmInfo, param, kvSeqlen,
-        qSeqLen, preqSeqlen));
+        tilingParam[tilingOffset + NUM10] =
+            GetHigh32Bit(GetLookaheadMaskOffset(mmInfo, param, kvSeqlen, qSeqLen, preqSeqlen));
+        tilingParam[tilingOffset + NUM14] =
+            GetLoww32Bit(GetLookaheadMaskOffset(mmInfo, param, kvSeqlen, qSeqLen, preqSeqlen));
         GetAddrOffset(tilingParam, addrOffsets, tilingOffset);
         uint64_t addressQffset = static_cast<uint64_t>(mmInfo.numHeads * mmInfo.embeddingSize * qSeqLen);
         uint64_t addressOffset = static_cast<uint64_t>(mmInfo.numHeads * mmInfo.embeddingSizeV * qSeqLen);
@@ -640,8 +641,8 @@ int32_t GetQNBlockTile(const PagedAttentionInfo &mmInfo, int32_t qSeqLen)
     return qNBlockTile;
 }
 
-void GetMlaMtpBatchTiling(uint32_t *tilingParam, const OpParam::PagedAttention &param,
-    const PagedAttentionInfo &mmInfo, AddrOffsets addrOffsets, int32_t maxQseqlen)
+void GetMlaMtpBatchTiling(uint32_t *tilingParam, const OpParam::PagedAttention &param, const PagedAttentionInfo &mmInfo,
+                          AddrOffsets addrOffsets, int32_t maxQseqlen)
 {
     uint32_t totalQBlkNum = 0; // tile S or N
     int32_t maxKVseqLen = 0;
@@ -669,10 +670,10 @@ void GetMlaMtpBatchTiling(uint32_t *tilingParam, const OpParam::PagedAttention &
         tilingParam[tilingOffset + NUM3] = static_cast<uint32_t>(mmInfo.blockSize);
         tilingParam[tilingOffset + NUM8] = static_cast<uint32_t>(seqIdx);
         tilingParam[tilingOffset + NUM9] = totalQBlkNum;
-        tilingParam[tilingOffset + NUM10] = GetHigh32Bit(GetLookaheadMaskOffset(mmInfo, param, kvSeqlen,
-        qSeqLen, preqSeqlen));
-        tilingParam[tilingOffset + NUM14] = GetLoww32Bit(GetLookaheadMaskOffset(mmInfo, param, kvSeqlen,
-        qSeqLen, preqSeqlen));
+        tilingParam[tilingOffset + NUM10] =
+            GetHigh32Bit(GetLookaheadMaskOffset(mmInfo, param, kvSeqlen, qSeqLen, preqSeqlen));
+        tilingParam[tilingOffset + NUM14] =
+            GetLoww32Bit(GetLookaheadMaskOffset(mmInfo, param, kvSeqlen, qSeqLen, preqSeqlen));
         GetAddrOffset(tilingParam, addrOffsets, tilingOffset);
         uint64_t addressQffset = static_cast<uint64_t>(mmInfo.numHeads * mmInfo.embeddingSize * qSeqLen);
         uint64_t addressOffset = static_cast<uint64_t>(mmInfo.numHeads * mmInfo.embeddingSizeV * qSeqLen);
@@ -733,10 +734,10 @@ Status GetNdPagedAttentionTiling(const PagedAttentionInfo &mmInfo, uint32_t &blo
     std::vector<uint32_t> indices(decoderBatchSize);
     std::iota(indices.begin(), indices.end(), 0);
     std::stable_sort(indices.begin(), indices.end(),
-        [&mmInfo, &decoderBatches](uint32_t firstBatchIdx, uint32_t secondBatchIdx) {
-            return *(mmInfo.kvSeqLen + decoderBatches.at(firstBatchIdx)) <
-            *(mmInfo.kvSeqLen + decoderBatches.at(secondBatchIdx));
-            });
+                     [&mmInfo, &decoderBatches](uint32_t firstBatchIdx, uint32_t secondBatchIdx) {
+                         return *(mmInfo.kvSeqLen + decoderBatches.at(firstBatchIdx)) <
+                                *(mmInfo.kvSeqLen + decoderBatches.at(secondBatchIdx));
+                     });
     bool isMLA = MLAJudge(mmInfo);
     if (param.type == OpParam::PagedAttention::PAGED_MULTI_LATENT_ATTENTION_MULTI_TOKEN_PREDICTION_MASK_ND) {
         GetMlaMtpBatchTiling(tilingParam, param, mmInfo, addrOffsets, maxQseqlen);
@@ -747,15 +748,14 @@ Status GetNdPagedAttentionTiling(const PagedAttentionInfo &mmInfo, uint32_t &blo
 
     bool mlaOptimization = false;
     if (mmInfo.blockSize == NUM256 && (mmInfo.numHeads == NUM32 || mmInfo.numHeads == NUM16) &&
-        mmInfo.kvHeads == NUM1 && mmInfo.embeddingSize == NUM576 &&
-        mmInfo.embeddingSizeV == NUM512) {
+        mmInfo.kvHeads == NUM1 && mmInfo.embeddingSize == NUM576 && mmInfo.embeddingSizeV == NUM512) {
         mlaOptimization = true;
     }
 
-    MKI_CHECK(!(isMLA && param.scaleType == OpParam::PagedAttention::SCALE_LOGN_FP32),
-              "MLA does not support logN", return Status::FailStatus(ERROR_INVALID_VALUE));
-    if (decoderBatchSize > 0 && param.type !=
-        OpParam::PagedAttention::PAGED_MULTI_LATENT_ATTENTION_MULTI_TOKEN_PREDICTION_MASK_ND) {
+    MKI_CHECK(!(isMLA && param.scaleType == OpParam::PagedAttention::SCALE_LOGN_FP32), "MLA does not support logN",
+              return Status::FailStatus(ERROR_INVALID_VALUE));
+    if (decoderBatchSize > 0 &&
+        param.type != OpParam::PagedAttention::PAGED_MULTI_LATENT_ATTENTION_MULTI_TOKEN_PREDICTION_MASK_ND) {
         SplitCoreND(mmInfo, blockDim, tilingParam, decoderBatchSize, isMLA, param);
         if (isMLA) {
             CalcuEmbedSplitNd(mmInfo, tilingParam, mlaOptimization);
@@ -768,12 +768,12 @@ Status GetNdPagedAttentionTiling(const PagedAttentionInfo &mmInfo, uint32_t &blo
 }
 
 void GetTilingHead(const PagedAttentionInfo &mmInfo, const OpParam::PagedAttention &param, uint32_t *tilingParam,
-    const uint32_t *torPtr, uint32_t nzFlag)
+                   const uint32_t *torPtr, uint32_t nzFlag)
 {
     if (nzFlag == 1) {
         auto [headStrideOffset, batchStrideOffset, maskTypeOffset, scaleTypeOffset] = GetTilingHeadOffset();
-        tilingParam[TILING_BATCH] = mmInfo.numTokens > mmInfo.batch ?
-                                static_cast<uint32_t>(mmInfo.numTokens) : static_cast<uint32_t>(mmInfo.batch);
+        tilingParam[TILING_BATCH] = mmInfo.numTokens > mmInfo.batch ? static_cast<uint32_t>(mmInfo.numTokens) :
+                                                                      static_cast<uint32_t>(mmInfo.batch);
         tilingParam[headStrideOffset] = static_cast<uint32_t>(mmInfo.headStride);
         tilingParam[batchStrideOffset] = static_cast<uint32_t>(mmInfo.batchStride);
         tilingParam[NUM8] = static_cast<uint32_t>(mmInfo.maxPromptLen);
@@ -817,12 +817,13 @@ void GetPaBatchTiling(const OpParam::PagedAttention &param, const PagedAttention
         int32_t qSeqLen = *(mmInfo.qSeqLen + batchIdx);
         int32_t qSeqLenAligned = (qSeqLen + NZ_BLOCK_SIZE - 1) / NZ_BLOCK_SIZE * NZ_BLOCK_SIZE;
         maxQ = qSeqLenAligned > maxQ ? qSeqLenAligned : maxQ;
-        int32_t mSlice = std::min((BLOCK_LIMIT / std::max(mmInfo.embeddingSize, mmInfo.blockSize) /
-                                  NZ_BLOCK_SIZE) * NZ_BLOCK_SIZE, qSeqLenAligned);
+        int32_t mSlice =
+            std::min((BLOCK_LIMIT / std::max(mmInfo.embeddingSize, mmInfo.blockSize) / NZ_BLOCK_SIZE) * NZ_BLOCK_SIZE,
+                     qSeqLenAligned);
         mSlice = std::min(M_LIMIT, mSlice);
         maxMSlice = std::max(maxMSlice, mSlice);
         uint32_t curQBlockNum = static_cast<uint32_t>(((qSeqLen + mSlice - 1) / mSlice));
-        tilingParam[TILING_HEAD_SIZE_NZ + batchIdx * TILING_PARA_SIZE_NZ ] = static_cast<uint32_t>(qSeqLen);
+        tilingParam[TILING_HEAD_SIZE_NZ + batchIdx * TILING_PARA_SIZE_NZ] = static_cast<uint32_t>(qSeqLen);
         tilingParam[TILING_HEAD_SIZE_NZ + batchIdx * TILING_PARA_SIZE_NZ + NUM1] = curQBlockNum * mmInfo.numHeads;
         qBlkNum += curQBlockNum;
         tilingParam[TILING_HEAD_SIZE_NZ + batchIdx * TILING_PARA_SIZE_NZ + NUM2] = qBlkNum * mmInfo.numHeads;
@@ -844,6 +845,9 @@ void GetPaBatchTiling(const OpParam::PagedAttention &param, const PagedAttention
             }
             // No clamp: the kernel reads shift-invariantly (retreats row by nIdx*blockSize
             // and stays at col 0) so the diagonal triangle stays in-buffer for any kvSeqLen.
+            if (prefix >= LONG_COMPRESS_LEN) {
+                prefix = LONG_COMPRESS_LEN - 1;
+            }
             batchMaskOffset = static_cast<uint64_t>(prefix) * static_cast<uint64_t>(LONG_COMPRESS_LEN);
         }
         tilingParam[TILING_HEAD_SIZE_NZ + batchIdx * TILING_PARA_SIZE_NZ + NUM5] = GetHigh32Bit(batchMaskOffset);
@@ -851,30 +855,31 @@ void GetPaBatchTiling(const OpParam::PagedAttention &param, const PagedAttention
         tilingParam[TILING_HEAD_SIZE_NZ + batchIdx * TILING_PARA_SIZE_NZ + NUM7] = static_cast<uint32_t>(mSlice);
         uint64_t incOffset = static_cast<uint64_t>(qSeqLen) * NZ_BLOCK_SIZE;
         qOffset += incOffset;
-        maskOffset += incOffset;  // unused for NORM_COMPRESS but kept for other paths.
+        maskOffset += incOffset; // unused for NORM_COMPRESS but kept for other paths.
     }
     if (maskType == OpParam::PagedAttention::MASK_TYPE_MASK_FREE) {
         tilingParam[TILING_MASK_STRIDE] = 128;
         tilingParam[TILING_DECODE_TYPE] = maxQ >= maxMSlice ? static_cast<uint32_t>(CalcType::CALC_TYPE_PREFILL) :
-                                      static_cast<uint32_t>(CalcType::CALC_TYPE_MIX);
+                                                              static_cast<uint32_t>(CalcType::CALC_TYPE_MIX);
     } else if (isNormCompress) {
         // NORM_COMPRESS shared ND [2048,2048] mask. maskStride is the source ND
         // row stride (=2048), passed to gm_to_l1<ND,NZ> as srcDValue so the
-        // hardware Nd2Nz reads each mask row from GM at the correct stride.
+        // hardware ND->NZ reads each mask row from GM at the correct stride.
         // Per-batch row offset is supplied separately via currMaskOffset.
         tilingParam[TILING_MASK_STRIDE] = static_cast<uint32_t>(LONG_COMPRESS_LEN);
         tilingParam[TILING_DECODE_TYPE] = maxQ > maxMSlice ? static_cast<uint32_t>(CalcType::CALC_TYPE_PREFILL) :
-                                      static_cast<uint32_t>(CalcType::CALC_TYPE_MIX);
+                                                             static_cast<uint32_t>(CalcType::CALC_TYPE_MIX);
     } else {
         tilingParam[TILING_MASK_STRIDE] = (maskType == OpParam::PagedAttention::MASK_TYPE_LOOK_AHEAD) ?
-                                    static_cast<uint32_t>(numTokensPad) : static_cast<uint32_t>(maxQ);
+                                              static_cast<uint32_t>(numTokensPad) :
+                                              static_cast<uint32_t>(maxQ);
         tilingParam[TILING_DECODE_TYPE] = maxQ > maxMSlice ? static_cast<uint32_t>(CalcType::CALC_TYPE_PREFILL) :
-                                      static_cast<uint32_t>(CalcType::CALC_TYPE_MIX);
+                                                             static_cast<uint32_t>(CalcType::CALC_TYPE_MIX);
     }
 }
 
-void GetPaBlockTilingDefault(uint32_t *tilingParam, const PagedAttentionInfo &mmInfo,
-                             const uint32_t taskNum, const uint32_t blockDim)
+void GetPaBlockTilingDefault(uint32_t *tilingParam, const PagedAttentionInfo &mmInfo, const uint32_t taskNum,
+                             const uint32_t blockDim)
 {
     uint32_t taskNumPerCore = taskNum / blockDim;
     uint32_t tailTaskNum = taskNum % blockDim;
@@ -883,15 +888,15 @@ void GetPaBlockTilingDefault(uint32_t *tilingParam, const PagedAttentionInfo &mm
     for (uint32_t blockIdx = 0; blockIdx < blockDim; blockIdx++) {
         taskStart = taskEnd;
         taskEnd = taskEnd + (blockIdx < tailTaskNum ? taskNumPerCore + 1 : taskNumPerCore);
-        tilingParam[NUM10 + blockIdx * NUM4] =  taskStart;
+        tilingParam[NUM10 + blockIdx * NUM4] = taskStart;
         tilingParam[NUM11 + blockIdx * NUM4] = taskEnd;
         tilingParam[NUM12 + blockIdx * NUM4] = static_cast<uint32_t>(taskStart / mmInfo.numHeads);
         tilingParam[NUM13 + blockIdx * NUM4] = static_cast<uint32_t>((taskEnd - 1) / mmInfo.numHeads);
     }
 }
 
-void GetPaBlockTilingParallel(uint32_t *tilingParam, const PagedAttentionInfo &mmInfo,
-                              const uint32_t taskNum, const uint32_t blockDim)
+void GetPaBlockTilingParallel(uint32_t *tilingParam, const PagedAttentionInfo &mmInfo, const uint32_t taskNum,
+                              const uint32_t blockDim)
 {
     uint32_t taskNumPerCore = taskNum / blockDim;
     uint32_t tailTaskNum = taskNum % blockDim;
@@ -904,9 +909,8 @@ void GetPaBlockTilingParallel(uint32_t *tilingParam, const PagedAttentionInfo &m
         tilingParam[NUM10 + blockIdx * NUM4] = taskStart;
         tilingParam[NUM11 + blockIdx * NUM4] = taskEnd;
         tilingParam[NUM12 + blockIdx * NUM4] = startBatch;
-        while (
-            tilingParam[TILING_HEAD_SIZE_NZ + startBatch * TILING_PARA_SIZE_NZ + NUM2] <= taskEnd &&
-            static_cast<int32_t>(startBatch) < mmInfo.batch - 1) {
+        while (tilingParam[TILING_HEAD_SIZE_NZ + startBatch * TILING_PARA_SIZE_NZ + NUM2] <= taskEnd &&
+               static_cast<int32_t>(startBatch) < mmInfo.batch - 1) {
             startBatch++;
         }
         tilingParam[NUM13 + blockIdx * NUM4] = startBatch;
@@ -914,7 +918,7 @@ void GetPaBlockTilingParallel(uint32_t *tilingParam, const PagedAttentionInfo &m
 }
 
 Status GetNzPagedAttentionTiling(const PagedAttentionInfo &mmInfo, uint32_t &blockDim, uint32_t *tilingParam,
-    const OpParam::PagedAttention &param, bool is910A)
+                                 const OpParam::PagedAttention &param, bool is910A)
 {
     int64_t taskNumI64 = static_cast<int64_t>(mmInfo.numHeads) * static_cast<int64_t>(mmInfo.batch);
     auto [tilingHeadNumLimitOffset, tilingMaskStrideOffset, tilingDecodeTypeOffset, unused] = GetNzTilingOffset();
@@ -923,8 +927,8 @@ Status GetNzPagedAttentionTiling(const PagedAttentionInfo &mmInfo, uint32_t &blo
     if (is910A) {
         tilingParam[tilingHeadNumLimitOffset] = 1u;
     } else {
-        tilingParam[tilingHeadNumLimitOffset] = std::max(1u, HEADNUM_NZ_LIMIT /
-                                                    ((mmInfo.embeddingSize + FLOAT_LIMIT - 1) / FLOAT_LIMIT));
+        tilingParam[tilingHeadNumLimitOffset] =
+            std::max(1u, HEADNUM_NZ_LIMIT / ((mmInfo.embeddingSize + FLOAT_LIMIT - 1) / FLOAT_LIMIT));
     }
     if (mmInfo.qSeqLen != nullptr) {
         uint32_t qBlkNum = 0;
@@ -935,7 +939,7 @@ Status GetNzPagedAttentionTiling(const PagedAttentionInfo &mmInfo, uint32_t &blo
         tilingParam[tilingDecodeTypeOffset] = static_cast<uint32_t>(CalcType::CALC_TYPE_DEFAULT);
     }
     MKI_CHECK(taskNumI64 <= UINT32_MAX && taskNumI64 >= 0, "param is invalid",
-        return Status::FailStatus(ERROR_INVALID_VALUE));
+              return Status::FailStatus(ERROR_INVALID_VALUE));
     uint32_t taskNum = static_cast<uint32_t>(taskNumI64);
     blockDim = taskNum < blockDim ? taskNum : blockDim;
     if (tilingParam[tilingDecodeTypeOffset] == static_cast<uint32_t>(CalcType::CALC_TYPE_PREFILL)) {
@@ -947,30 +951,28 @@ Status GetNzPagedAttentionTiling(const PagedAttentionInfo &mmInfo, uint32_t &blo
 }
 
 Status GetPagedAttentionTilingParam(const LaunchParam &launchParam, const PagedAttentionInfo &mmInfo,
-    uint32_t &blockDim, uint32_t *tilingParam, uint64_t tilingParamSize)
+                                    uint32_t &blockDim, uint32_t *tilingParam, uint64_t tilingParamSize)
 {
     bool is910A = PlatformInfo::Instance().GetPlatformType() == PlatformType::ASCEND_910A ? true : false;
     MKI_CHECK(tilingParam != nullptr, "param is nullptr", return Status::FailStatus(ERROR_INVALID_VALUE));
-    MKI_CHECK(mmInfo.batch > 0  && mmInfo.numTokens > 0 && mmInfo.numHeads > 0 && mmInfo.embeddingSize > 0,
-        "param must > 0", return Status::FailStatus(ERROR_INVALID_VALUE));
+    MKI_CHECK(mmInfo.batch > 0 && mmInfo.numTokens > 0 && mmInfo.numHeads > 0 && mmInfo.embeddingSize > 0,
+              "param must > 0", return Status::FailStatus(ERROR_INVALID_VALUE));
     MKI_CHECK(mmInfo.numBlocks >= 0 && mmInfo.blockSize >= 0 && mmInfo.maxNumBlocksPerQuery >= 0, "param must >= 0",
-        return Status::FailStatus(ERROR_INVALID_VALUE));
+              return Status::FailStatus(ERROR_INVALID_VALUE));
     auto param = AnyCast<OpParam::PagedAttention>(launchParam.GetParam());
     uint64_t curTilingParamSize = 0;
     if (param.type == OpParam::PagedAttention::PAGED_ATTENTION_MASK_ND ||
-        param.type == OpParam::PagedAttention::PAGED_MULTI_LATENT_ATTENTION_COMBINE_CACHE_MASK_ND||
+        param.type == OpParam::PagedAttention::PAGED_MULTI_LATENT_ATTENTION_COMBINE_CACHE_MASK_ND ||
         param.type == OpParam::PagedAttention::PAGED_MULTI_LATENT_ATTENTION_MULTI_TOKEN_PREDICTION_MASK_ND) {
         curTilingParamSize = (TILING_HEAD_SIZE + TILING_PARA_SIZE * mmInfo.batch) * sizeof(uint32_t);
-        MKI_CHECK(memset_s(tilingParam, tilingParamSize, 0,
-            curTilingParamSize) == EOK, "init tiling failed",
-            return Status::FailStatus(ERROR_INVALID_VALUE));
+        MKI_CHECK(memset_s(tilingParam, tilingParamSize, 0, curTilingParamSize) == EOK, "init tiling failed",
+                  return Status::FailStatus(ERROR_INVALID_VALUE));
     } else {
         auto tilingHeadSize = is910A ? TILING_HEAD_SIZE_910A : TILING_HEAD_SIZE_NZ;
         curTilingParamSize =
             (static_cast<uint64_t>(tilingHeadSize) + TILING_PARA_SIZE_NZ * param.qSeqLen.size()) * sizeof(uint32_t);
-        MKI_CHECK(memset_s(tilingParam, tilingParamSize, 0,
-            curTilingParamSize) == EOK,
-            "init tiling failed", return Status::FailStatus(ERROR_INVALID_VALUE));
+        MKI_CHECK(memset_s(tilingParam, tilingParamSize, 0, curTilingParamSize) == EOK, "init tiling failed",
+                  return Status::FailStatus(ERROR_INVALID_VALUE));
     }
     float tor = mmInfo.tor;
     uint32_t *torPtr = reinterpret_cast<uint32_t *>(&tor);
@@ -987,4 +989,4 @@ Status GetPagedAttentionTilingParam(const LaunchParam &launchParam, const PagedA
     }
     return AtbOps::Status::OkStatus();
 }
-} // end paged_attention namespace
+} // namespace AtbOps

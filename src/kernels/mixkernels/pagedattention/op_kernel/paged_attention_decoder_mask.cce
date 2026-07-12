@@ -180,7 +180,7 @@ __aicore__ inline void PagedAttentionDecoder<CalcMode::CALC_MODE_DEFAULT>::Decod
     if (maskType != 0) {
         // load mask ping gm -> l1
         // NORM_COMPRESS: GM mask is ND [2048,2048] with row stride = maskStride (2048).
-        // V200 (310P) has no hardware ND->NZ Nd2Nz on GM->L1, so we keep ND on chip and
+        // V200 (310P) has no hardware ND->NZ on GM->L1, so we keep ND on chip and
         // manually convert ND->NZ in UB after the L1->UB copy.
         WAIT_FLAG(MTE1, MTE2, Pingflag + 2);
         if (maskType == 5) {
@@ -2027,7 +2027,7 @@ __aicore__ inline void PagedAttentionDecoder<CalcMode::CALC_MODE_PREFILL>::Decod
     if (maskType != 0) {
         WAIT_FLAG(MTE1, MTE2, Pingflag + 2);
         if (maskType == 5) {
-            // NORM_COMPRESS (V200): no hardware ND->NZ Nd2Nz; keep ND on chip and convert
+            // NORM_COMPRESS (V200): no hardware ND->NZ; keep ND on chip and convert
             // in UB later. The NZ->NZ template emits a single DataCopy whose burst params
             // line up exactly with an ND strided row load: m_actual bursts of (fn/16) 32B
             // blocks with srcStride = (maskStride - fn)/16 blocks.
@@ -3557,8 +3557,14 @@ __aicore__ inline void RunParallel(uint32_t startBlk, uint32_t endBlk, uint32_t 
                     maskOffset = (int64_t)prefix * (int64_t)maskStride + (int64_t)gC;
                     maskOffsetPong = maskOffset + (int64_t)blockSize;
                 } else {
-                    maskOffset = (int64_t)(prefix - gC) * (int64_t)maskStride;
-                    maskOffsetPong = (int64_t)(prefix - gC - (int32_t)blockSize) * (int64_t)maskStride;
+                    int32_t off_ping = prefix - gC;
+                    if (off_ping < 0) off_ping = 0;
+                    if (off_ping >= (int32_t)maskStride) off_ping = (int32_t)maskStride - 1;
+                    int32_t off_pong = prefix - gC - (int32_t)blockSize;
+                    if (off_pong < 0) off_pong = 0;
+                    if (off_pong >= (int32_t)maskStride) off_pong = (int32_t)maskStride - 1;
+                    maskOffset = (int64_t)off_ping * (int64_t)maskStride;
+                    maskOffsetPong = (int64_t)off_pong * (int64_t)maskStride;
                 }
             }
             if ((nIdx + 1) == (nLoop)) {
@@ -3709,8 +3715,10 @@ __aicore__ inline void RunPrefill(uint32_t startBlk, uint32_t endBlk, uint32_t n
                     // already been short-circuited by the wrapO/continue logic above.
                     int32_t off_ping = gR - gC;
                     if (off_ping < 0) off_ping = 0;
+                    if (off_ping >= (int32_t)maskStride) off_ping = (int32_t)maskStride - 1;
                     int32_t off_pong = gR - gC - (int32_t)blockSize;
                     if (off_pong < 0) off_pong = 0;
+                    if (off_pong >= (int32_t)maskStride) off_pong = (int32_t)maskStride - 1;
                     maskOffset = (int64_t)off_ping * (int64_t)maskStride;
                     maskOffsetPong = (int64_t)off_pong * (int64_t)maskStride;
                 }
