@@ -19,7 +19,7 @@ locale = "en"
 extend-ignore-identifiers-re = [".*Unc.*", ".*_thw",
     ".*UE8M0.*", ".*[UE4M3|ue4m3].*", ".*eles.*", ".*fo.*", ".*ba.*",
     ".*ot.*", ".*[Tt]h[rR].*"]
-extend-ignore-words-re = ["CANN", "cann","ND","alog"]
+extend-ignore-words-re = ["CANN", "cann","ND","nd","alog"]
 extend-ignore-re = []
 
 [default.extend-identifiers]
@@ -40,6 +40,7 @@ DepthWiseSeperableConv1d = "DepthWiseSeperableConv1d"
 depthwise_seperable_CNN = "depthwise_seperable_CNN"
 
 [default.extend-words]
+nd = "nd"
 iy = "iy"
 tendencias = "tendencias"
 # intel cpu features
