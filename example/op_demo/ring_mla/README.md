@@ -9,9 +9,9 @@
 - 首先source 对应的CANN和nnal包的安装路径
     1. source [cann安装路径]/set_env.sh
         默认：source /usr/local/Ascend/ascend-toolkit/set_env.sh
-    2. source [nnal安装路径]/set_env.sh  
-        默认：source /usr/local/Ascend/nnal/atb/set_env.sh  
-        ①. 如果使用加速库源码编译，source [加速库源码路径]/output/atb/set_env.sh  
+    2. source [nnal安装路径]/set_env.sh
+        默认：source /usr/local/Ascend/nnal/atb/set_env.sh
+        ①. 如果使用加速库源码编译，source [加速库源码路径]/output/atb/set_env.sh
         例如： source ./ascend-transformer-boost/output/atb/set_env.sh
 
 - 运行demo
@@ -66,7 +66,7 @@ RingMLA仅Atlas A2/A3系列
 
 | 成员名称   | 取值                 |
 | :--------- | :------------------- |
-| calcType   | CALC_TYPE_FISRT_RING |
+| calcType   | CALC_TYPE_FIRST_RING |
 | headNum    | 16                   |
 | kvHeadNum  | 8                    |
 | qkScale    | 1/sqrt(192)          |
