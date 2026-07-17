@@ -10,6 +10,11 @@
 
 #include "error_util.h"
 
+std::string ge::GetViewErrorCodeStr(ge::ViewErrorCode errCode)
+{
+    return "E" + std::to_string(static_cast<int>(errCode));
+}
+
 std::string ge::GetAttrValueErrMsg(const std::string &attr_name, const std::string &wrong_val,
                                    const std::string &correct_val)
 {

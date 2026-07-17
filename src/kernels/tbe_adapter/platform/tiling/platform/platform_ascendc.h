@@ -1,13 +1,13 @@
 
 /**
-* Copyright (c) 2026 Huawei Technologies Co., Ltd.
-* This program is free software, you can redistribute it and/or modify it under the terms and conditions of
-* CANN Open Software License Agreement Version 2.0 (the "License").
-* Please refer to the License for details. You may not use this file except in compliance with the License.
-* THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
-* INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
-* See LICENSE in the root of the software repository for the full text of the License.
-*/
+ * Copyright (c) 2026 Huawei Technologies Co., Ltd.
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
 
 /*!
  * \file platform_ascendc.h
@@ -23,12 +23,12 @@
 
 #if !defined(__NPU_DEVICE__) && !defined(__ASCC_DEVICE__)
 
-#define ASCENDC_ASSERT(cond, behavior) \
-    do {                               \
-        if (!(cond)) {                 \
-            behavior;                  \
-            raise(SIGABRT);            \
-        }                              \
+#define ASCENDC_ASSERT(cond, behavior)                                                                                 \
+    do {                                                                                                               \
+        if (!(cond)) {                                                                                                 \
+            behavior;                                                                                                  \
+            raise(SIGABRT);                                                                                            \
+        }                                                                                                              \
     } while (0)
 
 #else // defined(__NPU_DEVICE__) || defined(__ASCC_DEVICE__)
@@ -59,16 +59,17 @@ enum class CoreMemType {
 };
 
 enum class SocVersion {
-    ASCEND910 = 0,  // Ascend910A, Ascend910B
+    ASCEND910 = 0, // Ascend910A, Ascend910B
     ASCEND910B,    // Ascend910B1~4, Ascend910B2C, Ascend910_93 Serials
     ASCEND310P,    // Ascend310P1, Ascend310P3
     ASCEND310B,    // Ascend310B1, Ascend310B2, Ascend310B3, Ascend310B4
-    ASCEND950,  // ASCEND950, __DAV_C310__
+    ASCEND950,     // ASCEND950, __DAV_C310__
     ASCEND910_55,  // ASCEND910_55, __DAV_310R6__
     AS31XM1,
     ASCEND031,
     ASCEND035,
     ASCEND310,
+    ASCEND350,
     ASCEND610,
     ASCEND610Lite,
     ASCEND910_93,
@@ -77,6 +78,7 @@ enum class SocVersion {
     HI3796CV300CS,
     HI3796CV300ES,
     MC61AM21A,
+    MC62,
     MC62CM12A,
     SD3403,
     KIRINX90,
@@ -94,7 +96,7 @@ class PlatformAscendC {
 public:
     PlatformAscendC() = delete;
     ~PlatformAscendC() = default;
-    explicit PlatformAscendC(fe::PlatFormInfos *platformInfo): platformInfo_(platformInfo) {}
+    explicit PlatformAscendC(fe::PlatFormInfos *platformInfo) : platformInfo_(platformInfo) {}
     /**
      * Get Core Number
      * On Ascend910B MIX model, return AICore number
@@ -118,7 +120,7 @@ public:
     uint32_t GetCoreNumVector(void) const;
     /**
      * Calc task schedule num blocks
-    * @sliceNum number slice of data division
+     * @sliceNum number slice of data division
      * @aicCoreNum value of GetCoreNumAic() if used cube API, otherwise 0
      * @aivCoreNum value of GetCoreNumAiv() if used vector API, otherwise 0
      * @return task schedule block dim
@@ -127,7 +129,7 @@ public:
 
     /**
      * Calc task schedule num blocks
-    * @sliceNum number slice of data division
+     * @sliceNum number slice of data division
      * @aicCoreNum value of GetCoreNumAic() if used cube API, otherwise 0
      * @aivCoreNum value of GetCoreNumAiv() if used vector API, otherwise 0
      * @return task schedule block
@@ -151,15 +153,16 @@ public:
     NpuArch GetCurNpuArch(void) const;
 
     uint32_t GetVecRegLen(void) const;
+
 private:
     fe::PlatFormInfos *platformInfo_;
-    fe::PlatFormInfos* GetPlatFormInfo(void) const;
+    fe::PlatFormInfos *GetPlatFormInfo(void) const;
     uint32_t reservedMemSize_ = 0;
 };
 
 class PlatformAscendCManager {
 public:
-    static PlatformAscendC* GetInstance()
+    static PlatformAscendC *GetInstance()
     {
         const std::lock_guard<std::mutex> lock(platformInitMtx);
         if (platformInfo == nullptr) {
@@ -170,7 +173,7 @@ public:
         }
         return platformInfo;
     }
-    static PlatformAscendC* GetInstance(const char *customSocVersion)
+    static PlatformAscendC *GetInstance(const char *customSocVersion)
     {
         const std::lock_guard<std::mutex> lock(platformInitMtx);
         if (platformInfo == nullptr) {
@@ -181,14 +184,15 @@ public:
         }
         return platformInfo;
     }
+
 private:
     static PlatformAscendC *platformInfo;
     static std::mutex platformInitMtx;
-    static PlatformAscendC* PlatformAscendCManagerInit(const char *customSocVersion);
+    static PlatformAscendC *PlatformAscendCManagerInit(const char *customSocVersion);
     static SocVersion SocVersionMap(const char *socVersionStr);
-    static fe::PlatFormInfos* PlatformAscendCInit(const char *customSocVersion);
+    static fe::PlatFormInfos *PlatformAscendCInit(const char *customSocVersion);
     PlatformAscendCManager();
     ~PlatformAscendCManager() = default;
 };
-}
+} // namespace platform_ascendc
 #endif

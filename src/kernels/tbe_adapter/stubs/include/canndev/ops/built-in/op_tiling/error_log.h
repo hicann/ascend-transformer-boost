@@ -12,8 +12,8 @@
  * \file error_log.h
  * \brief
  */
-#ifndef ASCEND_OPS_STUB_ERROR_LOG_H
-#define ASCEND_OPS_STUB_ERROR_LOG_H
+#ifndef OPS_BUILT_IN_OP_TILING_ERROR_LOG_H_
+#define OPS_BUILT_IN_OP_TILING_ERROR_LOG_H_
 
 #include <mki/utils/log/log.h>
 #include "op_log.h"

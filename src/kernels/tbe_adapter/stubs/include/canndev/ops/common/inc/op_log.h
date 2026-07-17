@@ -7,8 +7,8 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
-#ifndef ASCEND_OPS_TBE_STUB_OP_LOG_H
-#define ASCEND_OPS_TBE_STUB_OP_LOG_H
+#ifndef OPS_COMMON_INC_OP_LOG_H_
+#define OPS_COMMON_INC_OP_LOG_H_
 
 #include <list>
 #include <cstdio>
@@ -20,22 +20,34 @@
 #include "graph/operator.h"
 #include "graph/node.h"
 #if defined(HAVE_DLOG)
-    #include <dlog_pub.h>
+#include <dlog_pub.h>
 #else
-    #include <toolchain/slog.h>
+#include <toolchain/slog.h>
 #endif
 #include "base/err_msg.h"
 
 
 #define OPPROTO_SUBMOD_NAME "OP_PROTO"
 
-inline const char *get_cstr(const std::string &str) { return str.c_str(); }
+inline const char *get_cstr(const std::string &str)
+{
+    return str.c_str();
+}
 
-inline const char *get_cstr(const char *str) { return str; }
+inline const char *get_cstr(const char *str)
+{
+    return str;
+}
 
-inline const std::string &get_op_info(const std::string &str) { return str; }
+inline const std::string &get_op_info(const std::string &str)
+{
+    return str;
+}
 
-inline const char *get_op_info(const char *str) { return str; }
+inline const char *get_op_info(const char *str)
+{
+    return str;
+}
 
 inline std::string get_op_info(const ge::NodePtr &node)
 {
@@ -107,20 +119,20 @@ template <typename T> std::string TbeGetOpType(const T &op)
     return op_ascend_name.GetString();
 }
 
-#define CHECK_DIVISOR_ZERO(divisor)                                                                                   \
-    if ((divisor) == 0) {                                                                                             \
-        return;                                                                                                       \
+#define CHECK_DIVISOR_ZERO(divisor)                                                                                    \
+    if ((divisor) == 0) {                                                                                              \
+        return;                                                                                                        \
     }
 
-#define CHECK_DIVISOR_ZERO_RET(divisor, ret)                                                                          \
-    if ((divisor) == 0) {                                                                                             \
-        return ret;                                                                                                   \
+#define CHECK_DIVISOR_ZERO_RET(divisor, ret)                                                                           \
+    if ((divisor) == 0) {                                                                                              \
+        return ret;                                                                                                    \
     }
 
-#define OP_CHECK(cond, log_func, return_expr)                                                                         \
-    if (cond) {                                                                                                       \
-        log_func;                                                                                                     \
-        return_expr;                                                                                                  \
+#define OP_CHECK(cond, log_func, return_expr)                                                                          \
+    if (cond) {                                                                                                        \
+        log_func;                                                                                                      \
+        return_expr;                                                                                                   \
     }
 
 #define OP_LOGI(opname, ...) D_OP_LOGI(get_op_info(opname), __VA_ARGS__)
@@ -136,13 +148,13 @@ template <typename T> std::string TbeGetOpType(const T &op)
 #define OP_LOGD(opname, ...) D_OP_LOGD(get_op_info(opname), __VA_ARGS__)
 #define OP_EVENT(opname, ...) D_OP_EVENT(get_op_info(opname), __VA_ARGS__)
 
-#define OP_LOG_SUB_DEBUG(op_info, fmt, ...)                                                                           \
+#define OP_LOG_SUB_DEBUG(op_info, fmt, ...)                                                                            \
     MKI_FLOG_DEBUG("[%s] OpName:[%s] " #fmt, __FUNCTION__, get_cstr(op_info), ##__VA_ARGS__)
-#define OP_LOG_SUB_INFO(op_info, fmt, ...)                                                                            \
+#define OP_LOG_SUB_INFO(op_info, fmt, ...)                                                                             \
     MKI_FLOG_INFO("[%s] OpName:[%s] " #fmt, __FUNCTION__, get_cstr(op_info), ##__VA_ARGS__)
-#define OP_LOG_SUB_WARN(op_info, fmt, ...)                                                                            \
+#define OP_LOG_SUB_WARN(op_info, fmt, ...)                                                                             \
     MKI_FLOG_WARN("[%s] OpName:[%s] " #fmt, __FUNCTION__, get_cstr(op_info), ##__VA_ARGS__)
-#define OP_LOG_SUB_ERROR(op_info, fmt, ...)                                                                           \
+#define OP_LOG_SUB_ERROR(op_info, fmt, ...)                                                                            \
     MKI_FLOG_ERROR("[%s] OpName:[%s] " #fmt, __FUNCTION__, get_cstr(op_info), ##__VA_ARGS__)
 
 #define D_OP_LOGI(opname, fmt, ...) OP_LOG_SUB_INFO(opname, fmt, ##__VA_ARGS__)
@@ -185,7 +197,7 @@ constexpr const int OP_MSG_HEADER_LEN = 200;
 // print very long log. long line will be split to multipile lines
 #define OP_LOG_FULL(opname, format, ...)                                                                               \
     do {                                                                                                               \
-        if (Mki::LogLevel::DEBUG < Mki::LogCore::Instance().GetLogLevel()) {                                     \
+        if (Mki::LogLevel::DEBUG < Mki::LogCore::Instance().GetLogLevel()) {                                           \
             break;                                                                                                     \
         }                                                                                                              \
         char msgbufxyz[OP_MAX_LOG_SIZE];                                                                               \

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Technologies Co., Ltd.
+ * Copyright (c) 2026 Huawei Technologies Co., Ltd.
  * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
  * CANN Open Software License Agreement Version 2.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
@@ -7,16 +7,13 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
-#include "auto_tiling_register.h"
 
-std::array<AutoTilingParseFunc, PATTERN_SIZE> &AsdOpsAutoTilingRegister::RegisterParser()
-{
-    static std::array<AutoTilingParseFunc, PATTERN_SIZE> autoTilingParsers;
-    return autoTilingParsers;
-}
+#include "graph/utils/tensor_utils_ex.h"
 
-std::array<AutoTilingFunc, PATTERN_SIZE> &AsdOpsAutoTilingRegister::RegisterTiling()
+namespace ge {
+int64_t TensorUtilsEx::GetPaddingSize()
 {
-    static std::array<AutoTilingFunc, PATTERN_SIZE> autoTilingFuncs;
-    return autoTilingFuncs;
+    constexpr int64_t kDefaultPaddingSize = 32;
+    return kDefaultPaddingSize;
 }
+} // namespace ge

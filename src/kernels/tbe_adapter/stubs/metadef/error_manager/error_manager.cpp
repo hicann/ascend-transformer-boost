@@ -30,7 +30,47 @@ void ReportInnerError(const char_t *file_name, const char_t *func, uint32_t line
     UNUSED_VALUE(error_code);
     UNUSED_VALUE(format);
 }
+
+int32_t RegisterFormatErrorMessage(const char *error_msg, size_t error_msg_len)
+{
+    UNUSED_VALUE(error_msg);
+    UNUSED_VALUE(error_msg_len);
+    return 0;
 }
+
+int32_t ReportInnerErrMsg(const char *file_name, const char *func, uint32_t line, const char *error_code,
+                          const char *format, ...)
+{
+    UNUSED_VALUE(file_name);
+    UNUSED_VALUE(func);
+    UNUSED_VALUE(line);
+    UNUSED_VALUE(error_code);
+    UNUSED_VALUE(format);
+    return 0;
+}
+
+int32_t ReportUserDefinedErrMsg(const char *error_code, const char *format, ...)
+{
+    UNUSED_VALUE(error_code);
+    UNUSED_VALUE(format);
+    return 0;
+}
+
+int32_t ReportPredefinedErrMsg(const char *error_code, const std::vector<const char *> &key,
+                               const std::vector<const char *> &value)
+{
+    UNUSED_VALUE(error_code);
+    UNUSED_VALUE(key);
+    UNUSED_VALUE(value);
+    return 0;
+}
+
+int32_t ReportPredefinedErrMsg(const char *error_code)
+{
+    UNUSED_VALUE(error_code);
+    return 0;
+}
+} // namespace error_message
 
 ErrorManager &ErrorManager::GetInstance()
 {
@@ -45,8 +85,7 @@ int32_t ErrorManager::ReportInterErrMessage(const std::string error_code, const 
     return 0;
 }
 
-int32_t ErrorManager::ReportErrMessage(const std::string error_code,
-                                       const std::map<std::string, std::string> &args_map)
+int32_t ErrorManager::ReportErrMessage(const std::string error_code, const std::map<std::string, std::string> &args_map)
 {
     UNUSED_VALUE(error_code);
     UNUSED_VALUE(args_map);
@@ -102,4 +141,4 @@ int32_t ReportPredefinedErrMsg(const char *error_code, const std::vector<const c
     UNUSED_VALUE(value);
     return 0;
 }
-}
+} // namespace ge
