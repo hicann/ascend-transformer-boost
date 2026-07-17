@@ -16,7 +16,7 @@ function fn_build_mki()
     if [ ! -d "$THIRD_PARTY_DIR"/Mind-KernelInfra ]; then
         [[ ! -d "$THIRD_PARTY_DIR" ]] && mkdir $THIRD_PARTY_DIR
         cd $THIRD_PARTY_DIR
-        branch=$(git symbolic-ref -q --short HEAD || git describe --tags --exact-match 2> /dev/null || echo "commit_id") 
+        branch=$(git symbolic-ref -q --short HEAD || git describe --tags --exact-match 2> /dev/null || echo "commit_id")
         [[ "$branch" == *br_personal* || "$branch" == "commit_id" ]] && branch=master
         echo  "current branch for atb and mki: $branch"
         git clone --branch $branch --depth 1 https://gitcode.com/cann/ascend-boost-comm.git Mind-KernelInfra
@@ -54,7 +54,7 @@ function fn_init_makeself()
     tar -zxf makeself-release-2.5.0.tar.gz
     pushd makeself-release-2.5.0
     if command -v patch >/dev/null 2>&1; then
-        echo "patch is installed, applying the patch"  
+        echo "patch is installed, applying the patch"
         patch -p1 -i ../makeself-2.5.0.patch
     else
         echo "patch is not installed, patch will not be applied"
@@ -98,9 +98,9 @@ function fn_build_pybind11()
         return $?
     fi
     cd $THIRD_PARTY_DIR
-    git clone --branch v2.10.3 --depth 1 https://github.com/pybind/pybind11.git 
+    git clone --branch v2.10.3 --depth 1 https://github.com/pybind/pybind11.git
 }
- 
+
 function fn_build_catlass()
 {
     if [ -d "$THIRD_PARTY_DIR/catlass" ]; then
@@ -172,7 +172,7 @@ function fn_init_env()
     if [ -z "${PYTORCH_NPU_INSTALL_PATH}" ]; then
         export PYTORCH_NPU_INSTALL_PATH=$(pip show torch-npu | grep "Location" | awk '{print $2}')/torch_npu
     fi
-    
+
     echo "PYTORCH_INSTALL_PATH=$PYTORCH_INSTALL_PATH"
     echo "PYTORCH_NPU_INSTALL_PATH=$PYTORCH_NPU_INSTALL_PATH"
     export LD_LIBRARY_PATH=$PYTORCH_INSTALL_PATH/lib:$PYTORCH_NPU_INSTALL_PATH/lib:$LD_LIBRARY_PATH
@@ -191,7 +191,7 @@ function rename_whl_file() {
         fi
     done
 }
- 
+
 function fn_gen_atb_whl()
 {
     cd $CODE_ROOT/output
@@ -299,7 +299,6 @@ function fn_build_tbe_dependency()
     CANNDEV_DIR=$THIRD_PARTY_DIR/canndev
     METADEF_DIR=$THIRD_PARTY_DIR/metadef
     DEVKIT_DIR=$THIRD_PARTY_DIR/asc-devkit
-    CANN_OPS_DIR=$THIRD_PARTY_DIR/cann-ops-adv
     export ASCEND_KERNEL_PATH=$ASCEND_HOME_PATH/opp/built-in/op_impl/ai_core/tbe/kernel
     COMPILE_OPTIONS="${COMPILE_OPTIONS} -DBUILD_TBE_ADAPTER=ON"
 
@@ -309,7 +308,7 @@ function fn_build_tbe_dependency()
         exit 1
     fi
     if [ ! -d "$DEVKIT_DIR" ];then
-        echo "Failed to find api"
+        echo "Failed to find asc-devkit"
         exit 1
     fi
     if [ ! -d "$DEVKIT_DIR/include/adv_api" ];then
@@ -317,17 +316,12 @@ function fn_build_tbe_dependency()
         exit 1
     fi
     rm -rf $DEVKIT_DIR/tiling
-    cp -r $DEVKIT_DIR/include/adv_api $DEVKIT_DIR/tiling
-    if [ ! -d "$CANN_OPS_DIR" ];then
-        echo "Failed to find cann-ops-adv"
-        exit 1
-    fi
-    cp -r $CODE_ROOT/src/kernels/tbe_adapter/stubs/include/canndev $THIRD_PARTY_DIR
-    cp -r $CODE_ROOT/src/kernels/tbe_adapter/stubs/include/air $THIRD_PARTY_DIR
+    ln -snf include/adv_api $DEVKIT_DIR/tiling
     # Future replacements file should be place here
+    mkdir -p $THIRD_PARTY_DIR/metadef/inc/common/plugin
     cp $CODE_ROOT/src/kernels/tbe_adapter/stubs/stub_files/metadef/inc/common/plugin/plugin_manager.h $THIRD_PARTY_DIR/metadef/inc/common/plugin/
     set +e
-    ln -s $DEVKIT_DIR/impl $THIRD_PARTY_DIR/impl
+    ln -snf $DEVKIT_DIR/impl $THIRD_PARTY_DIR/impl
     set -e
     if [ ! -d "$METADEF_DIR" ];then
         echo "Failed to find metadef"

@@ -7,8 +7,8 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
-#ifndef ASCEND_OPS_STUB_KB_LOG_H
-#define ASCEND_OPS_STUB_KB_LOG_H
+#ifndef RUNTIME_KB_COMMON_UTILS_KB_LOG_H_
+#define RUNTIME_KB_COMMON_UTILS_KB_LOG_H_
 
 #include <climits>
 #include <set>

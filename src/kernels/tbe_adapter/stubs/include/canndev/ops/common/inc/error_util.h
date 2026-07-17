@@ -7,8 +7,8 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
-#ifndef ASCEND_OPS_STUB_ERROR_UTIL_H
-#define ASCEND_OPS_STUB_ERROR_UTIL_H
+#ifndef OPS_COMMON_INC_ERROR_UTIL_H_
+#define OPS_COMMON_INC_ERROR_UTIL_H_
 
 #include <sstream>
 #include <vector>
@@ -17,15 +17,15 @@
 #include "graph/operator.h"
 #include "op_log.h"
 
-#define VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op_name, err_msg)                                                        \
-    do {                                                                                                             \
-        OP_LOGE(op_name, "%s", get_cstr(err_msg));                                                                   \
+#define VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op_name, err_msg)                                                          \
+    do {                                                                                                               \
+        OP_LOGE(op_name, "%s", get_cstr(err_msg));                                                                     \
     } while (0)
 
-#define CUBE_INNER_ERR_REPORT(op_name, err_msg, ...)                                                                 \
-    do {                                                                                                             \
-        OP_LOGE_WITHOUT_REPORT(op_name, err_msg, ##__VA_ARGS__);                                                     \
-        REPORT_INNER_ERROR("E69999", "op[%s], " err_msg, get_cstr(get_op_info(op_name)), ##__VA_ARGS__);             \
+#define CUBE_INNER_ERR_REPORT(op_name, err_msg, ...)                                                                   \
+    do {                                                                                                               \
+        OP_LOGE_WITHOUT_REPORT(op_name, err_msg, ##__VA_ARGS__);                                                       \
+        REPORT_INNER_ERROR("E69999", "op[%s], " err_msg, get_cstr(get_op_info(op_name)), ##__VA_ARGS__);               \
     } while (0)
 
 namespace ge {
@@ -57,7 +57,10 @@ template <typename T> std::string DebugString(const std::vector<std::pair<T, T>>
     return oss.str();
 }
 
-inline std::ostream &operator<<(std::ostream &os, const ge::Operator &op) { return os << get_op_info(op); }
+inline std::ostream &operator<<(std::ostream &os, const ge::Operator &op)
+{
+    return os << get_op_info(op);
+}
 
 /*
  * str cat util function

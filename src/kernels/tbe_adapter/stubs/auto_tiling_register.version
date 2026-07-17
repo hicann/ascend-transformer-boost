@@ -1,0 +1,7 @@
+{
+  global:
+    *;
+  local:
+    _ZZN18AutoTilingRegister*;
+    _ZN18AutoTilingRegister*;
+};

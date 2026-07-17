@@ -17,7 +17,6 @@ file(GLOB_RECURSE SOURCE_FILES
 
 set(ASCEND_PATH $ENV{ASCEND_HOME_PATH})
 set(METADEF_DIR ${PROJECT_SOURCE_DIR}/3rdparty/metadef)
-set(CANN_OPS_DIR ${PROJECT_SOURCE_DIR}/3rdparty/cann-ops-adv/src/transformer)
 set(TBE_TILING_DIR ${PROJECT_SOURCE_DIR}/3rdparty/canndev/ops/built-in/op_tiling)
 set(CANNDEV_DIR ${PROJECT_SOURCE_DIR}/3rdparty/canndev/ops)
 set(OPS_NN_DIR ${PROJECT_SOURCE_DIR}/3rdparty/ops-nn)
@@ -28,10 +27,10 @@ set(DEVKIT_DIR ${PROJECT_SOURCE_DIR}/3rdparty/asc-devkit)
 
 # 迁移后算子源文件
 set(OPS_SOURCE
-    ${OPS_NN_DIR}/index/scatter_elements_v2/op_host/scatter_elements_v2_tiling.cpp
+    ${OPS_NN_DIR}/index/scatter_elements_v2/op_host/arch22/scatter_elements_v2_tiling.cpp
     ${OPS_NN_DIR}/norm/layer_norm_v4/op_host/layer_norm_v4_tiling.cpp
     ${OPS_NN_DIR}/norm/layer_norm_v4/op_host/layer_norm_v4_tiling_base.cpp
-    ${OPS_MATH_DIR}/common/src/op_host/tiling_util.cpp
+    ${OPS_BASE_DIR}/src/op_common/op_host/tiling_util.cpp
     ${OPS_BASE_DIR}/src/op_common/atvoss/elewise/elewise_tiling.cpp
     ${OPS_BASE_DIR}/src/op_common/log/log.cpp
 )
@@ -143,7 +142,6 @@ if("${PACKAGE_COMPILE}" STREQUAL "ON" AND NOT "${LOCAL_RELEASE_COMPILE}" STREQUA
         ${CANNDEV_DIR}/norm/layer_norm_v3/op_host/layer_norm_v3_tiling_base.cpp
         ${CANNDEV_DIR}/math/one_hot/op_host/one_hot_tiling.cpp
         ${CANNDEV_DIR}/index/reverse_v2/op_host/reverse_v2_tiling.cpp
-        ${CANNDEV_DIR}/index/reverse_v2/op_host/reverse_v2_tiling_arch35.cpp
         ${TBE_TILING_DIR}/runtime/runtime2_util.cc
         ${CANNDEV_DIR}/conversion/slice/op_host/slice_tiling.cpp
         ${TBE_TILING_DIR}/runtime/top_k.cc
@@ -313,7 +311,7 @@ set(TILING_API_SRC_DIR ${PROJECT_SOURCE_DIR}/3rdparty/api/impl)
 
 # Generate kernel_tiling.h
 set(GEN_KERENL_TILING_DATA_SCRIPT ${DEVKIT_DIR}/impl/adv_api/cmake/scripts/gen_kernel_tiling_data_def.py)
-set(TILING_DATA_DEF_DIR ${DEVKIT_DIR}/lib)
+set(TILING_DATA_DEF_DIR ${DEVKIT_DIR}/include/adv_api)
 set(KERNEL_TILING_HEAD  ${CMAKE_BINARY_DIR}/generated_include/kernel_tiling/kernel_tiling.h)
 
 add_custom_command(OUTPUT ${KERNEL_TILING_HEAD}
@@ -472,6 +470,13 @@ endif()
 
 if("${PACKAGE_COMPILE}" STREQUAL "ON" AND NOT "${LOCAL_RELEASE_COMPILE}" STREQUAL "ON")
     set(ASDOPS_INC_DIRS
+        ${CMAKE_CURRENT_LIST_DIR}/stubs/include/canndev/ops
+        ${CMAKE_CURRENT_LIST_DIR}/stubs/include/canndev/ops/common
+        ${CMAKE_CURRENT_LIST_DIR}/stubs/include/canndev/ops/built-in/op_tiling
+        ${CMAKE_CURRENT_LIST_DIR}/stubs/include/canndev/ops/built-in/op_tiling/aoe/runtime_kb/common
+        ${CMAKE_CURRENT_LIST_DIR}/stubs/include/canndev/ops/common/inc
+        ${CMAKE_CURRENT_LIST_DIR}/stubs/include/canndev/ops/utils/inc
+        ${CMAKE_CURRENT_LIST_DIR}/stubs/include/air/graph_metadef
         ${CMAKE_CURRENT_LIST_DIR}
         ${CMAKE_CURRENT_LIST_DIR}/platform
         ${CMAKE_CURRENT_LIST_DIR}/platform/tiling
@@ -517,6 +522,8 @@ if("${PACKAGE_COMPILE}" STREQUAL "ON" AND NOT "${LOCAL_RELEASE_COMPILE}" STREQUA
         $ENV{ASCEND_HOME_PATH}/include
         $ENV{ASCEND_HOME_PATH}/include/tiling
         $ENV{ASCEND_HOME_PATH}/${ARCH}-linux
+        $ENV{ASCEND_HOME_PATH}/${ARCH}-linux/include
+        $ENV{ASCEND_HOME_PATH}/${ARCH}-linux/include/base
         $ENV{ASCEND_HOME_PATH}/${ARCH}-linux/pkg_inc
         $ENV{ASCEND_HOME_PATH}/${ARCH}-linux/pkg_inc/base
         ${CMAKE_CURRENT_LIST_DIR}/stubs/include
@@ -587,11 +594,11 @@ execute_process(COMMAND python3 ${PROJECT_SOURCE_DIR}/scripts/update_tbe_tactic_
 if(NOT RESULT EQUAL 0)
     message(FATAL_ERROR "tbe info update failed, error code: ${RESULT}, error info:\n${RESULT_INFO}")
 endif()
- 
+
 string(REPLACE "\n" ";" MIX_REUSE_BINARY_LIST "${MIX_PYTHON_OUTPUT}")
 list(POP_BACK MIX_REUSE_BINARY_LIST)
 set_source_files_properties(${MIX_REUSE_BINARY_LIST} PROPERTIES GENERATED TRUE)
- 
+
 add_custom_command(
     OUTPUT ${MIX_REUSE_BINARY_LIST} ${CMAKE_BINARY_DIR}/mix_wait_flag.cpp
     DEPENDS ${PROJECT_SOURCE_DIR}/src/kernels/configs/mixops/tbe_tactic_info.ini
@@ -601,14 +608,14 @@ add_custom_command(
     COMMAND cmake -E echo "wait 10 sec done"
     COMMAND cmake -E touch ${CMAKE_BINARY_DIR}/mix_wait_flag.cpp
 )
- 
+
 add_custom_target(MIX_REUSE_SRC_TARGET ALL
     DEPENDS ${MIX_REUSE_BINARY_LIST} ${CMAKE_BINARY_DIR}/mix_wait_flag.cpp
 )
 add_library(mix_reuse_kernels OBJECT ${MIX_REUSE_BINARY_LIST} ${CMAKE_BINARY_DIR}/mix_wait_flag.cpp)
 add_dependencies(mix_reuse_kernels MIX_REUSE_SRC_TARGET)
 target_compile_definitions(mix_reuse_kernels PRIVATE OpSpace=AtbOps)
- 
+
 # Ops
 execute_process(COMMAND python3 ${PROJECT_SOURCE_DIR}/scripts/update_tbe_tactic_json.py
                 OUTPUT_VARIABLE OPS_PYTHON_OUTPUT
@@ -617,11 +624,11 @@ execute_process(COMMAND python3 ${PROJECT_SOURCE_DIR}/scripts/update_tbe_tactic_
 if(NOT RESULT EQUAL 0)
     message(FATAL_ERROR "tbe info update failed, error code: ${RESULT}, error info:\n${RESULT_INFO}")
 endif()
- 
+
 string(REPLACE "\n" ";" OPS_REUSE_BINARY_LIST "${OPS_PYTHON_OUTPUT}")
 list(POP_BACK OPS_REUSE_BINARY_LIST)
 set_source_files_properties(${OPS_REUSE_BINARY_LIST} PROPERTIES GENERATED TRUE)
- 
+
 add_custom_command(
     OUTPUT ${OPS_REUSE_BINARY_LIST} ${CMAKE_BINARY_DIR}/ops_wait_flag.cpp
     DEPENDS ${PROJECT_SOURCE_DIR}/src/kernels/configs/ops/tbe_tactic_info.ini
@@ -631,7 +638,7 @@ add_custom_command(
     COMMAND cmake -E echo "wait 10 sec done"
     COMMAND cmake -E touch ${CMAKE_BINARY_DIR}/ops_wait_flag.cpp
 )
- 
+
 add_custom_target(OPS_REUSE_SRC_TARGET ALL
     DEPENDS ${OPS_REUSE_BINARY_LIST} ${CMAKE_BINARY_DIR}/ops_wait_flag.cpp
 )
@@ -658,6 +665,7 @@ target_include_directories(tbe_adapter_ops PRIVATE
     ${OPS_NN_DIR}/common/inc
     ${OPS_MATH_DIR}
     ${OPS_MATH_DIR}/common/inc
+    ${METADEF_DIR}/inc
     ${METADEF_DIR}/inc/external
     ${CANNDEV_DIR}/built-in/op_tiling
     ${TBE_TILING_DIR}
@@ -684,10 +692,19 @@ target_compile_definitions(tbe_adapter_ops PUBLIC
     platform_ascendc=AsdOpsPlatformAscendC
     TILING_REG_FLAG=1
 )
- 
+
 # Target
 add_library(tbe_adapter SHARED ${SOURCE_FILES} ${ASDOPS_METADEF_FILES} ${ASDOPS_TILING_FILES} ${TILING_API_SRCS})
-target_compile_options(tbe_adapter PRIVATE -Wno-error) # For redefine of "dlog_error" in dlog_pub.h and slog.h
+# canndev 同目录 #include "auto_tiling_register.h" 会绕过 -I stubs；-include 预占 include guard，强制走 AsdOps 隔离注册表
+target_compile_options(tbe_adapter PRIVATE
+    -Wno-error # For redefine of "dlog_error" in dlog_pub.h and slog.h
+    -fno-gnu-unique
+    -include${CMAKE_CURRENT_LIST_DIR}/stubs/include/canndev/ops/built-in/op_tiling/auto_tiling_register.h
+)
+target_link_options(tbe_adapter PRIVATE
+    -Wl,-Bsymbolic
+    -Wl,--version-script=${CMAKE_CURRENT_LIST_DIR}/stubs/auto_tiling_register.version
+)
 add_dependencies(tbe_adapter GEN_KERNEL_TILING)
 target_include_directories(tbe_adapter PRIVATE ${ASDOPS_INC_DIRS})
 target_link_libraries(tbe_adapter PRIVATE mmpa c_sec ascendalog mix_reuse_kernels ops_reuse_kernels tbe_adapter_ops tiling_api)

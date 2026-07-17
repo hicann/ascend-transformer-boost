@@ -7,8 +7,8 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
-#ifndef ASCEND_OPS_STUB_OP_CONST_H
-#define ASCEND_OPS_STUB_OP_CONST_H
+#ifndef CANN_OPS_BUILT_IN_OPS_CONST_H_
+#define CANN_OPS_BUILT_IN_OPS_CONST_H_
 
 #include <vector>
 #include "external/graph/operator.h"
@@ -86,7 +86,7 @@ template <typename T> bool GetConstInt(gert::TilingContext *context, const int64
         return false;
     }
 
-    const gert::Tensor* const_tensor = context->GetInputTensor(const_input_idx);
+    const gert::Tensor *const_tensor = context->GetInputTensor(const_input_idx);
     OPS_CHECK_NULL_WITH_CONTEXT_RET(context, const_tensor, false);
     if (!IsConstTensor(const_tensor)) {
         OP_LOGW(context->GetNodeName(), "the input[%ld] is not const tensor, will return failed.", const_input_idx);
@@ -107,11 +107,12 @@ template <typename T> bool GetConstInt(gert::TilingContext *context, const int64
         case ge::DT_INT32:
             value = static_cast<T>(const_tensor->GetData<int32_t>()[0]);
             break;
-        default: {
-            OP_LOGW(context->GetNodeName(), "GetConstInt only support [int32, int64, uint64, uint32]. but is %s",
-                    ops::ToString(dtype).c_str());
-            return false;
-        }
+        default:
+            {
+                OP_LOGW(context->GetNodeName(), "GetConstInt only support [int32, int64, uint64, uint32]. but is %s",
+                        ops::ToString(dtype).c_str());
+                return false;
+            }
     }
     OP_LOGD("GetConstInt", "GetConstInt of value is %d", static_cast<int>(value));
     return true;
@@ -186,22 +187,26 @@ template <typename T> bool GetConstIntToShape(T *context, const int64_t const_id
     ge::DataType const_dtype = const_tensor->GetDataType();
 
     switch (const_dtype) {
-        case ge::DT_INT32: {
-            GetValueToShape<int32_t>(const_tensor, const_shape);
-            break;
-        }
-        case ge::DT_INT64: {
-            GetValueToShape<int64_t>(const_tensor, const_shape);
-            break;
-        }
-        case ge::DT_UINT64: {
-            GetValueToShape<uint64_t>(const_tensor, const_shape);
-            break;
-        }
-        case ge::DT_UINT32: {
-            GetValueToShape<uint32_t>(const_tensor, const_shape);
-            break;
-        }
+        case ge::DT_INT32:
+            {
+                GetValueToShape<int32_t>(const_tensor, const_shape);
+                break;
+            }
+        case ge::DT_INT64:
+            {
+                GetValueToShape<int64_t>(const_tensor, const_shape);
+                break;
+            }
+        case ge::DT_UINT64:
+            {
+                GetValueToShape<uint64_t>(const_tensor, const_shape);
+                break;
+            }
+        case ge::DT_UINT32:
+            {
+                GetValueToShape<uint32_t>(const_tensor, const_shape);
+                break;
+            }
         default:
             OP_LOGW(context->GetNodeName(), "GetConstIntToShape only support [int32, int64, uint64, uint32]. but is %s",
                     ops::ToString(const_dtype).c_str());
