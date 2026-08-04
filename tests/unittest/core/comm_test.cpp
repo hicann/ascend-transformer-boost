@@ -20,7 +20,7 @@ void TestCreateHcclComm(int rank, int rankRoot, int rankSize)
     hcclComm = atb::Comm::CreateHcclComm(rank, rankRoot, rankSize, commName);
     std::cout << "commName: " << commName << std::endl;
     EXPECT_NE(hcclComm, nullptr) << "HcclComm should not be null";
-    EXPECT_NE(commName, "") << "CommName should not be null";
+    EXPECT_STRNE(commName, "") << "CommName should not be null";
     auto ret = atb::Comm::DestoryHcclComm(hcclComm);
     aclrtResetDevice(rank);
     std::cout << "destoryHcclComm  ret: " << ret << std::endl;
@@ -35,7 +35,7 @@ void TestCreateHcclCommByRankFile(int rank, int rankSize)
     hcclComm = atb::Comm::CreateHcclCommByRankTableFile(rank, rankSize, rankTableFile, commName);
     std::cout << "rankTableFile commName: " << commName << std::endl;
     EXPECT_NE(hcclComm, nullptr) << "rankTableFile HcclComm should not be null";
-    EXPECT_NE(commName, "") << "rankTableFile CommName should not be null";
+    EXPECT_STRNE(commName, "") << "rankTableFile CommName should not be null";
     auto ret = atb::Comm::DestoryHcclComm(hcclComm);
     aclrtResetDevice(rank);
     std::cout << "destoryHcclComm  ret: " << ret << std::endl;
@@ -49,10 +49,11 @@ void TestCreateHcclCrossMulitComm(int realRank, int subCommRankId, std::vector<u
     uint32_t hcclBufferSize = 200;
     char commName[129] = "";
     HcclComm hcclComm = nullptr;
-    hcclComm = atb::Comm::CreateHcclCrossMulitComm(rankTableFile, subCommRankId, rankIds, subCommId, hcclBufferSize, commName);
+    hcclComm =
+        atb::Comm::CreateHcclCrossMulitComm(rankTableFile, subCommRankId, rankIds, subCommId, hcclBufferSize, commName);
     std::cout << "commName: " << commName << std::endl;
     EXPECT_NE(hcclComm, nullptr) << "HcclComm should not be null";
-    EXPECT_NE(commName, "") << "CommName should not be null";
+    EXPECT_STRNE(commName, "") << "CommName should not be null";
     auto ret = atb::Comm::DestoryHcclComm(hcclComm);
     aclrtResetDevice(realRank);
     std::cout << "destoryHcclComm  ret: " << ret << std::endl;
