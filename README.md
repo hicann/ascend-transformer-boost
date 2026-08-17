@@ -1,4 +1,5 @@
 # Ascend Transformer Boost
+简体中文 | [English](./README_en.md)
 
 🔥 [2025/09] Ascend Transformer Boost项目首次上线。
 

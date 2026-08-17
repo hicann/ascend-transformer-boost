@@ -1,4 +1,5 @@
 # Ascend Transformer Boost
+English | [简体中文](./README.md)
 
 🔥 [Sept 2025] Initial release.
 
