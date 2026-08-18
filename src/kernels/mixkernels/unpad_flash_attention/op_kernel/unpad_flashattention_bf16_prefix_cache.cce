@@ -173,7 +173,7 @@ public:
             if (q_seqlen == 0 || kv_seqlen == 0) {
                 continue;
             }
-            // 128 * 128 / 128 
+            // 128 * 128 / 128
             uint32_t pp_m_scalar = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 2 + offset_tiling));
             uint32_t pp_n_scalar = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 3 + offset_tiling));
             uint32_t addr_q_high32 = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 4 + offset_tiling));
@@ -560,18 +560,18 @@ public:
         this->batch_stride_kv = batch_size * max_kv_seqlen * kv_heads * embd * sizeof(QKV_DT);
         this->__k = embd;
         this->round_k = (__k + BLOCK_SIZE - 1) / BLOCK_SIZE * BLOCK_SIZE;
-        
+
         this->k_gm = k_gm;
         this->v_gm = v_gm;
         this->block_table_gm = block_table_gm;
-        
+
         q_gm_tensor.SetGlobalBuffer(reinterpret_cast<__gm__ QKV_DT *>(this->q_gm));
         k_gm_tensor.SetGlobalBuffer(reinterpret_cast<__gm__ QKV_DT *>(this->k_gm));
         v_gm_tensor.SetGlobalBuffer(reinterpret_cast<__gm__ QKV_DT *>(this->v_gm));
         s_gm_tensor.SetGlobalBuffer(reinterpret_cast<__gm__ float *>(this->s_gm));
         p_gm_tensor.SetGlobalBuffer(reinterpret_cast<__gm__ QKV_DT *>(this->p_gm));
         o_tmp_gm_tensor.SetGlobalBuffer(reinterpret_cast<__gm__ float *>(this->o_tmp_gm));
-        
+
         SET_FLAG(MTE1, MTE2, EVENT_ID0);
         SET_FLAG(MTE1, MTE2, EVENT_ID1);
         SET_FLAG(MTE1, MTE2, EVENT_ID2);
@@ -717,7 +717,7 @@ public:
             }
             SET_FLAG(MTE2, MTE1, pingpong_flag);
             WAIT_FLAG(MTE2, MTE1, pingpong_flag);
-            
+
             uint32_t sv_n = n_loop == 1 ? kv_seqlen : pp_n_scalar;
             uint32_t sv_round_n = (sv_n + BLOCK_SIZE - 1) / BLOCK_SIZE * BLOCK_SIZE;
             uint64_t v_offset = addr_v_scalar + (head_idx / group_num) * embd;//  + 17592186044416 / sizeof(QKV_DT);
@@ -732,9 +732,9 @@ public:
             uint32_t vect_mod = 2 * launch_delay;
             uint32_t kv_pingpong_flag = 0;
             uint64_t kv_pingpong_offset = kv_pingpong_flag * KV_DB_SIZE;
-            
+
             if constexpr (splitm) {
-                // 预留 splitm 
+                // 预留 splitm
             } else {
                 for (uint32_t n_idx = 0; n_idx < n_end + launch_delay; n_idx += s_block_stack) {
                     if (n_idx < n_end) {
@@ -812,7 +812,7 @@ public:
                             }
                             SET_FLAG(M, MTE1, pingpong_flag);
                             SET_FLAG(M, MTE1, pingpong_flag + 2);
-                            
+
                             SET_FLAG(M, FIX, pingpong_flag);
                             WAIT_FLAG(M, FIX, pingpong_flag);
                             // copy S to gm
@@ -824,7 +824,7 @@ public:
                                 qk_round_m,  // srcStride
                                 sv_round_n  // dstStride_dst_D
                             );
-                            SET_FLAG(FIX, M, pingpong_flag);  
+                            SET_FLAG(FIX, M, pingpong_flag);
                         }
                         FftsCrossCoreSync<PIPE_FIX, 2>(QK_READY);
                         kv_pingpong_flag = 1 - kv_pingpong_flag;
@@ -876,7 +876,7 @@ public:
                             );
                         }
                         vIdx += (sv_n + pp_n_scalar - 1) / pp_n_scalar;
-                        
+
                         WaitFlagDev(SOFTMAX_READY);
                         WAIT_FLAG(FIX, M, l0c_pingpong_flag);
                         for (uint32_t l1_k_split_idx = 0; l1_k_split_idx < l1_split_loop; l1_k_split_idx++) {
@@ -928,7 +928,7 @@ public:
                                 for (uint32_t l0b_load_idx = 0; l0b_load_idx < 128 / BLOCK_SIZE; ++l0b_load_idx) {
                                     l1_to_l0_b<ArchType::ASCEND_V220, QKV_DT, true, DataFormat::VECTOR, DataFormat::VECTOR>(
                                         l0b_buf_tensor[l0_offset + l0b_load_idx * round_k * BLOCK_SIZE],
-                                        l1v_buf_addr_tensor[kv_pingpong_offset + l0b_load_idx * CUBE_MATRIX_SIZE + 
+                                        l1v_buf_addr_tensor[kv_pingpong_offset + l0b_load_idx * CUBE_MATRIX_SIZE +
                                                             l1_k_split_idx * n_slice * BLOCK_SIZE +
                                                             l0_k_split_idx * 128 * BLOCK_SIZE],
                                         0,
@@ -955,7 +955,7 @@ public:
                                         sv_n, // k
                                         1     // cmatrixInitVal
                                     );
-                                } else { 
+                                } else {
                                     mmad<ArchType::ASCEND_V220, QKV_DT, QKV_DT, float, false>(
                                         l0c_buf_tensor[l0c_offset],
                                         l0a_buf_tensor[l0_offset],
@@ -982,7 +982,7 @@ public:
                             qk_round_m,  // srcStride
                             round_k     // dstStride_dst_D
                         );
-                        SET_FLAG(FIX, M, l0c_pingpong_flag);  
+                        SET_FLAG(FIX, M, l0c_pingpong_flag);
                         FftsCrossCoreSync<PIPE_FIX, 2>(UPDATE_READY);
                         kv_pingpong_flag = 1 - kv_pingpong_flag;
                         kv_pingpong_offset = kv_pingpong_flag * KV_DB_SIZE;
@@ -1265,7 +1265,7 @@ public:
                     4  // srcRepeatStride
                 );
                 PIPE_BARRIER(V);
-                if (IS_BF16) { 
+                if (IS_BF16) {
                     muls_v<ArchType::ASCEND_V220, float>(
                         mask_ubuf_tensor,
                         mask_ubuf_tensor, (float)-3e38,
@@ -1859,7 +1859,8 @@ public:
                                 if (maskType == MaskType::MASK_TYPE_ALIBI_COMPRESS || maskType == MaskType::MASK_TYPE_ALIBI_COMPRESS_SQRT || maskType == MaskType::MASK_TYPE_ALIBI_COMPRESS_LEFT_ALIGN) {
                                     mask_offset = BASE_MASK_SIZE * SOFTMAX_MAX_LENGTH;
                                     if (alibi_left_align == 0) {
-                                        delta = base_y * (n_idx + 1 - m_idx - prefixIdx);
+                                        delta = base_y * (static_cast<int32_t>(n_idx) + 1 -
+                                                         static_cast<int32_t>(m_idx) - static_cast<int32_t>(prefixIdx));
                                     } else {
                                         delta = -base_y * n_idx;
                                     }
@@ -2861,7 +2862,7 @@ public:
             if (is_triu_mask && pp_m_scalar >= pp_n_scalar) {
                 n_end = m_idx + prefixIdx + 1;
             }
-            uint32_t qk_n_triu = n_end * pp_n_scalar; 
+            uint32_t qk_n_triu = n_end * pp_n_scalar;
             uint32_t s_block_stack = n_end > 8 ? 4 : (n_end > 4 ? 2 : 1);
             uint32_t launch_delay = s_block_stack * 2;
             uint32_t vect_mod = 2 * launch_delay;
@@ -2899,16 +2900,16 @@ public:
                         int32_t div_m = 4;
                         if constexpr (MASK_TYPE == MaskType::MASK_TYPE_CAUSAL_MASK) {
                             OnlineSoftmaxStage1<S_DTYPE, EXP_DTYPE, P_DTYPE, MASK_DTYPE, MASK_TYPE> (
-                                ls_ubuf_tensor[s_ub_offset], 
+                                ls_ubuf_tensor[s_ub_offset],
                                 mask16_ubuf_tensor.template ReinterpretCast<float>(),
                                 lm_ubuf_tensor[row_offset],
                                 hm_ubuf_tensor[row_offset],
                                 gm_ubuf_tensor[row_offset],
                                 dm_ubuf_tensor[((n_idx / s_block_stack) % div_m) * UB_FLOAT_LINE_SIZE * tmp_times + row_offset],
-                                ls_ubuf_tensor[s_ub_offset], 
+                                ls_ubuf_tensor[s_ub_offset],
                                 ll_ubuf_tensor[row_offset],
                                 gl_ubuf_tensor[row_offset],
-                                lp_ubuf_tensor[s_ub_offset * 2], 
+                                lp_ubuf_tensor[s_ub_offset * 2],
                                 tv_ubuf_tensor,
                                 s_gm_tensor[sp_gm_offset],
                                 p_gm_tensor[sp_gm_offset],
