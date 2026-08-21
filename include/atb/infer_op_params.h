@@ -1869,10 +1869,10 @@ struct PagedAttentionParam {
     //! \brief The type values of MaskType.
     //!
     enum MaskType : int {
-        UNDEFINED = 0,   //!< 默认值，全0的mask
-        MASK_TYPE_NORM,  //!< 倒三角mask
-        MASK_TYPE_ALIBI, //!< alibi mask
-        MASK_TYPE_SPEC,   //!< 并行解码mask
+        UNDEFINED = 0,       //!< 默认值，全0的mask
+        MASK_TYPE_NORM,      //!< 倒三角mask
+        MASK_TYPE_ALIBI,     //!< alibi mask
+        MASK_TYPE_SPEC,      //!< 并行解码mask
         MASK_TYPE_MASK_FREE, //! mask_free 只支持fp16
         MASK_TYPE_NORM_COMPRESS
     };
@@ -1913,9 +1913,9 @@ struct PagedAttentionParam {
     //!
     enum CompressType : int {
         COMPRESS_TYPE_UNDEFINED = 0, //!< 默认值，不压缩
-        COMPRESS_TYPE_KVHEAD,        //!< 压缩key_cache, value_cache的kvHead维度, 只支持Atlas 800I A2推理产品。
-        COMPRESS_TYPE_KVHEAD_ROPE,   //!< rope场景压缩key_cache, value_cache的kvHead维度, 只支持Atlas 800I A2推理产品。
-        COMPRESS_TYPE_MAX            //!< 压缩类型边界值，仅用于判断是否出界，所有情况不能取该值。
+        COMPRESS_TYPE_KVHEAD, //!< 压缩key_cache, value_cache的kvHead维度, 只支持Atlas 800I A2推理产品。
+        COMPRESS_TYPE_KVHEAD_ROPE, //!< rope场景压缩key_cache, value_cache的kvHead维度, 只支持Atlas 800I A2推理产品。
+        COMPRESS_TYPE_MAX //!< 压缩类型边界值，仅用于判断是否出界，所有情况不能取该值。
     };
     //!
     //! 压缩方式
@@ -2915,9 +2915,9 @@ struct MultiLatentAttentionParam {
     //! \brief The type values of MaskType.
     //!
     enum MaskType : int {
-        UNDEFINED = 0,       //!< 默认值，全0的mask
-        MASK_TYPE_SPEC,      //!< qseqlen > 1时的mask
-        MASK_TYPE_MASK_FREE, //!< mask free
+        UNDEFINED = 0,         //!< 默认值，全0的mask
+        MASK_TYPE_SPEC,        //!< qseqlen > 1时的mask
+        MASK_TYPE_MASK_FREE,   //!< mask free
         MASK_TYPE_CAUSAL_MASK, //!< 内部生成mask
         MASK_TYPE_SWA_NORM
     };
@@ -3112,7 +3112,7 @@ struct ScatterElementsV2Param {
     //! \brief ReductionType
     enum ReductionType {
         NONE = 0, //!< 默认值。none。
-        ADD, //!< add 原地累加。
+        ADD,      //!< add 原地累加。
     };
     //!
     //! \brief 指定要收集切片的轴。默认值为0.
@@ -3260,7 +3260,8 @@ struct RingMLAParam {
     //!
     enum CalcType : int {
         CALC_TYPE_DEFAULT = 0, // 默认，非首末卡场景，有prev_lse, prev_o传入，生成softmaxLse输出
-        CALC_TYPE_FISRT_RING,  // 首卡场景，无prev_lse, prev_o传入，生成softmaxLse输出
+        CALC_TYPE_FIRST_RING,  // 首卡场景，无prev_lse, prev_o传入，生成softmaxLse输出
+        CALC_TYPE_FISRT_RING = CALC_TYPE_FIRST_RING, // 保留旧名称兼容
         CALC_TYPE_MAX
     };
     //!

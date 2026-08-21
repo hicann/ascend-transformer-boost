@@ -112,7 +112,7 @@ atb::Status RunRingMLADemo(atb::Context *contextPtr, aclrtStream stream, atb::Op
 {
     atb::infer::RingMLAParam ringMLAParam;
     // 场景：第一轮选择first ring，不传入prevOut和prevLse
-    ringMLAParam.calcType = atb::infer::RingMLAParam::CalcType::CALC_TYPE_FISRT_RING;
+    ringMLAParam.calcType = atb::infer::RingMLAParam::CalcType::CALC_TYPE_FIRST_RING;
     ringMLAParam.headNum = HEAD_NUM;      // query头数
     ringMLAParam.kvHeadNum = KV_HEAD_NUM; // key，value 头数
     // query， key分带、不带rope切分传入，实际headSize为俩个headSize之和；Q*K^T后的缩放系数，根据实际headSize做归一化
@@ -169,7 +169,7 @@ int main(int argc, char **argv)
     }
     CHECK_STATUS(aclInit(nullptr));
     // 设置卡号、创建context、设置stream
-    
+
     CHECK_STATUS(aclrtSetDevice(deviceId));
 
     atb::Context *context = nullptr;

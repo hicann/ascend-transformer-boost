@@ -20,9 +20,9 @@
 #include "ring_mla_ops_runner.h"
 
 namespace {
-static const uint32_t BASE_IN_TENSOR_NUM = 7;  // query1, query2, key1, key2, value, mask, seqLen
+static const uint32_t BASE_IN_TENSOR_NUM = 7;          // query1, query2, key1, key2, value, mask, seqLen
 static const uint32_t RING_OPTIONAL_IN_TENSOR_NUM = 2; // prevOut, prevLse
-static const uint32_t BASE_OUT_TENSOR_NUM = 2; // output, softmaxLse
+static const uint32_t BASE_OUT_TENSOR_NUM = 2;         // output, softmaxLse
 // dimNum
 static const uint32_t QKV_DIM_NUM = 3; // [sum(seqlen), headNum, headSize]
 static const uint32_t LSE_DIM_NUM = 2; // [headNum, qNTokens]
@@ -54,8 +54,8 @@ namespace atb {
 bool ParamCheck(const infer::RingMLAParam &opParam, ExternalError &extError)
 {
     if (opParam.calcType != infer::RingMLAParam::CalcType::CALC_TYPE_DEFAULT &&
-        opParam.calcType != infer::RingMLAParam::CalcType::CALC_TYPE_FISRT_RING) {
-        extError.errorDesc = "Ring MLA expects calcType to be one of CALC_TYPE_DEFAULT, CALC_TYPE_FISRT_RING.";
+        opParam.calcType != infer::RingMLAParam::CalcType::CALC_TYPE_FIRST_RING) {
+        extError.errorDesc = "Ring MLA expects calcType to be one of CALC_TYPE_DEFAULT, CALC_TYPE_FIRST_RING.";
         extError.errorData = OperationUtil::ConcatInfo("But got param.calcType = ", opParam.calcType);
         ATB_LOG(ERROR) << extError;
         return false;
@@ -199,8 +199,8 @@ bool RingMLAOperation::DimNumCheck(const SVector<TensorDesc> &inTensorDescs, Ext
     if (isInputSoftmaxLse_) {
         if (inTensorDescs.at(IN_PREV_OUT_INDEX).shape.dimNum != QKV_DIM_NUM) { // 3: [nTokens, headNum, headSize]
             extError.errorDesc = "dimNum of prevOut should be 3!";
-            extError.errorData = OperationUtil::ConcatInfo("But got prevOut dimNum: ",
-                                                           inTensorDescs.at(IN_PREV_OUT_INDEX).shape.dimNum);
+            extError.errorData =
+                OperationUtil::ConcatInfo("But got prevOut dimNum: ", inTensorDescs.at(IN_PREV_OUT_INDEX).shape.dimNum);
             ATB_LOG(ERROR) << GetLogPrefix() << extError;
             return false;
         }

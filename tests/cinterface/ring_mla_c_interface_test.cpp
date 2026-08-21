@@ -104,7 +104,7 @@ void TestRingMLA(const int64_t headNum, const int64_t kvHeadNum, const int64_t h
     uint64_t workspaceSize = 0;
     atb::Operation *op = nullptr;
 
-    if (calcType == 1) {                                // CALC_TYPE_FISRT_RING case: Don't take in prevOut, prevLse
+    if (calcType == 1) {                                // CALC_TYPE_FIRST_RING case: Don't take in prevOut, prevLse
         aclrtFreeHost(inoutDevice[PREF_OUT_INDEX]);     // preOut
         aclrtFreeHost(inoutDevice[PREF_OUT_INDEX + 1]); // preLse
         inoutHost[PREF_OUT_INDEX] = nullptr;
