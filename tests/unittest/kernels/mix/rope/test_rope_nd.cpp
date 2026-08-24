@@ -1,12 +1,12 @@
 /*
-* Copyright (c) 2024 Huawei Technologies Co., Ltd.
-* This program is free software, you can redistribute it and/or modify it under the terms and conditions of
-* CANN Open Software License Agreement Version 2.0 (the "License").
-* Please refer to the License for details. You may not use this file except in compliance with the License.
-* THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
-* INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
-* See LICENSE in the root of the software repository for the full text of the License.
-*/
+ * Copyright (c) 2024 Huawei Technologies Co., Ltd.
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
 #include <numeric>
 #include <ATen/ATen.h>
 #include <gtest/gtest.h>
@@ -18,6 +18,7 @@
 #include "test_common.h"
 #include "test_utils/float_util.h"
 #include "test_utils/op_test.h"
+#include <mki/utils/rt/device/device.h>
 
 using namespace AtbOps;
 using namespace Mki;
@@ -30,6 +31,8 @@ static constexpr float HALF_FLOAT_MAX = 1.0;
 
 TEST(ropeNd, RopeKernelCanSupport)
 {
+    // 建立设备上下文：tiling/infer 路径会查询当前线程资源(GetCoreNum)
+    MkiRtDeviceSetCurrent(0);
     int64_t ntokens = 32;
     int64_t batch = 32;
     int64_t hiddenSize = 4096;
@@ -58,10 +61,13 @@ TEST(ropeNd, RopeKernelCanSupport)
     }
     ASSERT_NE(kernel, nullptr);
     ASSERT_EQ(kernel->CanSupport(launchParam), true);
+    MkiRtDeviceResetCurrent(0);
 }
 
 TEST(ropeNd, ropeNdTiling)
 {
+    // 建立设备上下文：tiling/infer 路径会查询当前线程资源(GetCoreNum)
+    MkiRtDeviceSetCurrent(0);
     int64_t ntokens = 32;
     int64_t batch = 32;
     int64_t hiddenSize = 4096;
@@ -77,7 +83,7 @@ TEST(ropeNd, ropeNdTiling)
     OpParam::Rope opParam;
     Mki::Test::UtOpDesc opDesc = {"RopeOperation", opParam};
     launchParam.SetParam(opDesc.specificParam);
- 
+
     Operation *operation = AutoGen::GetOpByName(opDesc.opName);
     std::unique_ptr<Kernel> kernel(operation->GetBestKernel(launchParam));
     ASSERT_NE(kernel, nullptr);
@@ -89,10 +95,13 @@ TEST(ropeNd, ropeNdTiling)
     kernelInfo.AllocTilingHost(launchBufferSize);
     Status status = RopeTiling(launchParam, kernelInfo);
     ASSERT_EQ(status.Ok(), true);
+    MkiRtDeviceResetCurrent(0);
 }
 
 TEST(ropeNd, ropeNdGetBestKernel)
 {
+    // 建立设备上下文：tiling/infer 路径会查询当前线程资源(GetCoreNum)
+    MkiRtDeviceSetCurrent(0);
     int64_t ntokens = 32;
     int64_t batch = 32;
     int64_t hiddenSize = 4096;
@@ -114,10 +123,13 @@ TEST(ropeNd, ropeNdGetBestKernel)
 
     std::unique_ptr<Kernel> kernel(operation->GetBestKernel(launchParam));
     ASSERT_NE(kernel, nullptr);
+    MkiRtDeviceResetCurrent(0);
 }
 
 TEST(ropeNd, ropeNdInferShape)
 {
+    // 建立设备上下文：tiling/infer 路径会查询当前线程资源(GetCoreNum)
+    MkiRtDeviceSetCurrent(0);
     int64_t ntokens = 32;
     int64_t batch = 32;
     int64_t hiddenSize = 4096;
@@ -152,10 +164,13 @@ TEST(ropeNd, ropeNdInferShape)
         }
     }
     ASSERT_EQ(flag, true);
+    MkiRtDeviceResetCurrent(0);
 }
 
 TEST(ropeNd, ropeNdInferShapeFailed)
 {
+    // 建立设备上下文：tiling/infer 路径会查询当前线程资源(GetCoreNum)
+    MkiRtDeviceSetCurrent(0);
     int64_t ntokens = 32;
     int64_t batch = 32;
     int64_t hiddenSize = 4096;
@@ -190,4 +205,5 @@ TEST(ropeNd, ropeNdInferShapeFailed)
         }
     }
     ASSERT_EQ(flag, false);
+    MkiRtDeviceResetCurrent(0);
 }
