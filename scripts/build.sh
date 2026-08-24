@@ -881,7 +881,7 @@ function fn_main()
             fn_run_unittest
             ;;
         "kernelunittest")
-            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_UNIT_TEST=ON"
+            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_KERNEL_UNIT_TEST=ON"
             fn_build_3rdparty_for_test
             fn_build
             fn_run_kernel_unittest

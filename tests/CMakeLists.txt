@@ -13,7 +13,9 @@ include_directories(
 )
 
 add_subdirectory(framework)
-if(USE_UNIT_TEST OR USE_ALL_TEST)
+if(USE_UNIT_TEST OR USE_KERNEL_UNIT_TEST OR USE_ALL_TEST)
     add_subdirectory(unittest)
+endif()
+if(USE_UNIT_TEST OR USE_ALL_TEST)
     add_subdirectory(cinterface)
 endif()
