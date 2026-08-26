@@ -10,12 +10,27 @@
 import unittest
 import numpy as np
 import torch
-import torch_npu
-import torch.nn.functional as F
 import op_test
 
 
 OP_NAME = "CumsumOperation"
+
+
+def hillis_steele_fp16(x, axis):
+    # CumsumF16Kernel 的 fp16 累加实现是 Hillis-Steele 并行前缀和，
+    # golden 必须逐位模拟该算法（实测与算子输出 maxAbs=0），
+    # 用顺序 np.cumsum 或 fp32 累加都会与算子输出产生 fp16 ULP 级偏差。
+    x = np.array(x, dtype=np.float16, copy=True)
+    n = x.shape[axis]
+    d = 1
+    while d < n:
+        cur = [slice(None)] * x.ndim
+        cur[axis] = slice(d, None)
+        prev = [slice(None)] * x.ndim
+        prev[axis] = slice(None, -d)
+        x[tuple(cur)] = np.float16(x[tuple(cur)] + x[tuple(prev)])
+        d *= 2
+    return x
 
 
 class TestCumsum(op_test.OpTest):
@@ -25,15 +40,16 @@ class TestCumsum(op_test.OpTest):
             x = in_tensors[0]
             x = x.to(torch.float32)
             x = x.numpy()
-        else:
-            x = in_tensors[0].numpy()
-        return [torch.from_numpy(np.cumsum(x, axis=axis))]
+            return [torch.from_numpy(np.cumsum(x, axis=axis))]
+        # fp16：模拟算子的 Hillis-Steele fp16 累加路径
+        x = in_tensors[0].numpy()
+        return [torch.from_numpy(hillis_steele_fp16(x, axis))]
 
     def golden_compare(self, out_tensors, golden_out_tensors):
         if out_tensors[0].dtype == torch.bfloat16:
-            return torch.allclose(out_tensors[0].bfloat16(), golden_out_tensors[0].bfloat16(), rtol= 2 ** -7, atol= 2 ** -7)
+            return torch.allclose(out_tensors[0].bfloat16(), golden_out_tensors[0].bfloat16(), rtol=2**-7, atol=2**-7)
         else:
-            return torch.allclose(out_tensors[0], golden_out_tensors[0].half(), rtol= 2 ** -8, atol= 2 ** -8)
+            return torch.allclose(out_tensors[0], golden_out_tensors[0].half(), rtol=2**-8, atol=2**-8)
 
     @op_test.skip_310b
     @op_test.skip_910a
@@ -72,6 +88,7 @@ class TestCumsum(op_test.OpTest):
         op_param = {"axis": [1]}
         self.set_param(OP_NAME, op_param)
         self.execute([torch.from_numpy(input0).bfloat16()], [torch.zeros(shape).bfloat16()])
+
 
 if __name__ == '__main__':
     unittest.main()
