@@ -12,7 +12,7 @@
 1) 找到并打开对应的开放项目的首页
 2) 点击右上角的 `Fork` 按钮，按照指引，建立一个属于"**个人**"的云上fork分支。
 
-  ![gitcode-fork](../images/gitcode-fork.png)   
+  ![gitcode-fork](../images/gitcode-fork.png)
 
 #### 2.2 把fork分支克隆到本地
 
@@ -61,7 +61,7 @@ git config --global user.email "email@your_email.com"
   ssh -T git@gitcode.com
   ```
 
-  如果获得如下“成功”提示，则表示 SSH 公钥已经生效：  
+  如果获得如下“成功”提示，则表示 SSH 公钥已经生效：
   `Hi $user_name! You've successfully authenticated, but GITCODE.COM does not provide shell access.`
 
 4）**复制远程仓库到本地**
@@ -71,7 +71,7 @@ git config --global user.email "email@your_email.com"
   ```shell
   cd $your_working_dir
   ```
-  
+
 - ② **复制远程仓库到本地**
 
   - 您可以在需要下载的远程仓库首页，单击“克隆/下载”，得到`$remote_link`（您需要创建令牌并输入以替代密码登录）：
@@ -141,7 +141,7 @@ git push -f origin myfeature
 ## 7. 在Gitcode上创建一个 pull request
 
 1. 访问您在 `https://gitcode.com/$user/ascend-transformer-boost` 的页面，单击 `+Pull Request`。
-   
+
    ![新建PR](../images/create-pr.png)
 
 2. 在创建新 PR 的界面，确认源分支和目标分支，选择创建。
@@ -155,14 +155,14 @@ git push -f origin myfeature
    ![Issue列表](../images/issue-list.png)
 
 2. 在Issue右侧的`Pull Requests`中选择您提交的 PR 进行关联。完成关联后，当PR被合并时，关联的Issue将被自动关闭。
-   
+
    ![Issue关联PR](../images/issue-link-pr.png)
 
 ## 9. 查看门禁状态以及代码检视意见
 
 - 查看门禁状态
 
-  PR提交后，请输入“/compile”触发门禁检查，检查时间每个仓库有所不同，请关注检查状态，并及时修改问题。
+   PR提交后，请输入“compile”触发门禁检查，检查时间每个仓库有所不同，请关注检查状态，并及时修改问题。
 
   当页面显示“CI任务执行 成功”，且右上角标签显示`ci-pipeline-passed`时，即表示门禁检查通过。
 
@@ -191,7 +191,7 @@ git push -f origin myfeature
   ```shell
   # create a branch
   git checkout -b myrevert
-  
+
   # sync the branch with upstream
   git fetch upstream
   git rebase upstream/master
