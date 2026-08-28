@@ -22,7 +22,7 @@ static const int KEY_CACHE_ACLNN_TENSOR_IDX = 1;
 static const int SLOT_MAPPING_ACLNN_TENSOR_IDX = 2;
 static const int VALUE_ACLNN_TENSOR_IDX = 3;
 static const int VALUE_CACHE_ACLNN_TENSOR_IDX = 4;
-}  // namespace
+} // namespace
 
 namespace atb {
 AclnnScatterPaKvCacheGetWorkspaceSizeFunc ReshapeAndCacheAclnnRunner::aclnnScatterPaKvCacheGetWorkspaceSizeFunc_ =
@@ -37,8 +37,7 @@ ReshapeAndCacheAclnnRunner::ReshapeAndCacheAclnnRunner(const infer::ReshapeAndCa
     GetTensorNum();
 }
 
-ReshapeAndCacheAclnnRunner::~ReshapeAndCacheAclnnRunner()
-{}
+ReshapeAndCacheAclnnRunner::~ReshapeAndCacheAclnnRunner() {}
 
 Status ReshapeAndCacheAclnnRunner::LoadAclnnFuncs()
 {
@@ -47,10 +46,8 @@ Status ReshapeAndCacheAclnnRunner::LoadAclnnFuncs()
     if (aclnnScatterPaKvCacheGetWorkspaceSizeFunc_ && aclnnScatterPaKvCacheFunc_) {
         return NO_ERROR;
     }
-    return LoadFromSharedObjectFile("aclnnScatterPaKvCacheGetWorkspaceSize",
-        "aclnnScatterPaKvCache",
-        aclnnScatterPaKvCacheGetWorkspaceSizeFunc_,
-        aclnnScatterPaKvCacheFunc_);
+    return LoadFromSharedObjectFile("aclnnScatterPaKvCacheGetWorkspaceSize", "aclnnScatterPaKvCache",
+                                    aclnnScatterPaKvCacheGetWorkspaceSizeFunc_, aclnnScatterPaKvCacheFunc_);
 }
 
 Status ReshapeAndCacheAclnnRunner::BuildAclnnVariantPack(const RunnerVariantPack &runnerVariantPack)
@@ -97,25 +94,16 @@ aclnnStatus ReshapeAndCacheAclnnRunner::SetAclNNWorkspaceExecutor()
     const aclIntArray *offsetsOptional = nullptr;
     aclOpExecutor *rawExecutorPtr = aclnnExecutor_.get();
 
-    aclnnStatus ret = aclnnScatterPaKvCacheGetWorkspaceSizeFunc_(key,
-        keyCacheRef,
-        slotMapping,
-        value,
-        valueCacheRef,
-        compressLensOptional,
-        compressSeqOffsetOptional,
-        seqLensOptional,
-        cacheMode,
-        scatterMode,
-        stridesOptional,
-        offsetsOptional,
-        &(atbVariantPack_.workspaceBufferSize),
-        &rawExecutorPtr);
-    aclnnExecutor_ = std::shared_ptr<aclOpExecutor>(rawExecutorPtr, [this](aclOpExecutor *ptr) {
-        if (ptr && executorRepeatable_) {
-            aclDestroyAclOpExecutor(ptr);
-        }
-    });
+    aclnnStatus ret = aclnnScatterPaKvCacheGetWorkspaceSizeFunc_(
+        key, keyCacheRef, slotMapping, value, valueCacheRef, compressLensOptional, compressSeqOffsetOptional,
+        seqLensOptional, cacheMode, scatterMode, stridesOptional, offsetsOptional,
+        &(atbVariantPack_.workspaceBufferSize), &rawExecutorPtr);
+    aclnnExecutor_ = std::shared_ptr<aclOpExecutor>(
+        rawExecutorPtr, [this, executorRepeatable = this->executorRepeatable_](aclOpExecutor *ptr) {
+            if (ptr && executorRepeatable) {
+                aclDestroyAclOpExecutor(ptr);
+            }
+        });
     if (ret == ACLNN_SUCCESS) {
         ATB_LOG(INFO) << GetLogPrefix() << "workspaceSize: " << atbVariantPack_.workspaceBufferSize;
     } else {
@@ -128,8 +116,8 @@ Status ReshapeAndCacheAclnnRunner::LaunchAclnnKernel()
 {
     ATB_LOG(INFO) << GetLogPrefix() << "ReshapeAndCacheAclnnRunner::LaunchAclnnKernel";
     aclrtStream executeStream = GetExecuteStream(atbVariantPack_.context);
-    aclnnStatus ret = aclnnScatterPaKvCacheFunc_(
-        atbVariantPack_.workspaceBuffer, atbVariantPack_.workspaceBufferSize, aclnnExecutor_.get(), executeStream);
+    aclnnStatus ret = aclnnScatterPaKvCacheFunc_(atbVariantPack_.workspaceBuffer, atbVariantPack_.workspaceBufferSize,
+                                                 aclnnExecutor_.get(), executeStream);
     if (ret == ACLNN_SUCCESS) {
         return NO_ERROR;
     }
@@ -139,7 +127,7 @@ Status ReshapeAndCacheAclnnRunner::LaunchAclnnKernel()
 
 void ReshapeAndCacheAclnnRunner::GetTensorNum()
 {
-    aclInTensorNum_ = 5;  // key, keyCacheRef, slotMapping, value, valueCacheRef
+    aclInTensorNum_ = 5; // key, keyCacheRef, slotMapping, value, valueCacheRef
 }
 
 void ReshapeAndCacheAclnnRunner::InitTensorIndex()
@@ -235,4 +223,4 @@ Status ReshapeAndCacheAclnnRunner::CreateSlotMappingAclnnTensor()
 }
 
 REG_RUNNER_TYPE(ReshapeAndCacheAclnnRunner);
-}  // namespace atb
+} // namespace atb
