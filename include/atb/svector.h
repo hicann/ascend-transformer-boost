@@ -65,6 +65,7 @@ public:
         }
         std::size_t i = 0;
         if (listSize > DEFAULT_SVECTOR_SIZE) {
+            size_ = listSize;
             heap_ = reinterpret_cast<T *>(malloc(MAX_SVECTOR_SIZE * sizeof(T)));
             if (!heap_) {
                 throw std::bad_alloc();
@@ -117,7 +118,8 @@ public:
     SVector(const SVector<T> &other)
     {
         if (other.heap_) {
-            heap_ = reinterpret_cast<T *>(malloc(other.size_ * sizeof(T)));
+            capacity_ = other.capacity_ < other.size_ ? other.size_ : other.capacity_;
+            heap_ = reinterpret_cast<T *>(malloc(capacity_ * sizeof(T)));
             if (!heap_) {
                 throw std::bad_alloc();
             }
@@ -149,7 +151,7 @@ public:
     void push_back(const T &val) noexcept((!CHECK_BOUND) && std::is_nothrow_assignable<T, const T &>::value)
     {
         if (heap_) {
-            if (CHECK_BOUND && size_ == capacity_) {
+            if (CHECK_BOUND && size_ >= capacity_) {
                 throw MaxSizeExceeded();
             }
             heap_[size_++] = val;
@@ -161,6 +163,9 @@ public:
             }
             heap_[size_++] = val;
             return;
+        }
+        if (CHECK_BOUND && size_ >= DEFAULT_SVECTOR_SIZE) {
+            throw MaxSizeExceeded();
         }
         storage_[size_++] = val;
     }
@@ -522,9 +527,10 @@ public:
             throw MaxSizeExceeded();
         }
         if (listSize > DEFAULT_SVECTOR_SIZE) {
-            if (!heap_) {
-                heap_ = reinterpret_cast<T *>(malloc(listSize * sizeof(T)));
+            if (heap_) {
+                free(heap_);
             }
+            heap_ = reinterpret_cast<T *>(malloc(MAX_SVECTOR_SIZE * sizeof(T)));
             if (!heap_) {
                 throw std::bad_alloc();
             }
@@ -563,10 +569,10 @@ public:
             heap_ = nullptr;
         }
 
-        capacity_ = other.capacity_;
         size_ = other.size_;
         if (other.heap_) {
-            heap_ = reinterpret_cast<T *>(malloc(size_ * sizeof(T)));
+            capacity_ = other.capacity_ < other.size_ ? other.size_ : other.capacity_;
+            heap_ = reinterpret_cast<T *>(malloc(capacity_ * sizeof(T)));
             if (!heap_) {
                 throw std::bad_alloc();
             }
@@ -575,6 +581,10 @@ public:
                 heap_[i] = other.heap_[i];
             }
         } else {
+            capacity_ = other.capacity_;
+            if (CHECK_BOUND && other.size_ > DEFAULT_SVECTOR_SIZE) {
+                throw MaxSizeExceeded();
+            }
             for (std::size_t i = 0; i < other.size_; ++i) {
                 storage_[i] = other.storage_[i];
             }

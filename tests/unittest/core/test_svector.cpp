@@ -180,6 +180,72 @@ TEST(TestSVector, HeapCopyConstructor)
     EXPECT_EQ(inTensorDest.empty(), true);
 }
 
+TEST(TestSVector, InitializerListConstructorOverDefaultSize)
+{
+    atb::SVector<int> vec = {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21,
+                             22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43,
+                             44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64};
+    EXPECT_EQ(vec.size(), 65);
+    EXPECT_EQ(vec.at(0), 0);
+    EXPECT_EQ(vec.at(64), 64);
+}
+
+TEST(TestSVector, HeapCopyConstructorPushBackAfterCopy)
+{
+    atb::SVector<int> src;
+    src.reserve(100);
+    for (int i = 0; i < 65; ++i) {
+        src.push_back(i);
+    }
+
+    atb::SVector<int> copied(src);
+    for (int i = 65; i < 100; ++i) {
+        EXPECT_NO_THROW(copied.push_back(i));
+    }
+
+    EXPECT_EQ(copied.size(), 100);
+    EXPECT_EQ(copied.at(99), 99);
+    EXPECT_THROW(copied.push_back(100), atb::MaxSizeExceeded);
+}
+
+TEST(TestSVector, HeapCopyAssignmentPushBackAfterCopy)
+{
+    atb::SVector<int> src;
+    src.reserve(100);
+    for (int i = 0; i < 65; ++i) {
+        src.push_back(i);
+    }
+
+    atb::SVector<int> copied;
+    copied = src;
+    for (int i = 65; i < 100; ++i) {
+        EXPECT_NO_THROW(copied.push_back(i));
+    }
+
+    EXPECT_EQ(copied.size(), 100);
+    EXPECT_EQ(copied.at(99), 99);
+    EXPECT_THROW(copied.push_back(100), atb::MaxSizeExceeded);
+}
+
+TEST(TestSVector, HeapInitializerListReassignBiggerList)
+{
+    atb::SVector<int> vec;
+    vec.reserve(80);
+    vec = {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
+           24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47,
+           48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69};
+    EXPECT_EQ(vec.size(), 70);
+
+    vec = {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
+           25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49,
+           50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74,
+           75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99};
+    EXPECT_EQ(vec.size(), 100);
+    EXPECT_EQ(vec.at(99), 99);
+    EXPECT_NO_THROW(vec.push_back(100));
+    EXPECT_EQ(vec.at(100), 100);
+}
+
 TEST(TestSVector, EqualityOperator)
 {
     atb::SVector<int> vec1 = {1, 2, 3};
