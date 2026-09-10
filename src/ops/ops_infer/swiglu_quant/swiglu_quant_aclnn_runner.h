@@ -21,8 +21,8 @@ using AclnnSwiGluQuantV2GetWorkspaceSizeFunc =
 
 using AclnnSwiGluQuantV2Func = aclnnStatus (*)(void *, uint64_t, aclOpExecutor *, aclrtStream);
 
-using AclnnInplaceReciprocalGetWorkspaceSizeFunc =
-    aclnnStatus (*)(const aclTensor *selfRef, uint64_t *workspaceSize, aclOpExecutor **executor);
+using AclnnInplaceReciprocalGetWorkspaceSizeFunc = aclnnStatus (*)(const aclTensor *selfRef, uint64_t *workspaceSize,
+                                                                   aclOpExecutor **executor);
 
 using AclnnInplaceReciprocalFunc = aclnnStatus (*)(void *, uint64_t, aclOpExecutor *, aclrtStream);
 
@@ -37,7 +37,6 @@ protected:
     Status BuildAclnnVariantPack(const RunnerVariantPack &runnerVariantPack) override;
     Status LaunchAclnnKernel() override;
     aclnnStatus SetAclNNWorkspaceExecutor() override;
-    bool useCache() override;
 
 private:
     void FreeSmoothScales();
@@ -46,7 +45,7 @@ private:
     void *smoothScalesDeviceAddr_ = nullptr;
     uint64_t swigluQuantWorkspaceSize_ = 0;
     uint64_t inplaceReciprocalWorkspaceSize_ = 0;
-    std::shared_ptr<aclOpExecutor> aclnnInplaceReciprocalExecutor_;
+    std::shared_ptr<atbAclOpExecutor> atbAclInplaceReciprocalOpExecutor_;
 
     static AclnnSwiGluQuantV2GetWorkspaceSizeFunc aclnnSwiGluQuantV2GetWorkspaceSizeFunc_;
     static AclnnSwiGluQuantV2Func aclnnSwiGluQuantV2Func_;

@@ -192,25 +192,25 @@ Status LinearAclnnRunner::LaunchAclnnKernel()
     if (isWeightNz_) {
         if (param_.hasBias) {
             ret = aclnnAddmmWeightNzExecuteFunc_(atbVariantPack_.workspaceBuffer, atbVariantPack_.workspaceBufferSize,
-                                                 aclnnExecutor_.get(), executeStream);
+                                                 atbAclOpExecutor_->Get(), executeStream);
         } else {
             if (isBatch_) {
                 ret = aclnnBatchMatMulWeightNzExecuteFunc_(atbVariantPack_.workspaceBuffer,
-                                                           atbVariantPack_.workspaceBufferSize, aclnnExecutor_.get(),
-                                                           executeStream);
+                                                           atbVariantPack_.workspaceBufferSize,
+                                                           atbAclOpExecutor_->Get(), executeStream);
             } else {
                 ret = aclnnMatmulWeightNzExecuteFunc_(atbVariantPack_.workspaceBuffer,
-                                                      atbVariantPack_.workspaceBufferSize, aclnnExecutor_.get(),
+                                                      atbVariantPack_.workspaceBufferSize, atbAclOpExecutor_->Get(),
                                                       executeStream);
             }
         }
     } else {
         if (param_.hasBias) {
             ret = aclnnAddmmExecuteFunc_(atbVariantPack_.workspaceBuffer, atbVariantPack_.workspaceBufferSize,
-                                         aclnnExecutor_.get(), executeStream);
+                                         atbAclOpExecutor_->Get(), executeStream);
         } else {
             ret = aclnnMatmulExecuteFunc_(atbVariantPack_.workspaceBuffer, atbVariantPack_.workspaceBufferSize,
-                                          aclnnExecutor_.get(), executeStream);
+                                          atbAclOpExecutor_->Get(), executeStream);
         }
     }
     if (ret != ACL_SUCCESS) {
@@ -356,15 +356,16 @@ aclnnStatus LinearAclnnRunner::SetAclnnMatmulWorkspaceExecutor()
     aclTensor *out = aclnnVariantPack_.aclOutTensors.at(matmulOutAclTensorIndex_)->tensor;
 
     int8_t cubeMathType = 1;
-    aclOpExecutor *rawExecutePtr = aclnnExecutor_.get();
+    aclOpExecutor *rawExecutePtr = nullptr;
 
     aclnnStatus ret = aclnnMatmulGetWorkspaceSizeFunc_(self, mat2, out, cubeMathType,
                                                        &(atbVariantPack_.workspaceBufferSize), &rawExecutePtr);
-    aclnnExecutor_ = std::shared_ptr<aclOpExecutor>(rawExecutePtr, [this](aclOpExecutor *ptr) {
-        if (ptr && executorRepeatable_) {
-            aclDestroyAclOpExecutor(ptr);
-        }
-    });
+    if (ret != ACL_SUCCESS) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "GetWorkspaceSize failed, error: " << ret;
+        return ret;
+    }
+    this->atbAclOpExecutor_ = std::make_shared<atbAclOpExecutor>(rawExecutePtr);
+    this->executorRepeatable_ = this->atbAclOpExecutor_->IsRepeatable();
     return ret;
 }
 
@@ -397,15 +398,16 @@ aclnnStatus LinearAclnnRunner::SetAclnnAddmmWorkspaceExecutor()
     float betaValue = 1.0f;
     beta_ = aclCreateScalar(&betaValue, aclDataType::ACL_FLOAT);
     int8_t cubeMathType = 1;
-    aclOpExecutor *rawExecutePtr = aclnnExecutor_.get();
+    aclOpExecutor *rawExecutePtr = nullptr;
 
     aclnnStatus ret = aclnnAddmmGetWorkspaceSizeFunc_(self, mat1, mat2, beta_, alpha_, out, cubeMathType,
                                                       &(atbVariantPack_.workspaceBufferSize), &rawExecutePtr);
-    aclnnExecutor_ = std::shared_ptr<aclOpExecutor>(rawExecutePtr, [this](aclOpExecutor *ptr) {
-        if (ptr && executorRepeatable_) {
-            aclDestroyAclOpExecutor(ptr);
-        }
-    });
+    if (ret != ACL_SUCCESS) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "GetWorkspaceSize failed, error: " << ret;
+        return ret;
+    }
+    this->atbAclOpExecutor_ = std::make_shared<atbAclOpExecutor>(rawExecutePtr);
+    this->executorRepeatable_ = this->atbAclOpExecutor_->IsRepeatable();
     return ret;
 }
 
@@ -418,15 +420,16 @@ aclnnStatus LinearAclnnRunner::SetAclnnMatmulWeightNzWorkspaceExecutor()
     aclTensor *out = aclnnVariantPack_.aclOutTensors.at(matmulOutAclTensorIndex_)->tensor;
 
     int8_t cubeMathType = 1;
-    aclOpExecutor *rawExecutePtr = aclnnExecutor_.get();
+    aclOpExecutor *rawExecutePtr = nullptr;
 
     aclnnStatus ret = aclnnMatmulWeightNzGetWorkspaceSizeFunc_(self, mat2, out, cubeMathType,
                                                                &(atbVariantPack_.workspaceBufferSize), &rawExecutePtr);
-    aclnnExecutor_ = std::shared_ptr<aclOpExecutor>(rawExecutePtr, [this](aclOpExecutor *ptr) {
-        if (ptr && executorRepeatable_) {
-            aclDestroyAclOpExecutor(ptr);
-        }
-    });
+    if (ret != ACL_SUCCESS) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "GetWorkspaceSize failed, error: " << ret;
+        return ret;
+    }
+    this->atbAclOpExecutor_ = std::make_shared<atbAclOpExecutor>(rawExecutePtr);
+    this->executorRepeatable_ = this->atbAclOpExecutor_->IsRepeatable();
     return ret;
 }
 
@@ -459,15 +462,16 @@ aclnnStatus LinearAclnnRunner::SetAclnnAddmmWeightNzWorkspaceExecutor()
     float betaValue = 1.0f;
     beta_ = aclCreateScalar(&betaValue, aclDataType::ACL_FLOAT);
     int8_t cubeMathType = 1;
-    aclOpExecutor *rawExecutePtr = aclnnExecutor_.get();
+    aclOpExecutor *rawExecutePtr = nullptr;
 
     aclnnStatus ret = aclnnAddmmWeightNzGetWorkspaceSizeFunc_(self, mat1, mat2, beta_, alpha_, out, cubeMathType,
                                                               &(atbVariantPack_.workspaceBufferSize), &rawExecutePtr);
-    aclnnExecutor_ = std::shared_ptr<aclOpExecutor>(rawExecutePtr, [this](aclOpExecutor *ptr) {
-        if (ptr && executorRepeatable_) {
-            aclDestroyAclOpExecutor(ptr);
-        }
-    });
+    if (ret != ACL_SUCCESS) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "GetWorkspaceSize failed, error: " << ret;
+        return ret;
+    }
+    this->atbAclOpExecutor_ = std::make_shared<atbAclOpExecutor>(rawExecutePtr);
+    this->executorRepeatable_ = this->atbAclOpExecutor_->IsRepeatable();
     return ret;
 }
 
@@ -480,15 +484,16 @@ aclnnStatus LinearAclnnRunner::SetAclnnBatchMatMulWeightNzWorkspaceExecutor()
     aclTensor *out = aclnnVariantPack_.aclOutTensors.at(matmulOutAclTensorIndex_)->tensor;
 
     int8_t cubeMathType = 1;
-    aclOpExecutor *rawExecutePtr = aclnnExecutor_.get();
+    aclOpExecutor *rawExecutePtr = nullptr;
 
     aclnnStatus ret = aclnnBatchMatMulWeightNzGetWorkspaceSizeFunc_(
         self, mat2, out, cubeMathType, &(atbVariantPack_.workspaceBufferSize), &rawExecutePtr);
-    aclnnExecutor_ = std::shared_ptr<aclOpExecutor>(rawExecutePtr, [this](aclOpExecutor *ptr) {
-        if (ptr && executorRepeatable_) {
-            aclDestroyAclOpExecutor(ptr);
-        }
-    });
+    if (ret != ACL_SUCCESS) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "GetWorkspaceSize failed, error: " << ret;
+        return ret;
+    }
+    this->atbAclOpExecutor_ = std::make_shared<atbAclOpExecutor>(rawExecutePtr);
+    this->executorRepeatable_ = this->atbAclOpExecutor_->IsRepeatable();
     return ret;
 }
 

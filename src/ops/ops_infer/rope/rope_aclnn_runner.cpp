@@ -46,8 +46,7 @@ enum class RotaryLayout : int {
 aclnnGetWorkspaceSizeFuncPtr RopeAclnnRunner::aclnnGetWorkspaceSizeFunc_ = nullptr;
 aclnnExecuteFuncPtr RopeAclnnRunner::aclnnExecuteFunc_ = nullptr;
 
-RopeAclnnRunner::RopeAclnnRunner(const infer::RopeParam &param)
-    : AclnnRunner("RopeAclnnRunner"), param_(param)
+RopeAclnnRunner::RopeAclnnRunner(const infer::RopeParam &param) : AclnnRunner("RopeAclnnRunner"), param_(param)
 {
     ATB_LOG(INFO) << GetLogPrefix() << "RopeAclnnRunner::RopeAclnnRunner called";
 }
@@ -57,13 +56,12 @@ RopeAclnnRunner::~RopeAclnnRunner() {}
 Status RopeAclnnRunner::LoadMethod()
 {
     ATB_LOG(INFO) << "RopeAclnnRunner LoadMethod";
-    if (RopeAclnnRunner::aclnnGetWorkspaceSizeFunc_ != nullptr &&
-        RopeAclnnRunner::aclnnExecuteFunc_ != nullptr) {
+    if (RopeAclnnRunner::aclnnGetWorkspaceSizeFunc_ != nullptr && RopeAclnnRunner::aclnnExecuteFunc_ != nullptr) {
         return NO_ERROR;
     }
-    Status status = LoadFromSharedObjectFile("aclnnApplyRotaryPosEmbV2GetWorkspaceSize", "aclnnApplyRotaryPosEmbV2",
-                                             RopeAclnnRunner::aclnnGetWorkspaceSizeFunc_,
-                                             RopeAclnnRunner::aclnnExecuteFunc_);
+    Status status =
+        LoadFromSharedObjectFile("aclnnApplyRotaryPosEmbV2GetWorkspaceSize", "aclnnApplyRotaryPosEmbV2",
+                                 RopeAclnnRunner::aclnnGetWorkspaceSizeFunc_, RopeAclnnRunner::aclnnExecuteFunc_);
     return status;
 }
 
@@ -80,7 +78,7 @@ Status RopeAclnnRunner::BuildAclnnVariantPack(const RunnerVariantPack &runnerVar
     bool isBSND4D = runnerVariantPack.inTensors.at(ROPE_QUERY_INDEX).desc.shape.dimNum == ACLNN_BSND_DIM_NUM;
     int64_t headDim = runnerVariantPack.inTensors.at(ROPE_COS_INDEX).desc.shape.dims[1]; // 1: headDim dim
 
-    //key and query reshape
+    // key and query reshape
     for (size_t i = 0; i < ROPE_IN_NUM - COS_SIN_NUM; ++i) {
         ATB_LOG(INFO) << GetLogPrefix() << "RopeAclnnRunner::BuildAclnnVariantPack inTensor index: " << i;
         std::shared_ptr<AclNNTensor> aclnnTensorPtr = std::make_shared<AclNNTensor>();
@@ -88,17 +86,19 @@ Status RopeAclnnRunner::BuildAclnnVariantPack(const RunnerVariantPack &runnerVar
         if (!isBSND4D) { // 2: [ntoken, hiddenSize]
             // [ntoken, hiddenSize] -> [ntoken, headNum, headDim]
             atbTensor.desc.shape.dimNum = ACLNN_TND_DIM_NUM; // tnd: [ntoken, headDim, headDim]
-            atbTensor.desc.shape.dims[2] = headDim; // 2: d
-            atbTensor.desc.shape.dims[1] = atbTensor.desc.shape.dims[1] / headDim; // 1: aclnn n dim, 1: atb nd dim, nd / d
+            atbTensor.desc.shape.dims[2] = headDim;          // 2: d
+            atbTensor.desc.shape.dims[1] =
+                atbTensor.desc.shape.dims[1] / headDim;                  // 1: aclnn n dim, 1: atb nd dim, nd / d
             atbTensor.desc.shape.dims[0] = atbTensor.desc.shape.dims[0]; // 1: bs dim
         } else {
-            atbTensor.desc.shape.dims[DIM_N] = atbTensor.desc.shape.dims[DIM_N] * atbTensor.desc.shape.dims[DIM_D] / headDim;
+            atbTensor.desc.shape.dims[DIM_N] =
+                atbTensor.desc.shape.dims[DIM_N] * atbTensor.desc.shape.dims[DIM_D] / headDim;
             atbTensor.desc.shape.dims[DIM_D] = headDim;
         }
         aclnnTensorPtr->atbTensor = atbTensor;
         aclnnTensorPtr->strides = GetCopyTensorStride(atbTensor.desc.shape);
         ret = CallAclCreateTensor(atbTensor.desc.shape, atbTensor.desc.shape, atbTensor, aclnnTensorPtr,
-                                      atbTensor.desc.dtype);
+                                  atbTensor.desc.dtype);
         if (ret != NO_ERROR) {
             ATB_LOG(ERROR) << GetLogPrefix() << "create aclTensor by aclCreateTensor failed!";
             return ret;
@@ -107,7 +107,7 @@ Status RopeAclnnRunner::BuildAclnnVariantPack(const RunnerVariantPack &runnerVar
         aclnnTensorPtr->needUpdateTensorDataPtr = false;
         this->aclnnVariantPack_.aclInTensors.at(i) = aclnnTensorPtr;
     }
-    //cos sin reshape
+    // cos sin reshape
     for (size_t i = ROPE_IN_NUM - COS_SIN_NUM; i < ROPE_IN_NUM; ++i) {
         ATB_LOG(INFO) << GetLogPrefix() << "RopeAclnnRunner::BuildAclnnVariantPack inTensor index: " << i;
         std::shared_ptr<AclNNTensor> aclnnTensorPtr = std::make_shared<AclNNTensor>();
@@ -116,7 +116,7 @@ Status RopeAclnnRunner::BuildAclnnVariantPack(const RunnerVariantPack &runnerVar
             // tnd: [bs, 1*d] -> [bs, 1, d]
             atbTensor.desc.shape.dimNum = ACLNN_TND_DIM_NUM;
             atbTensor.desc.shape.dims[2] = atbTensor.desc.shape.dims[1]; // 2: aclnn d dim, 1: atb nd dim
-            atbTensor.desc.shape.dims[1] = DIM_ONE; // 1: aclnn n dim
+            atbTensor.desc.shape.dims[1] = DIM_ONE;                      // 1: aclnn n dim
         } else {
             atbTensor.desc.shape.dimNum = ACLNN_BSND_DIM_NUM;
             Dims qDims = runnerVariantPack.inTensors.at(0).desc.shape;
@@ -128,7 +128,7 @@ Status RopeAclnnRunner::BuildAclnnVariantPack(const RunnerVariantPack &runnerVar
         aclnnTensorPtr->atbTensor = atbTensor;
         aclnnTensorPtr->strides = GetCopyTensorStride(atbTensor.desc.shape);
         ret = CallAclCreateTensor(atbTensor.desc.shape, atbTensor.desc.shape, atbTensor, aclnnTensorPtr,
-                                      atbTensor.desc.dtype);
+                                  atbTensor.desc.dtype);
         if (ret != NO_ERROR) {
             ATB_LOG(ERROR) << GetLogPrefix() << "create aclTensor by aclCreateTensor failed!";
             return ret;
@@ -137,21 +137,22 @@ Status RopeAclnnRunner::BuildAclnnVariantPack(const RunnerVariantPack &runnerVar
         aclnnTensorPtr->needUpdateTensorDataPtr = false;
         this->aclnnVariantPack_.aclInTensors.at(i) = aclnnTensorPtr;
     }
-    //create output
+    // create output
     for (size_t i = 0; i < ROPE_OUT_NUM; ++i) {
         ATB_LOG(INFO) << GetLogPrefix() << "RopeAclnnRunner::BuildAclnnVariantPack outTensor index: " << i;
         std::shared_ptr<AclNNTensor> aclnnTensorPtr = std::make_shared<AclNNTensor>();
         atb::Tensor atbTensor = this->aclnnVariantPack_.aclInTensors.at(i)->atbTensor;
         atbTensor.deviceData = runnerVariantPack.outTensors.at(i).deviceData;
         auto memRet = aclrtMemcpy(atbTensor.deviceData, atbTensor.dataSize,
-                    this->aclnnVariantPack_.aclInTensors.at(i)->atbTensor.deviceData, atbTensor.dataSize, ACL_MEMCPY_DEVICE_TO_DEVICE);
+                                  this->aclnnVariantPack_.aclInTensors.at(i)->atbTensor.deviceData, atbTensor.dataSize,
+                                  ACL_MEMCPY_DEVICE_TO_DEVICE);
         if (memRet != ACL_SUCCESS) {
             return ERROR_CANN_ERROR;
         }
         aclnnTensorPtr->atbTensor = atbTensor;
         aclnnTensorPtr->strides = GetCopyTensorStride(atbTensor.desc.shape);
         ret = CallAclCreateTensor(atbTensor.desc.shape, atbTensor.desc.shape, atbTensor, aclnnTensorPtr,
-                                      atbTensor.desc.dtype);
+                                  atbTensor.desc.dtype);
         if (ret != NO_ERROR) {
             ATB_LOG(ERROR) << GetLogPrefix() << "create aclTensor by aclCreateTensor failed!";
             return ret;
@@ -168,8 +169,8 @@ Status RopeAclnnRunner::LaunchAclnnKernel()
     ATB_LOG(INFO) << GetLogPrefix() << "LaunchAclnnKernel execute start.";
     aclrtStream executeStream = GetExecuteStream(this->atbVariantPack_.context);
     aclnnStatus ret = RopeAclnnRunner::aclnnExecuteFunc_(this->atbVariantPack_.workspaceBuffer,
-                                                                  this->atbVariantPack_.workspaceBufferSize,
-                                                                  this->aclnnExecutor_.get(), executeStream);
+                                                         this->atbVariantPack_.workspaceBufferSize,
+                                                         this->atbAclOpExecutor_->Get(), executeStream);
     if (ret != ACL_SUCCESS) {
         ATB_LOG(ERROR) << GetLogPrefix() << "Atb aclnn op kernel launch failed with return value: " << ret;
         return ERROR_CANN_ERROR;
@@ -187,19 +188,11 @@ aclnnStatus RopeAclnnRunner::SetAclNNWorkspaceExecutor()
     aclTensor *keyRef = aclnnVariantPack_.aclOutTensors.at(ROPE_KEY_INDEX)->tensor;
     aclTensor *cos = aclnnVariantPack_.aclInTensors.at(ROPE_COS_INDEX)->tensor;
     aclTensor *sin = aclnnVariantPack_.aclInTensors.at(ROPE_SIN_INDEX)->tensor;
-    aclOpExecutor *rawExecutorPtr = this->aclnnExecutor_.get();
-    ATB_LOG(INFO) << GetLogPrefix() << "&(this->aclnnExecutor_): " << &(this->aclnnExecutor_)
-#ifdef _DEBUG
-                  << ", addr of this->aclnnExecutor_: " << this->aclnnExecutor_
-                  << ", raw ptr from it: " << rawExecutorPtr
-#endif
-                  << ", addr of this->aclnnExecutor_: " << this->aclnnExecutor_
-                  << ", raw ptr from it: " << rawExecutorPtr
-                  << ", then take the address of the raw ptr: " << &rawExecutorPtr;
-    ATB_LOG(INFO) << GetLogPrefix() << "workspaceSize addr: " << &(this->atbVariantPack_.workspaceBufferSize);
+    aclOpExecutor *rawExecutorPtr = nullptr;
 
     for (size_t i = 0; i < aclnnVariantPack_.aclInTensors.size(); ++i) {
-        ATB_LOG(INFO) << GetLogPrefix() << "index " << i << TensorUtil::TensorToString(aclnnVariantPack_.aclInTensors.at(i)->atbTensor);
+        ATB_LOG(INFO) << GetLogPrefix() << "index " << i
+                      << TensorUtil::TensorToString(aclnnVariantPack_.aclInTensors.at(i)->atbTensor);
     }
     std::string rotaryMode = "half";
     if (param_.rotaryCoeff == ROTARY_COEFF_HALF) {
@@ -216,20 +209,14 @@ aclnnStatus RopeAclnnRunner::SetAclNNWorkspaceExecutor()
     }
     ATB_LOG(INFO) << GetLogPrefix() << "layout: " << static_cast<int64_t>(layout);
     aclnnStatus ret = RopeAclnnRunner::aclnnGetWorkspaceSizeFunc_(
-        queryRef,
-        keyRef,
-        cos,
-        sin,
-        static_cast<int64_t>(layout),
-        (char *)rotaryMode.c_str(),
-        &(this->atbVariantPack_.workspaceBufferSize),
-        &rawExecutorPtr
-    );
-    this->aclnnExecutor_ = std::shared_ptr<aclOpExecutor>(rawExecutorPtr, [this](aclOpExecutor *ptr) {
-        if (ptr && this->executorRepeatable_) { // 可复用时才手动销毁aclOpExecutor
-            aclDestroyAclOpExecutor(ptr);
-        }
-    });
+        queryRef, keyRef, cos, sin, static_cast<int64_t>(layout), (char *)rotaryMode.c_str(),
+        &(this->atbVariantPack_.workspaceBufferSize), &rawExecutorPtr);
+    if (ret != ACL_SUCCESS) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "GetWorkspaceSize failed, error: " << ret;
+        return ret;
+    }
+    this->atbAclOpExecutor_ = std::make_shared<atbAclOpExecutor>(rawExecutorPtr);
+    this->executorRepeatable_ = this->atbAclOpExecutor_->IsRepeatable();
     ATB_LOG(INFO) << GetLogPrefix() << "workspaceSize: " << this->atbVariantPack_.workspaceBufferSize;
     return ret;
 }

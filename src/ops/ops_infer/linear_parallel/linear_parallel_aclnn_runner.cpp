@@ -29,18 +29,17 @@ aclnnStatus (*LinearParallelAclnnRunner::aclnnMatmulReduceScatterV2Func_)(void *
 
 LinearParallelAclnnRunner::LinearParallelAclnnRunner(const infer::LinearParallelParam &param, bool useRankTableFile)
     : AclnnRunner("LinearParallelAclnnRunner"),
-      hcclRunner_(!useRankTableFile ? HcclRunner("LinearParallelAclnnRunner", param.rank,
-                                                 param.rankSize, param.rankRoot, param.commDomain) :
-                                      HcclRunner("LinearParallelAclnnRunner", param.rank,
-                                                 param.rankTableFile, param.commDomain)),
+      hcclRunner_(
+          !useRankTableFile ?
+              HcclRunner("LinearParallelAclnnRunner", param.rank, param.rankSize, param.rankRoot, param.commDomain) :
+              HcclRunner("LinearParallelAclnnRunner", param.rank, param.rankTableFile, param.commDomain)),
       param_(param)
 {
     ATB_LOG(INFO) << "LinearParallelAclnnRunner::LinearParallelAclnnRunner called";
 }
 
 LinearParallelAclnnRunner::LinearParallelAclnnRunner(const infer::LinearParallelParam &param, HcclComm hcclComm)
-    : AclnnRunner("LinearParallelAclnnRunner"),
-      hcclRunner_("LinearParallelAclnnRunner", hcclComm), param_(param)
+    : AclnnRunner("LinearParallelAclnnRunner"), hcclRunner_("LinearParallelAclnnRunner", hcclComm), param_(param)
 {
     ATB_LOG(INFO) << "LinearParallelAclnnRunner::LinearParallelAclnnRunner ext called";
 }
@@ -137,7 +136,7 @@ aclnnStatus LinearParallelAclnnRunner::SetAclNNWorkspaceExecutor()
     int64_t groupSize = 0;
     char commMode[128] = "aiv";
 
-    aclOpExecutor *raw_executor_ptr = this->aclnnExecutor_.get();
+    aclOpExecutor *raw_executor_ptr = nullptr;
 
     ret = LinearParallelAclnnRunner::aclnnMatmulReduceScatterV2GetWorkspaceSizeFunc_(
         x1, x2, bias, x1Scale, x2Scale, quantScale, blockSize, group, reduceOp, commTurn, streamMode, groupSize,
@@ -146,11 +145,8 @@ aclnnStatus LinearParallelAclnnRunner::SetAclNNWorkspaceExecutor()
         ATB_LOG(ERROR) << GetLogPrefix() << "SetAclNNWorkspaceExecutor error: " << ret;
         return ret;
     }
-    this->aclnnExecutor_ = std::shared_ptr<aclOpExecutor>(raw_executor_ptr, [this](aclOpExecutor *ptr) {
-        if (ptr && this->executorRepeatable_) { // 可复用时才手动销毁aclOpExecutor
-            aclDestroyAclOpExecutor(ptr);
-        }
-    });
+    this->atbAclOpExecutor_ = std::make_shared<atbAclOpExecutor>(raw_executor_ptr);
+    this->executorRepeatable_ = this->atbAclOpExecutor_->IsRepeatable();
     ATB_LOG(INFO) << GetLogPrefix() << "workspaceSize: " << this->atbVariantPack_.workspaceBufferSize;
     return ret;
 }
@@ -168,7 +164,7 @@ Status LinearParallelAclnnRunner::LaunchAclnnKernel()
     ATB_LOG(INFO) << GetLogPrefix() << "aclnnMatmulReduceScatterV2 execute start.";
     ret = LinearParallelAclnnRunner::aclnnMatmulReduceScatterV2Func_(this->atbVariantPack_.workspaceBuffer,
                                                                      this->atbVariantPack_.workspaceBufferSize,
-                                                                     this->aclnnExecutor_.get(), executeStream);
+                                                                     this->atbAclOpExecutor_->Get(), executeStream);
     if (ret != ACL_SUCCESS) {
         ATB_LOG(ERROR) << GetLogPrefix() << "Aclnn error: " << ret;
         return ERROR_CANN_ERROR;
@@ -176,10 +172,6 @@ Status LinearParallelAclnnRunner::LaunchAclnnKernel()
     return NO_ERROR;
 }
 
-bool LinearParallelAclnnRunner::useCache()
-{
-    return false;
-}
 
 Status LinearParallelAclnnRunner::LoadMethodMatmulReduceScatter()
 {

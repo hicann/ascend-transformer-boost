@@ -19,7 +19,7 @@ namespace {
 static const int KEY_ACLNN_TENSOR_IDX = 0;
 static const int KEY_CACHE_ACLNN_TENSOR_IDX = 1;
 static const int SLOT_MAPPING_ACLNN_TENSOR_IDX = 2;
-}  // namespace
+} // namespace
 
 namespace atb {
 AclnnScatterPaCacheGetWorkspaceSizeFunc ReshapeAndCacheSisoAclnnRunner::aclnnScatterPaCacheGetWorkspaceSizeFunc_ =
@@ -32,8 +32,7 @@ ReshapeAndCacheSisoAclnnRunner::ReshapeAndCacheSisoAclnnRunner(const infer::Resh
     ATB_LOG(INFO) << GetLogPrefix() << "ReshapeAndCacheSisoAclnnRunner::ReshapeAndCacheSisoAclnnRunner";
 }
 
-ReshapeAndCacheSisoAclnnRunner::~ReshapeAndCacheSisoAclnnRunner()
-{}
+ReshapeAndCacheSisoAclnnRunner::~ReshapeAndCacheSisoAclnnRunner() {}
 
 Status ReshapeAndCacheSisoAclnnRunner::LoadAclnnFuncs()
 {
@@ -42,10 +41,8 @@ Status ReshapeAndCacheSisoAclnnRunner::LoadAclnnFuncs()
     if (aclnnScatterPaCacheGetWorkspaceSizeFunc_ && aclnnScatterPaCacheFunc_) {
         return NO_ERROR;
     }
-    return LoadFromSharedObjectFile("aclnnScatterPaCacheGetWorkspaceSize",
-        "aclnnScatterPaCache",
-        aclnnScatterPaCacheGetWorkspaceSizeFunc_,
-        aclnnScatterPaCacheFunc_);
+    return LoadFromSharedObjectFile("aclnnScatterPaCacheGetWorkspaceSize", "aclnnScatterPaCache",
+                                    aclnnScatterPaCacheGetWorkspaceSizeFunc_, aclnnScatterPaCacheFunc_);
 }
 
 Status ReshapeAndCacheSisoAclnnRunner::BuildAclnnVariantPack(const RunnerVariantPack &runnerVariantPack)
@@ -78,27 +75,18 @@ aclnnStatus ReshapeAndCacheSisoAclnnRunner::SetAclNNWorkspaceExecutor()
     aclTensor *compressSeqOffsetOptional = nullptr;
     aclTensor *seqLensOptional = nullptr;
     char *cacheMode = nullptr;
-    aclOpExecutor *rawExecutorPtr = aclnnExecutor_.get();
+    aclOpExecutor *rawExecutorPtr = nullptr;
 
-    aclnnStatus ret = aclnnScatterPaCacheGetWorkspaceSizeFunc_(key,
-        keyCacheRef,
-        slotMapping,
-        compressLensOptional,
-        compressSeqOffsetOptional,
-        seqLensOptional,
-        cacheMode,
-        &(atbVariantPack_.workspaceBufferSize),
-        &rawExecutorPtr);
-    aclnnExecutor_ = std::shared_ptr<aclOpExecutor>(rawExecutorPtr, [this](aclOpExecutor *ptr) {
-        if (ptr && executorRepeatable_) {
-            aclDestroyAclOpExecutor(ptr);
-        }
-    });
-    if (ret == ACLNN_SUCCESS) {
-        ATB_LOG(INFO) << GetLogPrefix() << "workspaceSize: " << atbVariantPack_.workspaceBufferSize;
-    } else {
-        ATB_LOG(ERROR) << GetLogPrefix() << "SetAclNNWorkspaceExecutor failed, ret: " << ret;
+    aclnnStatus ret = aclnnScatterPaCacheGetWorkspaceSizeFunc_(key, keyCacheRef, slotMapping, compressLensOptional,
+                                                               compressSeqOffsetOptional, seqLensOptional, cacheMode,
+                                                               &(atbVariantPack_.workspaceBufferSize), &rawExecutorPtr);
+    if (ret != ACL_SUCCESS) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "GetWorkspaceSize failed, error: " << ret;
+        return ret;
     }
+    this->atbAclOpExecutor_ = std::make_shared<atbAclOpExecutor>(rawExecutorPtr);
+    this->executorRepeatable_ = this->atbAclOpExecutor_->IsRepeatable();
+    ATB_LOG(INFO) << GetLogPrefix() << "workspaceSize: " << atbVariantPack_.workspaceBufferSize;
     return ret;
 }
 
@@ -106,8 +94,8 @@ Status ReshapeAndCacheSisoAclnnRunner::LaunchAclnnKernel()
 {
     ATB_LOG(INFO) << GetLogPrefix() << "ReshapeAndCacheSisoAclnnRunner::LaunchAclnnKernel";
     aclrtStream executeStream = GetExecuteStream(atbVariantPack_.context);
-    aclnnStatus ret = aclnnScatterPaCacheFunc_(
-        atbVariantPack_.workspaceBuffer, atbVariantPack_.workspaceBufferSize, aclnnExecutor_.get(), executeStream);
+    aclnnStatus ret = aclnnScatterPaCacheFunc_(atbVariantPack_.workspaceBuffer, atbVariantPack_.workspaceBufferSize,
+                                               atbAclOpExecutor_->Get(), executeStream);
     if (ret == ACLNN_SUCCESS) {
         return NO_ERROR;
     }
@@ -117,7 +105,7 @@ Status ReshapeAndCacheSisoAclnnRunner::LaunchAclnnKernel()
 
 void ReshapeAndCacheSisoAclnnRunner::GetTensorNum()
 {
-    aclInTensorNum_ = 3;  // key, keyCacheRef, slotMapping
+    aclInTensorNum_ = 3; // key, keyCacheRef, slotMapping
 }
 
 void ReshapeAndCacheSisoAclnnRunner::InitTensorIndex()
@@ -179,4 +167,4 @@ Status ReshapeAndCacheSisoAclnnRunner::CreateSlotMappingAclnnTensor()
 }
 
 REG_RUNNER_TYPE(ReshapeAndCacheSisoAclnnRunner);
-}  // namespace atb
+} // namespace atb

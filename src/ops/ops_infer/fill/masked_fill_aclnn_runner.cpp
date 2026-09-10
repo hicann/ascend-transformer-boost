@@ -26,7 +26,8 @@ const uint32_t MASK_FILL_PARAM_VALUE_INDEX = 0;
 AclnnMaskFillGetWorkspaceSizeFunc MaskedFillAclnnRunner::aclnnInplaceMaskedFillScalarGetWorkspaceSizeFunc_ = nullptr;
 AclnnMaskFillExecuteFunc MaskedFillAclnnRunner::aclnnInplaceMaskedFillScalarFunc_ = nullptr;
 
-MaskedFillAclnnRunner::MaskedFillAclnnRunner(const infer::FillParam &param) : AclnnRunner("MaskedFillAclnnRunner"), param_(param)
+MaskedFillAclnnRunner::MaskedFillAclnnRunner(const infer::FillParam &param)
+    : AclnnRunner("MaskedFillAclnnRunner"), param_(param)
 {
     ATB_LOG(INFO) << GetLogPrefix() << "MaskedFillAclnnRunner::MaskedFillAclnnRunner called";
     valueScalarPtr_ = nullptr;
@@ -36,12 +37,10 @@ Status MaskedFillAclnnRunner::LoadMethod()
 {
     ATB_LOG(INFO) << "MaskedFillAclnnRunner LoadMethod";
     Status status = NO_ERROR;
-    if (aclnnInplaceMaskedFillScalarGetWorkspaceSizeFunc_ == nullptr ||
-        aclnnInplaceMaskedFillScalarFunc_ == nullptr) {
-        status = LoadFromSharedObjectFile("aclnnInplaceMaskedFillScalarGetWorkspaceSize",
-                                          "aclnnInplaceMaskedFillScalar",
-                                          aclnnInplaceMaskedFillScalarGetWorkspaceSizeFunc_,
-                                          aclnnInplaceMaskedFillScalarFunc_);
+    if (aclnnInplaceMaskedFillScalarGetWorkspaceSizeFunc_ == nullptr || aclnnInplaceMaskedFillScalarFunc_ == nullptr) {
+        status = LoadFromSharedObjectFile(
+            "aclnnInplaceMaskedFillScalarGetWorkspaceSize", "aclnnInplaceMaskedFillScalar",
+            aclnnInplaceMaskedFillScalarGetWorkspaceSizeFunc_, aclnnInplaceMaskedFillScalarFunc_);
     }
     return status;
 }
@@ -71,15 +70,13 @@ Status MaskedFillAclnnRunner::BuildAclnnVariantPack(const RunnerVariantPack &run
         return ret;
     }
     return ret;
-
 }
 Status MaskedFillAclnnRunner::LaunchAclnnKernel()
 {
     ATB_LOG(INFO) << GetLogPrefix() << "LaunchAclnnKernel execute start.";
     aclrtStream executeStream = GetExecuteStream(atbVariantPack_.context);
-    aclnnStatus ret = aclnnInplaceMaskedFillScalarFunc_(atbVariantPack_.workspaceBuffer,
-                                                        atbVariantPack_.workspaceBufferSize,
-                                                        aclnnExecutor_.get(), executeStream);
+    aclnnStatus ret = aclnnInplaceMaskedFillScalarFunc_(
+        atbVariantPack_.workspaceBuffer, atbVariantPack_.workspaceBufferSize, atbAclOpExecutor_->Get(), executeStream);
     if (ret != ACL_SUCCESS) {
         ATB_LOG(ERROR) << GetLogPrefix() << "Atb aclnn op kernel launch failed with return value: " << ret;
         return ERROR_CANN_ERROR;
@@ -101,8 +98,8 @@ aclnnStatus MaskedFillAclnnRunner::SetAclNNWorkspaceExecutor()
                   << ", aclOutTensors size: " << aclnnVariantPack_.aclOutTensors.size();
     aclTensor *selfRef = aclnnVariantPack_.aclOutTensors.at(MASK_FILL_OUT_INDEX_ZERO)->tensor;
     aclTensor *mask = aclnnVariantPack_.aclInTensors.at(MASK_FILL_IN_INDEX_ONE)->tensor;
-    
-    //create value for aclnn interface
+
+    // create value for aclnn interface
     float value = param_.value.at(MASK_FILL_PARAM_VALUE_INDEX);
     if (valueScalarPtr_ != nullptr) {
         auto res = aclDestroyScalar(valueScalarPtr_);
@@ -114,38 +111,31 @@ aclnnStatus MaskedFillAclnnRunner::SetAclNNWorkspaceExecutor()
     }
     valueScalarPtr_ = aclCreateScalar(&value, ACL_FLOAT);
 
-    aclOpExecutor *rawExecutorPtr = aclnnExecutor_.get();
+    aclOpExecutor *rawExecutorPtr = nullptr;
     aclnnStatus ret = aclnnInplaceMaskedFillScalarGetWorkspaceSizeFunc_(
-        selfRef,
-        mask,
-        (const aclScalar *)valueScalarPtr_,
-        &(atbVariantPack_.workspaceBufferSize),
-        &rawExecutorPtr
-    );
+        selfRef, mask, (const aclScalar *)valueScalarPtr_, &(atbVariantPack_.workspaceBufferSize), &rawExecutorPtr);
 
-    aclnnExecutor_ = std::shared_ptr<aclOpExecutor>(rawExecutorPtr, [this](aclOpExecutor *ptr) {
-        if (ptr && executorRepeatable_) { // 可复用时才手动销毁aclOpExecutor
-            aclDestroyAclOpExecutor(ptr);
-        }
-    });
-    ATB_LOG(INFO) << GetLogPrefix() << "workspaceSize: " << atbVariantPack_.workspaceBufferSize;
     if (ret != ACL_SUCCESS) {
-        ATB_LOG(ERROR) << GetLogPrefix() << "aclnnInplaceMaskedFillScalarGetWorkspaceSize failed";
+        ATB_LOG(ERROR) << GetLogPrefix() << "GetWorkspaceSize failed, error: " << ret;
         return ret;
     }
+    this->atbAclOpExecutor_ = std::make_shared<atbAclOpExecutor>(rawExecutorPtr);
+    this->executorRepeatable_ = this->atbAclOpExecutor_->IsRepeatable();
+    ATB_LOG(INFO) << GetLogPrefix() << "workspaceSize: " << atbVariantPack_.workspaceBufferSize;
     return ret;
 }
 
 Status MaskedFillAclnnRunner::BuildXTensor()
 {
-    ATB_LOG(INFO) << GetLogPrefix() << "MaskedFillAclnnRunner::BuildAclnnVariantPack inTensor index: " << MASK_FILL_IN_INDEX_ZERO;
+    ATB_LOG(INFO) << GetLogPrefix()
+                  << "MaskedFillAclnnRunner::BuildAclnnVariantPack inTensor index: " << MASK_FILL_IN_INDEX_ZERO;
     Status ret = NO_ERROR;
     std::shared_ptr<AclNNTensor> aclnnTensorPtr = std::make_shared<AclNNTensor>();
     atb::Tensor atbTensor = atbVariantPack_.inTensors.at(MASK_FILL_IN_INDEX_ZERO);
     aclnnTensorPtr->atbTensor = atbTensor;
     aclnnTensorPtr->strides = GetCopyTensorStride(atbTensor.desc.shape);
     ret = CallAclCreateTensor(atbTensor.desc.shape, atbTensor.desc.shape, atbTensor, aclnnTensorPtr,
-                                      atbTensor.desc.dtype);
+                              atbTensor.desc.dtype);
     if (ret != NO_ERROR) {
         return ret;
     }
@@ -157,18 +147,19 @@ Status MaskedFillAclnnRunner::BuildXTensor()
 
 Status MaskedFillAclnnRunner::BuildMaskTensor()
 {
-    ATB_LOG(INFO) << GetLogPrefix() << "MaskedFillAclnnRunner::BuildAclnnVariantPack inTensor index: " << MASK_FILL_IN_INDEX_ONE;
+    ATB_LOG(INFO) << GetLogPrefix()
+                  << "MaskedFillAclnnRunner::BuildAclnnVariantPack inTensor index: " << MASK_FILL_IN_INDEX_ONE;
     Status ret = NO_ERROR;
     std::shared_ptr<AclNNTensor> aclnnTensorPtr = std::make_shared<AclNNTensor>();
     atb::Tensor atbTensor = atbVariantPack_.inTensors.at(MASK_FILL_IN_INDEX_ONE);
-    //transform int8 to bool for aclnn interface
+    // transform int8 to bool for aclnn interface
     if (atbTensor.desc.dtype == ACL_INT8) {
         atbTensor.desc.dtype = ACL_BOOL;
     }
     aclnnTensorPtr->atbTensor = atbTensor;
     aclnnTensorPtr->strides = GetCopyTensorStride(atbTensor.desc.shape);
     ret = CallAclCreateTensor(atbTensor.desc.shape, atbTensor.desc.shape, atbTensor, aclnnTensorPtr,
-                                    atbTensor.desc.dtype);
+                              atbTensor.desc.dtype);
     if (ret != NO_ERROR) {
         return ret;
     }
@@ -181,21 +172,21 @@ Status MaskedFillAclnnRunner::BuildMaskTensor()
 Status MaskedFillAclnnRunner::BuildOutputTensor()
 {
     std::shared_ptr<AclNNTensor> aclnnTensorPtr = std::make_shared<AclNNTensor>();
-    ATB_LOG(INFO) << GetLogPrefix() << "MaskedFillAclnnRunner::BuildAclnnVariantPack outTensor index: " << MASK_FILL_OUT_INDEX_ZERO;
+    ATB_LOG(INFO) << GetLogPrefix()
+                  << "MaskedFillAclnnRunner::BuildAclnnVariantPack outTensor index: " << MASK_FILL_OUT_INDEX_ZERO;
     Status ret = NO_ERROR;
     atb::Tensor atbTensor = atbVariantPack_.outTensors.at(MASK_FILL_OUT_INDEX_ZERO);
-    //move the selfRef into output for aclnn interface
-    auto memRet = aclrtMemcpy(atbTensor.deviceData, atbTensor.dataSize,
-                              atbVariantPack_.inTensors.at(MASK_FILL_IN_INDEX_ZERO).deviceData,
-                              atbVariantPack_.inTensors.at(MASK_FILL_IN_INDEX_ZERO).dataSize,
-                              ACL_MEMCPY_DEVICE_TO_DEVICE);
+    // move the selfRef into output for aclnn interface
+    auto memRet = aclrtMemcpy(
+        atbTensor.deviceData, atbTensor.dataSize, atbVariantPack_.inTensors.at(MASK_FILL_IN_INDEX_ZERO).deviceData,
+        atbVariantPack_.inTensors.at(MASK_FILL_IN_INDEX_ZERO).dataSize, ACL_MEMCPY_DEVICE_TO_DEVICE);
     if (memRet != ACL_SUCCESS) {
         return ERROR_CANN_ERROR;
     }
     aclnnTensorPtr->atbTensor = atbTensor;
     aclnnTensorPtr->strides = GetCopyTensorStride(atbTensor.desc.shape);
     ret = CallAclCreateTensor(atbTensor.desc.shape, atbTensor.desc.shape, atbTensor, aclnnTensorPtr,
-                                atbTensor.desc.dtype);
+                              atbTensor.desc.dtype);
     if (ret != NO_ERROR) {
         return ret;
     }

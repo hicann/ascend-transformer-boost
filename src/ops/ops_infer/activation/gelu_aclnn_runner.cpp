@@ -23,8 +23,7 @@ namespace atb {
 AclnnGeluV2GetWorkspaceSizeFunc GeluAclnnRunner::aclnnGeluV2GetWorkspaceSizeFunc_ = nullptr;
 AclnnGeluV2Func GeluAclnnRunner::aclnnGeluV2Func_ = nullptr;
 
-GeluAclnnRunner::GeluAclnnRunner(const infer::ActivationParam &param)
-    : AclnnRunner("GeluAclnnRunner"), param_(param)
+GeluAclnnRunner::GeluAclnnRunner(const infer::ActivationParam &param) : AclnnRunner("GeluAclnnRunner"), param_(param)
 {
     ATB_LOG(INFO) << GetLogPrefix() << "GeluAclnnRunner::GeluAclnnRunner called";
 }
@@ -98,14 +97,15 @@ aclnnStatus GeluAclnnRunner::SetAclNNWorkspaceExecutor()
 
     int64_t approximate = (param_.geluMode == infer::ActivationParam::GeLUMode::NONE_MODE) ? 0 : 1;
 
-    aclOpExecutor *raw_executor_ptr = this->aclnnExecutor_.get();
-    aclnnStatus ret = aclnnGeluV2GetWorkspaceSizeFunc_(
-        input, approximate, output, &(this->atbVariantPack_.workspaceBufferSize), &raw_executor_ptr);
-    this->aclnnExecutor_ = std::shared_ptr<aclOpExecutor>(raw_executor_ptr, [this](aclOpExecutor *ptr) {
-        if (ptr && this->executorRepeatable_) {
-            aclDestroyAclOpExecutor(ptr);
-        }
-    });
+    aclOpExecutor *raw_executor_ptr = nullptr;
+    aclnnStatus ret = aclnnGeluV2GetWorkspaceSizeFunc_(input, approximate, output,
+                                                       &(this->atbVariantPack_.workspaceBufferSize), &raw_executor_ptr);
+    if (ret != ACL_SUCCESS) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "GetWorkspaceSize failed, error: " << ret;
+        return ret;
+    }
+    this->atbAclOpExecutor_ = std::make_shared<atbAclOpExecutor>(raw_executor_ptr);
+    this->executorRepeatable_ = this->atbAclOpExecutor_->IsRepeatable();
     ATB_LOG(INFO) << GetLogPrefix() << "workspaceSize: " << this->atbVariantPack_.workspaceBufferSize;
     return ret;
 }
@@ -115,8 +115,7 @@ Status GeluAclnnRunner::LaunchAclnnKernel()
     ATB_LOG(INFO) << GetLogPrefix() << "LaunchAclnnKernel execute start.";
     Status loadStatus = GeluAclnnRunner::LoadMethod();
     if (loadStatus != NO_ERROR) {
-        ATB_LOG(ERROR) << GetLogPrefix()
-                       << "load execute function from aclnn failed! Consider upgrade CANN first!";
+        ATB_LOG(ERROR) << GetLogPrefix() << "load execute function from aclnn failed! Consider upgrade CANN first!";
         return ERROR_CANN_ERROR;
     }
     if (!aclnnGeluV2Func_) {
@@ -124,9 +123,8 @@ Status GeluAclnnRunner::LaunchAclnnKernel()
         return ERROR_INVALID_PARAM;
     }
     void *executeStream = GetExecuteStream(this->atbVariantPack_.context);
-    aclnnStatus ret = aclnnGeluV2Func_(this->atbVariantPack_.workspaceBuffer,
-                                        this->atbVariantPack_.workspaceBufferSize,
-                                        this->aclnnExecutor_.get(), executeStream);
+    aclnnStatus ret = aclnnGeluV2Func_(this->atbVariantPack_.workspaceBuffer, this->atbVariantPack_.workspaceBufferSize,
+                                       this->atbAclOpExecutor_->Get(), executeStream);
     if (ret != ACL_SUCCESS) {
         ATB_LOG(ERROR) << GetLogPrefix() << "Atb aclnn op kernel launch failed with return value: " << ret;
         return ERROR_CANN_ERROR;
@@ -141,9 +139,8 @@ Status GeluAclnnRunner::LoadMethod()
     if (aclnnGeluV2GetWorkspaceSizeFunc_ && aclnnGeluV2Func_) {
         return NO_ERROR;
     }
-    return LoadFromSharedObjectFile(
-        "aclnnGeluV2GetWorkspaceSize", "aclnnGeluV2",
-        aclnnGeluV2GetWorkspaceSizeFunc_, aclnnGeluV2Func_);
+    return LoadFromSharedObjectFile("aclnnGeluV2GetWorkspaceSize", "aclnnGeluV2", aclnnGeluV2GetWorkspaceSizeFunc_,
+                                    aclnnGeluV2Func_);
 }
 
 REG_RUNNER_TYPE(GeluAclnnRunner);

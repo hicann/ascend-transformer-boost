@@ -71,22 +71,19 @@ aclnnStatus FillAclnnRunner::SetAclNNWorkspaceExecutor()
 
     size_t outTensorStart = 0;
     aclTensor *output = aclnnVariantPack_.aclOutTensors.at(outTensorStart++)->tensor; // selfRef
-    float value = param_.value.at(0);                                                       // 0: value
+    float value = param_.value.at(0);                                                 // 0: value
     aclScalar *valueScalarPtr = aclCreateScalar(&value, ACL_FLOAT);
 
-    aclOpExecutor *raw_executor_ptr = aclnnExecutor_.get();
+    aclOpExecutor *raw_executor_ptr = nullptr;
     aclnnStatus ret = aclnnInplaceFillScalarGetWorkspaceSizeFunc_(
         output, valueScalarPtr, &(atbVariantPack_.workspaceBufferSize), &raw_executor_ptr);
-    aclnnExecutor_ = std::shared_ptr<aclOpExecutor>(raw_executor_ptr, [this](aclOpExecutor *ptr) {
-        if (ptr && executorRepeatable_) { // 可复用时才手动销毁aclOpExecutor
-            aclDestroyAclOpExecutor(ptr);
-        }
-    });
-    ATB_LOG(INFO) << GetLogPrefix() << "workspaceSize: " << atbVariantPack_.workspaceBufferSize;
     if (ret != ACL_SUCCESS) {
-        ATB_LOG(ERROR) << GetLogPrefix() << "aclnnInplaceFillScalarGetWorkspaceSize failed";
+        ATB_LOG(ERROR) << GetLogPrefix() << "GetWorkspaceSize failed, error: " << ret;
         return ret;
     }
+    this->atbAclOpExecutor_ = std::make_shared<atbAclOpExecutor>(raw_executor_ptr);
+    this->executorRepeatable_ = this->atbAclOpExecutor_->IsRepeatable();
+    ATB_LOG(INFO) << GetLogPrefix() << "workspaceSize: " << atbVariantPack_.workspaceBufferSize;
     ret = aclDestroyScalar(valueScalarPtr);
     if (ret != ACL_SUCCESS) {
         ATB_LOG(ERROR) << GetLogPrefix() << "destroy scalar value failed";
@@ -99,9 +96,8 @@ Status FillAclnnRunner::LaunchAclnnKernel()
 {
     ATB_LOG(INFO) << GetLogPrefix() << "LaunchAclnnKernel execute start.";
     aclrtStream executeStream = GetExecuteStream(atbVariantPack_.context);
-    aclnnStatus ret = aclnnInplaceFillScalarExecuteFunc_(atbVariantPack_.workspaceBuffer,
-                                                         atbVariantPack_.workspaceBufferSize,
-                                                         aclnnExecutor_.get(), executeStream);
+    aclnnStatus ret = aclnnInplaceFillScalarExecuteFunc_(
+        atbVariantPack_.workspaceBuffer, atbVariantPack_.workspaceBufferSize, atbAclOpExecutor_->Get(), executeStream);
     if (ret != ACL_SUCCESS) {
         ATB_LOG(ERROR) << GetLogPrefix() << "Atb aclnn op kernel launch failed with return value: " << ret;
         return ERROR_CANN_ERROR;
@@ -113,13 +109,11 @@ Status FillAclnnRunner::LaunchAclnnKernel()
 Status FillAclnnRunner::LoadMethod()
 {
     ATB_LOG(INFO) << "FillAclnnRunner LoadMethod";
-    if (aclnnInplaceFillScalarGetWorkspaceSizeFunc_ != nullptr &&
-        aclnnInplaceFillScalarExecuteFunc_ != nullptr) {
+    if (aclnnInplaceFillScalarGetWorkspaceSizeFunc_ != nullptr && aclnnInplaceFillScalarExecuteFunc_ != nullptr) {
         return NO_ERROR;
     }
     return LoadFromSharedObjectFile("aclnnInplaceFillScalarGetWorkspaceSize", "aclnnInplaceFillScalar",
-                                     aclnnInplaceFillScalarGetWorkspaceSizeFunc_,
-                                     aclnnInplaceFillScalarExecuteFunc_);
+                                    aclnnInplaceFillScalarGetWorkspaceSizeFunc_, aclnnInplaceFillScalarExecuteFunc_);
 }
 
 REG_RUNNER_TYPE(FillAclnnRunner);

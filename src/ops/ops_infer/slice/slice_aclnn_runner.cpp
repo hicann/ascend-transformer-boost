@@ -252,26 +252,17 @@ aclnnStatus SliceAclnnRunner::SetAclNNWorkspaceExecutor()
 
     // aclnnSliceV2 does not support uint32, convert uint32 to int64
     if (selfBufferSize_ != 0) {
-        aclOpExecutor *rawCastExecutorPtr = this->aclnnCastExecutor1st_.get();
+        aclOpExecutor *rawCastExecutorPtr = nullptr;
         ret = SliceAclnnRunner::aclnnCastGetWorkspaceSizeFunc_(x, ACL_INT64, self_, &(this->cast1stWorkspaceSize_),
                                                                &rawCastExecutorPtr);
         if (ret != ACL_SUCCESS) {
             ATB_LOG(ERROR) << GetLogPrefix() << "aclnnCastGetWorkspaceSize failed!";
             return ret;
         }
-        ret = aclSetAclOpExecutorRepeatable(rawCastExecutorPtr);
-        if (ret != ACL_SUCCESS) {
-            ATB_LOG(ERROR) << GetLogPrefix() << "Set Cast AclOpExecutorRepeatable failed!";
-            return ret;
-        }
-        this->aclnnCastExecutor1st_ = std::shared_ptr<aclOpExecutor>(rawCastExecutorPtr, [this](aclOpExecutor *ptr) {
-            if (ptr) { // 可复用时才手动销毁aclOpExecutor
-                aclDestroyAclOpExecutor(ptr);
-            }
-        });
+        this->atbAclCast1stOpExecutor_ = std::make_shared<atbAclOpExecutor>(rawCastExecutorPtr);
     }
 
-    aclOpExecutor *rawExecutorPtr = aclnnExecutor_.get();
+    aclOpExecutor *rawExecutorPtr = nullptr;
     ret = SliceAclnnRunner::aclnnGetWorkspaceSizeFunc_(selfBufferSize_ == 0 ? x : self_, startsArray_, endsArray_,
                                                        axesArray_, stepsArray_, outBufferSize_ == 0 ? output : out_,
                                                        &(this->sliceWorkspaceSize_), &rawExecutorPtr);
@@ -279,37 +270,22 @@ aclnnStatus SliceAclnnRunner::SetAclNNWorkspaceExecutor()
         ATB_LOG(ERROR) << GetLogPrefix() << "aclnnGetWorkspaceSize failed!";
         return ret;
     }
-    ret = aclSetAclOpExecutorRepeatable(rawExecutorPtr);
-    if (ret != ACL_SUCCESS) {
-        ATB_LOG(ERROR) << GetLogPrefix() << "Set Slice AclOpExecutorRepeatable failed!";
-        return ret;
-    }
-    aclnnExecutor_ = std::shared_ptr<aclOpExecutor>(rawExecutorPtr, [this](aclOpExecutor *ptr) {
-        if (ptr) { // 可复用时才手动销毁aclOpExecutor
-            aclDestroyAclOpExecutor(ptr);
-        }
-    });
+    this->atbAclOpExecutor_ = std::make_shared<atbAclOpExecutor>(rawExecutorPtr);
 
     // convert int64 to uint32
     if (outBufferSize_ != 0) {
-        aclOpExecutor *rawCastExecutorPtr = this->aclnnCastExecutor2nd_.get();
+        aclOpExecutor *rawCastExecutorPtr = nullptr;
         ret = SliceAclnnRunner::aclnnCastGetWorkspaceSizeFunc_(out_, ACL_UINT32, output, &(this->cast2ndWorkspaceSize_),
                                                                &rawCastExecutorPtr);
         if (ret != ACL_SUCCESS) {
             ATB_LOG(ERROR) << GetLogPrefix() << "aclnnCastGetWorkspaceSize failed!";
             return ret;
         }
-        ret = aclSetAclOpExecutorRepeatable(rawCastExecutorPtr);
-        if (ret != ACL_SUCCESS) {
-            ATB_LOG(ERROR) << GetLogPrefix() << "Set Cast AclOpExecutorRepeatable failed!";
-            return ret;
-        }
-        this->aclnnCastExecutor2nd_ = std::shared_ptr<aclOpExecutor>(rawCastExecutorPtr, [this](aclOpExecutor *ptr) {
-            if (ptr) { // 可复用时才手动销毁aclOpExecutor
-                aclDestroyAclOpExecutor(ptr);
-            }
-        });
+        this->atbAclCast2ndOpExecutor_ = std::make_shared<atbAclOpExecutor>(rawCastExecutorPtr);
     }
+    this->executorRepeatable_ = this->atbAclOpExecutor_->IsRepeatable() &&
+                                (selfBufferSize_ == 0 || this->atbAclCast1stOpExecutor_->IsRepeatable()) &&
+                                (outBufferSize_ == 0 || this->atbAclCast2ndOpExecutor_->IsRepeatable());
     this->atbVariantPack_.workspaceBufferSize = this->sliceWorkspaceSize_ + this->cast1stWorkspaceSize_ +
                                                 this->cast2ndWorkspaceSize_ + this->selfBufferSize_ +
                                                 this->outBufferSize_;
@@ -317,10 +293,6 @@ aclnnStatus SliceAclnnRunner::SetAclNNWorkspaceExecutor()
     return ret;
 }
 
-bool SliceAclnnRunner::useCache()
-{
-    return false;
-}
 
 Status SliceAclnnRunner::LaunchAclnnKernel()
 {
@@ -328,14 +300,14 @@ Status SliceAclnnRunner::LaunchAclnnKernel()
     void *executeStream = GetExecuteStream(atbVariantPack_.context);
     aclnnStatus ret = ACL_SUCCESS;
     if (selfBufferSize_ != 0) {
-        ret = aclSetOutputTensorAddr(this->aclnnCastExecutor1st_.get(), INDEX_ZERO, this->self_,
+        ret = aclSetOutputTensorAddr(this->atbAclCast1stOpExecutor_->Get(), INDEX_ZERO, this->self_,
                                      this->atbVariantPack_.workspaceBuffer + this->sliceWorkspaceSize_ +
                                          this->cast1stWorkspaceSize_ + this->cast2ndWorkspaceSize_);
         if (ret != ACL_SUCCESS) {
             ATB_LOG(ERROR) << GetLogPrefix() << "aclSetOutputTensorAddr failed with return value: " << ret;
             return ERROR_CANN_ERROR;
         }
-        ret = aclSetInputTensorAddr(this->aclnnExecutor_.get(), INDEX_ZERO, this->self_,
+        ret = aclSetInputTensorAddr(this->atbAclOpExecutor_->Get(), INDEX_ZERO, this->self_,
                                     this->atbVariantPack_.workspaceBuffer + this->sliceWorkspaceSize_ +
                                         this->cast1stWorkspaceSize_ + this->cast2ndWorkspaceSize_);
         if (ret != ACL_SUCCESS) {
@@ -344,14 +316,14 @@ Status SliceAclnnRunner::LaunchAclnnKernel()
         }
     }
     if (outBufferSize_ != 0) {
-        ret = aclSetOutputTensorAddr(this->aclnnExecutor_.get(), INDEX_ZERO, this->out_,
+        ret = aclSetOutputTensorAddr(this->atbAclOpExecutor_->Get(), INDEX_ZERO, this->out_,
                                      this->atbVariantPack_.workspaceBuffer + this->sliceWorkspaceSize_ +
                                          this->cast1stWorkspaceSize_ + this->cast2ndWorkspaceSize_ + selfBufferSize_);
         if (ret != ACL_SUCCESS) {
             ATB_LOG(ERROR) << GetLogPrefix() << "aclSetOutputTensorAddr failed with return value: " << ret;
             return ERROR_CANN_ERROR;
         }
-        ret = aclSetInputTensorAddr(this->aclnnCastExecutor2nd_.get(), INDEX_ZERO, this->out_,
+        ret = aclSetInputTensorAddr(this->atbAclCast2ndOpExecutor_->Get(), INDEX_ZERO, this->out_,
                                     this->atbVariantPack_.workspaceBuffer + this->sliceWorkspaceSize_ +
                                         this->cast1stWorkspaceSize_ + this->cast2ndWorkspaceSize_ + selfBufferSize_);
         if (ret != ACL_SUCCESS) {
@@ -361,14 +333,15 @@ Status SliceAclnnRunner::LaunchAclnnKernel()
     }
     if (selfBufferSize_ != 0) {
         ret = SliceAclnnRunner::aclnnCastExecuteFunc_(atbVariantPack_.workspaceBuffer + this->sliceWorkspaceSize_,
-                                                      this->cast1stWorkspaceSize_, aclnnExecutor_.get(), executeStream);
+                                                      this->cast1stWorkspaceSize_, atbAclCast1stOpExecutor_->Get(),
+                                                      executeStream);
         if (ret != ACL_SUCCESS) {
             ATB_LOG(ERROR) << GetLogPrefix() << "Atb aclnn op kernel launch failed with return value: " << ret;
             return ERROR_CANN_ERROR;
         }
     }
     ret = SliceAclnnRunner::aclnnExecuteFunc_(atbVariantPack_.workspaceBuffer, this->sliceWorkspaceSize_,
-                                              aclnnExecutor_.get(), executeStream);
+                                              atbAclOpExecutor_->Get(), executeStream);
     if (ret != ACL_SUCCESS) {
         ATB_LOG(ERROR) << GetLogPrefix() << "Atb aclnn op kernel launch failed with return value: " << ret;
         return ERROR_CANN_ERROR;
@@ -376,7 +349,7 @@ Status SliceAclnnRunner::LaunchAclnnKernel()
     if (outBufferSize_ != 0) {
         ret = SliceAclnnRunner::aclnnCastExecuteFunc_(
             atbVariantPack_.workspaceBuffer + this->sliceWorkspaceSize_ + this->cast1stWorkspaceSize_,
-            this->cast2ndWorkspaceSize_, this->aclnnCastExecutor2nd_.get(), executeStream);
+            this->cast2ndWorkspaceSize_, this->atbAclCast2ndOpExecutor_->Get(), executeStream);
         if (ret != ACL_SUCCESS) {
             ATB_LOG(ERROR) << GetLogPrefix() << "Atb aclnn op kernel launch failed with return value: " << ret;
             return ERROR_CANN_ERROR;

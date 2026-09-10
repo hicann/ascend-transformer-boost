@@ -120,11 +120,13 @@ Status LinearEinsumAclnnRunner::LaunchAclnnKernel()
 
     aclnnStatus ret = ACL_SUCCESS;
     if (isWeightNz_) {
-        ret = aclnnTransposeBatchMatMulWeightNzExecuteFunc_(
-            atbVariantPack_.workspaceBuffer, atbVariantPack_.workspaceBufferSize, aclnnExecutor_.get(), executeStream);
+        ret = aclnnTransposeBatchMatMulWeightNzExecuteFunc_(atbVariantPack_.workspaceBuffer,
+                                                            atbVariantPack_.workspaceBufferSize,
+                                                            atbAclOpExecutor_->Get(), executeStream);
     } else {
-        ret = aclnnTransposeBatchMatMulExecuteFunc_(
-            atbVariantPack_.workspaceBuffer, atbVariantPack_.workspaceBufferSize, aclnnExecutor_.get(), executeStream);
+        ret =
+            aclnnTransposeBatchMatMulExecuteFunc_(atbVariantPack_.workspaceBuffer, atbVariantPack_.workspaceBufferSize,
+                                                  atbAclOpExecutor_->Get(), executeStream);
     }
     if (ret != ACL_SUCCESS) {
         ATB_LOG(ERROR) << GetLogPrefix() << "Atb aclnn op kernel launch failed with return value: " << ret;
@@ -200,9 +202,13 @@ Status LinearEinsumAclnnRunner::CreatePermArrays()
     int64_t permX1Vals[3] = {1, 0, 2};
     int64_t permX2Vals[3];
     if (param_.transposeB) {
-        permX2Vals[0] = 0; permX2Vals[1] = 2; permX2Vals[2] = 1;
+        permX2Vals[0] = 0;
+        permX2Vals[1] = 2;
+        permX2Vals[2] = 1;
     } else {
-        permX2Vals[0] = 0; permX2Vals[1] = 1; permX2Vals[2] = 2;
+        permX2Vals[0] = 0;
+        permX2Vals[1] = 1;
+        permX2Vals[2] = 2;
     }
     int64_t permYVals[3] = {1, 0, 2};
 
@@ -244,16 +250,17 @@ aclnnStatus LinearEinsumAclnnRunner::SetAclnnTransposeBatchMatMulWorkspaceExecut
 
     int8_t cubeMathType = 0;
     int32_t batchSplitFactor = 1;
-    aclOpExecutor *rawExecutePtr = aclnnExecutor_.get();
+    aclOpExecutor *rawExecutePtr = nullptr;
 
     aclnnStatus ret = aclnnTransposeBatchMatMulGetWorkspaceSizeFunc_(
         self, mat2, nullptr, nullptr, permX1_, permX2_, permY_, cubeMathType, batchSplitFactor, out,
         &(atbVariantPack_.workspaceBufferSize), &rawExecutePtr);
-    aclnnExecutor_ = std::shared_ptr<aclOpExecutor>(rawExecutePtr, [this](aclOpExecutor *ptr) {
-        if (ptr && executorRepeatable_) {
-            aclDestroyAclOpExecutor(ptr);
-        }
-    });
+    if (ret != ACL_SUCCESS) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "GetWorkspaceSize failed, error: " << ret;
+        return ret;
+    }
+    this->atbAclOpExecutor_ = std::make_shared<atbAclOpExecutor>(rawExecutePtr);
+    this->executorRepeatable_ = this->atbAclOpExecutor_->IsRepeatable();
     return ret;
 }
 
@@ -267,16 +274,17 @@ aclnnStatus LinearEinsumAclnnRunner::SetAclnnTransposeBatchMatMulWeightNzWorkspa
 
     int8_t cubeMathType = 0;
     int32_t batchSplitFactor = 1;
-    aclOpExecutor *rawExecutePtr = aclnnExecutor_.get();
+    aclOpExecutor *rawExecutePtr = nullptr;
 
     aclnnStatus ret = aclnnTransposeBatchMatMulWeightNzGetWorkspaceSizeFunc_(
         self, mat2, nullptr, nullptr, permX1_, permX2_, permY_, cubeMathType, batchSplitFactor, out,
         &(atbVariantPack_.workspaceBufferSize), &rawExecutePtr);
-    aclnnExecutor_ = std::shared_ptr<aclOpExecutor>(rawExecutePtr, [this](aclOpExecutor *ptr) {
-        if (ptr && executorRepeatable_) {
-            aclDestroyAclOpExecutor(ptr);
-        }
-    });
+    if (ret != ACL_SUCCESS) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "GetWorkspaceSize failed, error: " << ret;
+        return ret;
+    }
+    this->atbAclOpExecutor_ = std::make_shared<atbAclOpExecutor>(rawExecutePtr);
+    this->executorRepeatable_ = this->atbAclOpExecutor_->IsRepeatable();
     return ret;
 }
 

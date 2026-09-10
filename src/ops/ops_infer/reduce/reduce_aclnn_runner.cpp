@@ -127,7 +127,7 @@ aclnnStatus ReduceAclnnRunner::SetAclNNWorkspaceExecutor()
     }
     size_t outTensorStart = 0;
     aclTensor *output = this->aclnnVariantPack_.aclOutTensors.at(outTensorStart++)->tensor; // out
-    aclOpExecutor *rawExecutorPtr = this->aclnnExecutor_.get();
+    aclOpExecutor *rawExecutorPtr = nullptr;
     bool keepDims = false;
     switch (param_.reduceType) {
         case atb::infer::ReduceParam::ReduceType::REDUCE_SUM:
@@ -149,19 +149,11 @@ aclnnStatus ReduceAclnnRunner::SetAclNNWorkspaceExecutor()
             return ACLNN_ERR_PARAM_INVALID;
     }
     if (ret != ACL_SUCCESS) {
-        ATB_LOG(ERROR) << GetLogPrefix() << "aclnnGetWorkspaceSize failed!";
+        ATB_LOG(ERROR) << GetLogPrefix() << "GetWorkspaceSize failed, error: " << ret;
         return ret;
     }
-    ret = aclSetAclOpExecutorRepeatable(rawExecutorPtr);
-    if (ret != ACL_SUCCESS) {
-        ATB_LOG(ERROR) << GetLogPrefix() << "Set AclOpExecutorRepeatable failed!";
-        return ret;
-    }
-    this->aclnnExecutor_ = std::shared_ptr<aclOpExecutor>(rawExecutorPtr, [this](aclOpExecutor *ptr) {
-        if (ptr && this->executorRepeatable_) { // 可复用时才手动销毁aclOpExecutor
-            aclDestroyAclOpExecutor(ptr);
-        }
-    });
+    this->atbAclOpExecutor_ = std::make_shared<atbAclOpExecutor>(rawExecutorPtr);
+    this->executorRepeatable_ = this->atbAclOpExecutor_->IsRepeatable();
     ATB_LOG(INFO) << GetLogPrefix() << "workspaceSize: " << this->atbVariantPack_.workspaceBufferSize;
     return ret;
 }
@@ -180,7 +172,7 @@ Status ReduceAclnnRunner::LaunchAclnnKernel()
     }
     void *executeStream = GetExecuteStream(this->atbVariantPack_.context);
     aclnnStatus ret = executeFunc_(this->atbVariantPack_.workspaceBuffer, this->atbVariantPack_.workspaceBufferSize,
-                                   this->aclnnExecutor_.get(), executeStream);
+                                   this->atbAclOpExecutor_->Get(), executeStream);
     if (ret != ACL_SUCCESS) {
         ATB_LOG(ERROR) << GetLogPrefix() << "Atb aclnn op kernel launch failed with return value: " << ret;
         return ERROR_CANN_ERROR;
@@ -210,10 +202,6 @@ Status ReduceAclnnRunner::GetFunc()
     return ERROR_INVALID_PARAM;
 }
 
-bool ReduceAclnnRunner::useCache()
-{
-    return false;
-}
 
 Status ReduceAclnnRunner::LoadMethod()
 {

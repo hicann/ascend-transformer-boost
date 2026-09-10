@@ -78,15 +78,16 @@ aclnnStatus RepeatAclnnRunner::SetAclNNWorkspaceExecutor()
     size_t outTensorStart = 0;
     aclTensor *out = this->aclnnVariantPack_.aclOutTensors.at(outTensorStart++)->tensor;
     size_ = aclCreateIntArray(this->param_.multiples.data(), this->param_.multiples.size());
-    aclOpExecutor *rawExecutorPtr = this->aclnnExecutor_.get();
+    aclOpExecutor *rawExecutorPtr = nullptr;
     aclnnStatus ret = RepeatAclnnRunner::aclnnGetWorkspaceSizeFunc_(
         self, size_, out, &(this->atbVariantPack_.workspaceBufferSize), &rawExecutorPtr);
     aclDestroyIntArray(size_);
-    this->aclnnExecutor_ = std::shared_ptr<aclOpExecutor>(rawExecutorPtr, [this](aclOpExecutor *ptr) {
-        if (ptr && this->executorRepeatable_) { // 可复用时才手动销毁aclOpExecutor
-            aclDestroyAclOpExecutor(ptr);
-        }
-    });
+    if (ret != ACL_SUCCESS) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "GetWorkspaceSize failed, error: " << ret;
+        return ret;
+    }
+    this->atbAclOpExecutor_ = std::make_shared<atbAclOpExecutor>(rawExecutorPtr);
+    this->executorRepeatable_ = this->atbAclOpExecutor_->IsRepeatable();
     ATB_LOG(INFO) << GetLogPrefix() << "workspaceSize: " << this->atbVariantPack_.workspaceBufferSize;
     return ret;
 }
@@ -101,7 +102,7 @@ Status RepeatAclnnRunner::LaunchAclnnKernel()
     aclrtStream executeStream = GetExecuteStream(this->atbVariantPack_.context);
     aclnnStatus ret = RepeatAclnnRunner::aclnnExecuteFunc_(this->atbVariantPack_.workspaceBuffer,
                                                            this->atbVariantPack_.workspaceBufferSize,
-                                                           this->aclnnExecutor_.get(), executeStream);
+                                                           this->atbAclOpExecutor_->Get(), executeStream);
     if (ret != ACL_SUCCESS) {
         ATB_LOG(ERROR) << GetLogPrefix() << "Atb aclnn op kernel launch failed with return value: " << ret;
         return ERROR_CANN_ERROR;

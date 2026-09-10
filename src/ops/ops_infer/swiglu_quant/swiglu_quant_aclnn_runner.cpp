@@ -55,10 +55,6 @@ void SwigluQuantAclnnRunner::FreeSmoothScales()
     }
 }
 
-bool SwigluQuantAclnnRunner::useCache()
-{
-    return false;
-}
 
 Status SwigluQuantAclnnRunner::BuildAclnnVariantPack(const RunnerVariantPack &runnerVariantPack)
 {
@@ -162,7 +158,7 @@ aclnnStatus SwigluQuantAclnnRunner::SetAclNNWorkspaceExecutor()
     aclTensor *smoothScales = smoothScalesAclnnTensor_->tensor;
 
     this->swigluQuantWorkspaceSize_ = 0;
-    aclOpExecutor *rawSwigluExecutorPtr = this->aclnnExecutor_.get();
+    aclOpExecutor *rawSwigluExecutorPtr = nullptr;
     ret = aclnnSwiGluQuantV2GetWorkspaceSizeFunc_(
         x, smoothScales, nullptr, nullptr, true, const_cast<char *>(QUANT_MODE_DYNAMIC), GROUP_LIST_TYPE, DST_TYPE_INT8,
         yOut, scaleOut, &(this->swigluQuantWorkspaceSize_), &rawSwigluExecutorPtr);
@@ -170,39 +166,21 @@ aclnnStatus SwigluQuantAclnnRunner::SetAclNNWorkspaceExecutor()
         ATB_LOG(ERROR) << GetLogPrefix() << "aclnnSwiGluQuantV2GetWorkspaceSize failed!";
         return ret;
     }
-    ret = aclSetAclOpExecutorRepeatable(rawSwigluExecutorPtr);
-    if (ret != ACL_SUCCESS) {
-        ATB_LOG(ERROR) << GetLogPrefix() << "Set SwiGluQuant AclOpExecutorRepeatable failed!";
-        return ret;
-    }
-    this->aclnnExecutor_ = std::shared_ptr<aclOpExecutor>(rawSwigluExecutorPtr, [](aclOpExecutor *ptr) {
-        if (ptr) {
-            aclDestroyAclOpExecutor(ptr);
-        }
-    });
+    this->atbAclOpExecutor_ = std::make_shared<atbAclOpExecutor>(rawSwigluExecutorPtr);
 
     this->inplaceReciprocalWorkspaceSize_ = 0;
-    aclOpExecutor *rawInplaceReciprocalExecutorPtr = this->aclnnInplaceReciprocalExecutor_.get();
+    aclOpExecutor *rawInplaceReciprocalExecutorPtr = nullptr;
     ret = aclnnInplaceReciprocalGetWorkspaceSizeFunc_(scaleOut, &(this->inplaceReciprocalWorkspaceSize_),
                                                       &rawInplaceReciprocalExecutorPtr);
     if (ret != ACL_SUCCESS) {
         ATB_LOG(ERROR) << GetLogPrefix() << "aclnnInplaceReciprocalGetWorkspaceSize failed!";
         return ret;
     }
-    ret = aclSetAclOpExecutorRepeatable(rawInplaceReciprocalExecutorPtr);
-    if (ret != ACL_SUCCESS) {
-        ATB_LOG(ERROR) << GetLogPrefix() << "Set InplaceReciprocal AclOpExecutorRepeatable failed!";
-        return ret;
-    }
-    this->aclnnInplaceReciprocalExecutor_ =
-        std::shared_ptr<aclOpExecutor>(rawInplaceReciprocalExecutorPtr, [](aclOpExecutor *ptr) {
-            if (ptr) {
-                aclDestroyAclOpExecutor(ptr);
-            }
-        });
+    this->atbAclInplaceReciprocalOpExecutor_ = std::make_shared<atbAclOpExecutor>(rawInplaceReciprocalExecutorPtr);
+    this->executorRepeatable_ =
+        this->atbAclOpExecutor_->IsRepeatable() && this->atbAclInplaceReciprocalOpExecutor_->IsRepeatable();
 
-    this->atbVariantPack_.workspaceBufferSize =
-        this->swigluQuantWorkspaceSize_ + this->inplaceReciprocalWorkspaceSize_;
+    this->atbVariantPack_.workspaceBufferSize = this->swigluQuantWorkspaceSize_ + this->inplaceReciprocalWorkspaceSize_;
     ATB_LOG(INFO) << GetLogPrefix() << "swigluQuantWorkspaceSize_: " << this->swigluQuantWorkspaceSize_;
     ATB_LOG(INFO) << GetLogPrefix() << "inplaceReciprocalWorkspaceSize_: " << this->inplaceReciprocalWorkspaceSize_;
     ATB_LOG(INFO) << GetLogPrefix() << "workspaceSize: " << this->atbVariantPack_.workspaceBufferSize;
@@ -223,16 +201,15 @@ Status SwigluQuantAclnnRunner::LaunchAclnnKernel()
         return ERROR_INVALID_PARAM;
     }
     void *executeStream = GetExecuteStream(this->atbVariantPack_.context);
-    aclnnStatus ret =
-        aclnnSwiGluQuantV2Func_(this->atbVariantPack_.workspaceBuffer, this->swigluQuantWorkspaceSize_,
-                                this->aclnnExecutor_.get(), executeStream);
+    aclnnStatus ret = aclnnSwiGluQuantV2Func_(this->atbVariantPack_.workspaceBuffer, this->swigluQuantWorkspaceSize_,
+                                              this->atbAclOpExecutor_->Get(), executeStream);
     if (ret != ACL_SUCCESS) {
         ATB_LOG(ERROR) << GetLogPrefix() << "aclnnSwiGluQuantV2 launch failed with return value: " << ret;
         return ERROR_CANN_ERROR;
     }
     ret = aclnnInplaceReciprocalFunc_(this->atbVariantPack_.workspaceBuffer + this->swigluQuantWorkspaceSize_,
-                                      this->inplaceReciprocalWorkspaceSize_, this->aclnnInplaceReciprocalExecutor_.get(),
-                                      executeStream);
+                                      this->inplaceReciprocalWorkspaceSize_,
+                                      this->atbAclInplaceReciprocalOpExecutor_->Get(), executeStream);
     if (ret != ACL_SUCCESS) {
         ATB_LOG(ERROR) << GetLogPrefix() << "aclnnInplaceReciprocal launch failed with return value: " << ret;
         return ERROR_CANN_ERROR;

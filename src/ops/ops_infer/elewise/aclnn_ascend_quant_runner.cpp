@@ -222,7 +222,7 @@ aclnnStatus AclnnAscendQuantRunner::SetAclNNWorkspaceExecutor()
     aclnnStatus ret = ACL_SUCCESS;
 
     this->reciprocalWorkspaceSize_ = 0;
-    aclOpExecutor *rawReciprocalExecutorPtr = this->aclnnReciprocalExecutor_.get();
+    aclOpExecutor *rawReciprocalExecutorPtr = nullptr;
     ret = AclnnAscendQuantRunner::aclnnReciprocalGetWorkspaceSizeFunc_(scale,  // self
                                                                        scale_, // out
                                                                        &(this->reciprocalWorkspaceSize_),
@@ -231,22 +231,12 @@ aclnnStatus AclnnAscendQuantRunner::SetAclNNWorkspaceExecutor()
         ATB_LOG(ERROR) << GetLogPrefix() << "aclnnReciprocalGetWorkspaceSize failed!";
         return ret;
     }
-    ret = aclSetAclOpExecutorRepeatable(rawReciprocalExecutorPtr);
-    if (ret != ACL_SUCCESS) {
-        ATB_LOG(ERROR) << GetLogPrefix() << "Set Reciprocal AclOpExecutorRepeatable failed!";
-        return ret;
-    }
-    this->aclnnReciprocalExecutor_ =
-        std::shared_ptr<aclOpExecutor>(rawReciprocalExecutorPtr, [this](aclOpExecutor *ptr) {
-            if (ptr) { // 可复用时才手动销毁aclOpExecutor
-                aclDestroyAclOpExecutor(ptr);
-            }
-        });
+    this->atbAclReciprocalOpExecutor_ = std::make_shared<atbAclOpExecutor>(rawReciprocalExecutorPtr);
 
     this->castWorkspaceSize_ = 0;
     if (!is_offset_empty_) {
         aclTensor *offset = this->aclnnVariantPack_.aclInTensors.at(inTensorStart++)->tensor;
-        aclOpExecutor *rawCastExecutorPtr = this->aclnnCastExecutor_.get();
+        aclOpExecutor *rawCastExecutorPtr = nullptr;
         ret = AclnnAscendQuantRunner::aclnnCastGetWorkspaceSizeFunc_(offset,         // self
                                                                      scaleDatatype_, // dtype
                                                                      offset_,        // out
@@ -255,20 +245,11 @@ aclnnStatus AclnnAscendQuantRunner::SetAclNNWorkspaceExecutor()
             ATB_LOG(ERROR) << GetLogPrefix() << "aclnnCastGetWorkspaceSize failed!";
             return ret;
         }
-        ret = aclSetAclOpExecutorRepeatable(rawCastExecutorPtr);
-        if (ret != ACL_SUCCESS) {
-            ATB_LOG(ERROR) << GetLogPrefix() << "Set Cast AclOpExecutorRepeatable failed!";
-            return ret;
-        }
-        this->aclnnCastExecutor_ = std::shared_ptr<aclOpExecutor>(rawCastExecutorPtr, [this](aclOpExecutor *ptr) {
-            if (ptr) { // 可复用时才手动销毁aclOpExecutor
-                aclDestroyAclOpExecutor(ptr);
-            }
-        });
+        this->atbAclCastOpExecutor_ = std::make_shared<atbAclOpExecutor>(rawCastExecutorPtr);
     }
 
     this->quantWorkspaceSize_ = 0;
-    aclOpExecutor *rawExecutorPtr = this->aclnnExecutor_.get();
+    aclOpExecutor *rawExecutorPtr = nullptr;
     ret = AclnnAscendQuantRunner::aclnnGetWorkspaceSizeFunc_(x,                                      // x
                                                              scale_,                                 // scale
                                                              is_offset_empty_ ? nullptr : offset_,   // offset
@@ -282,16 +263,10 @@ aclnnStatus AclnnAscendQuantRunner::SetAclNNWorkspaceExecutor()
         ATB_LOG(ERROR) << GetLogPrefix() << "aclnnAscendQuantV3GetWorkspaceSize failed!";
         return ret;
     }
-    ret = aclSetAclOpExecutorRepeatable(rawExecutorPtr);
-    if (ret != ACL_SUCCESS) {
-        ATB_LOG(ERROR) << GetLogPrefix() << "Set AscendQuantV3 AclOpExecutorRepeatable failed!";
-        return ret;
-    }
-    this->aclnnExecutor_ = std::shared_ptr<aclOpExecutor>(rawExecutorPtr, [this](aclOpExecutor *ptr) {
-        if (ptr) { // 可复用时才手动销毁aclOpExecutor
-            aclDestroyAclOpExecutor(ptr);
-        }
-    });
+    this->atbAclOpExecutor_ = std::make_shared<atbAclOpExecutor>(rawExecutorPtr);
+    this->executorRepeatable_ = this->atbAclOpExecutor_->IsRepeatable() &&
+                                this->atbAclReciprocalOpExecutor_->IsRepeatable() &&
+                                (is_offset_empty_ || this->atbAclCastOpExecutor_->IsRepeatable());
     this->atbVariantPack_.workspaceBufferSize = this->reciprocalWorkspaceSize_ + this->castWorkspaceSize_ +
                                                 this->quantWorkspaceSize_ + this->scaleBufferSize_ +
                                                 this->offsetBufferSize_;
@@ -307,14 +282,14 @@ Status AclnnAscendQuantRunner::LaunchAclnnKernel()
     ATB_LOG(INFO) << GetLogPrefix() << "LaunchAclnnKernel execute start.";
     void *executeStream = GetExecuteStream(this->atbVariantPack_.context);
     aclnnStatus ret = ACL_SUCCESS;
-    ret = aclSetOutputTensorAddr(this->aclnnReciprocalExecutor_.get(), INDEX_0, this->scale_,
+    ret = aclSetOutputTensorAddr(this->atbAclReciprocalOpExecutor_->Get(), INDEX_0, this->scale_,
                                  this->atbVariantPack_.workspaceBuffer + this->reciprocalWorkspaceSize_ +
                                      this->castWorkspaceSize_ + this->quantWorkspaceSize_);
     if (ret != ACL_SUCCESS) {
         ATB_LOG(ERROR) << GetLogPrefix() << "aclSetOutputTensorAddr failed with return value: " << ret;
         return ERROR_CANN_ERROR;
     }
-    ret = aclSetInputTensorAddr(this->aclnnExecutor_.get(), INDEX_1, this->scale_,
+    ret = aclSetInputTensorAddr(this->atbAclOpExecutor_->Get(), INDEX_1, this->scale_,
                                 this->atbVariantPack_.workspaceBuffer + this->reciprocalWorkspaceSize_ +
                                     this->castWorkspaceSize_ + this->quantWorkspaceSize_);
     if (ret != ACL_SUCCESS) {
@@ -322,14 +297,14 @@ Status AclnnAscendQuantRunner::LaunchAclnnKernel()
         return ERROR_CANN_ERROR;
     }
     if (!is_offset_empty_) {
-        ret = aclSetOutputTensorAddr(this->aclnnCastExecutor_.get(), INDEX_0, this->offset_,
+        ret = aclSetOutputTensorAddr(this->atbAclCastOpExecutor_->Get(), INDEX_0, this->offset_,
                                      this->atbVariantPack_.workspaceBuffer + this->reciprocalWorkspaceSize_ +
                                          this->castWorkspaceSize_ + this->quantWorkspaceSize_ + this->scaleBufferSize_);
         if (ret != ACL_SUCCESS) {
             ATB_LOG(ERROR) << GetLogPrefix() << "aclSetOutputTensorAddr failed with return value: " << ret;
             return ERROR_CANN_ERROR;
         }
-        ret = aclSetInputTensorAddr(this->aclnnExecutor_.get(), INDEX_2, this->offset_,
+        ret = aclSetInputTensorAddr(this->atbAclOpExecutor_->Get(), INDEX_2, this->offset_,
                                     this->atbVariantPack_.workspaceBuffer + this->reciprocalWorkspaceSize_ +
                                         this->castWorkspaceSize_ + this->quantWorkspaceSize_ + this->scaleBufferSize_);
         if (ret != ACL_SUCCESS) {
@@ -339,7 +314,7 @@ Status AclnnAscendQuantRunner::LaunchAclnnKernel()
     }
     ret = AclnnAscendQuantRunner::aclnnReciprocalExecuteFunc_(this->atbVariantPack_.workspaceBuffer,
                                                               this->reciprocalWorkspaceSize_,
-                                                              this->aclnnReciprocalExecutor_.get(), executeStream);
+                                                              this->atbAclReciprocalOpExecutor_->Get(), executeStream);
     if (ret != ACL_SUCCESS) {
         ATB_LOG(ERROR) << GetLogPrefix() << "Atb aclnn op kernel launch failed with return value: " << ret;
         return ERROR_CANN_ERROR;
@@ -347,7 +322,7 @@ Status AclnnAscendQuantRunner::LaunchAclnnKernel()
     if (!is_offset_empty_) {
         ret = AclnnAscendQuantRunner::aclnnCastExecuteFunc_(
             this->atbVariantPack_.workspaceBuffer + this->reciprocalWorkspaceSize_, this->castWorkspaceSize_,
-            this->aclnnCastExecutor_.get(), executeStream);
+            this->atbAclCastOpExecutor_->Get(), executeStream);
         if (ret != ACL_SUCCESS) {
             ATB_LOG(ERROR) << GetLogPrefix() << "Atb aclnn op kernel launch failed with return value: " << ret;
             return ERROR_CANN_ERROR;
@@ -355,7 +330,7 @@ Status AclnnAscendQuantRunner::LaunchAclnnKernel()
     }
     ret = AclnnAscendQuantRunner::aclnnExecuteFunc_(
         this->atbVariantPack_.workspaceBuffer + this->reciprocalWorkspaceSize_ + this->castWorkspaceSize_,
-        this->quantWorkspaceSize_, this->aclnnExecutor_.get(), executeStream);
+        this->quantWorkspaceSize_, this->atbAclOpExecutor_->Get(), executeStream);
     if (ret != ACL_SUCCESS) {
         ATB_LOG(ERROR) << GetLogPrefix() << "Atb aclnn op kernel launch failed with return value: " << ret;
         return ERROR_CANN_ERROR;
@@ -364,10 +339,6 @@ Status AclnnAscendQuantRunner::LaunchAclnnKernel()
     return NO_ERROR;
 }
 
-bool AclnnAscendQuantRunner::useCache()
-{
-    return false;
-}
 
 Status AclnnAscendQuantRunner::LoadMethod()
 {

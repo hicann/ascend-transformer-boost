@@ -22,7 +22,7 @@ static const int Y_OUT_ACLNN_TENSOR_IDX = 0;
 static const int RSTD_OUT_ACLNN_TENSOR_IDX = 1;
 
 static const size_t FLOAT_SIZE = 4;
-}  // namespace
+} // namespace
 
 namespace atb {
 AclnnRmsNormGetWorkspaceSizeFunc RmsNormAclnnRunner::aclnnRmsNormGetWorkspaceSizeFunc_ = nullptr;
@@ -51,8 +51,8 @@ Status RmsNormAclnnRunner::LoadAclnnFuncs()
     if (aclnnRmsNormGetWorkspaceSizeFunc_ && aclnnRmsNormFunc_) {
         return NO_ERROR;
     }
-    return LoadFromSharedObjectFile(
-        "aclnnRmsNormGetWorkspaceSize", "aclnnRmsNorm", aclnnRmsNormGetWorkspaceSizeFunc_, aclnnRmsNormFunc_);
+    return LoadFromSharedObjectFile("aclnnRmsNormGetWorkspaceSize", "aclnnRmsNorm", aclnnRmsNormGetWorkspaceSizeFunc_,
+                                    aclnnRmsNormFunc_);
 }
 
 Status RmsNormAclnnRunner::BuildAclnnVariantPack(const RunnerVariantPack &runnerVariantPack)
@@ -92,19 +92,16 @@ aclnnStatus RmsNormAclnnRunner::SetAclNNWorkspaceExecutor()
     double epsilon = static_cast<double>(param_.normParam.epsilon);
     aclTensor *yOut = aclnnVariantPack_.aclOutTensors.at(yOutAclTensorIndex_)->tensor;
     aclTensor *rstdOut = aclnnVariantPack_.aclOutTensors.at(rstdOutAclTensorIndex_)->tensor;
-    aclOpExecutor *rawExecutorPtr = aclnnExecutor_.get();
-    aclnnStatus ret = aclnnRmsNormGetWorkspaceSizeFunc_(
-        x, gamma, epsilon, yOut, rstdOut, &(atbVariantPack_.workspaceBufferSize), &rawExecutorPtr);
-    aclnnExecutor_ = std::shared_ptr<aclOpExecutor>(rawExecutorPtr, [this](aclOpExecutor *ptr) {
-        if (ptr && executorRepeatable_) {
-            aclDestroyAclOpExecutor(ptr);
-        }
-    });
-    if (ret == ACLNN_SUCCESS) {
-        ATB_LOG(INFO) << GetLogPrefix() << "workspaceSize: " << atbVariantPack_.workspaceBufferSize;
-    } else {
-        ATB_LOG(ERROR) << GetLogPrefix() << "SetAclNNWorkspaceExecutor failed, ret: " << ret;
+    aclOpExecutor *rawExecutorPtr = nullptr;
+    aclnnStatus ret = aclnnRmsNormGetWorkspaceSizeFunc_(x, gamma, epsilon, yOut, rstdOut,
+                                                        &(atbVariantPack_.workspaceBufferSize), &rawExecutorPtr);
+    if (ret != ACL_SUCCESS) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "GetWorkspaceSize failed, error: " << ret;
+        return ret;
     }
+    this->atbAclOpExecutor_ = std::make_shared<atbAclOpExecutor>(rawExecutorPtr);
+    this->executorRepeatable_ = this->atbAclOpExecutor_->IsRepeatable();
+    ATB_LOG(INFO) << GetLogPrefix() << "workspaceSize: " << atbVariantPack_.workspaceBufferSize;
     return ret;
 }
 
@@ -112,8 +109,8 @@ Status RmsNormAclnnRunner::LaunchAclnnKernel()
 {
     ATB_LOG(INFO) << GetLogPrefix() << "RmsNormAclnnRunner::LaunchAclnnKernel";
     aclrtStream executeStream = GetExecuteStream(atbVariantPack_.context);
-    aclnnStatus ret = aclnnRmsNormFunc_(
-        atbVariantPack_.workspaceBuffer, atbVariantPack_.workspaceBufferSize, aclnnExecutor_.get(), executeStream);
+    aclnnStatus ret = aclnnRmsNormFunc_(atbVariantPack_.workspaceBuffer, atbVariantPack_.workspaceBufferSize,
+                                        atbAclOpExecutor_->Get(), executeStream);
     if (ret == ACLNN_SUCCESS) {
         return NO_ERROR;
     }
@@ -123,8 +120,8 @@ Status RmsNormAclnnRunner::LaunchAclnnKernel()
 
 void RmsNormAclnnRunner::GetTensorNum()
 {
-    aclInTensorNum_ = 2;   // x, gamma
-    aclOutTensorNum_ = 2;  // yOut, rstdOut
+    aclInTensorNum_ = 2;  // x, gamma
+    aclOutTensorNum_ = 2; // yOut, rstdOut
 }
 
 void RmsNormAclnnRunner::InitTensorIndex()
@@ -241,15 +238,9 @@ Status RmsNormAclnnRunner::CreateRstdOutAclnnTensor()
         ATB_LOG(ERROR) << GetLogPrefix() << "aclrtMalloc rstdDeviceData_ failed, ret: " << ret;
         return ERROR_INTERNAL_ERROR;
     }
-    aclTensor *rstdOutAclTensor = aclCreateTensor(rstdOutAtbShape.dims,
-        rstdOutAtbShape.dimNum,
-        aclDataType::ACL_FLOAT,
-        strides.data(),
-        0,
-        aclFormat::ACL_FORMAT_ND,
-        rstdOutAtbShape.dims,
-        rstdOutAtbShape.dimNum,
-        rstdDeviceData_);
+    aclTensor *rstdOutAclTensor =
+        aclCreateTensor(rstdOutAtbShape.dims, rstdOutAtbShape.dimNum, aclDataType::ACL_FLOAT, strides.data(), 0,
+                        aclFormat::ACL_FORMAT_ND, rstdOutAtbShape.dims, rstdOutAtbShape.dimNum, rstdDeviceData_);
     if (!rstdOutAclTensor) {
         ATB_LOG(ERROR) << GetLogPrefix() << "rstdOut aclCreateTensor failed";
         return ERROR_INTERNAL_ERROR;
@@ -266,4 +257,4 @@ Status RmsNormAclnnRunner::CreateRstdOutAclnnTensor()
 }
 
 REG_RUNNER_TYPE(RmsNormAclnnRunner);
-}  // namespace atb
+} // namespace atb

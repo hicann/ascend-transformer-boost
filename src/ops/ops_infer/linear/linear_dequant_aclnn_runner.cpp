@@ -135,10 +135,10 @@ Status LinearDequantAclnnRunner::LaunchAclnnKernel()
     aclnnStatus ret = ACL_SUCCESS;
     if (isWeightNz_) {
         ret = aclnnQuantMatmulWeightNzExecuteFunc_(atbVariantPack_.workspaceBuffer, atbVariantPack_.workspaceBufferSize,
-                                                   aclnnExecutor_.get(), executeStream);
+                                                   atbAclOpExecutor_->Get(), executeStream);
     } else {
         ret = aclnnQuantMatmulV5ExecuteFunc_(atbVariantPack_.workspaceBuffer, atbVariantPack_.workspaceBufferSize,
-                                             aclnnExecutor_.get(), executeStream);
+                                             atbAclOpExecutor_->Get(), executeStream);
     }
     if (ret != ACL_SUCCESS) {
         ATB_LOG(ERROR) << GetLogPrefix() << "Atb aclnn quant matmul kernel launch failed with return value: " << ret;
@@ -272,8 +272,8 @@ Status LinearDequantAclnnRunner::CreateDeqScaleAclnnTensor()
     if (!param_.hasBias && param_.quantMode != infer::LinearParam::PER_TOKEN &&
         totalInTensors > static_cast<size_t>(param_.hasBias ? 4 : 3)) {
         atbInTensorIndex_ = totalInTensors - 1;
-        ATB_LOG(INFO) << GetLogPrefix() << "multi-tensor dequant, use last tensor as deqScale, index="
-                      << atbInTensorIndex_;
+        ATB_LOG(INFO) << GetLogPrefix()
+                      << "multi-tensor dequant, use last tensor as deqScale, index=" << atbInTensorIndex_;
     }
 
     Tensor atbTensor = atbVariantPack_.inTensors.at(atbInTensorIndex_++);
@@ -388,16 +388,17 @@ aclnnStatus LinearDequantAclnnRunner::SetAclnnQuantMatmulWorkspaceExecutor()
     bool transposeX1 = false;
     bool transposeX2 = true;
     int64_t groupSize = 0;
-    aclOpExecutor *rawExecutePtr = aclnnExecutor_.get();
+    aclOpExecutor *rawExecutePtr = nullptr;
 
     aclnnStatus ret = aclnnQuantMatmulV5GetWorkspaceSizeFunc_(x1, x2, x1Scale, x2Scale, nullptr, nullptr, nullptr,
                                                               nullptr, bias, transposeX1, transposeX2, groupSize, out,
                                                               &(atbVariantPack_.workspaceBufferSize), &rawExecutePtr);
-    aclnnExecutor_ = std::shared_ptr<aclOpExecutor>(rawExecutePtr, [this](aclOpExecutor *ptr) {
-        if (ptr && executorRepeatable_) {
-            aclDestroyAclOpExecutor(ptr);
-        }
-    });
+    if (ret != ACL_SUCCESS) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "GetWorkspaceSize failed, error: " << ret;
+        return ret;
+    }
+    this->atbAclOpExecutor_ = std::make_shared<atbAclOpExecutor>(rawExecutePtr);
+    this->executorRepeatable_ = this->atbAclOpExecutor_->IsRepeatable();
     return ret;
 }
 
@@ -423,16 +424,17 @@ aclnnStatus LinearDequantAclnnRunner::SetAclnnQuantMatmulWeightNzWorkspaceExecut
     bool transposeX1 = false;
     bool transposeX2 = true;
     int64_t groupSize = 0;
-    aclOpExecutor *rawExecutePtr = aclnnExecutor_.get();
+    aclOpExecutor *rawExecutePtr = nullptr;
 
     aclnnStatus ret = aclnnQuantMatmulWeightNzGetWorkspaceSizeFunc_(
         x1, x2, x1Scale, x2Scale, nullptr, nullptr, nullptr, nullptr, bias, transposeX1, transposeX2, groupSize, out,
         &(atbVariantPack_.workspaceBufferSize), &rawExecutePtr);
-    aclnnExecutor_ = std::shared_ptr<aclOpExecutor>(rawExecutePtr, [this](aclOpExecutor *ptr) {
-        if (ptr && executorRepeatable_) {
-            aclDestroyAclOpExecutor(ptr);
-        }
-    });
+    if (ret != ACL_SUCCESS) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "GetWorkspaceSize failed, error: " << ret;
+        return ret;
+    }
+    this->atbAclOpExecutor_ = std::make_shared<atbAclOpExecutor>(rawExecutePtr);
+    this->executorRepeatable_ = this->atbAclOpExecutor_->IsRepeatable();
     return ret;
 }
 

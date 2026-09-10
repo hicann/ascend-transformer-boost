@@ -135,7 +135,7 @@ aclnnStatus PagedAttentionAclnnRunner::SetAclNNWorkspaceExecutor()
     int64_t pseType = 0;
     aclTensor *attentionOut = aclnnVariantPack_.aclOutTensors.at(attentionOutAclTensorIndex_)->tensor;
     aclTensor *softmaxLse = nullptr;
-    aclOpExecutor *rawExecutePtr = aclnnExecutor_.get();
+    aclOpExecutor *rawExecutePtr = nullptr;
 
     aclnnStatus ret = aclnnFusedInferAttentionScoreV5GetWorkspaceSizeFunc_(
         query, key, value, pseShiftOptional, attenMaskOptional, actualSeqLengthsOptional, actualSeqLengthsKv_,
@@ -148,16 +148,13 @@ aclnnStatus PagedAttentionAclnnRunner::SetAclNNWorkspaceExecutor()
         inputLayout, numKeyValueHeads, sparseMode, innerPrecise, blockSize_, antiquantMode, softmaxLseFlag,
         keyAntiquantMode, valueAntiquantMode, queryQuantMode, pseType, attentionOut, softmaxLse,
         &(atbVariantPack_.workspaceBufferSize), &rawExecutePtr);
-    aclnnExecutor_ = std::shared_ptr<aclOpExecutor>(rawExecutePtr, [this](aclOpExecutor *ptr) {
-        if (ptr && executorRepeatable_) {
-            aclDestroyAclOpExecutor(ptr);
-        }
-    });
-    if (ret == ACLNN_SUCCESS) {
-        ATB_LOG(INFO) << GetLogPrefix() << "workspaceSize: " << atbVariantPack_.workspaceBufferSize;
-    } else {
-        ATB_LOG(ERROR) << GetLogPrefix() << "SetAclNNWorkspaceExecutor failed, ret: " << ret;
+    if (ret != ACL_SUCCESS) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "GetWorkspaceSize failed, error: " << ret;
+        return ret;
     }
+    this->atbAclOpExecutor_ = std::make_shared<atbAclOpExecutor>(rawExecutePtr);
+    this->executorRepeatable_ = this->atbAclOpExecutor_->IsRepeatable();
+    ATB_LOG(INFO) << GetLogPrefix() << "workspaceSize: " << atbVariantPack_.workspaceBufferSize;
     return ret;
 }
 
@@ -166,7 +163,7 @@ Status PagedAttentionAclnnRunner::LaunchAclnnKernel()
     ATB_LOG(INFO) << GetLogPrefix() << "PagedAttentionAclnnRunner::LaunchAclnnKernel";
     aclrtStream executeStream = GetExecuteStream(atbVariantPack_.context);
     aclnnStatus ret = aclnnFusedInferAttentionScoreV5Func_(
-        atbVariantPack_.workspaceBuffer, atbVariantPack_.workspaceBufferSize, aclnnExecutor_.get(), executeStream);
+        atbVariantPack_.workspaceBuffer, atbVariantPack_.workspaceBufferSize, atbAclOpExecutor_->Get(), executeStream);
     if (actualSeqLengthsKv_) {
         aclnnStatus destroyRet = aclDestroyIntArray(actualSeqLengthsKv_);
         if (destroyRet != ACLNN_SUCCESS) {

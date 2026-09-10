@@ -17,7 +17,7 @@
 namespace {
 static const uint32_t IN_TENSOR_MINI_NUM = 2;
 static const uint32_t OUT_TENSOR_NUM = 1;
-}
+} // namespace
 
 namespace atb {
 
@@ -25,8 +25,7 @@ namespace atb {
 AclnnConcatGetWorkspaceSizeFunc ConcatAclnnRunner::aclnnConcatGetWorkspaceSizeFunc_ = nullptr;
 AclnnConcatFunc ConcatAclnnRunner::aclnnConcatFunc_ = nullptr;
 
-ConcatAclnnRunner::ConcatAclnnRunner(const infer::ConcatParam &param)
-    : AclnnRunner("ConcatAclnnRunner"), param_(param)
+ConcatAclnnRunner::ConcatAclnnRunner(const infer::ConcatParam &param) : AclnnRunner("ConcatAclnnRunner"), param_(param)
 {
     ATB_LOG(INFO) << GetLogPrefix() << "ConcatAclnnRunner::ConcatAclnnRunner called";
 }
@@ -35,7 +34,7 @@ Status ConcatAclnnRunner::BuildAclnnVariantPack(const RunnerVariantPack &runnerV
 {
     ATB_LOG(INFO) << GetLogPrefix() << "BuildAclnnVariantPack";
     ATB_LOG(INFO) << GetLogPrefix() << "variantPack: " << runnerVariantPack.ToString();
-    
+
     this->atbVariantPack_ = runnerVariantPack;
     Status ret = NO_ERROR;
 
@@ -46,7 +45,7 @@ Status ConcatAclnnRunner::BuildAclnnVariantPack(const RunnerVariantPack &runnerV
     }
 
     // 创建输入ACL tensor
-    std::vector<aclTensor*> inputTensors;
+    std::vector<aclTensor *> inputTensors;
     inputTensors.reserve(numInputs);
     for (size_t i = 0; i < numInputs; ++i) {
         ATB_LOG(INFO) << GetLogPrefix() << "ConcatAclnnRunner::BuildAclnnVariantPack inTensor index: " << i;
@@ -54,13 +53,12 @@ Status ConcatAclnnRunner::BuildAclnnVariantPack(const RunnerVariantPack &runnerV
         atb::Tensor atbTensor = runnerVariantPack.inTensors.at(i);
         aclnnTensorPtr->atbTensor = atbTensor;
         aclnnTensorPtr->strides = GetCopyTensorStride(atbTensor.desc.shape);
-        
+
         ret = CallAclCreateTensor(atbTensor.desc.shape, atbTensor.desc.shape, atbTensor, aclnnTensorPtr,
                                   atbTensor.desc.dtype);
         if (ret != NO_ERROR) {
-            ATB_LOG(ERROR) << GetLogPrefix() 
-                            << "create aclTensor by aclCreateTensor failed! Failed tensor is inTensors["
-                            << i << "]";
+            ATB_LOG(ERROR) << GetLogPrefix()
+                           << "create aclTensor by aclCreateTensor failed! Failed tensor is inTensors[" << i << "]";
             return ret;
         }
         aclnnTensorPtr->tensorIdx = static_cast<int>(i);
@@ -68,7 +66,7 @@ Status ConcatAclnnRunner::BuildAclnnVariantPack(const RunnerVariantPack &runnerV
         inputTensors.push_back(aclnnTensorPtr->tensor);
     }
 
-    aclTensorList* inputTensorList = aclCreateTensorList(inputTensors.data(), inputTensors.size());
+    aclTensorList *inputTensorList = aclCreateTensorList(inputTensors.data(), inputTensors.size());
     if (inputTensorList == nullptr) {
         ATB_LOG(ERROR) << GetLogPrefix() << "Failed to create aclTensorList";
         return ACL_ERROR_FAILURE;
@@ -78,14 +76,14 @@ Status ConcatAclnnRunner::BuildAclnnVariantPack(const RunnerVariantPack &runnerV
     // 构建输出tensor
     this->aclnnVariantPack_.aclOutTensors.reserve(OUT_TENSOR_NUM);
     this->aclnnVariantPack_.aclOutTensors.resize(OUT_TENSOR_NUM);
-    
+
     for (size_t i = 0; i < this->aclnnVariantPack_.aclOutTensors.size(); ++i) {
         std::shared_ptr<AclNNTensor> aclnnTensorPtr = std::make_shared<AclNNTensor>();
         ATB_LOG(INFO) << GetLogPrefix() << "ConcatAclnnRunner::BuildAclnnVariantPack outTensor index: " << i;
         atb::Tensor atbTensor = runnerVariantPack.outTensors.at(i);
         aclnnTensorPtr->atbTensor = atbTensor;
         aclnnTensorPtr->strides = GetCopyTensorStride(atbTensor.desc.shape);
-        
+
         ret = CallAclCreateTensor(atbTensor.desc.shape, atbTensor.desc.shape, atbTensor, aclnnTensorPtr,
                                   atbTensor.desc.dtype);
         if (ret != NO_ERROR) {
@@ -108,20 +106,21 @@ aclnnStatus ConcatAclnnRunner::SetAclNNWorkspaceExecutor()
         return ACLNN_ERR_INNER_FIND_KERNEL_ERROR;
     }
 
-    aclOpExecutor *raw_executor_ptr = this->aclnnExecutor_.get();
+    aclOpExecutor *raw_executor_ptr = nullptr;
     // 调用aclnn获取workspace大小
-    aclnnStatus ret = aclnnConcatGetWorkspaceSizeFunc_(
-        this->aclnnVariantPack_.aclInTensorList.at(0),           // 输入tensor列表
-        param_.concatDim,                                         // concat维度
-        this->aclnnVariantPack_.aclOutTensors.at(0)->tensor,      // 输出tensor
-        &(this->atbVariantPack_.workspaceBufferSize),             // 输出的workspace大小
-        &raw_executor_ptr);                                       // 输出的executor
+    aclnnStatus ret =
+        aclnnConcatGetWorkspaceSizeFunc_(this->aclnnVariantPack_.aclInTensorList.at(0),       // 输入tensor列表
+                                         param_.concatDim,                                    // concat维度
+                                         this->aclnnVariantPack_.aclOutTensors.at(0)->tensor, // 输出tensor
+                                         &(this->atbVariantPack_.workspaceBufferSize), // 输出的workspace大小
+                                         &raw_executor_ptr);                           // 输出的executor
 
-    this->aclnnExecutor_ = std::shared_ptr<aclOpExecutor>(raw_executor_ptr, [this](aclOpExecutor *ptr) {
-        if (ptr && this->executorRepeatable_) { // 可复用时才手动销毁aclOpExecutor
-            aclDestroyAclOpExecutor(ptr);
-        }
-    });
+    if (ret != ACL_SUCCESS) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "GetWorkspaceSize failed, error: " << ret;
+        return ret;
+    }
+    this->atbAclOpExecutor_ = std::make_shared<atbAclOpExecutor>(raw_executor_ptr);
+    this->executorRepeatable_ = this->atbAclOpExecutor_->IsRepeatable();
 
     ATB_LOG(INFO) << GetLogPrefix() << "workspaceSize: " << this->atbVariantPack_.workspaceBufferSize;
     return ret;
@@ -131,11 +130,8 @@ Status ConcatAclnnRunner::LaunchAclnnKernel()
 {
     ATB_LOG(INFO) << GetLogPrefix() << "LaunchAclnnKernel execute start.";
     aclrtStream executeStream = GetExecuteStream(this->atbVariantPack_.context);
-    aclnnStatus ret = aclnnConcatFunc_(
-        this->atbVariantPack_.workspaceBuffer,
-        this->atbVariantPack_.workspaceBufferSize,
-        this->aclnnExecutor_.get(),
-        executeStream);
+    aclnnStatus ret = aclnnConcatFunc_(this->atbVariantPack_.workspaceBuffer, this->atbVariantPack_.workspaceBufferSize,
+                                       this->atbAclOpExecutor_->Get(), executeStream);
 
     if (ret != ACL_SUCCESS) {
         ATB_LOG(ERROR) << GetLogPrefix() << "Atb aclnn op kernel launch failed with return value: " << ret;
@@ -149,14 +145,12 @@ Status ConcatAclnnRunner::LaunchAclnnKernel()
 Status ConcatAclnnRunner::LoadMethod()
 {
     ATB_LOG(INFO) << "ConcatAclnnRunner LoadMethod";
-    if (aclnnConcatGetWorkspaceSizeFunc_ != nullptr &&
-        aclnnConcatFunc_ != nullptr) {
+    if (aclnnConcatGetWorkspaceSizeFunc_ != nullptr && aclnnConcatFunc_ != nullptr) {
         return NO_ERROR;
     }
 
-    return LoadFromSharedObjectFile("aclnnCatGetWorkspaceSize", "aclnnCat",
-                                             aclnnConcatGetWorkspaceSizeFunc_,
-                                             aclnnConcatFunc_);
+    return LoadFromSharedObjectFile("aclnnCatGetWorkspaceSize", "aclnnCat", aclnnConcatGetWorkspaceSizeFunc_,
+                                    aclnnConcatFunc_);
 }
 
 REG_RUNNER_TYPE(ConcatAclnnRunner);

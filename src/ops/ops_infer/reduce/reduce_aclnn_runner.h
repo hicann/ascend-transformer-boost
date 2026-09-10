@@ -12,14 +12,14 @@
 #include "atb/infer_op_params.h"
 #include "atb/runner/aclnn_runner.h"
 
-using ReduceAclnnSumGetWorkspaceSizeFunc = aclnnStatus(*)(const aclTensor *, const aclIntArray *, bool, aclDataType,
-                                                              aclTensor *, uint64_t *, aclOpExecutor **);
+using ReduceAclnnSumGetWorkspaceSizeFunc = aclnnStatus (*)(const aclTensor *, const aclIntArray *, bool, aclDataType,
+                                                           aclTensor *, uint64_t *, aclOpExecutor **);
 
-using ReduceAclnnAmaxGetWorkspaceSizeFunc = aclnnStatus(*)(const aclTensor *, const aclIntArray *, bool, aclTensor *,
-                                                         uint64_t *, aclOpExecutor **);
+using ReduceAclnnAmaxGetWorkspaceSizeFunc = aclnnStatus (*)(const aclTensor *, const aclIntArray *, bool, aclTensor *,
+                                                            uint64_t *, aclOpExecutor **);
 
-using ReduceAclnnAminGetWorkspaceSizeFunc = aclnnStatus(*)(const aclTensor *, const aclIntArray *, bool, aclTensor *,
-                                                         uint64_t *, aclOpExecutor **);
+using ReduceAclnnAminGetWorkspaceSizeFunc = aclnnStatus (*)(const aclTensor *, const aclIntArray *, bool, aclTensor *,
+                                                            uint64_t *, aclOpExecutor **);
 
 namespace atb {
 class ReduceAclnnRunner : public AclnnRunner {
@@ -33,7 +33,6 @@ protected:
     Status LaunchAclnnKernel() override;
     aclnnStatus SetAclNNWorkspaceExecutor() override;
     Status GetFunc();
-    virtual bool useCache() override;
 
 private:
     infer::ReduceParam param_;

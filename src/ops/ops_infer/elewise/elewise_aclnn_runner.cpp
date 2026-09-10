@@ -87,7 +87,8 @@ ElewiseAclnnRunner::ElewiseAclnnRunner(const infer::ElewiseParam &param)
     }
 }
 
-ElewiseAclnnRunner::~ElewiseAclnnRunner() {
+ElewiseAclnnRunner::~ElewiseAclnnRunner()
+{
     aclnnStatus ret = ACL_SUCCESS;
     if (scaleTensor_ != nullptr) {
         ret = aclDestroyTensor(scaleTensor_);
@@ -121,8 +122,8 @@ ElewiseAclnnRunner::~ElewiseAclnnRunner() {
 }
 
 template <typename T>
-aclnnStatus ElewiseAclnnRunner::CreateAclTensor(const std::vector<T>& hostData, const std::vector<int64_t>& shape,
-                                                void** deviceAddr, aclDataType dataType, aclTensor** tensor,
+aclnnStatus ElewiseAclnnRunner::CreateAclTensor(const std::vector<T> &hostData, const std::vector<int64_t> &shape,
+                                                void **deviceAddr, aclDataType dataType, aclTensor **tensor,
                                                 uint64_t size)
 {
     aclnnStatus ret = ACL_SUCCESS;
@@ -143,9 +144,8 @@ aclnnStatus ElewiseAclnnRunner::CreateAclTensor(const std::vector<T>& hostData, 
         strides[i] = shape[i + 1] * strides[i + 1];
     }
 
-    *tensor = aclCreateTensor(
-        shape.data(), shape.size(), dataType, strides.data(), 0, aclFormat::ACL_FORMAT_ND, shape.data(), shape.size(),
-        *deviceAddr);
+    *tensor = aclCreateTensor(shape.data(), shape.size(), dataType, strides.data(), 0, aclFormat::ACL_FORMAT_ND,
+                              shape.data(), shape.size(), *deviceAddr);
     return ret;
 }
 
@@ -162,10 +162,12 @@ Status ElewiseAclnnRunner::BuildAclnnVariantPack(const RunnerVariantPack &runner
 
     if (param_.elewiseType == infer::ElewiseParam::ElewiseType::ELEWISE_QUANT) {
         ret = ProcessQuantTensors(runnerVariantPack);
-        if (ret != NO_ERROR) return ret;
+        if (ret != NO_ERROR)
+            return ret;
     } else {
         ret = ProcessNormalTensors(runnerVariantPack, aclnnVariantPack_.aclInTensors, false);
-        if (ret != NO_ERROR) return ret;
+        if (ret != NO_ERROR)
+            return ret;
     }
 
     aclnnVariantPack_.aclOutTensors.reserve(1);
@@ -176,10 +178,9 @@ Status ElewiseAclnnRunner::BuildAclnnVariantPack(const RunnerVariantPack &runner
 }
 
 Status ElewiseAclnnRunner::ProcessNormalTensors(const RunnerVariantPack &runnerVariantPack,
-                                               atb::SVector<std::shared_ptr<AclNNTensor>> &tensors,
-                                               bool isOutput)
+                                                atb::SVector<std::shared_ptr<AclNNTensor>> &tensors, bool isOutput)
 {
-    const SVector<Tensor>& srcTensors = isOutput ? runnerVariantPack.outTensors : runnerVariantPack.inTensors;
+    const SVector<Tensor> &srcTensors = isOutput ? runnerVariantPack.outTensors : runnerVariantPack.inTensors;
 
     for (size_t i = 0; i < tensors.size(); ++i) {
         std::shared_ptr<AclNNTensor> aclnnTensorPtr = std::make_shared<AclNNTensor>();
@@ -204,7 +205,8 @@ Status ElewiseAclnnRunner::ProcessQuantTensors(const RunnerVariantPack &runnerVa
     aclnnVariantPack_.aclInTensors[0] = xTensorPtr;
 
     std::shared_ptr<AclNNTensor> scaleTensorPtr = std::make_shared<AclNNTensor>();
-    aclnnStatus aclRet = CreateQuantParamTensor(xTensorPtr->atbTensor, scaleDeviceAddr_, scaleTensor_, param_.quantParam.inputScale, scaleTensorPtr);
+    aclnnStatus aclRet = CreateQuantParamTensor(xTensorPtr->atbTensor, scaleDeviceAddr_, scaleTensor_,
+                                                param_.quantParam.inputScale, scaleTensorPtr);
     if (aclRet != ACL_SUCCESS) {
         ATB_LOG(ERROR) << GetLogPrefix() << "create scale tensor failed!";
         return aclRet;
@@ -212,7 +214,8 @@ Status ElewiseAclnnRunner::ProcessQuantTensors(const RunnerVariantPack &runnerVa
     aclnnVariantPack_.aclInTensors[1] = scaleTensorPtr;
 
     std::shared_ptr<AclNNTensor> offsetTensorPtr = std::make_shared<AclNNTensor>();
-    aclRet = CreateQuantParamTensor(xTensorPtr->atbTensor, offsetDeviceAddr_, offsetTensor_, param_.quantParam.inputOffset, offsetTensorPtr);
+    aclRet = CreateQuantParamTensor(xTensorPtr->atbTensor, offsetDeviceAddr_, offsetTensor_,
+                                    param_.quantParam.inputOffset, offsetTensorPtr);
     if (aclRet != ACL_SUCCESS) {
         ATB_LOG(ERROR) << GetLogPrefix() << "create offset tensor failed!";
         return aclRet;
@@ -222,7 +225,8 @@ Status ElewiseAclnnRunner::ProcessQuantTensors(const RunnerVariantPack &runnerVa
     return NO_ERROR;
 }
 
-Status ElewiseAclnnRunner::CreateAclNNTensorByAtbTensor(atb::Tensor atbTensor, int index, std::shared_ptr<AclNNTensor>& tensorPtr)
+Status ElewiseAclnnRunner::CreateAclNNTensorByAtbTensor(atb::Tensor atbTensor, int index,
+                                                        std::shared_ptr<AclNNTensor> &tensorPtr)
 {
     tensorPtr->atbTensor = atbTensor;
     tensorPtr->strides = GetCopyTensorStride(atbTensor.desc.shape);
@@ -232,40 +236,41 @@ Status ElewiseAclnnRunner::CreateAclNNTensorByAtbTensor(atb::Tensor atbTensor, i
     return CallAclCreateTensor(atbTensor.desc.shape, atbTensor.desc.shape, atbTensor, tensorPtr);
 }
 
-aclnnStatus ElewiseAclnnRunner::CreateQuantParamTensor(atb::Tensor baseTensor,
-                                                  void* deviceAddr,
-                                                  aclTensor *paramTensor,
-                                                  float paramValue,
-                                                  std::shared_ptr<AclNNTensor>& tensorPtr)
+aclnnStatus ElewiseAclnnRunner::CreateQuantParamTensor(atb::Tensor baseTensor, void *deviceAddr, aclTensor *paramTensor,
+                                                       float paramValue, std::shared_ptr<AclNNTensor> &tensorPtr)
 {
     std::vector<int64_t> shape = {1};
     aclnnStatus ret = ACL_SUCCESS;
     uint64_t size = UtilsInternal::GetDataTypeSize(baseTensor.desc.dtype);
 
     switch (baseTensor.desc.dtype) {
-        case ACL_FLOAT16: {
-            std::vector<aclFloat16> hostData = {aclFloatToFloat16(paramValue)};
-            ret = CreateAclTensor<aclFloat16>(hostData, shape, &deviceAddr, aclDataType::ACL_FLOAT16, &paramTensor, size);
-            break;
-        }
-        case ACL_FLOAT: {
-            std::vector<float> hostData = {paramValue};
-            CreateAclTensor<float>(hostData, shape, &deviceAddr, aclDataType::ACL_FLOAT, &paramTensor, size);
-            break;
-        }
-        case ACL_BF16: {
-            std::vector<op::bfloat16> hostData = {static_cast<op::bfloat16>(paramValue)};
-            CreateAclTensor<op::bfloat16>(hostData, shape, &deviceAddr, aclDataType::ACL_BF16, &paramTensor, size);
-            break;
-        }
+        case ACL_FLOAT16:
+            {
+                std::vector<aclFloat16> hostData = {aclFloatToFloat16(paramValue)};
+                ret = CreateAclTensor<aclFloat16>(hostData, shape, &deviceAddr, aclDataType::ACL_FLOAT16, &paramTensor,
+                                                  size);
+                break;
+            }
+        case ACL_FLOAT:
+            {
+                std::vector<float> hostData = {paramValue};
+                CreateAclTensor<float>(hostData, shape, &deviceAddr, aclDataType::ACL_FLOAT, &paramTensor, size);
+                break;
+            }
+        case ACL_BF16:
+            {
+                std::vector<op::bfloat16> hostData = {static_cast<op::bfloat16>(paramValue)};
+                CreateAclTensor<op::bfloat16>(hostData, shape, &deviceAddr, aclDataType::ACL_BF16, &paramTensor, size);
+                break;
+            }
         default:
             ATB_LOG(ERROR) << GetLogPrefix() << "invalid inTensor dtype!";
             return ERROR_INTERNAL_ERROR;
     }
 
     if (ret != ACL_SUCCESS) {
-        ATB_LOG(ERROR) << GetLogPrefix() << "CreateAclTensor failed for dtype "
-                       << baseTensor.desc.dtype << ". Error: " << ret;
+        ATB_LOG(ERROR) << GetLogPrefix() << "CreateAclTensor failed for dtype " << baseTensor.desc.dtype
+                       << ". Error: " << ret;
         return ret;
     }
 
@@ -278,7 +283,7 @@ aclnnStatus ElewiseAclnnRunner::SetAclNNWorkspaceExecutor()
     ATB_LOG(INFO) << GetLogPrefix() << "aclnn setup start.";
     ATB_LOG(INFO) << GetLogPrefix() << ", aclInTensors size: " << aclnnVariantPack_.aclInTensors.size()
                   << ", aclOutTensors size: " << aclnnVariantPack_.aclOutTensors.size();
-    aclOpExecutor *rawExecutorPtr = aclnnExecutor_.get();
+    aclOpExecutor *rawExecutorPtr = nullptr;
     aclnnStatus ret = ACL_SUCCESS;
     switch (param_.elewiseType) {
         case infer::ElewiseParam::ElewiseType::ELEWISE_CAST:
@@ -320,26 +325,28 @@ aclnnStatus ElewiseAclnnRunner::SetAclNNWorkspaceExecutor()
         default:
             break;
     }
-    aclnnExecutor_ = std::shared_ptr<aclOpExecutor>(rawExecutorPtr, [this](aclOpExecutor *ptr) {
-        if (ptr && executorRepeatable_) { // 可复用时才手动销毁aclOpExecutor
-            aclDestroyAclOpExecutor(ptr);
-        }
-    });
+    if (ret != ACL_SUCCESS) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "GetWorkspaceSize failed, error: " << ret;
+        return ret;
+    }
+    this->atbAclOpExecutor_ = std::make_shared<atbAclOpExecutor>(rawExecutorPtr);
+    this->executorRepeatable_ = this->atbAclOpExecutor_->IsRepeatable();
     ATB_LOG(INFO) << GetLogPrefix() << "workspaceSize: " << atbVariantPack_.workspaceBufferSize;
     return ret;
 }
 
-aclnnStatus ElewiseAclnnRunner::HandleCast(aclOpExecutor** executor)
+aclnnStatus ElewiseAclnnRunner::HandleCast(aclOpExecutor **executor)
 {
     size_t inTensorIndex = 0;
     aclTensor *self = aclnnVariantPack_.aclInTensors.at(inTensorIndex++)->tensor;
     size_t outTensorIndex = 0;
     aclTensor *out = aclnnVariantPack_.aclOutTensors.at(outTensorIndex++)->tensor;
-    return ElewiseAclnnRunner::aclnnCastGetWorkspaceSizeFunc_(self, param_.outTensorType, out, &(atbVariantPack_.workspaceBufferSize), executor);
+    return ElewiseAclnnRunner::aclnnCastGetWorkspaceSizeFunc_(self, param_.outTensorType, out,
+                                                              &(atbVariantPack_.workspaceBufferSize), executor);
 }
 
-aclnnStatus ElewiseAclnnRunner::HandleSub(aclOpExecutor** executor)
-{   
+aclnnStatus ElewiseAclnnRunner::HandleSub(aclOpExecutor **executor)
+{
     size_t inTensorIndex = 0;
     aclTensor *self = aclnnVariantPack_.aclInTensors.at(inTensorIndex++)->tensor;
     size_t outTensorIndex = 0;
@@ -358,7 +365,7 @@ aclnnStatus ElewiseAclnnRunner::HandleSub(aclOpExecutor** executor)
 }
 
 
-aclnnStatus ElewiseAclnnRunner::HandleMuls(aclOpExecutor** executor)
+aclnnStatus ElewiseAclnnRunner::HandleMuls(aclOpExecutor **executor)
 {
     size_t inTensorIndex = 0;
     aclTensor *self = aclnnVariantPack_.aclInTensors.at(inTensorIndex++)->tensor;
@@ -376,7 +383,7 @@ aclnnStatus ElewiseAclnnRunner::HandleMuls(aclOpExecutor** executor)
     return aclnnMulsGetWorkspaceSizeFunc_(self, alpha_, out, &(atbVariantPack_.workspaceBufferSize), executor);
 }
 
-aclnnStatus ElewiseAclnnRunner::HandleCos(aclOpExecutor** executor)
+aclnnStatus ElewiseAclnnRunner::HandleCos(aclOpExecutor **executor)
 {
     size_t inTensorIndex = 0;
     aclTensor *self = aclnnVariantPack_.aclInTensors.at(inTensorIndex++)->tensor;
@@ -385,7 +392,7 @@ aclnnStatus ElewiseAclnnRunner::HandleCos(aclOpExecutor** executor)
     return aclnnCosGetWorkspaceSizeFunc_(self, out, &(atbVariantPack_.workspaceBufferSize), executor);
 }
 
-aclnnStatus ElewiseAclnnRunner::HandleSin(aclOpExecutor** executor)
+aclnnStatus ElewiseAclnnRunner::HandleSin(aclOpExecutor **executor)
 {
     size_t inTensorIndex = 0;
     aclTensor *self = aclnnVariantPack_.aclInTensors.at(inTensorIndex++)->tensor;
@@ -394,7 +401,7 @@ aclnnStatus ElewiseAclnnRunner::HandleSin(aclOpExecutor** executor)
     return aclnnSinGetWorkspaceSizeFunc_(self, out, &(atbVariantPack_.workspaceBufferSize), executor);
 }
 
-aclnnStatus ElewiseAclnnRunner::HandleLogicalNot(aclOpExecutor** executor)
+aclnnStatus ElewiseAclnnRunner::HandleLogicalNot(aclOpExecutor **executor)
 {
     size_t inTensorIndex = 0;
     aclTensor *self = aclnnVariantPack_.aclInTensors.at(inTensorIndex++)->tensor;
@@ -403,7 +410,7 @@ aclnnStatus ElewiseAclnnRunner::HandleLogicalNot(aclOpExecutor** executor)
     return aclnnLogicalNotGetWorkspaceSizeFunc_(self, out, &(atbVariantPack_.workspaceBufferSize), executor);
 }
 
-aclnnStatus ElewiseAclnnRunner::HandleAdd(aclOpExecutor** executor)
+aclnnStatus ElewiseAclnnRunner::HandleAdd(aclOpExecutor **executor)
 {
     size_t inTensorIndex = 0;
     aclTensor *self = aclnnVariantPack_.aclInTensors.at(inTensorIndex++)->tensor;
@@ -422,7 +429,7 @@ aclnnStatus ElewiseAclnnRunner::HandleAdd(aclOpExecutor** executor)
     return aclnnAddGetWorkspaceSizeFunc_(self, other, alpha_, out, &(atbVariantPack_.workspaceBufferSize), executor);
 }
 
-aclnnStatus ElewiseAclnnRunner::HandleMul(aclOpExecutor** executor)
+aclnnStatus ElewiseAclnnRunner::HandleMul(aclOpExecutor **executor)
 {
     size_t inTensorIndex = 0;
     aclTensor *self = aclnnVariantPack_.aclInTensors.at(inTensorIndex++)->tensor;
@@ -432,7 +439,7 @@ aclnnStatus ElewiseAclnnRunner::HandleMul(aclOpExecutor** executor)
     return aclnnMulGetWorkspaceSizeFunc_(self, other, out, &(atbVariantPack_.workspaceBufferSize), executor);
 }
 
-aclnnStatus ElewiseAclnnRunner::HandleRealDiv(aclOpExecutor** executor)
+aclnnStatus ElewiseAclnnRunner::HandleRealDiv(aclOpExecutor **executor)
 {
     size_t inTensorIndex = 0;
     aclTensor *self = aclnnVariantPack_.aclInTensors.at(inTensorIndex++)->tensor;
@@ -442,7 +449,7 @@ aclnnStatus ElewiseAclnnRunner::HandleRealDiv(aclOpExecutor** executor)
     return aclnnDivGetWorkspaceSizeFunc_(self, other, out, &(atbVariantPack_.workspaceBufferSize), executor);
 }
 
-aclnnStatus ElewiseAclnnRunner::HandleLess(aclOpExecutor** executor)
+aclnnStatus ElewiseAclnnRunner::HandleLess(aclOpExecutor **executor)
 {
     size_t inTensorIndex = 0;
     aclTensor *self = aclnnVariantPack_.aclInTensors.at(inTensorIndex++)->tensor;
@@ -452,7 +459,7 @@ aclnnStatus ElewiseAclnnRunner::HandleLess(aclOpExecutor** executor)
     return aclnnLtTensorGetWorkspaceSizeFunc_(self, other, out, &(atbVariantPack_.workspaceBufferSize), executor);
 }
 
-aclnnStatus ElewiseAclnnRunner::HandleGreater(aclOpExecutor** executor)
+aclnnStatus ElewiseAclnnRunner::HandleGreater(aclOpExecutor **executor)
 {
     size_t inTensorIndex = 0;
     aclTensor *self = aclnnVariantPack_.aclInTensors.at(inTensorIndex++)->tensor;
@@ -462,7 +469,7 @@ aclnnStatus ElewiseAclnnRunner::HandleGreater(aclOpExecutor** executor)
     return aclnnGtTensorGetWorkspaceSizeFunc_(self, other, out, &(atbVariantPack_.workspaceBufferSize), executor);
 }
 
-aclnnStatus ElewiseAclnnRunner::HandleQuant(aclOpExecutor** executor)
+aclnnStatus ElewiseAclnnRunner::HandleQuant(aclOpExecutor **executor)
 {
     size_t inTensorIndex = 0;
     aclTensor *self = aclnnVariantPack_.aclInTensors.at(inTensorIndex++)->tensor;
@@ -473,7 +480,8 @@ aclnnStatus ElewiseAclnnRunner::HandleQuant(aclOpExecutor** executor)
     if (param_.outTensorType != ACL_DT_UNDEFINED) {
         DST_TYPE = param_.outTensorType;
     }
-    return aclnnAscendQuantGetWorkspaceSizeFunc_(self, scale, offset, SQRT_MODE, ROUND_MODE.c_str(), DST_TYPE, AXIS, out, &(atbVariantPack_.workspaceBufferSize), executor);
+    return aclnnAscendQuantGetWorkspaceSizeFunc_(self, scale, offset, SQRT_MODE, ROUND_MODE.c_str(), DST_TYPE, AXIS,
+                                                 out, &(atbVariantPack_.workspaceBufferSize), executor);
 }
 
 Status ElewiseAclnnRunner::LaunchAclnnKernel()
@@ -483,64 +491,52 @@ Status ElewiseAclnnRunner::LaunchAclnnKernel()
     aclrtStream executeStream = GetExecuteStream(atbVariantPack_.context);
     switch (param_.elewiseType) {
         case infer::ElewiseParam::ElewiseType::ELEWISE_CAST:
-            ret = aclnnCastExecuteFunc_(atbVariantPack_.workspaceBuffer,
-                                        atbVariantPack_.workspaceBufferSize,
-                                        aclnnExecutor_.get(), executeStream);
+            ret = aclnnCastExecuteFunc_(atbVariantPack_.workspaceBuffer, atbVariantPack_.workspaceBufferSize,
+                                        atbAclOpExecutor_->Get(), executeStream);
             break;
         case infer::ElewiseParam::ElewiseType::ELEWISE_MULS:
-            ret = aclnnMulsExecuteFunc_(atbVariantPack_.workspaceBuffer,
-                                        atbVariantPack_.workspaceBufferSize,
-                                        aclnnExecutor_.get(), executeStream);
+            ret = aclnnMulsExecuteFunc_(atbVariantPack_.workspaceBuffer, atbVariantPack_.workspaceBufferSize,
+                                        atbAclOpExecutor_->Get(), executeStream);
             break;
         case infer::ElewiseParam::ElewiseType::ELEWISE_COS:
-            ret = aclnnCosExecuteFunc_(atbVariantPack_.workspaceBuffer,
-                                       atbVariantPack_.workspaceBufferSize,
-                                       aclnnExecutor_.get(), executeStream);
+            ret = aclnnCosExecuteFunc_(atbVariantPack_.workspaceBuffer, atbVariantPack_.workspaceBufferSize,
+                                       atbAclOpExecutor_->Get(), executeStream);
             break;
         case infer::ElewiseParam::ElewiseType::ELEWISE_SIN:
-            ret = aclnnSinExecuteFunc_(atbVariantPack_.workspaceBuffer,
-                                       atbVariantPack_.workspaceBufferSize,
-                                       aclnnExecutor_.get(), executeStream);
+            ret = aclnnSinExecuteFunc_(atbVariantPack_.workspaceBuffer, atbVariantPack_.workspaceBufferSize,
+                                       atbAclOpExecutor_->Get(), executeStream);
             break;
         case infer::ElewiseParam::ElewiseType::ELEWISE_LOGICAL_NOT:
-            ret = aclnnLogicalNotExecuteFunc_(atbVariantPack_.workspaceBuffer,
-                                              atbVariantPack_.workspaceBufferSize,
-                                              aclnnExecutor_.get(), executeStream);
+            ret = aclnnLogicalNotExecuteFunc_(atbVariantPack_.workspaceBuffer, atbVariantPack_.workspaceBufferSize,
+                                              atbAclOpExecutor_->Get(), executeStream);
             break;
         case infer::ElewiseParam::ElewiseType::ELEWISE_ADD:
-            ret = aclnnAddExecuteFunc_(atbVariantPack_.workspaceBuffer,
-                                       atbVariantPack_.workspaceBufferSize,
-                                       aclnnExecutor_.get(), executeStream);
+            ret = aclnnAddExecuteFunc_(atbVariantPack_.workspaceBuffer, atbVariantPack_.workspaceBufferSize,
+                                       atbAclOpExecutor_->Get(), executeStream);
             break;
         case infer::ElewiseParam::ElewiseType::ELEWISE_SUB:
-            ret = aclnnSubExecuteFunc_(atbVariantPack_.workspaceBuffer,
-                                       atbVariantPack_.workspaceBufferSize,
-                                       aclnnExecutor_.get(), executeStream);
+            ret = aclnnSubExecuteFunc_(atbVariantPack_.workspaceBuffer, atbVariantPack_.workspaceBufferSize,
+                                       atbAclOpExecutor_->Get(), executeStream);
             break;
         case infer::ElewiseParam::ElewiseType::ELEWISE_MUL:
-            ret = aclnnMulExecuteFunc_(atbVariantPack_.workspaceBuffer,
-                                       atbVariantPack_.workspaceBufferSize,
-                                       aclnnExecutor_.get(), executeStream);
+            ret = aclnnMulExecuteFunc_(atbVariantPack_.workspaceBuffer, atbVariantPack_.workspaceBufferSize,
+                                       atbAclOpExecutor_->Get(), executeStream);
             break;
         case infer::ElewiseParam::ElewiseType::ELEWISE_REALDIV:
-            ret = aclnnDivExecuteFunc_(atbVariantPack_.workspaceBuffer,
-                                       atbVariantPack_.workspaceBufferSize,
-                                       aclnnExecutor_.get(), executeStream);
+            ret = aclnnDivExecuteFunc_(atbVariantPack_.workspaceBuffer, atbVariantPack_.workspaceBufferSize,
+                                       atbAclOpExecutor_->Get(), executeStream);
             break;
         case infer::ElewiseParam::ElewiseType::ELEWISE_LESS:
-            ret = aclnnLtTensorExecuteFunc_(atbVariantPack_.workspaceBuffer,
-                                            atbVariantPack_.workspaceBufferSize,
-                                            aclnnExecutor_.get(), executeStream);
+            ret = aclnnLtTensorExecuteFunc_(atbVariantPack_.workspaceBuffer, atbVariantPack_.workspaceBufferSize,
+                                            atbAclOpExecutor_->Get(), executeStream);
             break;
         case infer::ElewiseParam::ElewiseType::ELEWISE_GREATER:
-            ret = aclnnGtTensorExecuteFunc_(atbVariantPack_.workspaceBuffer,
-                                            atbVariantPack_.workspaceBufferSize,
-                                            aclnnExecutor_.get(), executeStream);
+            ret = aclnnGtTensorExecuteFunc_(atbVariantPack_.workspaceBuffer, atbVariantPack_.workspaceBufferSize,
+                                            atbAclOpExecutor_->Get(), executeStream);
             break;
         case infer::ElewiseParam::ElewiseType::ELEWISE_QUANT:
-            ret = aclnnAscendQuantExecuteFunc_(atbVariantPack_.workspaceBuffer,
-                                               atbVariantPack_.workspaceBufferSize,
-                                               aclnnExecutor_.get(), executeStream);
+            ret = aclnnAscendQuantExecuteFunc_(atbVariantPack_.workspaceBuffer, atbVariantPack_.workspaceBufferSize,
+                                               atbAclOpExecutor_->Get(), executeStream);
             break;
         default:
             break;
@@ -571,72 +567,50 @@ Status ElewiseAclnnRunner::LoadMethod()
                                           ElewiseAclnnRunner::aclnnSubGetWorkspaceSizeFunc_,
                                           ElewiseAclnnRunner::aclnnSubExecuteFunc_);
     }
-    if (aclnnCastGetWorkspaceSizeFunc_ == nullptr ||
-        aclnnCastExecuteFunc_ == nullptr) {
-        status = LoadFromSharedObjectFile("aclnnCastGetWorkspaceSize", "aclnnCast",
-                                          aclnnCastGetWorkspaceSizeFunc_,
+    if (aclnnCastGetWorkspaceSizeFunc_ == nullptr || aclnnCastExecuteFunc_ == nullptr) {
+        status = LoadFromSharedObjectFile("aclnnCastGetWorkspaceSize", "aclnnCast", aclnnCastGetWorkspaceSizeFunc_,
                                           aclnnCastExecuteFunc_);
     }
-    if (aclnnMulsGetWorkspaceSizeFunc_ == nullptr ||
-        aclnnMulsExecuteFunc_ == nullptr) {
-        status = LoadFromSharedObjectFile("aclnnMulsGetWorkspaceSize", "aclnnMuls",
-                                          aclnnMulsGetWorkspaceSizeFunc_,
+    if (aclnnMulsGetWorkspaceSizeFunc_ == nullptr || aclnnMulsExecuteFunc_ == nullptr) {
+        status = LoadFromSharedObjectFile("aclnnMulsGetWorkspaceSize", "aclnnMuls", aclnnMulsGetWorkspaceSizeFunc_,
                                           aclnnMulsExecuteFunc_);
     }
-    if (aclnnCosGetWorkspaceSizeFunc_ == nullptr ||
-        aclnnCosExecuteFunc_ == nullptr) {
-        status = LoadFromSharedObjectFile("aclnnCosGetWorkspaceSize", "aclnnCos",
-                                          aclnnCosGetWorkspaceSizeFunc_,
+    if (aclnnCosGetWorkspaceSizeFunc_ == nullptr || aclnnCosExecuteFunc_ == nullptr) {
+        status = LoadFromSharedObjectFile("aclnnCosGetWorkspaceSize", "aclnnCos", aclnnCosGetWorkspaceSizeFunc_,
                                           aclnnCosExecuteFunc_);
     }
-    if (aclnnSinGetWorkspaceSizeFunc_ == nullptr ||
-        aclnnSinExecuteFunc_ == nullptr) {
-        status = LoadFromSharedObjectFile("aclnnSinGetWorkspaceSize", "aclnnSin",
-                                          aclnnSinGetWorkspaceSizeFunc_,
+    if (aclnnSinGetWorkspaceSizeFunc_ == nullptr || aclnnSinExecuteFunc_ == nullptr) {
+        status = LoadFromSharedObjectFile("aclnnSinGetWorkspaceSize", "aclnnSin", aclnnSinGetWorkspaceSizeFunc_,
                                           aclnnSinExecuteFunc_);
     }
-    if (aclnnLogicalNotGetWorkspaceSizeFunc_ == nullptr ||
-        aclnnLogicalNotExecuteFunc_ == nullptr) {
+    if (aclnnLogicalNotGetWorkspaceSizeFunc_ == nullptr || aclnnLogicalNotExecuteFunc_ == nullptr) {
         status = LoadFromSharedObjectFile("aclnnLogicalNotGetWorkspaceSize", "aclnnLogicalNot",
-                                          aclnnLogicalNotGetWorkspaceSizeFunc_,
-                                          aclnnLogicalNotExecuteFunc_);
+                                          aclnnLogicalNotGetWorkspaceSizeFunc_, aclnnLogicalNotExecuteFunc_);
     }
-    if (aclnnAddGetWorkspaceSizeFunc_ == nullptr ||
-        aclnnAddExecuteFunc_ == nullptr) {
-        status = LoadFromSharedObjectFile("aclnnAddGetWorkspaceSize", "aclnnAdd",
-                                          aclnnAddGetWorkspaceSizeFunc_,
+    if (aclnnAddGetWorkspaceSizeFunc_ == nullptr || aclnnAddExecuteFunc_ == nullptr) {
+        status = LoadFromSharedObjectFile("aclnnAddGetWorkspaceSize", "aclnnAdd", aclnnAddGetWorkspaceSizeFunc_,
                                           aclnnAddExecuteFunc_);
     }
-    if (aclnnMulGetWorkspaceSizeFunc_ == nullptr ||
-        aclnnMulExecuteFunc_ == nullptr) {
-        status = LoadFromSharedObjectFile("aclnnMulGetWorkspaceSize", "aclnnMul",
-                                          aclnnMulGetWorkspaceSizeFunc_,
+    if (aclnnMulGetWorkspaceSizeFunc_ == nullptr || aclnnMulExecuteFunc_ == nullptr) {
+        status = LoadFromSharedObjectFile("aclnnMulGetWorkspaceSize", "aclnnMul", aclnnMulGetWorkspaceSizeFunc_,
                                           aclnnMulExecuteFunc_);
     }
-    if (aclnnDivGetWorkspaceSizeFunc_ == nullptr ||
-        aclnnDivExecuteFunc_ == nullptr) {
-        status = LoadFromSharedObjectFile("aclnnDivGetWorkspaceSize", "aclnnDiv",
-                                          aclnnDivGetWorkspaceSizeFunc_,
+    if (aclnnDivGetWorkspaceSizeFunc_ == nullptr || aclnnDivExecuteFunc_ == nullptr) {
+        status = LoadFromSharedObjectFile("aclnnDivGetWorkspaceSize", "aclnnDiv", aclnnDivGetWorkspaceSizeFunc_,
                                           aclnnDivExecuteFunc_);
     }
-    if (aclnnLtTensorGetWorkspaceSizeFunc_ == nullptr ||
-        aclnnLtTensorExecuteFunc_ == nullptr) {
+    if (aclnnLtTensorGetWorkspaceSizeFunc_ == nullptr || aclnnLtTensorExecuteFunc_ == nullptr) {
         status = LoadFromSharedObjectFile("aclnnLtTensorGetWorkspaceSize", "aclnnLtTensor",
-                                          aclnnLtTensorGetWorkspaceSizeFunc_,
-                                          aclnnLtTensorExecuteFunc_);
+                                          aclnnLtTensorGetWorkspaceSizeFunc_, aclnnLtTensorExecuteFunc_);
     }
-    if (aclnnGtTensorGetWorkspaceSizeFunc_ == nullptr ||
-        aclnnGtTensorExecuteFunc_ == nullptr) {
+    if (aclnnGtTensorGetWorkspaceSizeFunc_ == nullptr || aclnnGtTensorExecuteFunc_ == nullptr) {
         status = LoadFromSharedObjectFile("aclnnGtTensorGetWorkspaceSize", "aclnnGtTensor",
-                                          aclnnGtTensorGetWorkspaceSizeFunc_,
-                                          aclnnGtTensorExecuteFunc_);
+                                          aclnnGtTensorGetWorkspaceSizeFunc_, aclnnGtTensorExecuteFunc_);
     }
-    if (aclnnAscendQuantGetWorkspaceSizeFunc_ == nullptr ||
-        aclnnAscendQuantExecuteFunc_ == nullptr) {
+    if (aclnnAscendQuantGetWorkspaceSizeFunc_ == nullptr || aclnnAscendQuantExecuteFunc_ == nullptr) {
         status = LoadFromSharedObjectFile("aclnnAscendQuantV3GetWorkspaceSize", "aclnnAscendQuantV3",
-                                          aclnnAscendQuantGetWorkspaceSizeFunc_,
-                                          aclnnAscendQuantExecuteFunc_);
-        }
+                                          aclnnAscendQuantGetWorkspaceSizeFunc_, aclnnAscendQuantExecuteFunc_);
+    }
     return status;
 }
 

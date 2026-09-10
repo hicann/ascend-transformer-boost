@@ -113,25 +113,17 @@ aclnnStatus LayerNormAclnnRunner::SetAclNNWorkspaceExecutor()
     aclTensor *output = this->aclnnVariantPack_.aclOutTensors.at(outTensorStart++)->tensor; // out
     aclTensor *emptyTensorPtr = nullptr;
 
-    aclOpExecutor *raw_executor_ptr = this->aclnnExecutor_.get();
-    ATB_LOG(DEBUG) << GetLogPrefix() << "&(this->aclnnExecutor_): " << &(this->aclnnExecutor_)
-                   << ", addr of this->aclnnExecutor_: " << this->aclnnExecutor_
-                   << ", raw ptr from it: " << raw_executor_ptr;
-
-    ATB_LOG(DEBUG) << GetLogPrefix() << "workspaceSize addr: " << &(this->atbVariantPack_.workspaceBufferSize);
+    aclOpExecutor *raw_executor_ptr = nullptr;
 
     aclnnStatus ret = LayerNormAclnnRunner::aclnnGetWorkspaceSizeFunc_(
         x, normalizedShape, gamma, beta, epsilon, output, emptyTensorPtr, emptyTensorPtr,
         &(this->atbVariantPack_.workspaceBufferSize), &raw_executor_ptr);
-    this->aclnnExecutor_ = std::shared_ptr<aclOpExecutor>(raw_executor_ptr, [this](aclOpExecutor *ptr) {
-        if (ptr && this->executorRepeatable_) { // 可复用时才手动销毁aclOpExecutor
-            aclDestroyAclOpExecutor(ptr);
-        }
-    });
     if (ret != ACL_SUCCESS) {
-        ATB_LOG(ERROR) << GetLogPrefix() << "aclnnGetWorkspaceSize failed!";
+        ATB_LOG(ERROR) << GetLogPrefix() << "GetWorkspaceSize failed, error: " << ret;
         return ret;
     }
+    this->atbAclOpExecutor_ = std::make_shared<atbAclOpExecutor>(raw_executor_ptr);
+    this->executorRepeatable_ = this->atbAclOpExecutor_->IsRepeatable();
     ret = aclDestroyIntArray(normalizedShape);
     if (ret != ACL_SUCCESS) {
         ATB_LOG(ERROR) << GetLogPrefix() << "destroy aclIntArray shape failed!";
@@ -151,7 +143,7 @@ Status LayerNormAclnnRunner::LaunchAclnnKernel()
     void *executeStream = GetExecuteStream(this->atbVariantPack_.context);
     aclnnStatus ret = LayerNormAclnnRunner::aclnnExecuteFunc_(this->atbVariantPack_.workspaceBuffer,
                                                               this->atbVariantPack_.workspaceBufferSize,
-                                                              this->aclnnExecutor_.get(), executeStream);
+                                                              this->atbAclOpExecutor_->Get(), executeStream);
     if (ret != ACL_SUCCESS) {
         ATB_LOG(ERROR) << GetLogPrefix() << "Atb aclnn op kernel launch failed with return value: " << ret;
         return ERROR_CANN_ERROR;

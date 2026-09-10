@@ -22,7 +22,7 @@ static const int BETA_ACLNN_TENSOR_IDX = 2;
 static const int SCALE_ACLNN_TENSOR_IDX = 3;
 static const int OFFSET_ACLNN_TENSOR_IDX = 4;
 static const int Y_ACLNN_TENSOR_IDX = 0;
-}  // namespace
+} // namespace
 
 namespace atb {
 AclnnRmsNormQuantGetWorkspaceSizeFunc RmsNormQuantAclnnRunner::aclnnRmsNormQuantGetWorkspaceSizeFunc_ = nullptr;
@@ -34,8 +34,7 @@ RmsNormQuantAclnnRunner::RmsNormQuantAclnnRunner(const infer::RmsNormParam &para
     ATB_LOG(INFO) << GetLogPrefix() << "RmsNormQuantAclnnRunner::RmsNormQuantAclnnRunner";
 }
 
-RmsNormQuantAclnnRunner::~RmsNormQuantAclnnRunner()
-{}
+RmsNormQuantAclnnRunner::~RmsNormQuantAclnnRunner() {}
 
 Status RmsNormQuantAclnnRunner::LoadAclnnFuncs()
 {
@@ -43,10 +42,8 @@ Status RmsNormQuantAclnnRunner::LoadAclnnFuncs()
     if (aclnnRmsNormQuantGetWorkspaceSizeFunc_ && aclnnRmsNormQuantFunc_) {
         return NO_ERROR;
     }
-    return LoadFromSharedObjectFile("aclnnRmsNormQuantGetWorkspaceSize",
-        "aclnnRmsNormQuant",
-        aclnnRmsNormQuantGetWorkspaceSizeFunc_,
-        aclnnRmsNormQuantFunc_);
+    return LoadFromSharedObjectFile("aclnnRmsNormQuantGetWorkspaceSize", "aclnnRmsNormQuant",
+                                    aclnnRmsNormQuantGetWorkspaceSizeFunc_, aclnnRmsNormQuantFunc_);
 }
 
 Status RmsNormQuantAclnnRunner::BuildAclnnVariantPack(const RunnerVariantPack &runnerVariantPack)
@@ -93,19 +90,16 @@ aclnnStatus RmsNormQuantAclnnRunner::SetAclNNWorkspaceExecutor()
     aclTensor *offset = aclnnVariantPack_.aclInTensors.at(offsetAclTensorIndex_)->tensor;
     aclTensor *y = aclnnVariantPack_.aclOutTensors.at(yAclTensorIndex_)->tensor;
     double epsilon = static_cast<double>(param_.normParam.epsilon);
-    aclOpExecutor *rawExecutorPtr = aclnnExecutor_.get();
-    aclnnStatus ret = aclnnRmsNormQuantGetWorkspaceSizeFunc_(
-        x, gamma, beta, scale, offset, epsilon, y, &(atbVariantPack_.workspaceBufferSize), &rawExecutorPtr);
-    aclnnExecutor_ = std::shared_ptr<aclOpExecutor>(rawExecutorPtr, [this](aclOpExecutor *ptr) {
-        if (ptr && executorRepeatable_) {
-            aclDestroyAclOpExecutor(ptr);
-        }
-    });
-    if (ret == ACLNN_SUCCESS) {
-        ATB_LOG(INFO) << GetLogPrefix() << "workspaceSize: " << atbVariantPack_.workspaceBufferSize;
-    } else {
-        ATB_LOG(ERROR) << GetLogPrefix() << "SetAclNNWorkspaceExecutor failed, ret: " << ret;
+    aclOpExecutor *rawExecutorPtr = nullptr;
+    aclnnStatus ret = aclnnRmsNormQuantGetWorkspaceSizeFunc_(x, gamma, beta, scale, offset, epsilon, y,
+                                                             &(atbVariantPack_.workspaceBufferSize), &rawExecutorPtr);
+    if (ret != ACL_SUCCESS) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "GetWorkspaceSize failed, error: " << ret;
+        return ret;
     }
+    this->atbAclOpExecutor_ = std::make_shared<atbAclOpExecutor>(rawExecutorPtr);
+    this->executorRepeatable_ = this->atbAclOpExecutor_->IsRepeatable();
+    ATB_LOG(INFO) << GetLogPrefix() << "workspaceSize: " << atbVariantPack_.workspaceBufferSize;
     return ret;
 }
 
@@ -113,8 +107,8 @@ Status RmsNormQuantAclnnRunner::LaunchAclnnKernel()
 {
     ATB_LOG(INFO) << GetLogPrefix() << "RmsNormQuantAclnnRunner::LaunchAclnnKernel";
     aclrtStream executeStream = GetExecuteStream(atbVariantPack_.context);
-    aclnnStatus ret = aclnnRmsNormQuantFunc_(
-        atbVariantPack_.workspaceBuffer, atbVariantPack_.workspaceBufferSize, aclnnExecutor_.get(), executeStream);
+    aclnnStatus ret = aclnnRmsNormQuantFunc_(atbVariantPack_.workspaceBuffer, atbVariantPack_.workspaceBufferSize,
+                                             atbAclOpExecutor_->Get(), executeStream);
     if (ret == ACLNN_SUCCESS) {
         ATB_LOG(INFO) << GetLogPrefix() << "RmsNormQuantAclnnRunner::LaunchAclnnKernel success";
         return NO_ERROR;
@@ -125,8 +119,8 @@ Status RmsNormQuantAclnnRunner::LaunchAclnnKernel()
 
 void RmsNormQuantAclnnRunner::GetTensorNum()
 {
-    aclInTensorNum_ = 5;   // 5: x, gamma, beta, scale, offset
-    aclOutTensorNum_ = 1;  // 1: y
+    aclInTensorNum_ = 5;  // 5: x, gamma, beta, scale, offset
+    aclOutTensorNum_ = 1; // 1: y
 }
 
 void RmsNormQuantAclnnRunner::InitTensorIndex()
@@ -253,4 +247,4 @@ Status RmsNormQuantAclnnRunner::CreateYAclnnTensor()
 }
 
 REG_RUNNER_TYPE(RmsNormQuantAclnnRunner);
-}  // namespace atb
+} // namespace atb

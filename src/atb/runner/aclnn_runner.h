@@ -11,12 +11,14 @@
 #ifndef ATB_ACLNN_RUNNER_H
 #define ATB_ACLNN_RUNNER_H
 #include "runner.h"
+#include "atb/utils/atb_acl_op_executor.h"
 
 namespace atb {
 class AclnnRunner : public Runner {
 public:
     explicit AclnnRunner(const std::string &name);
     ~AclnnRunner() override;
+
 protected:
     Status SetupImpl(RunnerVariantPack &runnerVariantPack) override;
     virtual Status BuildAclnnVariantPack(const RunnerVariantPack &runnerVariantPack) = 0;
@@ -27,10 +29,9 @@ protected:
     virtual Status LaunchAclnnKernel() = 0;
     uint64_t GetWorkspaceBufferSizeImpl() override;
     void UpdateWorkspace(const RunnerVariantPack &runnerVariantPack);
-    virtual bool useCache();
     int64_t runnerTypeIdx_ = -1;
     bool executorRepeatable_ = false;
-    std::shared_ptr<aclOpExecutor> aclnnExecutor_ = nullptr;
+    std::shared_ptr<atbAclOpExecutor> atbAclOpExecutor_ = nullptr;
     AclNNVariantPack aclnnVariantPack_;
     RunnerVariantPack atbVariantPack_;
 };

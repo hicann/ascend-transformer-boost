@@ -23,11 +23,12 @@ static const uint32_t OUT_TENSOR_NUM = 2;
 
 namespace atb {
 // 初始化类函数指针
-aclnnStatus (*AclnnDynamicQuantRunner::aclnnGetWorkspaceSizeFunc_)(
-    const aclTensor *, const aclTensor *, const aclTensor *, const aclTensor *,
-    uint64_t *, aclOpExecutor **) = nullptr;
+aclnnStatus (*AclnnDynamicQuantRunner::aclnnGetWorkspaceSizeFunc_)(const aclTensor *, const aclTensor *,
+                                                                   const aclTensor *, const aclTensor *, uint64_t *,
+                                                                   aclOpExecutor **) = nullptr;
 
-aclnnStatus (*AclnnDynamicQuantRunner::aclnnExecuteFunc_)( void *, uint64_t , aclOpExecutor *, const aclrtStream) = nullptr;
+aclnnStatus (*AclnnDynamicQuantRunner::aclnnExecuteFunc_)(void *, uint64_t, aclOpExecutor *,
+                                                          const aclrtStream) = nullptr;
 
 AclnnDynamicQuantRunner::AclnnDynamicQuantRunner(const infer::ElewiseParam &param)
     : AclnnRunner("AclnnDynamicQuantRunner"), param_(param)
@@ -41,7 +42,7 @@ Status AclnnDynamicQuantRunner::BuildAclnnVariantPack(const RunnerVariantPack &r
 {
     ATB_LOG(INFO) << GetLogPrefix() << "BuildAclnnVariantPack";
     ATB_LOG(INFO) << GetLogPrefix() << "variantPack: " << runnerVariantPack.ToString();
-    
+
     Status ret = NO_ERROR;
 
     this->aclnnVariantPack_.aclInTensors.reserve(IN_TENSOR_NUM);
@@ -52,9 +53,9 @@ Status AclnnDynamicQuantRunner::BuildAclnnVariantPack(const RunnerVariantPack &r
         atb::Tensor atbTensor = runnerVariantPack.inTensors.at(i);
         aclnnTensorPtr->atbTensor = atbTensor;
         aclnnTensorPtr->strides = GetCopyTensorStride(atbTensor.desc.shape);
-        
+
         ret = CallAclCreateTensor(atbTensor.desc.shape, atbTensor.desc.shape, atbTensor, aclnnTensorPtr,
-                                      atbTensor.desc.dtype);
+                                  atbTensor.desc.dtype);
 
         if (ret != NO_ERROR) {
             ATB_LOG(ERROR) << GetLogPrefix() << "create aclTensor by aclCreateTensor failed!";
@@ -95,27 +96,21 @@ aclnnStatus AclnnDynamicQuantRunner::SetAclNNWorkspaceExecutor()
                   << ", aclInTensors size: " << this->aclnnVariantPack_.aclInTensors.size()
                   << ", aclOutTensors size: " << this->aclnnVariantPack_.aclOutTensors.size();
 
-    aclOpExecutor *rawExecutorPtr = this->aclnnExecutor_.get();
-    ATB_LOG(INFO) << GetLogPrefix() << "&(this->aclnnExecutor_): " << &(this->aclnnExecutor_)
-                  << ", addr of this->aclnnExecutor_: " << this->aclnnExecutor_
-                  << ", raw ptr from it: " << rawExecutorPtr
-                  << ", then take the address of the raw ptr: " << &rawExecutorPtr;
-
-    ATB_LOG(INFO) << GetLogPrefix() << "workspaceSize addr: " << &(this->atbVariantPack_.workspaceBufferSize);
+    aclOpExecutor *rawExecutorPtr = nullptr;
 
     aclnnStatus ret = AclnnDynamicQuantRunner::aclnnGetWorkspaceSizeFunc_(
-        this->aclnnVariantPack_.aclInTensors.at(0)->tensor,    // x
-        nullptr,    // smoothScaleOptional
-        this->aclnnVariantPack_.aclOutTensors.at(0)->tensor,    // yOut
-        this->aclnnVariantPack_.aclOutTensors.at(1)->tensor,    // scaleOut
-        &(this->atbVariantPack_.workspaceBufferSize),
-        &rawExecutorPtr);
-    
-    this->aclnnExecutor_ = std::shared_ptr<aclOpExecutor>(rawExecutorPtr, [this](aclOpExecutor *ptr) {
-        if (ptr && this->executorRepeatable_) { // 可复用时才手动销毁aclOpExecutor
-            aclDestroyAclOpExecutor(ptr);
-        }
-    });
+        this->aclnnVariantPack_.aclInTensors.at(0)->tensor,  // x
+        nullptr,                                             // smoothScaleOptional
+        this->aclnnVariantPack_.aclOutTensors.at(0)->tensor, // yOut
+        this->aclnnVariantPack_.aclOutTensors.at(1)->tensor, // scaleOut
+        &(this->atbVariantPack_.workspaceBufferSize), &rawExecutorPtr);
+    if (ret != ACL_SUCCESS) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "GetWorkspaceSize failed, error: " << ret;
+        return ret;
+    }
+
+    this->atbAclOpExecutor_ = std::make_shared<atbAclOpExecutor>(rawExecutorPtr);
+    this->executorRepeatable_ = this->atbAclOpExecutor_->IsRepeatable();
     ATB_LOG(INFO) << GetLogPrefix() << "workspaceSize: " << this->atbVariantPack_.workspaceBufferSize;
     return ret;
 }
@@ -126,8 +121,8 @@ Status AclnnDynamicQuantRunner::LaunchAclnnKernel()
 
     void *executeStream = GetExecuteStream(this->atbVariantPack_.context);
     aclnnStatus ret = AclnnDynamicQuantRunner::aclnnExecuteFunc_(this->atbVariantPack_.workspaceBuffer,
-                                                                  this->atbVariantPack_.workspaceBufferSize,
-                                                                  this->aclnnExecutor_.get(), executeStream);
+                                                                 this->atbVariantPack_.workspaceBufferSize,
+                                                                 this->atbAclOpExecutor_->Get(), executeStream);
     if (ret != ACL_SUCCESS) {
         ATB_LOG(ERROR) << GetLogPrefix() << "Atb aclnn op kernel launch failed with return value: " << ret;
         return ERROR_CANN_ERROR;
@@ -144,8 +139,8 @@ Status AclnnDynamicQuantRunner::LoadMethod()
         return NO_ERROR;
     }
     Status status = LoadFromSharedObjectFile("aclnnDynamicQuantGetWorkspaceSize", "aclnnDynamicQuant",
-                                            AclnnDynamicQuantRunner::aclnnGetWorkspaceSizeFunc_,
-                                            AclnnDynamicQuantRunner::aclnnExecuteFunc_);
+                                             AclnnDynamicQuantRunner::aclnnGetWorkspaceSizeFunc_,
+                                             AclnnDynamicQuantRunner::aclnnExecuteFunc_);
     return status;
 }
 

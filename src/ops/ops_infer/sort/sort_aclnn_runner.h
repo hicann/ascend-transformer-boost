@@ -13,13 +13,13 @@
 #include "atb/runner/aclnn_runner.h"
 
 
-using AclnnGetWorkspaceSizeFunc = aclnnStatus(*)(const aclTensor *, int64_t, int64_t, bool, bool, aclTensor *,
-                                                     aclTensor *, uint64_t *, aclOpExecutor **);
-using AclnnExecuteFunc = aclnnStatus(*)(void *, uint64_t, aclOpExecutor *, aclrtStream);
+using AclnnGetWorkspaceSizeFunc = aclnnStatus (*)(const aclTensor *, int64_t, int64_t, bool, bool, aclTensor *,
+                                                  aclTensor *, uint64_t *, aclOpExecutor **);
+using AclnnExecuteFunc = aclnnStatus (*)(void *, uint64_t, aclOpExecutor *, aclrtStream);
 
-using AclnnCastGetWorkspaceSizeFunc = aclnnStatus(*)(const aclTensor *, const aclDataType,
-                                                        aclTensor *, uint64_t *, aclOpExecutor **);
-using AclnnCastExecuteFunc = aclnnStatus(*)(void *, uint64_t, aclOpExecutor *, aclrtStream);
+using AclnnCastGetWorkspaceSizeFunc = aclnnStatus (*)(const aclTensor *, const aclDataType, aclTensor *, uint64_t *,
+                                                      aclOpExecutor **);
+using AclnnCastExecuteFunc = aclnnStatus (*)(void *, uint64_t, aclOpExecutor *, aclrtStream);
 
 namespace atb {
 class SortAclnnRunner : public AclnnRunner {
@@ -32,7 +32,6 @@ protected:
     Status BuildAclnnVariantPack(const RunnerVariantPack &runnerVariantPack) override;
     Status LaunchAclnnKernel() override;
     aclnnStatus SetAclNNWorkspaceExecutor() override;
-    virtual bool useCache() override;
 
 private:
     infer::SortParam param_;
@@ -47,7 +46,7 @@ private:
     uint64_t topkWorkspaceSize_ = 0;
     uint64_t castWorkspaceSize_ = 0;
     uint64_t indicesBufferSize_ = 0;
-    std::shared_ptr<aclOpExecutor> aclnnCastExecutor_;
+    std::shared_ptr<atbAclOpExecutor> atbAclCastOpExecutor_;
 };
 } // namespace atb
 #endif // ATB_SOFTMAX_ACLNN_RUNNER_H

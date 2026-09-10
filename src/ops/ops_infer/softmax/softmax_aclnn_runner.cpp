@@ -55,8 +55,7 @@ Status SoftmaxAclnnRunner::BuildAclnnVariantPack(const RunnerVariantPack &runner
             shape = targetDims_;
         }
         aclnnTensorPtr->strides = GetCopyTensorStride(shape);
-        ret = CallAclCreateTensor(shape, atbTensor.desc.shape, atbTensor, aclnnTensorPtr,
-                                  atbTensor.desc.dtype);
+        ret = CallAclCreateTensor(shape, atbTensor.desc.shape, atbTensor, aclnnTensorPtr, atbTensor.desc.dtype);
         if (ret != NO_ERROR) {
             ATB_LOG(ERROR) << GetLogPrefix() << "create aclTensor by aclCreateTensor failed!";
             return ret;
@@ -78,8 +77,7 @@ Status SoftmaxAclnnRunner::BuildAclnnVariantPack(const RunnerVariantPack &runner
             shape = targetDims_;
         }
         aclnnTensorPtr->strides = GetCopyTensorStride(shape);
-        ret = CallAclCreateTensor(shape, atbTensor.desc.shape, atbTensor, aclnnTensorPtr,
-                                  atbTensor.desc.dtype);
+        ret = CallAclCreateTensor(shape, atbTensor.desc.shape, atbTensor, aclnnTensorPtr, atbTensor.desc.dtype);
         if (ret != NO_ERROR) {
             ATB_LOG(ERROR) << GetLogPrefix() << "create aclTensor by aclCreateTensor failed!";
             return ret;
@@ -138,18 +136,15 @@ aclnnStatus SoftmaxAclnnRunner::SetAclNNWorkspaceExecutor()
     aclTensor *x = this->aclnnVariantPack_.aclInTensors.at(inTensorStart++)->tensor; // self
     size_t outTensorStart = 0;
     aclTensor *output = this->aclnnVariantPack_.aclOutTensors.at(outTensorStart++)->tensor; // out
-    aclOpExecutor *raw_executor_ptr = this->aclnnExecutor_.get();
+    aclOpExecutor *raw_executor_ptr = nullptr;
     aclnnStatus ret = SoftmaxAclnnRunner::aclnnGetWorkspaceSizeFunc_(
         x, axis, output, &(this->atbVariantPack_.workspaceBufferSize), &raw_executor_ptr);
-    this->aclnnExecutor_ = std::shared_ptr<aclOpExecutor>(raw_executor_ptr, [this](aclOpExecutor *ptr) {
-        if (ptr && this->executorRepeatable_) { // 可复用时才手动销毁aclOpExecutor
-            aclDestroyAclOpExecutor(ptr);
-        }
-    });
     if (ret != ACL_SUCCESS) {
-        ATB_LOG(DEBUG) << GetLogPrefix() << "aclnnGetWorkspaceSize failed!";
+        ATB_LOG(ERROR) << GetLogPrefix() << "GetWorkspaceSize failed, error: " << ret;
         return ret;
     }
+    this->atbAclOpExecutor_ = std::make_shared<atbAclOpExecutor>(raw_executor_ptr);
+    this->executorRepeatable_ = this->atbAclOpExecutor_->IsRepeatable();
     ATB_LOG(INFO) << GetLogPrefix() << "workspaceSize: " << this->atbVariantPack_.workspaceBufferSize;
     return ret;
 }
@@ -164,7 +159,7 @@ Status SoftmaxAclnnRunner::LaunchAclnnKernel()
     void *executeStream = GetExecuteStream(this->atbVariantPack_.context);
     aclnnStatus ret = SoftmaxAclnnRunner::aclnnExecuteFunc_(this->atbVariantPack_.workspaceBuffer,
                                                             this->atbVariantPack_.workspaceBufferSize,
-                                                            this->aclnnExecutor_.get(), executeStream);
+                                                            this->atbAclOpExecutor_->Get(), executeStream);
     if (ret != ACL_SUCCESS) {
         ATB_LOG(ERROR) << GetLogPrefix() << "Atb aclnn op kernel launch failed with return value: " << ret;
         return ERROR_CANN_ERROR;

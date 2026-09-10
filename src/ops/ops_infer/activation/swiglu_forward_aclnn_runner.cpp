@@ -83,7 +83,7 @@ Status SwigluForwardAclnnRunner::BuildAclnnVariantPack(const RunnerVariantPack &
 aclnnStatus SwigluForwardAclnnRunner::SetAclNNWorkspaceExecutor()
 {
     ATB_LOG(INFO) << GetLogPrefix() << "aclnn swigluForward setup start.";
-    Status loadStatus =  SwigluForwardAclnnRunner::LoadMethod();
+    Status loadStatus = SwigluForwardAclnnRunner::LoadMethod();
     if (loadStatus != NO_ERROR) {
         ATB_LOG(ERROR) << GetLogPrefix()
                        << "load getWorkspace function from aclnn failed! Consider upgrade CANN first!";
@@ -100,21 +100,16 @@ aclnnStatus SwigluForwardAclnnRunner::SetAclNNWorkspaceExecutor()
     size_t outTensorStart = 0;
     aclTensor *output = this->aclnnVariantPack_.aclOutTensors.at(outTensorStart++)->tensor;
 
-    aclOpExecutor *raw_executor_ptr = this->aclnnExecutor_.get();
-    ATB_LOG(INFO) << GetLogPrefix() << "&(this->aclnnExecutor_): " << &(this->aclnnExecutor_)
-                  << ", addr of this->aclnnExecutor_: " << this->aclnnExecutor_
-                  << ", raw ptr from it: " << raw_executor_ptr
-                  << ", then take the address of the raw ptr: " << &raw_executor_ptr;
+    aclOpExecutor *raw_executor_ptr = nullptr;
 
-    ATB_LOG(INFO) << GetLogPrefix() << "workspaceSize addr: " << &(this->atbVariantPack_.workspaceBufferSize);
-
-    aclnnStatus ret = aclnnSwiGluGetWorkspaceSizeFunc_(
-        input, -1, output, &(this->atbVariantPack_.workspaceBufferSize), &raw_executor_ptr); // -1: dim optional
-    this->aclnnExecutor_ = std::shared_ptr<aclOpExecutor>(raw_executor_ptr, [this](aclOpExecutor *ptr) {
-        if (ptr && this->executorRepeatable_) { // 可复用时才手动销毁aclOpExecutor
-            aclDestroyAclOpExecutor(ptr);
-        }
-    });
+    aclnnStatus ret = aclnnSwiGluGetWorkspaceSizeFunc_(input, -1, output, &(this->atbVariantPack_.workspaceBufferSize),
+                                                       &raw_executor_ptr); // -1: dim optional
+    if (ret != ACL_SUCCESS) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "GetWorkspaceSize failed, error: " << ret;
+        return ret;
+    }
+    this->atbAclOpExecutor_ = std::make_shared<atbAclOpExecutor>(raw_executor_ptr);
+    this->executorRepeatable_ = this->atbAclOpExecutor_->IsRepeatable();
     ATB_LOG(INFO) << GetLogPrefix() << "workspaceSize: " << this->atbVariantPack_.workspaceBufferSize;
     return ret;
 }
@@ -122,7 +117,7 @@ aclnnStatus SwigluForwardAclnnRunner::SetAclNNWorkspaceExecutor()
 Status SwigluForwardAclnnRunner::LaunchAclnnKernel()
 {
     ATB_LOG(INFO) << GetLogPrefix() << "LaunchAclnnKernel execute start.";
-    Status loadStatus =  SwigluForwardAclnnRunner::LoadMethod();
+    Status loadStatus = SwigluForwardAclnnRunner::LoadMethod();
     if (loadStatus != NO_ERROR) {
         ATB_LOG(ERROR) << GetLogPrefix()
                        << "load getWorkspace function from aclnn failed! Consider upgrade CANN first!";
@@ -133,9 +128,8 @@ Status SwigluForwardAclnnRunner::LaunchAclnnKernel()
         return ERROR_INVALID_PARAM;
     }
     void *executeStream = GetExecuteStream(this->atbVariantPack_.context);
-    aclnnStatus ret = aclnnSwiGluFunc_(this->atbVariantPack_.workspaceBuffer,
-                                        this->atbVariantPack_.workspaceBufferSize,
-                                        this->aclnnExecutor_.get(), executeStream);
+    aclnnStatus ret = aclnnSwiGluFunc_(this->atbVariantPack_.workspaceBuffer, this->atbVariantPack_.workspaceBufferSize,
+                                       this->atbAclOpExecutor_->Get(), executeStream);
     if (ret != ACL_SUCCESS) {
         ATB_LOG(ERROR) << GetLogPrefix() << "Atb aclnn op kernel launch failed with return value: " << ret;
         return ERROR_CANN_ERROR;
@@ -150,9 +144,8 @@ Status SwigluForwardAclnnRunner::LoadMethod()
     if (aclnnSwiGluGetWorkspaceSizeFunc_ && aclnnSwiGluFunc_) {
         return NO_ERROR;
     }
-    return LoadFromSharedObjectFile(
-        "aclnnSwiGluGetWorkspaceSize", "aclnnSwiGlu",
-        aclnnSwiGluGetWorkspaceSizeFunc_, aclnnSwiGluFunc_);
+    return LoadFromSharedObjectFile("aclnnSwiGluGetWorkspaceSize", "aclnnSwiGlu", aclnnSwiGluGetWorkspaceSizeFunc_,
+                                    aclnnSwiGluFunc_);
 }
 
 REG_RUNNER_TYPE(SwigluForwardAclnnRunner);

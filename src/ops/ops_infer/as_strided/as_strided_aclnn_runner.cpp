@@ -22,17 +22,12 @@ static const uint32_t OUT_TENSOR_NUM = 1;
 namespace atb {
 
 // 初始化类函数指针
-aclnnStatus (*AsStridedAclnnRunner::aclnnGetWorkspaceSizeFunc_)(
-    aclTensor* selfRef,
-    const aclTensor* src, 
-    uint64_t* workspaceSize,
-    aclOpExecutor** executor) = nullptr;
+aclnnStatus (*AsStridedAclnnRunner::aclnnGetWorkspaceSizeFunc_)(aclTensor *selfRef, const aclTensor *src,
+                                                                uint64_t *workspaceSize,
+                                                                aclOpExecutor **executor) = nullptr;
 
-aclnnStatus (*AsStridedAclnnRunner::aclnnExecuteFunc_)(
-    void* workspace,
-    uint64_t workspaceSize,
-    aclOpExecutor* executor,
-    aclrtStream stream) = nullptr;
+aclnnStatus (*AsStridedAclnnRunner::aclnnExecuteFunc_)(void *workspace, uint64_t workspaceSize, aclOpExecutor *executor,
+                                                       aclrtStream stream) = nullptr;
 
 AsStridedAclnnRunner::AsStridedAclnnRunner(const infer::AsStridedParam &param)
     : AclnnRunner("AsStridedAclnnRunner"), param_(param)
@@ -40,7 +35,8 @@ AsStridedAclnnRunner::AsStridedAclnnRunner(const infer::AsStridedParam &param)
     ATB_LOG(INFO) << GetLogPrefix() << "AsStridedAclnnRunner::AsStridedAclnnRunner called";
 }
 
-static atb::Dims SVector2Dims(const atb::SVector<int64_t>& vector) {
+static atb::Dims SVector2Dims(const atb::SVector<int64_t> &vector)
+{
     atb::Dims dims;
     dims.dimNum = static_cast<uint64_t>(vector.size());
     for (size_t i = 0; i < dims.dimNum; ++i) {
@@ -53,7 +49,7 @@ Status AsStridedAclnnRunner::BuildAclnnVariantPack(const RunnerVariantPack &runn
 {
     ATB_LOG(INFO) << GetLogPrefix() << "BuildAclnnVariantPack";
     ATB_LOG(INFO) << GetLogPrefix() << "variantPack: " << runnerVariantPack.ToString();
-    
+
     this->atbVariantPack_ = runnerVariantPack;
     Status ret = NO_ERROR;
 
@@ -66,7 +62,7 @@ Status AsStridedAclnnRunner::BuildAclnnVariantPack(const RunnerVariantPack &runn
     // 创建输入ACL tensor
     this->aclnnVariantPack_.aclInTensors.reserve(IN_TENSOR_NUM);
     this->aclnnVariantPack_.aclInTensors.resize(IN_TENSOR_NUM);
-    
+
     for (size_t i = 0; i < IN_TENSOR_NUM; ++i) {
         ATB_LOG(INFO) << GetLogPrefix() << "AsStridedAclnnRunner::BuildAclnnVariantPack inTensor index: " << i;
         std::shared_ptr<AclNNTensor> aclnnTensorPtr = std::make_shared<AclNNTensor>();
@@ -76,14 +72,14 @@ Status AsStridedAclnnRunner::BuildAclnnVariantPack(const RunnerVariantPack &runn
 
         atb::Dims viewDims = SVector2Dims(param_.size);
 
-        ret = CallAclCreateTensor(viewDims, atbTensor.desc.shape, atbTensor, aclnnTensorPtr,
-                                  atbTensor.desc.dtype, param_.offset.at(0));
-        
+        ret = CallAclCreateTensor(viewDims, atbTensor.desc.shape, atbTensor, aclnnTensorPtr, atbTensor.desc.dtype,
+                                  param_.offset.at(0));
+
         if (ret != NO_ERROR) {
             ATB_LOG(ERROR) << GetLogPrefix() << "create aclTensor by aclCreateTensor failed!";
             return ret;
         }
-        
+
         aclnnTensorPtr->tensorIdx = static_cast<int>(i);
         aclnnTensorPtr->needUpdateTensorDataPtr = true;
         this->aclnnVariantPack_.aclInTensors[i] = aclnnTensorPtr;
@@ -92,7 +88,7 @@ Status AsStridedAclnnRunner::BuildAclnnVariantPack(const RunnerVariantPack &runn
     // 构建输出tensor
     this->aclnnVariantPack_.aclOutTensors.reserve(OUT_TENSOR_NUM);
     this->aclnnVariantPack_.aclOutTensors.resize(OUT_TENSOR_NUM);
-    
+
     for (size_t i = 0; i < this->aclnnVariantPack_.aclOutTensors.size(); ++i) {
         std::shared_ptr<AclNNTensor> aclnnTensorPtr = std::make_shared<AclNNTensor>();
         ATB_LOG(INFO) << GetLogPrefix() << "AsStridedAclnnRunner::BuildAclnnVariantPack outTensor index: " << i;
@@ -122,20 +118,21 @@ aclnnStatus AsStridedAclnnRunner::SetAclNNWorkspaceExecutor()
         return ACLNN_ERR_INNER_FIND_KERNEL_ERROR;
     }
 
-    aclOpExecutor *raw_executor_ptr = this->aclnnExecutor_.get();
+    aclOpExecutor *raw_executor_ptr = nullptr;
     // 调用aclnn获取workspace大小
     // 注意：根据函数签名，第一个参数是selfRef（输出），第二个参数是src（输入）
     aclnnStatus ret = AsStridedAclnnRunner::aclnnGetWorkspaceSizeFunc_(
-        this->aclnnVariantPack_.aclOutTensors.at(0)->tensor,       // 输出tensor (selfRef)
-        this->aclnnVariantPack_.aclInTensors.at(0)->tensor,        // 输入tensor (src)
-        &(this->atbVariantPack_.workspaceBufferSize),              // 输出的workspace大小
-        &raw_executor_ptr);                                        // 输出的executor
+        this->aclnnVariantPack_.aclOutTensors.at(0)->tensor, // 输出tensor (selfRef)
+        this->aclnnVariantPack_.aclInTensors.at(0)->tensor,  // 输入tensor (src)
+        &(this->atbVariantPack_.workspaceBufferSize),        // 输出的workspace大小
+        &raw_executor_ptr);                                  // 输出的executor
 
-    this->aclnnExecutor_ = std::shared_ptr<aclOpExecutor>(raw_executor_ptr, [this](aclOpExecutor *ptr) {
-        if (ptr && this->executorRepeatable_) { // 可复用时才手动销毁aclOpExecutor
-            aclDestroyAclOpExecutor(ptr);
-        }
-    });
+    if (ret != ACL_SUCCESS) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "GetWorkspaceSize failed, error: " << ret;
+        return ret;
+    }
+    this->atbAclOpExecutor_ = std::make_shared<atbAclOpExecutor>(raw_executor_ptr);
+    this->executorRepeatable_ = this->atbAclOpExecutor_->IsRepeatable();
 
     ATB_LOG(INFO) << GetLogPrefix() << "workspaceSize: " << this->atbVariantPack_.workspaceBufferSize;
     return ret;
@@ -147,15 +144,12 @@ Status AsStridedAclnnRunner::LaunchAclnnKernel()
     if (!AsStridedAclnnRunner::aclnnExecuteFunc_) {
         ATB_LOG(ERROR) << GetLogPrefix() << "Aclnn ExecuteFunc is null!";
         return ERROR_INVALID_PARAM;
-
     }
 
     void *executeStream = GetExecuteStream(this->atbVariantPack_.context);
-    aclnnStatus ret = AsStridedAclnnRunner::aclnnExecuteFunc_(
-        this->atbVariantPack_.workspaceBuffer,
-        this->atbVariantPack_.workspaceBufferSize,
-        this->aclnnExecutor_.get(),
-        executeStream);
+    aclnnStatus ret = AsStridedAclnnRunner::aclnnExecuteFunc_(this->atbVariantPack_.workspaceBuffer,
+                                                              this->atbVariantPack_.workspaceBufferSize,
+                                                              this->atbAclOpExecutor_->Get(), executeStream);
 
     if (ret != ACL_SUCCESS) {
         ATB_LOG(ERROR) << GetLogPrefix() << "Atb aclnn op kernel launch failed with return value: " << ret;

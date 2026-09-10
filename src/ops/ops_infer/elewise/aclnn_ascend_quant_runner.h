@@ -25,7 +25,6 @@ protected:
     Status BuildAclnnVariantPack(const RunnerVariantPack &runnerVariantPack) override;
     Status LaunchAclnnKernel() override;
     aclnnStatus SetAclNNWorkspaceExecutor() override;
-    virtual bool useCache() override;
 
 private:
     void CleanUp();
@@ -39,8 +38,8 @@ private:
     uint64_t reciprocalWorkspaceSize_ = 0;
     uint64_t castWorkspaceSize_ = 0;
     uint64_t quantWorkspaceSize_ = 0;
-    std::shared_ptr<aclOpExecutor> aclnnReciprocalExecutor_;
-    std::shared_ptr<aclOpExecutor> aclnnCastExecutor_;
+    std::shared_ptr<atbAclOpExecutor> atbAclReciprocalOpExecutor_;
+    std::shared_ptr<atbAclOpExecutor> atbAclCastOpExecutor_;
 
     // 对应aclnnop/aclnn_ascend_quant.h中的两段式接口
     static aclnnStatus (*aclnnGetWorkspaceSizeFunc_)(const aclTensor *, const aclTensor *, const aclTensor *, bool,

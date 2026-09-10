@@ -8,7 +8,6 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 #include "atb/runner/aclnn_runner.h"
-#include "atb/kernel_cache/aclnn_executor_cache.h"
 #include "atb/utils/aclnn_util.h"
 #include "atb/utils/log.h"
 #include "atb/utils/singleton.h"
@@ -52,59 +51,31 @@ Status AclnnRunner::SetupImpl(RunnerVariantPack &runnerVariantPack)
         ATB_LOG(ERROR) << GetLogPrefix() << "context is not ContextBase, setup fail";
         return ERROR_INVALID_CONTEXT_ADDR;
     }
-    Status ret = NO_ERROR;
-    const std::string &opName = this->GetName();
-    AclnnCacheSlot aclnnCacheSlot = {};
-    // executorCache hit
-    if (executorRepeatable_ &&
-        GetSingleton<AclnnExecutorCache>().FetchCacheSlot(opName, runnerVariantPack, aclnnCacheSlot) == NO_ERROR) {
-        if (!IsAclnnRunnerVariankPackEqual(this->aclnnVariantPack_, runnerVariantPack)) {
-            ATB_LOG(INFO) << GetLogPrefix()
-                          << "fetched cached runnerVariantPack not same as aclnnVariantPack_, build again";
-            ret = BuildAclnnVariantPack(runnerVariantPack);
-            if (ret != NO_ERROR) {
-                ATB_LOG(ERROR) << GetLogPrefix() << "BuildAclnnVariantPack failed!";
-                return ret;
-            }
+
+    if (executorRepeatable_) {
+        ATB_LOG(INFO) << GetLogPrefix() << "Setup reuse branch";
+        if (IsAclnnRunnerVariankPackEqual(this->aclnnVariantPack_, runnerVariantPack)) {
+            ATB_LOG(INFO) << GetLogPrefix() << "Setup reuse return";
+            return NO_ERROR;
         }
-        this->atbVariantPack_.workspaceBufferSize = aclnnCacheSlot.workspaceSize;
-        this->aclnnExecutor_ = aclnnCacheSlot.executor;
-        return NO_ERROR;
+        ATB_LOG(INFO) << GetLogPrefix()
+                      << "fetched cached runnerVariantPack not same as aclnnVariantPack_, build again";
     }
-    // cache miss，创建新的executor
-    ATB_LOG(INFO) << GetLogPrefix() << "ExecutorCache miss, BuildAclnnVariantPack directly";
-    ret = BuildAclnnVariantPack(runnerVariantPack);
+
+    executorRepeatable_ = false;
+    Status ret = BuildAclnnVariantPack(runnerVariantPack);
     if (ret != NO_ERROR) {
         ATB_LOG(ERROR) << GetLogPrefix() << "BuildAclnnVariantPack failed!";
         return ret;
     }
-    aclnnStatus aclnnRet = ACL_SUCCESS;
-    aclnnRet = SetAclNNWorkspaceExecutor();
+    aclnnStatus aclnnRet = SetAclNNWorkspaceExecutor();
     if (aclnnRet != ACL_SUCCESS) {
         ATB_LOG(ERROR) << GetLogPrefix() << "Atb aclnn op set workspace failed with return value: " << aclnnRet;
         return ERROR_CANN_ERROR;
     }
-    ATB_LOG(INFO) << GetLogPrefix() << "getWorkspaceSize success, workspaceSize: " << this->atbVariantPack_.workspaceBufferSize;
-    if (!useCache()) {
-        return ret;
-    }
-    aclnnRet = aclSetAclOpExecutorRepeatable(this->aclnnExecutor_.get());
-    if (aclnnRet != 0) {
-        // 设置算子可复用失败，标记cache中executor不可复用
-        ATB_LOG(INFO) << this->GetName() << " call aclSetAclOpExecutorRepeatable fail with error code: " << aclnnRet;
-        this->executorRepeatable_ = false;
-    } else {
-        // 设置算子可复用成功，标记cache中executor可复用
-        ATB_LOG(INFO) << this->GetName() << " call aclSetAclOpExecutorRepeatable success: ";
-        this->executorRepeatable_ = true;
-    }
-    aclnnCacheSlot = {this->atbVariantPack_.workspaceBufferSize, aclnnExecutor_};
-    ret = GetSingleton<AclnnExecutorCache>().AddCacheSlot(opName, runnerVariantPack, aclnnCacheSlot);
-    if (ret != NO_ERROR) {
-        ATB_LOG(ERROR) << GetLogPrefix() << "AclnnExecutorCache update cache failed!";
-    }
-    ATB_LOG(INFO) << GetLogPrefix() << "AclnnExecutorCache AddCacheSlot success opName: " << opName
-                  << ", runnerVariantPack: " << runnerVariantPack.ToString();
+    ATB_LOG(INFO) << GetLogPrefix() << "Setup update executor, repeatable: " << executorRepeatable_;
+    ATB_LOG(INFO) << GetLogPrefix()
+                  << "getWorkspaceSize success, workspaceSize: " << this->atbVariantPack_.workspaceBufferSize;
     return ret;
 }
 
@@ -116,6 +87,7 @@ uint64_t AclnnRunner::GetWorkspaceBufferSizeImpl()
 Status AclnnRunner::PreExecuteImpl(RunnerVariantPack &runnerVariantPack)
 {
     ATB_LOG(INFO) << GetLogPrefix() << "AclNNOpCacheUpdateAclNNVariantPack";
+    ATB_LOG(INFO) << GetLogPrefix() << "PreExecute update tensor addresses";
     aclnnStatus ret = ACL_SUCCESS;
     for (size_t i = 0; i < this->aclnnVariantPack_.aclInTensors.size(); ++i) {
         // 部分场景中存在aclnn接口使用空tensor占位最后可选tensor，但是runnerVariantPack中不存放tensor的情况，可以跳过
@@ -128,12 +100,13 @@ Status AclnnRunner::PreExecuteImpl(RunnerVariantPack &runnerVariantPack)
         }
         this->aclnnVariantPack_.aclInTensors[i]->atbTensor = runnerVariantPack.inTensors.at(i);
         if (this->aclnnVariantPack_.aclInTensors[i]->tensorListidx == AclNNTensor::notInTensorList) {
-            ret = aclSetInputTensorAddr(this->aclnnExecutor_.get(), this->aclnnVariantPack_.aclInTensors[i]->tensorIdx,
+            ret = aclSetInputTensorAddr(this->atbAclOpExecutor_->Get(),
+                                        this->aclnnVariantPack_.aclInTensors[i]->tensorIdx,
                                         this->aclnnVariantPack_.aclInTensors[i]->tensor,
                                         this->aclnnVariantPack_.aclInTensors[i]->atbTensor.deviceData);
         } else {
             ret = aclSetDynamicInputTensorAddr(
-                this->aclnnExecutor_.get(), this->aclnnVariantPack_.aclInTensors[i]->tensorListidx,
+                this->atbAclOpExecutor_->Get(), this->aclnnVariantPack_.aclInTensors[i]->tensorListidx,
                 this->aclnnVariantPack_.aclInTensors[i]->tensorIdx,
                 this->aclnnVariantPack_.aclInTensorList[this->aclnnVariantPack_.aclInTensors[i]->tensorListidx],
                 this->aclnnVariantPack_.aclInTensors[i]->atbTensor.deviceData);
@@ -154,13 +127,13 @@ Status AclnnRunner::PreExecuteImpl(RunnerVariantPack &runnerVariantPack)
         }
         this->aclnnVariantPack_.aclOutTensors[i]->atbTensor = runnerVariantPack.outTensors.at(i);
         if (this->aclnnVariantPack_.aclOutTensors[i]->tensorListidx == AclNNTensor::notInTensorList) {
-            ret =
-                aclSetOutputTensorAddr(this->aclnnExecutor_.get(), this->aclnnVariantPack_.aclOutTensors[i]->tensorIdx,
-                                       this->aclnnVariantPack_.aclOutTensors[i]->tensor,
-                                       this->aclnnVariantPack_.aclOutTensors[i]->atbTensor.deviceData);
+            ret = aclSetOutputTensorAddr(this->atbAclOpExecutor_->Get(),
+                                         this->aclnnVariantPack_.aclOutTensors[i]->tensorIdx,
+                                         this->aclnnVariantPack_.aclOutTensors[i]->tensor,
+                                         this->aclnnVariantPack_.aclOutTensors[i]->atbTensor.deviceData);
         } else {
             ret = aclSetDynamicOutputTensorAddr(
-                this->aclnnExecutor_.get(), this->aclnnVariantPack_.aclOutTensors[i]->tensorListidx,
+                this->atbAclOpExecutor_->Get(), this->aclnnVariantPack_.aclOutTensors[i]->tensorListidx,
                 this->aclnnVariantPack_.aclOutTensors[i]->tensorIdx,
                 this->aclnnVariantPack_.aclOutTensorList[this->aclnnVariantPack_.aclOutTensors[i]->tensorListidx],
                 this->aclnnVariantPack_.aclOutTensors[i]->atbTensor.deviceData);
@@ -179,11 +152,6 @@ void AclnnRunner::UpdateWorkspace(const RunnerVariantPack &runnerVariantPack)
 {
     this->atbVariantPack_.workspaceBufferSize = runnerVariantPack.workspaceBufferSize;
     this->atbVariantPack_.workspaceBuffer = runnerVariantPack.workspaceBuffer;
-}
-
-bool AclnnRunner::useCache()
-{
-    return true;
 }
 
 Status AclnnRunner::ExecuteImpl(RunnerVariantPack &runnerVariantPack)

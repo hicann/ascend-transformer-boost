@@ -92,23 +92,19 @@ aclnnStatus ReshapeAndCacheAclnnRunner::SetAclNNWorkspaceExecutor()
     char *scatterMode = nullptr;
     const aclIntArray *stridesOptional = nullptr;
     const aclIntArray *offsetsOptional = nullptr;
-    aclOpExecutor *rawExecutorPtr = aclnnExecutor_.get();
+    aclOpExecutor *rawExecutorPtr = nullptr;
 
     aclnnStatus ret = aclnnScatterPaKvCacheGetWorkspaceSizeFunc_(
         key, keyCacheRef, slotMapping, value, valueCacheRef, compressLensOptional, compressSeqOffsetOptional,
         seqLensOptional, cacheMode, scatterMode, stridesOptional, offsetsOptional,
         &(atbVariantPack_.workspaceBufferSize), &rawExecutorPtr);
-    aclnnExecutor_ = std::shared_ptr<aclOpExecutor>(
-        rawExecutorPtr, [this, executorRepeatable = this->executorRepeatable_](aclOpExecutor *ptr) {
-            if (ptr && executorRepeatable) {
-                aclDestroyAclOpExecutor(ptr);
-            }
-        });
-    if (ret == ACLNN_SUCCESS) {
-        ATB_LOG(INFO) << GetLogPrefix() << "workspaceSize: " << atbVariantPack_.workspaceBufferSize;
-    } else {
-        ATB_LOG(ERROR) << GetLogPrefix() << "SetAclNNWorkspaceExecutor failed, ret: " << ret;
+    if (ret != ACL_SUCCESS) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "GetWorkspaceSize failed, error: " << ret;
+        return ret;
     }
+    this->atbAclOpExecutor_ = std::make_shared<atbAclOpExecutor>(rawExecutorPtr);
+    this->executorRepeatable_ = this->atbAclOpExecutor_->IsRepeatable();
+    ATB_LOG(INFO) << GetLogPrefix() << "workspaceSize: " << atbVariantPack_.workspaceBufferSize;
     return ret;
 }
 
@@ -117,7 +113,7 @@ Status ReshapeAndCacheAclnnRunner::LaunchAclnnKernel()
     ATB_LOG(INFO) << GetLogPrefix() << "ReshapeAndCacheAclnnRunner::LaunchAclnnKernel";
     aclrtStream executeStream = GetExecuteStream(atbVariantPack_.context);
     aclnnStatus ret = aclnnScatterPaKvCacheFunc_(atbVariantPack_.workspaceBuffer, atbVariantPack_.workspaceBufferSize,
-                                                 aclnnExecutor_.get(), executeStream);
+                                                 atbAclOpExecutor_->Get(), executeStream);
     if (ret == ACLNN_SUCCESS) {
         return NO_ERROR;
     }

@@ -89,7 +89,7 @@ aclnnStatus SplitAclnnRunner::SetAclNNWorkspaceExecutor()
     aclTensorList *out = aclnnVariantPack_.aclOutTensorList.at(outAclTensorListIndex_);
     aclnnStatus ret = ACLNN_SUCCESS;
     int64_t dim = static_cast<int64_t>(param_.splitDim);
-    aclOpExecutor *rawExecutorPtr = aclnnExecutor_.get();
+    aclOpExecutor *rawExecutorPtr = nullptr;
     if (splitWithSize_) {
         ret = CreateSplitSizeAclIntArray();
         if (ret != ACLNN_SUCCESS) {
@@ -97,6 +97,10 @@ aclnnStatus SplitAclnnRunner::SetAclNNWorkspaceExecutor()
         }
         ret = aclnnSplitWithSizeGetWorkspaceSizeFunc_(self, splitSize_, dim, out,
                                                       &(atbVariantPack_.workspaceBufferSize), &rawExecutorPtr);
+        if (ret != ACL_SUCCESS) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "GetWorkspaceSize failed, error: " << ret;
+            return ret;
+        }
     } else {
         int32_t splitNum = param_.splitNum;
         Dims selfShape = aclnnVariantPack_.aclInTensors.at(selfAclTensorIndex_)->atbTensor.desc.shape;
@@ -106,18 +110,15 @@ aclnnStatus SplitAclnnRunner::SetAclNNWorkspaceExecutor()
         uint64_t splitSections = static_cast<uint64_t>(selfShape.dims[dim] / splitNum);
         ret = aclnnSplitTensorGetWorkspaceSizeFunc_(self, splitSections, dim, out,
                                                     &(atbVariantPack_.workspaceBufferSize), &rawExecutorPtr);
+        if (ret != ACL_SUCCESS) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "GetWorkspaceSize failed, error: " << ret;
+            return ret;
+        }
     }
 
-    aclnnExecutor_ = std::shared_ptr<aclOpExecutor>(rawExecutorPtr, [this](aclOpExecutor *ptr) {
-        if (ptr && executorRepeatable_) {
-            aclDestroyAclOpExecutor(ptr);
-        }
-    });
-    if (ret == ACLNN_SUCCESS) {
-        ATB_LOG(INFO) << GetLogPrefix() << "workspaceSize: " << atbVariantPack_.workspaceBufferSize;
-    } else {
-        ATB_LOG(ERROR) << GetLogPrefix() << "SetAclNNWorkspaceExecutor failed, ret: " << ret;
-    }
+    this->atbAclOpExecutor_ = std::make_shared<atbAclOpExecutor>(rawExecutorPtr);
+    this->executorRepeatable_ = this->atbAclOpExecutor_->IsRepeatable();
+    ATB_LOG(INFO) << GetLogPrefix() << "workspaceSize: " << atbVariantPack_.workspaceBufferSize;
     return ret;
 }
 
@@ -128,10 +129,10 @@ Status SplitAclnnRunner::LaunchAclnnKernel()
     aclnnStatus ret = ACLNN_SUCCESS;
     if (splitWithSize_) {
         ret = aclnnSplitWithSizeFunc_(atbVariantPack_.workspaceBuffer, atbVariantPack_.workspaceBufferSize,
-                                      aclnnExecutor_.get(), executeStream);
+                                      atbAclOpExecutor_->Get(), executeStream);
     } else {
         ret = aclnnSplitTensorFunc_(atbVariantPack_.workspaceBuffer, atbVariantPack_.workspaceBufferSize,
-                                    aclnnExecutor_.get(), executeStream);
+                                    atbAclOpExecutor_->Get(), executeStream);
     }
     if (ret == ACLNN_SUCCESS) {
         return NO_ERROR;

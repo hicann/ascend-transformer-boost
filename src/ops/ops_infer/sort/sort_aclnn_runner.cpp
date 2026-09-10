@@ -137,25 +137,16 @@ aclnnStatus SortAclnnRunner::SetAclNNWorkspaceExecutor()
     bool sorted = true;
     aclnnStatus ret = 0;
 
-    aclOpExecutor *rawExecutorPtr = this->aclnnExecutor_.get();
+    aclOpExecutor *rawExecutorPtr = nullptr;
     ret = SortAclnnRunner::aclnnGetWorkspaceSizeFunc_(x, k, dim, largest, sorted, output, indices_,
                                                       &(this->topkWorkspaceSize_), &rawExecutorPtr);
     if (ret != ACL_SUCCESS) {
         ATB_LOG(DEBUG) << GetLogPrefix() << "aclnnGetWorkspaceSize failed!";
         return ret;
     }
-    ret = aclSetAclOpExecutorRepeatable(rawExecutorPtr);
-    if (ret != ACL_SUCCESS) {
-        ATB_LOG(ERROR) << GetLogPrefix() << "Set Topk AclOpExecutorRepeatable failed!";
-        return ret;
-    }
-    this->aclnnExecutor_ = std::shared_ptr<aclOpExecutor>(rawExecutorPtr, [this](aclOpExecutor *ptr) {
-        if (ptr) { // 可复用时才手动销毁aclOpExecutor
-            aclDestroyAclOpExecutor(ptr);
-        }
-    });
+    this->atbAclOpExecutor_ = std::make_shared<atbAclOpExecutor>(rawExecutorPtr);
     // indices_->tensor holds the aclnnTopK return in INT64, we need aclnnCast to turn aclnn
-    aclOpExecutor *rawCastExecutorPtr = this->aclnnCastExecutor_.get();
+    aclOpExecutor *rawCastExecutorPtr = nullptr;
     aclTensor *out = this->aclnnVariantPack_.aclOutTensors.at(INDEX_ONE)->tensor; // indicesOut
     ret = SortAclnnRunner::aclnnCastGetWorkspaceSizeFunc_(indices_, ACL_INT32, out, &(this->castWorkspaceSize_),
                                                           &rawCastExecutorPtr);
@@ -164,18 +155,8 @@ aclnnStatus SortAclnnRunner::SetAclNNWorkspaceExecutor()
         return ret;
     }
 
-    // setCastExecutorRepeatable same as the topkExecutorRepeatable, this is essential for cache to work
-    ret = aclSetAclOpExecutorRepeatable(rawCastExecutorPtr);
-    if (ret != ACL_SUCCESS) {
-        ATB_LOG(ERROR) << GetLogPrefix() << "Set Cast AclOpExecutorRepeatable failed!";
-        return ret;
-    }
-
-    this->aclnnCastExecutor_ = std::shared_ptr<aclOpExecutor>(rawCastExecutorPtr, [this](aclOpExecutor *ptr) {
-        if (ptr) { // 可复用时才手动销毁aclOpExecutor
-            aclDestroyAclOpExecutor(ptr);
-        }
-    });
+    this->atbAclCastOpExecutor_ = std::make_shared<atbAclOpExecutor>(rawCastExecutorPtr);
+    this->executorRepeatable_ = this->atbAclOpExecutor_->IsRepeatable() && this->atbAclCastOpExecutor_->IsRepeatable();
 
     this->atbVariantPack_.workspaceBufferSize =
         this->topkWorkspaceSize_ + this->castWorkspaceSize_ + this->indicesBufferSize_;
@@ -188,14 +169,14 @@ Status SortAclnnRunner::LaunchAclnnKernel()
     ATB_LOG(INFO) << GetLogPrefix() << "LaunchAclnnKernel execute start.";
     aclrtStream executeStream = GetExecuteStream(this->atbVariantPack_.context);
     aclnnStatus ret = ACL_SUCCESS;
-    ret = aclSetOutputTensorAddr(this->aclnnExecutor_.get(), INDEX_ONE, this->indices_,
+    ret = aclSetOutputTensorAddr(this->atbAclOpExecutor_->Get(), INDEX_ONE, this->indices_,
                                  this->atbVariantPack_.workspaceBuffer + this->topkWorkspaceSize_ +
                                      this->castWorkspaceSize_);
     if (ret != ACL_SUCCESS) {
         ATB_LOG(ERROR) << GetLogPrefix() << "aclSetOutputTensorAddr failed with return value: " << ret;
         return ERROR_CANN_ERROR;
     }
-    ret = aclSetInputTensorAddr(this->aclnnCastExecutor_.get(), INDEX_ZERO, this->indices_,
+    ret = aclSetInputTensorAddr(this->atbAclCastOpExecutor_->Get(), INDEX_ZERO, this->indices_,
                                 this->atbVariantPack_.workspaceBuffer + this->topkWorkspaceSize_ +
                                     this->castWorkspaceSize_);
     if (ret != ACL_SUCCESS) {
@@ -203,14 +184,14 @@ Status SortAclnnRunner::LaunchAclnnKernel()
         return ERROR_CANN_ERROR;
     }
     ret = SortAclnnRunner::aclnnExecuteFunc_(this->atbVariantPack_.workspaceBuffer, this->topkWorkspaceSize_,
-                                             this->aclnnExecutor_.get(), executeStream);
+                                             this->atbAclOpExecutor_->Get(), executeStream);
     if (ret != ACL_SUCCESS) {
         ATB_LOG(ERROR) << GetLogPrefix() << "Atb aclnn op kernel launch failed with return value: " << ret;
         return ERROR_CANN_ERROR;
     }
-    ret =
-        SortAclnnRunner::aclnnCastExecuteFunc_(this->atbVariantPack_.workspaceBuffer + this->topkWorkspaceSize_,
-                                               this->castWorkspaceSize_, this->aclnnCastExecutor_.get(), executeStream);
+    ret = SortAclnnRunner::aclnnCastExecuteFunc_(this->atbVariantPack_.workspaceBuffer + this->topkWorkspaceSize_,
+                                                 this->castWorkspaceSize_, this->atbAclCastOpExecutor_->Get(),
+                                                 executeStream);
     if (ret != ACL_SUCCESS) {
         ATB_LOG(ERROR) << GetLogPrefix() << "Atb aclnn op kernel launch failed with return value: " << ret;
         return ERROR_CANN_ERROR;
@@ -220,10 +201,6 @@ Status SortAclnnRunner::LaunchAclnnKernel()
     return NO_ERROR;
 }
 
-bool SortAclnnRunner::useCache()
-{
-    return false;
-}
 
 Status SortAclnnRunner::LoadMethod()
 {

@@ -30,7 +30,6 @@ protected:
     Status BuildAclnnVariantPack(const RunnerVariantPack &runnerVariantPack) override;
     aclnnStatus SetAclNNWorkspaceExecutor() override;
     Status LaunchAclnnKernel() override;
-    virtual bool useCache() override;
     void CleanUp();
 
 private:
@@ -46,8 +45,8 @@ private:
     uint64_t sliceWorkspaceSize_ = 0;
     uint64_t cast1stWorkspaceSize_ = 0;
     uint64_t cast2ndWorkspaceSize_ = 0;
-    std::shared_ptr<aclOpExecutor> aclnnCastExecutor1st_;
-    std::shared_ptr<aclOpExecutor> aclnnCastExecutor2nd_;
+    std::shared_ptr<atbAclOpExecutor> atbAclCast1stOpExecutor_;
+    std::shared_ptr<atbAclOpExecutor> atbAclCast2ndOpExecutor_;
 
     static AclnnSliceV2GetWorkspaceSizeFunc aclnnGetWorkspaceSizeFunc_;
     static AclnnSliceV2Func aclnnExecuteFunc_;
