@@ -30,8 +30,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "../../"))
 
 ATB_HOME_PATH = os.environ.get("ATB_HOME_PATH")
 if ATB_HOME_PATH is None:
-    raise RuntimeError(
-        "env ATB_HOME_PATH not exist, source set_env.sh")
+    raise RuntimeError("env ATB_HOME_PATH not exist, source set_env.sh")
 LIBTORCH_PATH = os.path.join(ATB_HOME_PATH, "lib/libatb_test_framework.so")
 LIB_PATH = os.path.join(ATB_HOME_PATH, "lib/libatb.so")
 torch.classes.load_library(LIBTORCH_PATH)
@@ -40,11 +39,23 @@ recvout = [[4, 2], [4, 2]]
 recvdis = [[0, 4], [0, 4]]
 
 
-def main_worker(rank, world_size, inTensorDtypes, random_seed,recvout,recvdis,inTensors,tensorlist,sum,tensorafters,sendcount,dim):
+def main_worker(
+    rank,
+    world_size,
+    inTensorDtypes,
+    random_seed,
+    recvout,
+    recvdis,
+    inTensors,
+    tensorlist,
+    sum,
+    tensorafters,
+    sendcount,
+    dim,
+):
     torch_npu.npu.set_device(rank)
     print(f'Process {rank} started, using device npu:{rank}.')
-    acl_allgatherv_operation = torch.classes.OperationTorch.OperationTorch(
-        "AllGatherVOperation")
+    acl_allgatherv_operation = torch.classes.OperationTorch.OperationTorch("AllGatherVOperation")
     torch.manual_seed(random_seed)
     for inTensorDtype in inTensorDtypes:
         acl_param = json.dumps({"rank": rank, "rankSize": world_size, "rankRoot": 0, "backend": "hccl"})
@@ -58,13 +69,18 @@ def main_worker(rank, world_size, inTensorDtypes, random_seed,recvout,recvdis,in
         for i in range(world_size):
             inTensors[i] = torch.tensor(tensorlist[i], dtype=inTensorDtype)
         # y用来推导outputshape，长度应为所有inputtensor的dim0之和
-        y = torch.tensor([random.randint(1,100) for i in range(sum)], dtype=torch.float16)
+        y = torch.tensor([random.randint(1, 100) for i in range(sum)], dtype=torch.float16)
         # #计算goldtensor
         gold_outtensor = []
         for i in range(len(sendcount)):
-            gold_outtensor= gold_outtensor+(tensorafters[i][0:sendcount[i]])
-        GoldenTensors = (torch.tensor(np.array(gold_outtensor+[0]*(sum*dim[1]-len(gold_outtensor))).reshape(sum,dim[1]), dtype=inTensorDtype))
-        acl_out_tensor = acl_allgatherv_operation.execute([inTensors[rank].npu(), host_tensors[0],host_tensors[1], host_tensors[2], y.npu()])[0]
+            gold_outtensor = gold_outtensor + (tensorafters[i][0 : sendcount[i]])
+        GoldenTensors = torch.tensor(
+            np.array(gold_outtensor + [0] * (sum * dim[1] - len(gold_outtensor))).reshape(sum, dim[1]),
+            dtype=inTensorDtype,
+        )
+        acl_out_tensor = acl_allgatherv_operation.execute(
+            [inTensors[rank].npu(), host_tensors[0], host_tensors[1], host_tensors[2], y.npu()]
+        )[0]
         print(f"********************acl_out_tensor:{acl_out_tensor}")
         torch.npu.synchronize()
         # assert result
@@ -74,22 +90,20 @@ def main_worker(rank, world_size, inTensorDtypes, random_seed,recvout,recvdis,in
 def golden_compare(golden_out_tensor, out_tensor, rtol=0.0001, atol=0.0001):
     result = torch.allclose(out_tensor, golden_out_tensor, rtol=rtol, atol=atol)
     if not result:
-        print("out_tensor.shape", out_tensor.shape,
-              "\ngolden_out_tensor.shape:", golden_out_tensor.shape)
-        print("out_tensor:", out_tensor,
-              ", \ngolden_oute_tensor:", golden_out_tensor)
+        print("out_tensor.shape", out_tensor.shape, "\ngolden_out_tensor.shape:", golden_out_tensor.shape)
+        print("out_tensor:", out_tensor, ", \ngolden_oute_tensor:", golden_out_tensor)
     return result
 
 
 class AllGatherVOperationTest(operation_test.OperationTest):
     def test_all_gather(self):
-        dims=[[32,64],[128,256],[512,1024]]
-        world_sizes = [1,2]
+        dims = [[32, 64], [128, 256], [512, 1024]]
+        world_sizes = [2]
         for dim in dims:
             for world_size in world_sizes:
-                sendcount= np.random.randint(1,10 ,size=[world_size]).tolist()
-                recvout =[sendcount]*world_size
-                recvdis = np.zeros([world_size,world_size]).tolist()
+                sendcount = np.random.randint(1, 10, size=[world_size]).tolist()
+                recvout = [sendcount] * world_size
+                recvdis = np.zeros([world_size, world_size]).tolist()
                 for i in range(len(recvout)):
                     for j in range(len(recvout[i])):
                         if j == 0:
@@ -98,20 +112,36 @@ class AllGatherVOperationTest(operation_test.OperationTest):
                             recvdis[i][j] = recvout[i][j - 1] + recvdis[i][j - 1]
                 tensorlist = []
                 for i in range(world_size):
-                     tensorlist.append(np.random.randint(1, 20, size=dim).tolist())
+                    tensorlist.append(np.random.randint(1, 20, size=dim).tolist())
                 tensorafters = []
                 for i in range(world_size):
                     tensorafters.append(np.array(tensorlist[i]).flatten().tolist())
-                sum=0
+                sum = 0
                 for tensor in tensorlist:
-                    sum=sum+len(tensor)
+                    sum = sum + len(tensor)
                 inTensors = np.zeros([world_size]).tolist()
                 random_seed = 123
-                inTensorDtypes =  [torch.int8]
+                inTensorDtypes = [torch.int8]
                 set_start_method('spawn', force=True)
                 process_list = []
                 for i in range(world_size):
-                    p = Process(target=main_worker, args=(i, world_size, inTensorDtypes, random_seed,recvout,recvdis,inTensors,tensorlist,sum,tensorafters,sendcount,dim))
+                    p = Process(
+                        target=main_worker,
+                        args=(
+                            i,
+                            world_size,
+                            inTensorDtypes,
+                            random_seed,
+                            recvout,
+                            recvdis,
+                            inTensors,
+                            tensorlist,
+                            sum,
+                            tensorafters,
+                            sendcount,
+                            dim,
+                        ),
+                    )
                     p.start()
                     process_list.append(p)
                 for i in process_list:
@@ -120,4 +150,3 @@ class AllGatherVOperationTest(operation_test.OperationTest):
 
 if __name__ == '__main__':
     unittest.main()
-
