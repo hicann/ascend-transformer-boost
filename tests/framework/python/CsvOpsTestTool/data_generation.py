@@ -9440,7 +9440,10 @@ class GroupedMatmulWithRoutingOperation(DataGen):
                     b = weight[e]
                     if transposeB:
                         b = b.transpose_(0, 1)
-                    ref.append(torch.mm(a.float(), b.float()).numpy())
+                    if activation.dtype == torch.float16:
+                        ref.append(torch.mm(a, b).numpy())
+                    else:
+                        ref.append(torch.mm(a.float(), b.float()).numpy())
                     e_start += experts_count[e]
                 ref = np.concatenate(ref)
                 return [torch.tensor(ref).to(activation.dtype)]
