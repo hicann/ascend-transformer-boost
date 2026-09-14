@@ -145,8 +145,8 @@ Status AllGatherVOperation::SetupCheckImpl(const SVector<Tensor> &inTensors, con
         return ERROR_INVALID_TENSOR_DIM;
     }
     int64_t count = 0;
-    int64_t* recvCounts = static_cast<int64_t*>(inTensors[2].hostData);
-    int64_t* rdispls = static_cast<int64_t*>(inTensors[3].hostData);
+    int64_t *recvCounts = static_cast<int64_t *>(inTensors[2].hostData);
+    int64_t *rdispls = static_cast<int64_t *>(inTensors[3].hostData);
     if (*(static_cast<int64_t *>(inTensors[1].hostData)) > (CalculateTensorSize(inTensors))) {
         ATB_LOG(ERROR) << "sendcount should be less than intensor total data length";
         return ERROR_INVALID_TENSOR_DIM;
@@ -157,20 +157,25 @@ Status AllGatherVOperation::SetupCheckImpl(const SVector<Tensor> &inTensors, con
         return ERROR_INVALID_PARAM;
     }
     for (int i = 0; i < param_.rankSize; ++i) {
+        if (recvCounts[i] < 0 || rdispls[i] < 0) {
+            ATB_LOG(ERROR) << "recvcounts and rdispls must not be negative";
+            return ERROR_INVALID_PARAM;
+        }
         if (count > std::numeric_limits<int64_t>::max() - recvCounts[i]) {
             ATB_LOG(ERROR) << " ,AllGatherVOperation sum(recvCounts) will overflow ";
             return ERROR_INVALID_PARAM;
         }
         count += recvCounts[i];
-        if (recvCounts[i] < 0) {
-            ATB_LOG(ERROR) << "recvcounts must more than zero";
+        if (recvCounts[i] > std::numeric_limits<int64_t>::max() - rdispls[i]) {
+            ATB_LOG(ERROR) << "AllGatherVOperation recvCounts + rdispls will overflow";
             return ERROR_INVALID_PARAM;
         }
-        if (recvCounts[i] + rdispls[i] > CalculateTensorSize(outTensors)) {
+        const int64_t recvEnd = recvCounts[i] + rdispls[i];
+        if (recvEnd > CalculateTensorSize(outTensors)) {
             ATB_LOG(ERROR) << "The sum of recvconts and recvdisp should be less than output length";
             return ERROR_INVALID_TENSOR_DIM;
         }
-        if (recvCounts[i] > std::numeric_limits<int64_t>::max() - rdispls[i] || recvCounts[i] + rdispls[i] > count) {
+        if (recvEnd > count) {
             ATB_LOG(ERROR) << "AllGatherVOperation recvCounts + rdispls is out of bounds";
             return ERROR_INVALID_PARAM;
         }
@@ -179,7 +184,7 @@ Status AllGatherVOperation::SetupCheckImpl(const SVector<Tensor> &inTensors, con
         ATB_LOG(ERROR) << "AllGatherVOperation sum(recvCounts) should be more than 0";
         return ERROR_INVALID_PARAM;
     }
-    if (recvCounts[param_.rank] !=  *(static_cast<int64_t *>(inTensors[1].hostData))) {
+    if (recvCounts[param_.rank] != *(static_cast<int64_t *>(inTensors[1].hostData))) {
         ATB_LOG(ERROR) << param_.rank << "sendcount must equal to recivecount";
         return ERROR_INVALID_PARAM;
     }
