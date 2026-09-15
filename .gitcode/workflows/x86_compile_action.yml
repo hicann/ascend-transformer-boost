@@ -47,6 +47,6 @@ jobs:
             BuildAccelerate bash compile.sh
           AC_SERVER_IP: ${{ vars.AC_SERVER_IP }}
     if: "${{ default() }}"
-    runs-on: [dedicate-hosted, x64, xlarge]
+    runs-on: [self_hosted, arch=x64, spec=xlarge]
     container:
       image: swr.cn-north-4.myhuaweicloud.com/hw-ascend/${{ inputs.image_version }}
