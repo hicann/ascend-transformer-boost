@@ -482,6 +482,7 @@ if("${PACKAGE_COMPILE}" STREQUAL "ON" AND NOT "${LOCAL_RELEASE_COMPILE}" STREQUA
         ${CMAKE_CURRENT_LIST_DIR}/platform/tiling
         ${KERNEL_TILING_DIR}
         ${DEVKIT_DIR}
+        ${DEVKIT_DIR}/include
         ${DEVKIT_DIR}/tiling
         ${PROJECT_SOURCE_DIR}/3rdparty/canndev/ops
         ${PROJECT_SOURCE_DIR}/3rdparty/canndev/ops/conversion/fill/op_kernel
