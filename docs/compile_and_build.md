@@ -38,7 +38,7 @@ The basic ATB build command is `bash build.sh`. The default build mode generates
 - `--torch_atb`: Builds pybind11 and generates a .whl package. Then, you can use the Python APIs after installing it using pip.
 - `--customizeops_tests`: Builds unit tests for `ops_customize`.
 - `default` (default): Builds the ATB.
-- `testframework`: Builds the test framework, generates version information, and packages the test framework.
+- `testframework`: Builds the test framework and the C++ unit test binaries (`atb_unittest`, `atb_cinterface`, and `kernels_unittest`), generates version information, and packages the test framework. The test binaries are built but not run; run them with `unittest` or `kernelunittest` (optionally with `--skip_build`).
 - `unittest`: Builds and runs unit tests and kernel interface tests.
 - `kernelunittest`: Builds and runs kernel unit tests.
 - `pythontest`: Builds and runs Python tests.

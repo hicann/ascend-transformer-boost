@@ -842,7 +842,7 @@ function fn_main()
             SRC_ONLY=ON
             ;;
         "--customizeops_tests")
-            [[ ! -d "$THIRD_PARTY_DIR" ]] && mkdir $THIRD_PARTY_DIR
+            mkdir -p "$THIRD_PARTY_DIR"
             fn_build_googletest
             COMPILE_OPTIONS="${COMPILE_OPTIONS} -DBUILD_CUSTOMIZE_OPS_TEST=ON"
             ;;
@@ -854,9 +854,7 @@ function fn_main()
     }
     done
 
-    [[ ! -d "$CACHE_DIR" ]] && mkdir $CACHE_DIR
-    [[ ! -d "$OUTPUT_DIR" ]] && mkdir $OUTPUT_DIR
-    [[ ! -d "$THIRD_PARTY_DIR" ]] && mkdir $THIRD_PARTY_DIR
+    mkdir -p "$CACHE_DIR" "$OUTPUT_DIR" "$THIRD_PARTY_DIR"
     fn_init_env
 
     COMPILE_OPTIONS="${COMPILE_OPTIONS} -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE \
@@ -870,7 +868,8 @@ function fn_main()
             fn_make_run_package
             ;;
         "testframework")
-            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DBUILD_TEST_FRAMEWORK=ON"
+            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DBUILD_TEST_FRAMEWORK=ON -DUSE_UNIT_TEST=ON -DUSE_KERNEL_UNIT_TEST=ON"
+            fn_build_3rdparty_for_test
             fn_build
             generate_atb_version_info
             pack_testframework
