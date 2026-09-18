@@ -11,6 +11,13 @@
 cmake_minimum_required(VERSION 3.15)
 project("torch_atb")
 set(CMAKE_CXX_STANDARD 17)
+option(USE_CXX11_ABI "USE_CXX11_ABI" ON)
+
+if(USE_CXX11_ABI)
+    add_compile_definitions(_GLIBCXX_USE_CXX11_ABI=1)
+else()
+    add_compile_definitions(_GLIBCXX_USE_CXX11_ABI=0)
+endif()
 
 IF(CMAKE_BUILD_TYPE STREQUAL "Release")
     ADD_LINK_OPTIONS(-s)

@@ -147,7 +147,8 @@ function fn_build_torch_atb()
     cmake -S "${TORCH_ATB_CODE_ROOT}" -B "${BUILD_DIR}" \
         ${CC:+-DCMAKE_C_COMPILER="${CC}"} \
         ${CXX:+-DCMAKE_CXX_COMPILER="${CXX}"} \
-        -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE
+        -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE \
+        -DUSE_CXX11_ABI=$USE_CXX11_ABI
 
     cmake --build "${BUILD_DIR}" --parallel ${COMPILE_VERBOSE}
     cmake --install "${BUILD_DIR}"
@@ -196,10 +197,11 @@ function rename_whl_file() {
 function fn_gen_atb_whl()
 {
     cd $CODE_ROOT/output
+    local LOCAL_ABI=$([[ "$USE_CXX11_ABI" == "ON" ]] && echo "cxx_abi_1" || echo "cxx_abi_0")
     cp -rf $CODE_ROOT/pyproject.toml .
     mkdir -p ./torch_atb
     cp -rf $CODE_ROOT/torch_atb/* ./torch_atb
-    cp -rf ./atb/cxx_abi_1/* ./torch_atb
+    cp -rf ./atb/$LOCAL_ABI/* ./torch_atb
     pip wheel --no-deps --no-build-isolation --wheel-dir ./whl .
     rename_whl_file
     rm -rf ./torch_atb
@@ -218,7 +220,7 @@ function fn_build()
     cmake $CODE_ROOT $COMPILE_OPTIONS
     cmake --build . --parallel $(nproc)
     cmake --install .
-    if [ "$USE_CXX11_ABI" == "ON" ]; then
+    if [ "$USE_CXX11_ABI" == "ON" -o "$USE_CXX11_ABI" == "OFF" ]; then
         fn_build_torch_atb
         fn_gen_atb_whl
     fi
