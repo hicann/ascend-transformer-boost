@@ -434,7 +434,7 @@ def run_group_serial(cmds, visible_devices, error_event=None, cat_on_failure=Tru
     return True, None
 
 
-def run_two_groups(group1_cmds, group2_cmds):
+def run_legacy_two_groups(group1_cmds, group2_cmds):
     try:
         log_dir = _get_log_dir()
     except OSError as e:
@@ -470,6 +470,53 @@ def run_two_groups(group1_cmds, group2_cmds):
 
     if not results.get("group1", False) or not results.get("group2", False):
         logging.error(f"Parallel groups failed: group1={results.get('group1')}, group2={results.get('group2')}")
+        if error_log_path[0]:
+            logging.error("========== Error log from failed task ==========")
+            _cat_log(error_log_path[0])
+        _terminate_active_processes()
+        exit(1)
+    logging.info(
+        "======================================== Parallel Groups Completed ========================================"
+    )
+
+
+def run_n_groups(groups):
+    """Run multiple device groups in parallel.
+
+    groups: [(cmds, devices, group_name), ...]. Each group runs cmds serially on its devices.
+    """
+    _get_log_dir()
+    results = {}
+    error_event = threading.Event()
+    error_log_path = [None]
+
+    def _run_group(cmds, devices, group_name):
+        rc, failed_log = run_group_serial(cmds, devices, error_event=error_event, cat_on_failure=False)
+        results[group_name] = rc
+        if not rc and failed_log:
+            error_log_path[0] = failed_log
+
+    threads = [
+        threading.Thread(target=_run_group, args=(cmds, devices, group_name)) for cmds, devices, group_name in groups
+    ]
+
+    logging.info(
+        "======================================== Starting Parallel Groups ========================================"
+    )
+    for cmds, devices, group_name in groups:
+        logging.info(f"Group {group_name} (devices={devices}): {[parse_cmd_entry(e)[1] for e in cmds]}")
+    logging.info(
+        "========================================================================================================"
+    )
+
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+
+    failed = [name for name, rc in results.items() if not rc]
+    if failed:
+        logging.error(f"Parallel groups failed: {failed}")
         if error_log_path[0]:
             logging.error("========== Error log from failed task ==========")
             _cat_log(error_log_path[0])
