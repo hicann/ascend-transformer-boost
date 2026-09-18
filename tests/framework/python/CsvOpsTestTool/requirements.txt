@@ -1,5 +1,5 @@
-numpy
-pandas
+numpy>=1.19.2,<=1.24.0
+pandas<3
 openpyxl
 scipy
 ml_dtypes
