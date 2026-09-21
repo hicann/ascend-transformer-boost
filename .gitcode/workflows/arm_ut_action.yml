@@ -44,6 +44,6 @@ jobs:
           export WORKSPACE=${{ steps.process_checkout.outputs.path }}
           sudo -E bash ${{ steps.process_checkout.outputs.path }}/ut.sh
     if: "${{ default() }}"
-    runs-on: ['self-hosted','arch=arm','smoke=204']
+    runs-on: ['self-hosted','npu=4','smoke=204']
     container:
       image: swr.cn-north-4.myhuaweicloud.com/hw-ascend/${{ inputs.image_version }}
