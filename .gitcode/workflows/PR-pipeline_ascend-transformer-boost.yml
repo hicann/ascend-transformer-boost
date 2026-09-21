@@ -11,7 +11,7 @@ concurrency:
 on:
   pull_request_comment:
     types: [created]
-    branches: [ '*' ]
+    branches: [ '**' ]
     comments: [ '^(?:\/)?compile*' ]
   pr_comment:
     types: [ created ]
@@ -71,16 +71,18 @@ stages:
         with:
           task_name: 'Compile_ARM'
           image_version: ${{ jobs.JOB_image.outputs.Compile_Ascend_ARM }}
-      JOB_UT_ARM_910B:
-        name: UT_ARM_910B
-        uses: .gitcode/workflows/arm_ut_action.yml
+      JOB_Compile_UT_X86:
+        name: Compile_UT_X86
+        uses: .gitcode/workflows/x86_compile_ut.yml
         with:
+          task_name: 'Compile_UT_X86'
+          image_version: ${{ jobs.JOB_image.outputs.Compile_Ascend_X86 }}
+      JOB_Compile_UT_ARM:
+        name: Compile_UT_ARM
+        uses: .gitcode/workflows/arm_compile_ut.yml
+        with:
+          task_name: 'Compile_UT_ARM' 
           image_version: ${{ jobs.JOB_image.outputs.Compile_Ascend_ARM }}
-      # JOB_UT_Test:
-      #   name: x86_310p_UT
-      #   uses: .gitcode/workflows/x86_ut_action.yml
-      #   with:
-      #     image_version: ${{ jobs.JOB_image.outputs.UT_Test }}
       JOB_codecheck_action:
         name: CodeCheck
         uses: .gitcode/workflows/codecheck_action.yml
@@ -96,6 +98,19 @@ stages:
     pre:
     - type: auto
     fail-fast: true
+  stage3:
+    name: UT
+    jobs: 
+      JOB_UT_ARM_910B:
+        name: UT_ARM_910B
+        uses: .gitcode/workflows/arm_ut_action.yml
+        with:
+          image_version: ${{ jobs.JOB_image.outputs.Compile_Ascend_ARM }}
+      JOB_UT_Test:
+        name: x86_310p_UT
+        uses: .gitcode/workflows/x86_ut_action.yml
+        with:
+          image_version: ${{ jobs.JOB_image.outputs.Compile_Ascend_X86 }}
 post:
   jobs:
     job_post:

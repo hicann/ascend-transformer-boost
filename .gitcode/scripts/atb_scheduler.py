@@ -409,7 +409,7 @@ def build_pythontest_ops_cmd(ops, op_dict):
 
 
 def build_legacy_torchatbtest_all_cmd():
-    cmd = ["bash", f"{os.getcwd()}/scripts/build.sh", "torchatbtest", "--torch_atb_gcc_path=/usr/bin"]
+    cmd = ["bash", f"{os.getcwd()}/scripts/build.sh", "torchatbtest", "--skip_build", "--torch_atb_gcc_path=/usr/bin"]
     return (cmd, "all torchatbtest")
 
 
@@ -657,21 +657,30 @@ def _run_legacy_all_test():
     run_legacy_two_groups(group1_cmds, group2_cmds)
 
 
+def _need_build_testframework():
+    set_env_sh = os.path.join(os.getcwd(), "output", "atb", "set_env.sh")
+    if os.path.isfile(set_env_sh):
+        logging.info(f"{set_env_sh} already exists, skip build testframework.")
+        return False
+    return True
+
+
 def schedule_all_test(config):
     logging.info(
         "---------------------------------------- Starting Test: All Tests (Parallel) ----------------------------------------"
     )
 
-    cmd = [
-        "bash",
-        f"{os.getcwd()}/scripts/build.sh",
-        "testframework",
-        "--no_werror",
-        "--torch_atb",
-        "--torch_atb_gcc_path=/usr/bin",
-    ]
-    if not run_test_cmd(cmd, test_mode="build for testframework"):
-        return
+    if _need_build_testframework():
+        cmd = [
+            "bash",
+            f"{os.getcwd()}/scripts/build.sh",
+            "testframework",
+            "--no_werror",
+            "--torch_atb",
+            "--torch_atb_gcc_path=/usr/bin",
+        ]
+        if not run_test_cmd(cmd, test_mode="build for testframework"):
+            return
 
     if not shell_source(f"{os.getcwd()}/output/atb/set_env.sh"):
         logging.error("source output/atb/set_env.sh failed!")
@@ -832,9 +841,10 @@ def schedule_precise_test(config):
     ops = config["ops"]
     op_dict = config["op_dict"]
 
-    cmd = ["bash", f"{os.getcwd()}/scripts/build.sh", "testframework", "--no_werror"]
-    if not run_test_cmd(cmd, test_mode="scripts/build.sh for testframework"):
-        return
+    if _need_build_testframework():
+        cmd = ["bash", f"{os.getcwd()}/scripts/build.sh", "testframework", "--no_werror"]
+        if not run_test_cmd(cmd, test_mode="scripts/build.sh for testframework"):
+            return
 
     if not shell_source(f"{os.getcwd()}/output/atb/set_env.sh"):
         logging.error("source output/atb/set_env.sh failed!")
@@ -849,7 +859,7 @@ def schedule_precise_test(config):
     group1_cmds = []
     group2_cmds = []
 
-    group1_cmds.append((["bash", f"{os.getcwd()}/scripts/build.sh", "unittest"], "unit-test"))
+    group1_cmds.append((["bash", f"{os.getcwd()}/scripts/build.sh", "unittest", "--skip_build"], "unit-test"))
 
     if config["run_all_csvtest"]:
         group1_cmds.append(build_legacy_csvtest_all_cmd())
@@ -891,7 +901,7 @@ def schedule_precise_test(config):
             logging.info(
                 "---------------------------------------- Starting Run-Common-lib-Unit-Test ----------------------------------------"
             )
-            cmd = ["bash", f"{os.getcwd()}/scripts/build.sh", "kernelunittest"]
+            cmd = ["bash", f"{os.getcwd()}/scripts/build.sh", "kernelunittest", "--skip_build"]
             run_test_cmd(cmd, test_mode="scripts/build.sh for kernel-unit-test")
         else:
             logging.info(

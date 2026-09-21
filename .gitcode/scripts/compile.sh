@@ -1,8 +1,11 @@
 #!/bin/bash
 set -ex
 
+source ${WORKSPACE}/.gitcode/scripts/common.sh
+check_docs_changes ${WORKSPACE}/pr_filelist.txt
+
 cd ${WORKSPACE}
-cann_version="9.1.0"
+cann_version="${cann_version:-9.1.0}"
 
 mkdir 3rdparty && cd 3rdparty
 wget -q https://ascend-cann-open.obs.cn-north-4.myhuaweicloud.com/ascend-cann/3rdparty/$(arch)/v1.13.0.tar.gz
