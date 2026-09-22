@@ -1,7 +1,7 @@
 #!/bin/bash
 set -ex
 
-source ${WORKSPACE}/.gitcode/scripts/common.sh
+source ${WORKSPACE}/common.sh
 check_docs_changes ${WORKSPACE}/pr_filelist.txt
 
 cd ${WORKSPACE}
