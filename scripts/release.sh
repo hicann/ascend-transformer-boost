@@ -259,14 +259,15 @@ function fn_make_run_package()
         exit 1
     fi
     branch=$(git symbolic-ref -q --short HEAD || git describe --tags --exact-match 2> /dev/null || echo $branch)
-    commit_id=$(git rev-parse HEAD)
+    commit_id=$(git rev-parse HEAD 2> /dev/null || echo "unknown")
     touch $OUTPUT_DIR/version.info
     cat>$OUTPUT_DIR/version.info<<EOF
     Ascend-cann-atb : ${VERSION}
     Ascend-cann-atb Version : ${VERSION_B}
     Platform : ${ARCH}
+    repository_url : https://gitcode.com/cann/ascend-transformer-boost
     branch : ${branch}
-    commit id : ${commit_id}
+    commit_id : ${commit_id}
 EOF
 
     mkdir -p $OUTPUT_DIR/scripts

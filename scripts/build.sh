@@ -424,12 +424,13 @@ function export_atb_hitest_env()
 function generate_atb_version_info()
 {
     branch=$(git symbolic-ref -q --short HEAD || git describe --tags --exact-match 2> /dev/null || echo $branch)
-    commit_id=$(git rev-parse HEAD)
+    commit_id=$(git rev-parse HEAD 2> /dev/null || echo "unknown")
     touch $OUTPUT_DIR/version.info
     cat>$OUTPUT_DIR/version.info<<EOF
     Platform : ${ARCH}
+    repository_url : https://gitcode.com/cann/ascend-transformer-boost
     branch : ${branch}
-    commit id : ${commit_id}
+    commit_id : ${commit_id}
 EOF
 }
 
