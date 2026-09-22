@@ -43,7 +43,7 @@ jobs:
         with:
           command: |
             export WORKSPACE=${{ steps.process_checkout.outputs.path }}
-            export TARGET_BRANCH=${{ env.target_branch }}
+            export TARGET_BRANCH=${{ env.TARGET_BRANCH }}
             cd ${{ steps.process_checkout.outputs.path }}
             BuildAccelerate bash compile.sh
           AC_SERVER_IP: ${{ vars.AC_SERVER_IP }}
