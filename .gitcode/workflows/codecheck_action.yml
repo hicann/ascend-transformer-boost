@@ -55,7 +55,7 @@ jobs:
     if: "${{ default() }}"
     runs-on: [self-hosted, arch=x64, spec=small]
     container:
-      image: swr.cn-north-4.myhuaweicloud.com/ci_cann/${{ inputs.precommit_image_version }}
+      image: swr.cn-north-4.myhuaweicloud.com/ci_cann/ubuntu20.04.05_x86:alpha117
   JOB_check_pr:
     name: CodeCheck_check_pr
     steps:
