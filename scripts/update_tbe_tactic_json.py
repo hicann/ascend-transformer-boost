@@ -17,16 +17,27 @@ from collections import namedtuple
 
 from build_util import get_build_target_list
 
-logging.basicConfig(level=logging.INFO,
-                    format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-JsonSpecification = namedtuple(
-    "JsonSpecification", ["mode", "inputs", "outputs", "attrs", "dir", "deterministic"])
+JsonSpecification = namedtuple("JsonSpecification", ["mode", "inputs", "outputs", "attrs", "dir", "deterministic"])
 
-TacticDef = namedtuple("TacticDef", [
-    "ops_name", "operation", "input_num", "output_num", "dtypes_in",
-    "dtypes_out", "formats_in", "formats_out", "mode", "attrs", "soc_support", "deterministic"])
-
+TacticDef = namedtuple(
+    "TacticDef",
+    [
+        "ops_name",
+        "operation",
+        "input_num",
+        "output_num",
+        "dtypes_in",
+        "dtypes_out",
+        "formats_in",
+        "formats_out",
+        "mode",
+        "attrs",
+        "soc_support",
+        "deterministic",
+    ],
+)
 
 
 def get_code_root():
@@ -78,7 +89,7 @@ def read_tbe_json_file(json_file_path):
             if not file_name.endswith(".json") or file_name.endswith("failed.json"):
                 continue
             json_file = os.path.join(json_file_path, file_name)
-            with open(json_file) as f:
+            with open(json_file, encoding="utf-8") as f:
                 text = json.load(f)
                 item = text["supportInfo"]
                 inputs = item["inputs"]
@@ -87,7 +98,8 @@ def read_tbe_json_file(json_file_path):
                 attrs = item["attrs"] if "attrs" in item else None
                 deterministic = item["deterministic"] if "deterministic" in item else None
                 json_info = JsonSpecification(
-                    mode=mode, inputs=inputs, outputs=outputs, attrs=attrs, dir=file_name, deterministic=deterministic)
+                    mode=mode, inputs=inputs, outputs=outputs, attrs=attrs, dir=file_name, deterministic=deterministic
+                )
                 ops_specification_list.append(json_info)
     except FileNotFoundError:
         logging.error("file %s is not found!", json_file)
@@ -199,23 +211,42 @@ def get_match_json(json_info_dir, tactic_info):
         return match_json_dir, result
     count_check = 0
     for json_info in ops_specification_list:
-        matched = impl_mode_matched_or_not(json_info.mode, tactic_info.mode) \
-                  and inputs_outputs_matched_or_not(
-            json_info.inputs, tactic_info.input_num, tactic_info.dtypes_in, tactic_info.formats_in) \
-                  and inputs_outputs_matched_or_not(
-            json_info.outputs, tactic_info.output_num, tactic_info.dtypes_out, tactic_info.formats_out) \
-                  and attrs_matched_or_not(json_info.attrs, tactic_info.attrs) \
-                  and deterministic_matched_or_not(json_info.deterministic, tactic_info.deterministic)
+        matched = (
+            impl_mode_matched_or_not(json_info.mode, tactic_info.mode)
+            and inputs_outputs_matched_or_not(
+                json_info.inputs, tactic_info.input_num, tactic_info.dtypes_in, tactic_info.formats_in
+            )
+            and inputs_outputs_matched_or_not(
+                json_info.outputs, tactic_info.output_num, tactic_info.dtypes_out, tactic_info.formats_out
+            )
+            and attrs_matched_or_not(json_info.attrs, tactic_info.attrs)
+            and deterministic_matched_or_not(json_info.deterministic, tactic_info.deterministic)
+        )
 
         if matched:
             match_json_dir, result = json_info.dir, True
             count_check += 1
 
     if count_check != 1:
-        logging.error(
-            f"{json_info_dir}: matched json file number is {count_check}, which should be 1")
+        logging.error(f"{json_info_dir}: matched json file number is {count_check}, which should be 1")
         result = False
     return match_json_dir, result
+
+
+def get_op_json_dir(tbe_kernel_path, target_version, ops):
+    soc_dir = os.path.join(tbe_kernel_path, target_version)
+    if not os.path.isdir(soc_dir):
+        return None
+    try:
+        for group_name in sorted(os.listdir(soc_dir)):
+            group_dir = os.path.join(soc_dir, group_name)
+            if os.path.isdir(group_dir):
+                candidate = os.path.join(group_dir, ops)
+                if os.path.isdir(candidate):
+                    return candidate
+    except OSError:
+        pass
+    return None
 
 
 def get_tbe_tactic_json(input_args, tbe_config_ini):
@@ -246,29 +277,25 @@ def get_tbe_tactic_json(input_args, tbe_config_ini):
     target_version_list = get_build_target_list()
     logging.info("target version list: %s", target_version_list)
     for target_version in target_version_list:
+        soc_dir = os.path.join(tbe_kernel_path, target_version)
+        if not os.path.isdir(soc_dir):
+            logging.warning("[%s] soc dir %s not exist in %s, skip", target_version, soc_dir, tbe_kernel_path)
+            continue
         try:
             for tactic_name in tbe_config_ini.sections():
                 try:
                     ops = tbe_config_ini.get(tactic_name, "ops")
-                    operation_name = tbe_config_ini.get(
-                        tactic_name, "operationName")
-                    input_num = int(tbe_config_ini.get(
-                        tactic_name, "inputCount"))
-                    output_num = int(tbe_config_ini.get(
-                        tactic_name, "outputCount"))
+                    operation_name = tbe_config_ini.get(tactic_name, "operationName")
+                    input_num = int(tbe_config_ini.get(tactic_name, "inputCount"))
+                    output_num = int(tbe_config_ini.get(tactic_name, "outputCount"))
                     input_dtypes = tbe_config_ini.get(tactic_name, "dtypeIn")
                     output_dtypes = tbe_config_ini.get(tactic_name, "dtypeOut")
-                    input_formats = tbe_config_ini.get(
-                        tactic_name, "formatIn", fallback=None)
-                    output_formats = tbe_config_ini.get(
-                        tactic_name, "formatOut", fallback=None)
-                    mode = tbe_config_ini.get(
-                        tactic_name, "mode", fallback=None)
-                    attrs = tbe_config_ini.get(
-                        tactic_name, "attrs", fallback=None)
+                    input_formats = tbe_config_ini.get(tactic_name, "formatIn", fallback=None)
+                    output_formats = tbe_config_ini.get(tactic_name, "formatOut", fallback=None)
+                    mode = tbe_config_ini.get(tactic_name, "mode", fallback=None)
+                    attrs = tbe_config_ini.get(tactic_name, "attrs", fallback=None)
                     soc_support = tbe_config_ini.get(tactic_name, "socSupport", fallback=None)
-                    deterministic = tbe_config_ini.get(
-                        tactic_name, "deterministic", fallback='ignore')
+                    deterministic = tbe_config_ini.get(tactic_name, "deterministic", fallback='ignore')
                 except configparser.NoOptionError:
                     logging.error("configparser option is not found: %s", tactic_name)
                     continue
@@ -286,35 +313,52 @@ def get_tbe_tactic_json(input_args, tbe_config_ini):
 
                 input_dtype_arr = input_dtypes.split(",")
                 output_dtype_arr = output_dtypes.split(",")
-                input_format_arr = input_formats.split(
-                    ",") if input_formats else None
-                output_format_arr = output_formats.split(
-                    ",") if output_formats else None
+                input_format_arr = input_formats.split(",") if input_formats else None
+                output_format_arr = output_formats.split(",") if output_formats else None
                 attr_arr = attrs.split(',') if attrs else None
 
-                tactic_info = TacticDef(ops_name=ops, operation=operation_name,
-                                        input_num=input_num, output_num=output_num,
-                                        dtypes_in=input_dtype_arr, dtypes_out=output_dtype_arr,
-                                        formats_in=input_format_arr, formats_out=output_format_arr,
-                                        mode=mode, attrs=attr_arr, soc_support=soc_support,
-                                        deterministic=deterministic)
+                tactic_info = TacticDef(
+                    ops_name=ops,
+                    operation=operation_name,
+                    input_num=input_num,
+                    output_num=output_num,
+                    dtypes_in=input_dtype_arr,
+                    dtypes_out=output_dtype_arr,
+                    formats_in=input_format_arr,
+                    formats_out=output_format_arr,
+                    mode=mode,
+                    attrs=attr_arr,
+                    soc_support=soc_support,
+                    deterministic=deterministic,
+                )
                 if tactic_info.soc_support and target_version not in tactic_info.soc_support.split(","):
                     continue
-                json_info_dir = os.path.join(
-                    tbe_kernel_path, target_version, ops)
-                match_json_dir, ret = get_match_json(
-                    json_info_dir, tactic_info)
-                if not ret:
+                json_info_dir = get_op_json_dir(tbe_kernel_path, target_version, ops)
+                if json_info_dir is None:
                     logging.error(
-                        f"[{target_version}] get tactic failed: {tactic_name}")
+                        "[%s] json dir not found for op %s under %s/%s",
+                        target_version,
+                        ops,
+                        tbe_kernel_path,
+                        target_version,
+                    )
+                    exit(1)
+                match_json_dir, ret = get_match_json(json_info_dir, tactic_info)
+                if not ret:
+                    logging.error(f"[{target_version}] get tactic failed: {tactic_name}")
                     exit(1)
                 if not json_paths_info.has_section(operation_name):
                     json_paths_info.add_section(operation_name)
+                relative_json_dir = os.path.relpath(json_info_dir, soc_dir)
                 json_paths_info.set(
-                    operation_name, tactic_name + "." + target_version,
-                    os.path.join(ops, match_json_dir))
-                print(os.path.join(build_cache_obj_dir, target_version, operation_name,
-                                   match_json_dir)[:-5] + '_' + tactic_name.lower() + '.cpp')
+                    operation_name, tactic_name + "." + target_version, os.path.join(relative_json_dir, match_json_dir)
+                )
+                print(
+                    os.path.join(build_cache_obj_dir, target_version, operation_name, match_json_dir)[:-5]
+                    + '_'
+                    + tactic_name.lower()
+                    + '.cpp'
+                )
 
         except configparser.NoSectionError:
             result = False
@@ -326,8 +370,7 @@ def get_tbe_tactic_json(input_args, tbe_config_ini):
 
 
 def write_tbe_tactic_json(input_args, json_paths_info):
-    fd = os.open(input_args.dst_ini_path, os.O_WRONLY | os.O_CREAT |
-                 os.O_TRUNC, stat.S_IWUSR | stat.S_IRUSR)
+    fd = os.open(input_args.dst_ini_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, stat.S_IWUSR | stat.S_IRUSR)
     with os.fdopen(fd, 'w+') as f:
         try:
             json_paths_info.write(f, space_around_delimiters=False)
@@ -340,15 +383,13 @@ def write_tbe_tactic_json(input_args, json_paths_info):
 def main():
     code_root_dir = get_code_root()
     tactic_info_path = os.path.join(code_root_dir, "src/kernels/configs/ops/tbe_tactic_info.ini")
-    
+
     build_cache_dir, _ = get_build_cache_path()
     tactic_json_path = os.path.join(build_cache_dir, "tbe_tactic_json.ini")
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--src_ini_path', type=str, required=False,
-                        default=tactic_info_path)
-    parser.add_argument('--dst_ini_path', type=str, required=False,
-                        default=tactic_json_path)
+    parser.add_argument('--src_ini_path', type=str, required=False, default=tactic_info_path)
+    parser.add_argument('--dst_ini_path', type=str, required=False, default=tactic_json_path)
     input_args = parser.parse_args()
 
     tbe_config_ini, ret = read_tbe_config_file(input_args)
