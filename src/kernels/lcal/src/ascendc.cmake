@@ -43,10 +43,23 @@ else()
     set(CCE_INCLUDE_BASE ${ASCEND_HOME_PATH}/${ARCH}-linux)
 endif()
 
+set(TOOLCHAIN_CXX_BASE "${ASCEND_HOME_PATH}/toolkit/toolchain/hcc/aarch64-target-linux-gnu/include/c++")
+if(NOT EXISTS "${TOOLCHAIN_CXX_BASE}")
+    set(TOOLCHAIN_CXX_BASE "${ASCEND_HOME_PATH}/tools/hcc/aarch64-target-linux-gnu/include/c++")
+endif()
+
+file(GLOB HCC_CXX_DIRS "${TOOLCHAIN_CXX_BASE}/*")
+foreach(DIR ${HCC_CXX_DIRS})
+    if(IS_DIRECTORY "${DIR}")
+        include_directories(${DIR})
+        if(IS_DIRECTORY "${DIR}/aarch64-target-linux-gnu")
+            include_directories("${DIR}/aarch64-target-linux-gnu")
+        endif()
+    endif()
+endforeach()
+
 message(STATUS "Using tikcpp include directories")
 include_directories(
-    ${ASCEND_HOME_PATH}/toolkit/toolchain/hcc/aarch64-target-linux-gnu/include/c++/7.3.0
-    ${ASCEND_HOME_PATH}/toolkit/toolchain/hcc/aarch64-target-linux-gnu/include/c++/7.3.0/aarch64-target-linux-gnu/
     ${CCE_INCLUDE_BASE}/tikcpp/tikcfw/
     ${CCE_INCLUDE_BASE}/tikcpp/tikcfw/interface/
     ${CCE_INCLUDE_BASE}/tikcpp/tikcfw/impl/
