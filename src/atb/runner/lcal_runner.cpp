@@ -13,22 +13,19 @@
 #include <atb/utils/log.h>
 #include <acl/acl.h>
 #include "atb/utils/config.h"
-#include "atb/utils/comm_pool.h"
 #include "atb/utils/common_utils.h"
-#include "atb/utils/singleton.h"
 #include "atb/utils/operation_register.h"
 
 namespace atb {
-LcalRunner::LcalRunner(const std::string &name, int32_t rank, int32_t rankSize,
-                       const infer::CommMode commMode, const std::string &commDomain, Context &context)
-    : Runner(name), rank_(rank), rankSize_(rankSize), commMode_(commMode),
-      commDomain_(commDomain)
+LcalRunner::LcalRunner(const std::string &name, int32_t rank, int32_t rankSize, const infer::CommMode commMode,
+                       const std::string &commDomain, Context &context)
+    : Runner(name), rank_(rank), rankSize_(rankSize), commMode_(commMode), commDomain_(commDomain)
 {
     magicNumberDisabled_ = context.GetLaunchMode() == GRAPH_LAUNCH_MODE;
     runnerTypeIdx_ = RunnerTypeRegister::GetRunnerTypeIdx(name);
-    ATB_LOG(INFO) << GetLogPrefix() << "LcalRunner::LcalRunner " << runnerTypeIdx_ << " called, rank : "
-                  << rank << "/" << rankSize << " commMode: " << commMode_
-                  << " commDomain: " << commDomain_ << " magicNumberDisabled: " << magicNumberDisabled_;
+    ATB_LOG(INFO) << GetLogPrefix() << "LcalRunner::LcalRunner " << runnerTypeIdx_ << " called, rank : " << rank << "/"
+                  << rankSize << " commMode: " << commMode_ << " commDomain: " << commDomain_
+                  << " magicNumberDisabled: " << magicNumberDisabled_;
     InitLcalComm();
 }
 
@@ -41,12 +38,11 @@ Lcal::LcalComm *LcalRunner::GetLcalComm()
 
 void LcalRunner::InitLcalComm()
 {
-    lcalComm_ = GetSingleton<CommPool<Lcal::LcalComm>>().GetComm(std::to_string(rank_) + "_" + commDomain_,
-                                                                 std::bind(&LcalRunner::CreateLcalComm, this));
+    lcalComm_ = CreateLcalComm();
     if (lcalComm_) {
-        ATB_LOG(INFO) << GetLogPrefix() << "get lcal comm from comm pool success, rank : " << rank_;
+        ATB_LOG(INFO) << GetLogPrefix() << "create lcal comm success, rank : " << rank_;
     } else {
-        ATB_LOG(ERROR) << GetLogPrefix() << "get lcal comm from comm pool failed, rank : " << rank_;
+        ATB_LOG(ERROR) << GetLogPrefix() << "create lcal comm failed, rank : " << rank_;
     }
 }
 
@@ -70,8 +66,7 @@ std::pair<int32_t, int32_t> LcalRunner::ParseCommDomain(const std::string &commD
     if (colonPos != std::string::npos) {
         std::string idStr = commDomain.substr(0, colonPos);
         std::string sizeStr = commDomain.substr(colonPos + 1);
-        if (idStr.empty() || sizeStr.empty() ||
-            !std::all_of(idStr.begin(), idStr.end(), ::isdigit) ||
+        if (idStr.empty() || sizeStr.empty() || !std::all_of(idStr.begin(), idStr.end(), ::isdigit) ||
             !std::all_of(sizeStr.begin(), sizeStr.end(), ::isdigit)) {
             ATB_LOG(ERROR) << "commDomain must contain numeric id and size";
             return {-1, -1};
@@ -104,14 +99,14 @@ std::shared_ptr<Lcal::LcalComm> LcalRunner::CreateLcalComm()
     LcalCommPtr comm = nullptr;
     if (commMode_ == infer::CommMode::COMM_MULTI_PROCESS) {
         auto commonId = ParseCommDomain(commDomain_);
-        ATB_LOG(INFO) << GetLogPrefix() << "Lccl COMM_MULTI_PROCESS commDomain is : "
-            << commonId.first << ":" << commonId.second;
+        ATB_LOG(INFO) << GetLogPrefix() << "Lccl COMM_MULTI_PROCESS commDomain is : " << commonId.first << ":"
+                      << commonId.second;
         if (commonId.first == -1) {
             ATB_LOG(ERROR) << GetLogPrefix() << "Invalid commDomain: " << commonId.first;
             return std::shared_ptr<Lcal::LcalComm>();
         }
-        lcalErrorCode_ = LcalCommInitRankWithCustDomainSize(commonId.first, commonId.second, rankSize_,
-                                                            rank_, &comm, magicNumberDisabled_);
+        lcalErrorCode_ = LcalCommInitRankWithCustDomainSize(commonId.first, commonId.second, rankSize_, rank_, &comm,
+                                                            magicNumberDisabled_);
     } else if (commMode_ == infer::CommMode::COMM_MULTI_THREAD) {
         lcalErrorCode_ = LcalCommInitThread(rank_, rankSize_, commDomain_.c_str(), &comm);
     } else {
@@ -122,7 +117,11 @@ std::shared_ptr<Lcal::LcalComm> LcalRunner::CreateLcalComm()
         ATB_LOG(ERROR) << GetLogPrefix() << "init LcalComm failed, lcalErrorCode : " << lcalErrorCode_;
         return std::shared_ptr<Lcal::LcalComm>();
     }
-    return std::shared_ptr<Lcal::LcalComm>(static_cast<Lcal::LcalComm *>(comm));
+    return std::shared_ptr<Lcal::LcalComm>(static_cast<Lcal::LcalComm *>(comm), [](Lcal::LcalComm *ptr) {
+        if (ptr != nullptr) {
+            delete ptr;
+        }
+    });
 }
 
 Status LcalRunner::SetupImpl(RunnerVariantPack &runnerVariantPack)
