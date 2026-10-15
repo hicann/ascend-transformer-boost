@@ -12,19 +12,15 @@
 #include <mki/utils/file_system/file_system.h>
 #include <atb/utils/log.h>
 #include <mki/utils/share_memory/share_memory.h>
-#include "atb/utils/comm_pool.h"
 #include "atb/utils.h"
 #include "atb/utils/log.h"
 #include "atb/utils/config.h"
 #include "atb/utils/common_utils.h"
-#include "atb/utils/singleton.h"
 #include "atb/utils/operation_register.h"
 
 namespace atb {
-HcclRunner::HcclRunner(const std::string &name, int rank, int rankSize, int rankRoot,
-                       const std::string &commDomain)
-    : Runner(name), rank_(rank), rankSize_(rankSize), rankRoot_(rankRoot),
-      commDomain_(commDomain)
+HcclRunner::HcclRunner(const std::string &name, int rank, int rankSize, int rankRoot, const std::string &commDomain)
+    : Runner(name), rank_(rank), rankSize_(rankSize), rankRoot_(rankRoot), commDomain_(commDomain)
 {
     runnerTypeIdx_ = RunnerTypeRegister::GetRunnerTypeIdx(name);
     ATB_LOG(INFO) << GetLogPrefix() << "construct, use rank:" << rank << ", rankSize:" << rankSize
@@ -43,8 +39,7 @@ HcclRunner::HcclRunner(const std::string &name, int rank, const std::string &ran
     Init();
 }
 
-HcclRunner::HcclRunner(const std::string &name, HcclComm hcclComm)
-    : Runner(name)
+HcclRunner::HcclRunner(const std::string &name, HcclComm hcclComm) : Runner(name)
 {
     if (!hcclComm) {
         ATB_LOG(ERROR) << GetLogPrefix() << "construct fail, hcclComm is null";
@@ -73,12 +68,11 @@ HcclCommSharedPtr HcclRunner::GetHcclCommSharedPtr() const
 
 void HcclRunner::Init()
 {
-    hcclComm_ = GetSingleton<CommPool<void>>().GetComm(std::to_string(rank_) + "_" + commDomain_,
-                                                       std::bind(&HcclRunner::CreateHcclComm, this));
+    hcclComm_ = CreateHcclComm();
     if (hcclComm_) {
-        ATB_LOG(INFO) << GetLogPrefix() << "get hccl comm success by rank:" << rank_;
+        ATB_LOG(INFO) << GetLogPrefix() << "create hccl comm success by rank:" << rank_;
     } else {
-        ATB_LOG(ERROR) << GetLogPrefix() << "get hccl comm fail by rank:" << rank_;
+        ATB_LOG(ERROR) << GetLogPrefix() << "create hccl comm fail by rank:" << rank_;
     }
 }
 
@@ -118,13 +112,13 @@ HcclCommSharedPtr HcclRunner::CreateHcclCommInMulitProcessByRankFile() const
 #else
     ATB_LOG(INFO) << GetLogPrefix() << "HcclCommInitClusterInfo success, rank:" << rank_ << ", rankSize:" << rankSize_;
 #endif
-    return HcclCommSharedPtr(newHcclComm, [=](void *hcclComm) {
-        (void)hcclComm;
-#ifdef _DEBUG
-        ATB_LOG(INFO) << "destroy hcclComm, but not call HcclCommDestroy hcclComm:" << hcclComm;
-#else
-        ATB_LOG(INFO) << "destroy hcclComm, but not call HcclCommDestroy";
-#endif
+    return HcclCommSharedPtr(newHcclComm, [](void *hcclComm) {
+        auto ret = HcclCommDestroy(static_cast<HcclComm>(hcclComm));
+        if (ret != HCCL_SUCCESS) {
+            ATB_LOG(ERROR) << "HcclCommDestroy fail, error:" << ret;
+        } else {
+            ATB_LOG(INFO) << "HcclCommDestroy success";
+        }
     });
 }
 
@@ -149,13 +143,13 @@ HcclCommSharedPtr HcclRunner::CreateHcclCommInMulitProcessByRootInfo()
     ATB_LOG(INFO) << GetLogPrefix() << "HcclCommInitRootInfo success, rank:" << rank_ << ", rankSize:" << rankSize_;
 #endif
 
-    return HcclCommSharedPtr(newHcclComm, [=](void *hcclComm) {
-        (void)hcclComm;
-#ifdef _DEBUG
-        ATB_LOG(INFO) << "destroy hcclComm, but not call HcclCommDestroy hcclComm:" << hcclComm;
-#else
-        ATB_LOG(INFO) << "destroy hcclComm, but not call HcclCommDestroy";
-#endif
+    return HcclCommSharedPtr(newHcclComm, [](void *hcclComm) {
+        auto ret = HcclCommDestroy(static_cast<HcclComm>(hcclComm));
+        if (ret != HCCL_SUCCESS) {
+            ATB_LOG(ERROR) << "HcclCommDestroy fail, error:" << ret;
+        } else {
+            ATB_LOG(INFO) << "HcclCommDestroy success";
+        }
     });
 }
 

@@ -10,13 +10,13 @@
 #include <functional>
 #include <string>
 #include <sstream>
+#include <map>
+#include <mutex>
 #include <atb/comm.h>
 #include <hccl/hccl.h>
 #include <mki/utils/file_system/file_system.h>
 #include <atb/utils/log.h>
 #include <mki/utils/share_memory/share_memory.h>
-#include "atb/utils/singleton.h"
-#include "atb/utils/comm_pool.h"
 
 namespace atb {
 struct CommInitInfo {
@@ -158,8 +158,7 @@ HcclComm Comm::CreateHcclComm(int32_t rank, int32_t rankRoot, int32_t rankSize, 
     return newHcclComm;
 }
 
-HcclComm Comm::CreateHcclCommByRankTableFile(int32_t rank, int32_t rankSize, const char *rankTableFile,
-                                             char *commName)
+HcclComm Comm::CreateHcclCommByRankTableFile(int32_t rank, int32_t rankSize, const char *rankTableFile, char *commName)
 {
     if (rankTableFile == nullptr) {
         ATB_LOG(ERROR) << "rankTableFile is nullptr, please check the file path";
@@ -197,31 +196,33 @@ static HcclCommConfig *GetHcclCommConfig(const uint32_t hcclBufferSize)
     return &commConfig;
 }
 
-std::shared_ptr<void> CreateHcclCommByClusterInfo(uint32_t subCommRankId, const char *rankTableFile,
-                                                  std::vector<uint32_t> &rankIds)
+static std::mutex g_commMutex;
+static std::map<std::string, HcclComm> g_rankTableFileToGlobalCommMap;
+static std::map<HcclComm, HcclComm> g_subToGlobalCommMap;
+static std::map<HcclComm, int> g_globalCommRefCount;
+
+static HcclComm GetHcclCommByClusterInfo(const std::string &resolvePath)
 {
-    if (rankTableFile == nullptr) {
-        ATB_LOG(ERROR) << "rankTableFile is NULL";
-        return std::shared_ptr<HcclComm>();
+    std::lock_guard<std::mutex> lock(g_commMutex);
+    auto it = g_rankTableFileToGlobalCommMap.find(resolvePath);
+    if (it != g_rankTableFileToGlobalCommMap.end()) {
+        return it->second;
     }
-    std::string rankTableFileStr(rankTableFile);
-    ATB_LOG(INFO) << "create hccl comm by clusterInfo, rankTableFile:" << rankTableFileStr;
-    std::string resolvePath = Mki::FileSystem::PathCheckAndRegular(rankTableFileStr);
-    if (resolvePath.empty()) {
-        ATB_LOG(ERROR) << "rank table file is inValid, file path:" << rankTableFileStr;
-        return std::shared_ptr<HcclComm>();
-    }
+    return nullptr;
+}
+
+static HcclComm CreateHcclCommByClusterInfo(uint32_t subCommRankId, const std::string &resolvePath,
+                                            const std::vector<uint32_t> &rankIds)
+{
     HcclComm newHcclComm = nullptr;
     auto ret = HcclCommInitClusterInfo(resolvePath.c_str(), rankIds[subCommRankId], &newHcclComm);
     if (ret != HCCL_SUCCESS || newHcclComm == nullptr) {
-        ATB_LOG(ERROR) << "HcclCommInitClusterInfoConfig failed, should check rankTableFile config, error code:"
-                       << ret;
-        return std::shared_ptr<HcclComm>();
+        ATB_LOG(ERROR) << "HcclCommInitClusterInfo failed, should check rankTableFile config, error code:" << ret;
+        return nullptr;
     }
-    return std::shared_ptr<HcclComm>(static_cast<HcclComm *>(newHcclComm), [=](void *hcclComm) {
-        (void)hcclComm;
-        ATB_LOG(INFO) << "destroy hcclComm, but not call HcclCommDestroy hcclComm:" << hcclComm;
-    });
+    std::lock_guard<std::mutex> lock(g_commMutex);
+    g_rankTableFileToGlobalCommMap[resolvePath] = newHcclComm;
+    return newHcclComm;
 }
 
 static void PrintRankIds(const std::vector<uint32_t> &rankIds)
@@ -253,10 +254,10 @@ HcclComm Comm::CreateHcclCrossMulitComm(const char *rankTableFile, uint32_t subC
                        << "and cannot exceed the rankIds max index.";
         return nullptr;
     }
-    HcclComm globalHcclComm = GetSingleton<atb::CommPool<void>>()
-                                  .GetComm(rankTableFileStr, std::bind(CreateHcclCommByClusterInfo, subCommRankId,
-                                                                       rankTableFile, rankIds))
-                                  .get();
+    HcclComm globalHcclComm = GetHcclCommByClusterInfo(resolvePath);
+    if (globalHcclComm == nullptr) {
+        globalHcclComm = CreateHcclCommByClusterInfo(subCommRankId, resolvePath, rankIds);
+    }
     if (globalHcclComm) {
         ATB_LOG(INFO) << "get hccl comm success by subCommRankId:" << subCommRankId;
     } else {
@@ -269,7 +270,22 @@ HcclComm Comm::CreateHcclCrossMulitComm(const char *rankTableFile, uint32_t subC
                                        GetHcclCommConfig(hcclBufferSize), &subHcclComm);
     if (ret != HCCL_SUCCESS || subHcclComm == nullptr) {
         ATB_LOG(ERROR) << "HcclCreateSubCommConfig failed, should check rank and rankIds, error code:" << ret;
+        std::lock_guard<std::mutex> lock(g_commMutex);
+        if (g_globalCommRefCount.find(globalHcclComm) == g_globalCommRefCount.end() ||
+            g_globalCommRefCount[globalHcclComm] == 0) {
+            g_rankTableFileToGlobalCommMap.erase(resolvePath);
+            g_globalCommRefCount.erase(globalHcclComm);
+            auto destroyRet = HcclCommDestroy(globalHcclComm);
+            if (destroyRet != HCCL_SUCCESS) {
+                ATB_LOG(ERROR) << "rollback HcclCommDestroy for globalHcclComm failed, error:" << destroyRet;
+            }
+        }
         return nullptr;
+    }
+    {
+        std::lock_guard<std::mutex> lock(g_commMutex);
+        g_subToGlobalCommMap[subHcclComm] = globalHcclComm;
+        g_globalCommRefCount[globalHcclComm]++;
     }
     HcclGetCommName(subHcclComm, commName);
     return subHcclComm;
@@ -281,7 +297,39 @@ Status Comm::DestoryHcclComm(HcclComm comm)
         ATB_LOG(ERROR) << " invalid param, HcclComm is nullptr";
         return ERROR_INVALID_PARAM;
     }
+    HcclComm globalHcclComm = nullptr;
+    bool shouldDestroyGlobal = false;
+    {
+        std::lock_guard<std::mutex> lock(g_commMutex);
+        auto it = g_subToGlobalCommMap.find(comm);
+        if (it != g_subToGlobalCommMap.end()) {
+            globalHcclComm = it->second;
+            g_subToGlobalCommMap.erase(it);
+
+            auto refIt = g_globalCommRefCount.find(globalHcclComm);
+            if (refIt != g_globalCommRefCount.end()) {
+                refIt->second--;
+                if (refIt->second <= 0) {
+                    g_globalCommRefCount.erase(refIt);
+                    for (auto mapIt = g_rankTableFileToGlobalCommMap.begin();
+                         mapIt != g_rankTableFileToGlobalCommMap.end(); ++mapIt) {
+                        if (mapIt->second == globalHcclComm) {
+                            g_rankTableFileToGlobalCommMap.erase(mapIt);
+                            break;
+                        }
+                    }
+                    shouldDestroyGlobal = true;
+                }
+            }
+        }
+    }
     auto ret = HcclCommDestroy(comm);
+    if (shouldDestroyGlobal && globalHcclComm != nullptr) {
+        auto globalRet = HcclCommDestroy(globalHcclComm);
+        if (globalRet != HCCL_SUCCESS) {
+            ATB_LOG(ERROR) << "DestoryHcclComm destroy parent globalHcclComm fail, error:" << globalRet;
+        }
+    }
     if (ret != HCCL_SUCCESS) {
         ATB_LOG(ERROR) << "DestoryHcclComm fail, error:" << ret;
         return ERROR_HCCL_FAIL;
