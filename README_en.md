@@ -104,8 +104,12 @@ pip3 install attrs cython 'numpy>=1.19.2,<=1.24.0' decorator sympy cffi pyyaml p
 
 Before installation, ensure that the compatible version of the toolkit is installed and the environment variables are configured.
 
+For developers with Ascend devices, refer to [Quick CANN Installation](https://www.hiascend.com/en/cann/download) to download and install the Toolkit and the corresponding Ops operator packages for specific product series (such as A2, A3) according to the CPU architecture and OS, and install following the page instructions.
+
+Example command:
+
 ```shell
-chmod +x Ascend-cann-${chip_type}-ops_${VERSION}_linux-$(arch).run  # ${chip_type} represents the Ascend product type, for example, A3.
+chmod +x Ascend-cann-${chip_type}-ops_${VERSION}_linux-$(arch).run  # ${chip_type} represents the Ascend product type code, for example, A2, A3.
 ./Ascend-cann-${chip_type}-ops_${VERSION}_linux-$(arch).run --install
 ```
 

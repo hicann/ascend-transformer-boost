@@ -101,10 +101,14 @@ pip3 install attrs cython 'numpy>=1.19.2,<=1.24.0' decorator sympy cffi pyyaml p
 
 #### 安装ops算子包
 
-安装前需已安装配套版本的Toolkit并配置环境变量
+安装前需已安装配套版本的Toolkit并配置环境变量。
+
+对于有昇腾设备的开发者，若需要手动搭建昇腾环境、下载安装 Toolkit 与各芯片系列（如 A2、A3 等）配套的 Ops 算子包，请参考《[CANN快速安装](https://www.hiascend.com/cann/download)》，根据产品系列（页面支持硬件型号识别与辅助指引）、CPU架构、操作系统等下载对应包，最后参考页面提供的命令完成安装。
+
+安装命令示例：
 
 ```shell
-chmod +x Ascend-cann-${chip_type}-ops_${VERSION}_linux-$(arch).run  #其中${chip_type}表示昇腾产品类型，如A3
+chmod +x Ascend-cann-${chip_type}-ops_${VERSION}_linux-$(arch).run  # 其中${chip_type}表示昇腾产品类型代号，如A2、A3
 ./Ascend-cann-${chip_type}-ops_${VERSION}_linux-$(arch).run --install
 ```
 
