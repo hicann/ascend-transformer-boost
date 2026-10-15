@@ -135,7 +135,7 @@ int main(int argc, char **argv)
         CHECK_STATUS(aclrtMalloc((void **)(&workspacePtr), workspaceSize, ACL_MEM_MALLOC_HUGE_FIRST));
     }
     // FA Encoder执行
-    encoderOp->Execute(variantPack, workspacePtr, workspaceSize, context);
+    CHECK_STATUS(encoderOp->Execute(variantPack, workspacePtr, workspaceSize, context));
     CHECK_STATUS(aclrtSynchronizeStream(stream)); // 流同步，等待device侧任务计算完成
     CHECK_STATUS(aclrtFree(tensorOut.deviceData));
     for (atb::Tensor &inTensor : variantPack.inTensors) {

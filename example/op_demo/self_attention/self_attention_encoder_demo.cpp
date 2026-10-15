@@ -63,19 +63,17 @@ atb::Status PrepareInTensor(atb::Context *contextPtr, aclrtStream stream, std::v
             }
         }
     }
-    // 创建tokenOffset，host侧tensor
+    // 创建tokenOffset、seqLen，host侧tensor（文档中位置为cpu，只有hostData）
     atb::Tensor tensorTokenOffset;
     atb::Tensor tensorSeqLen;
     atb::Tensor tensorLayerId;
-    CHECK_STATUS(CreateTensor(ACL_INT32, aclFormat::ACL_FORMAT_ND, {BATCH_SIZE}, tensorTokenOffset));
-    tensorTokenOffset.hostData = tokenOffsetHost.data(); // host侧tensor，拷贝值
-    // 创建seqLen，host侧tensor
-    CHECK_STATUS(CreateTensor(ACL_INT32, aclFormat::ACL_FORMAT_ND, {BATCH_SIZE}, tensorSeqLen));
-    tensorSeqLen.hostData = seqLenHost.data(); // host侧tensor，拷贝值
-    // 创建layerId
+    CHECK_STATUS(
+        CreateHostTensor(ACL_INT32, aclFormat::ACL_FORMAT_ND, {BATCH_SIZE}, tokenOffsetHost.data(), tensorTokenOffset));
+    CHECK_STATUS(CreateHostTensor(ACL_INT32, aclFormat::ACL_FORMAT_ND, {BATCH_SIZE}, seqLenHost.data(), tensorSeqLen));
+    // 创建layerId，device侧tensor（文档中位置为npu）
     CHECK_STATUS(CreateTensor(ACL_INT32, aclFormat::ACL_FORMAT_ND, {1}, tensorLayerId));
     CHECK_STATUS(aclrtMemcpy(tensorLayerId.deviceData, tensorLayerId.dataSize, layerId.data(),
-                             sizeof(short) * layerId.size(), ACL_MEMCPY_HOST_TO_DEVICE));
+                             sizeof(int32_t) * layerId.size(), ACL_MEMCPY_HOST_TO_DEVICE));
     // 根据顺序将所有输入tensor放入SVector
     inTensors = {tensorQ,    tensorK,           tensorV,      tensorCacheK, tensorCacheV,
                  tensorMask, tensorTokenOffset, tensorSeqLen, tensorLayerId};
@@ -147,11 +145,13 @@ int main(int argc, char **argv)
         CHECK_STATUS(aclrtMalloc((void **)(&workspacePtr), workspaceSize, ACL_MEM_MALLOC_HUGE_FIRST));
     }
     // FA Encoder执行
-    encoderOp->Execute(variantPack, workspacePtr, workspaceSize, context);
+    CHECK_STATUS(encoderOp->Execute(variantPack, workspacePtr, workspaceSize, context));
     CHECK_STATUS(aclrtSynchronizeStream(stream)); // 流同步，等待device侧任务计算完成
     CHECK_STATUS(aclrtFree(tensorOut.deviceData));
     for (atb::Tensor &inTensor : variantPack.inTensors) {
-        CHECK_STATUS(aclrtFree(inTensor.deviceData));
+        if (inTensor.deviceData != nullptr) { // host侧tensor没有device内存，无需释放
+            CHECK_STATUS(aclrtFree(inTensor.deviceData));
+        }
     }
     if (workspaceSize > 0) {
         CHECK_STATUS(aclrtFree(workspacePtr));

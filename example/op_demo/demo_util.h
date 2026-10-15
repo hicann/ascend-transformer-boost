@@ -22,29 +22,33 @@
 const int MIN_ACL_ERROR_CODE = 100000;
 const int MAX_ACL_ERROR_CODE = 999999;
 
-const char *const ACL_ERROR_DOC =
-    "https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/850alpha001/API/appdevgapi/aclcppdevg_03_1345.html";
-const char *const ATB_ERROR_DOC =
-    "https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/850alpha001/API/ascendtbapi/ascendtb_01_0008.html";
+const char *const ACL_ERROR_DOC = "https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/850alpha001/API/"
+                                  "appdevgapi/aclcppdevg_03_1345.html";
+const char *const ATB_ERROR_DOC = "https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/850alpha001/API/"
+                                  "ascendtbapi/ascendtb_01_0008.html";
 
+// status 只求值一次：部分接口（如 aclrtSynchronizeStream）出错后再次调用返回
+// 0，多次求值会打印错误的错误码并掩盖真实失败
 #define CHECK_STATUS(status)                                                                                           \
     do {                                                                                                               \
-        if ((status) != 0) {                                                                                           \
-            std::cout << __FILE__ << ":" << __LINE__ << " [ErrorCode]: " << (status) << std::endl;                     \
-            if ((MIN_ACL_ERROR_CODE) <= (status) && (status) <= (MAX_ACL_ERROR_CODE)) {                                \
+        const auto checkStatus = (status);                                                                             \
+        if (checkStatus != 0) {                                                                                        \
+            std::cout << __FILE__ << ":" << __LINE__ << " [ErrorCode]: " << checkStatus << std::endl;                  \
+            if (MIN_ACL_ERROR_CODE <= checkStatus && checkStatus <= MAX_ACL_ERROR_CODE) {                              \
                 std::cout << "For error code details, visit: " << ACL_ERROR_DOC << std::endl;                          \
             } else {                                                                                                   \
                 std::cout << "For error code details, visit: " << ATB_ERROR_DOC << std::endl;                          \
             }                                                                                                          \
-            return status;                                                                                             \
+            return checkStatus;                                                                                        \
         }                                                                                                              \
     } while (0)
 
 #define CHECK_STATUS_EXPR(status, expr)                                                                                \
     do {                                                                                                               \
-        if ((status) != 0) {                                                                                           \
-            std::cout << __FILE__ << ":" << __LINE__ << " [ErrorCode]: " << (status) << std::endl;                     \
-            if ((MIN_ACL_ERROR_CODE) <= (status) && (status) <= (MAX_ACL_ERROR_CODE)) {                                \
+        const auto checkStatus = (status);                                                                             \
+        if (checkStatus != 0) {                                                                                        \
+            std::cout << __FILE__ << ":" << __LINE__ << " [ErrorCode]: " << checkStatus << std::endl;                  \
+            if (MIN_ACL_ERROR_CODE <= checkStatus && checkStatus <= MAX_ACL_ERROR_CODE) {                              \
                 std::cout << "For error code details, visit: " << ACL_ERROR_DOC << std::endl;                          \
             } else {                                                                                                   \
                 std::cout << "For error code details, visit: " << ATB_ERROR_DOC << std::endl;                          \
@@ -73,6 +77,33 @@ atb::Status CreateTensor(const aclDataType dataType, const aclFormat format, std
     }
     tensor.dataSize = atb::Utils::GetTensorSize(tensor); // 计算Tensor的数据大小
     CHECK_STATUS(aclrtMalloc(&tensor.deviceData, tensor.dataSize, aclrtMemMallocPolicy::ACL_MEM_MALLOC_HUGE_FIRST));
+    return atb::ErrorType::NO_ERROR;
+}
+
+/**
+ * @brief 创建一个host侧Tensor对象
+ * @param  dataType 数据类型
+ * @param  format 数据格式
+ * @param  shape 数据shape
+ * @param  hostData host侧数据地址，生命周期需覆盖Execute调用
+ * @param atb::Tensor 返回创建的Tensor对象
+ * @return atb::Status atb错误码
+ * @note 文档中“位置”为cpu的输入（如SelfAttention的seqLen、tokenOffset）用本接口创建，
+ *       只有hostData、不分配device内存
+ */
+atb::Status CreateHostTensor(const aclDataType dataType, const aclFormat format, std::vector<int64_t> shape,
+                             void *hostData, atb::Tensor &tensor)
+{
+    tensor.desc.dtype = dataType;
+    tensor.desc.format = format;
+    tensor.desc.shape.dimNum = shape.size();
+    // tensor的dim依次设置为shape中元素
+    for (size_t i = 0; i < shape.size(); i++) {
+        tensor.desc.shape.dims[i] = shape.at(i);
+    }
+    tensor.dataSize = atb::Utils::GetTensorSize(tensor); // 计算Tensor的数据大小
+    tensor.hostData = hostData;
+    tensor.deviceData = nullptr;
     return atb::ErrorType::NO_ERROR;
 }
 
