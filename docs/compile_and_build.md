@@ -23,7 +23,7 @@ Note: This build process involves two steps: 1. Pulling and building the operato
 
 ### ATB Build Description
 
-The basic ATB build command is `bash build.sh`. The default build mode generates version information and creates an installation package. By default, Python APIs are not built. The following parameters can be added to implement different functions:
+The basic ATB build command is `bash scripts/build.sh`. The default build mode generates version information and creates an installation package. By default, Python APIs are not built. The following parameters can be added to implement different functions:
 
 - `--use_cxx11_abi=1`: Enables `C++11 ABI`.
 - `--use_cxx11_abi=0`: Disables `C++11 ABI`.

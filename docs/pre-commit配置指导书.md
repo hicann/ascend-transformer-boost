@@ -404,10 +404,10 @@ License Header Invalid Total Count: 0
 
 ```bash
 # 手动安装
-pip install oat-py>=1.0.0
+pip install "oat-py>=1.0.0"
 
 # 国内网络使用镜像加速
-pip install oat-py>=1.0.0 -i https://mirrors.huaweicloud.com/repository/pypi/simple/
+pip install "oat-py>=1.0.0" -i https://mirrors.huaweicloud.com/repository/pypi/simple/
 
 # 验证安装
 python -m oat -v

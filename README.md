@@ -167,7 +167,7 @@ chmod +x Ascend-cann-${chip_type}-ops_${VERSION}_linux-$(arch).run  # 其中${ch
 在运行python代码前，需要导入ATB Python API模块torch_atb，该插件运行依赖PyTorch和TorchNPU，可访问[加速库包安装部署](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/910beta1/API/ascendtb/ascendtb_0034.html)查看版本要求和安装指导。
 安装PyTorch和TorchNPU之后，需要手动安装torch_atb，安装方法包含以下两种：
 
-- 通过`./Ascend-cann-nnal_${version_info}_linux-aarch64.run --install --torch_atb`命令安装
+- 通过`./Ascend-cann-nnal_${version_info}_linux-$(arch).run --install --torch_atb`命令安装
 - 在编译步骤中使用`bash scripts/build.sh --torch_atb`编译命令，`output/whl`文件夹下会生成torch_atb的whl文件，您可使用如下命令进行安装：
 
     ```sh

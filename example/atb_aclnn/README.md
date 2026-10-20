@@ -15,7 +15,7 @@
 - 进入到atb-aclnn目录下:
 
     ```sh
-    cd  ${用例所在目录}/atb-aclnn
+    cd  ${用例所在目录}/atb_aclnn
     ```
 
 - 设置CANN环境变量（如source /usr/local/Ascend/ascend-toolkit/set_env.sh）:
@@ -54,5 +54,5 @@
     demo的ABI版本查看方法：通过查看CMakeList中的如下命令来查看ABI版本为0或1，OFF表示0，ON表示1。下面的代码则表示ABI版本为0。
 
     ```sh
-    option(USE_CXX11_ABI "USE_CXX11_ABI" OFF) 
+    option(USE_CXX11_ABI "USE_CXX11_ABI" OFF)
     ```

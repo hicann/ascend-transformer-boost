@@ -82,7 +82,7 @@ For offline installation, click the [Download Link]](https://www.hiascend.com/de
 Due to adjustments in the CANN package directory structure, ATB version 8.5 and the master branch must be used with toolkit version 8.5 or higher.
 
 ```shell
-chmod +x Ascend-cann-toolkit_${VERSION}_linux-$(arch).run  # ${VERSION} represents the CANN version, for example, 8.2.RC1.
+chmod +x Ascend-cann-toolkit_${VERSION}_linux-$(arch).run  # ${VERSION} represents the CANN version, for example, 9.1.0.
 ./Ascend-cann-toolkit_${VERSION}_linux-$(arch).run --install
 ```
 
@@ -168,7 +168,7 @@ The sample code in this section demonstrates how to call operators using Python 
 Before running Python code, you need to import the ATB Python API module torch_atb. The operation of this plugin depends on PyTorch and torch_npu. For details about the version requirements and installation guide, see [ATB Package Installation and Deployment](https://www.hiascend.com/document/detail/en/CANNCommunityEdition/850alpha001/acce/ascendtb/ascendtb_0034.html).
 After installing PyTorch and torch_npu, you need to manually install torch_atb. There are two installation methods:
 
-- Run the `./Ascend-cann-nnal_${version_info}_linux-aarch64.run --install --torch_atb` command.
+- Run the `./Ascend-cann-nnal_${version_info}_linux-$(arch).run --install --torch_atb` command.
 - Run the `bash scripts/build.sh --torch_atb` command during the build process. A `.whl` file of torch_atb will be generated in the `output/whl` folder. You can run the following command to install it:
 
     ```sh

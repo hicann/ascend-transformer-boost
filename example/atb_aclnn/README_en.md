@@ -12,10 +12,10 @@ This case is a sample of running a graph combining aclnnPluginOperation and ATBO
 
 ## Case Execution
 
-- Go to the `atb-aclnn` directory.
+- Go to the `atb_aclnn` directory.
 
     ```sh
-    cd  ${Case directory}/atb-aclnn
+    cd  ${Case directory}/atb_aclnn
     ```
 
 - Set the CANN environment variable, for example, source /usr/local/Ascend/ascend-toolkit/set_env.sh.
