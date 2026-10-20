@@ -67,6 +67,8 @@ ascend-transformer-boost
 
 ATB的API保证前后一年的ABI兼容能力，在不涉及新功能的情况下，调用者升级一年内的ATB版本，不会出现兼容问题。由于CANN出包目录调整，ATB 8.5版本以及主线分支必须匹配8.5或以上版本的toolkit包。
 
+主线和 weekly 构建的 toolkit 可能暂无同版本的 nnal 软件包，请改用有配套 nnal 的正式发布版本（例如 toolkit、ops、nnal 统一使用 9.2.0）。
+
 ### 快速安装CANN软件
 
 本节提供快速安装CANN软件的示例命令，更多安装步骤请参考[详细安装指南](#cann详细安装指南)。

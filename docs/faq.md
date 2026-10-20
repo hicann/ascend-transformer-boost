@@ -6,6 +6,7 @@
     - For details about the installation procedure, see [Using the RUN Package](#run-package-usage).
     - The code and software package versions map as follows:
         The NNAL software package version must be the same as that of the toolkit and kernels software packages.
+    - The toolkit in the master and weekly builds may not yet have a matching NNAL package. Use a formal release version that provides a matching NNAL package (the toolkit, ops, and NNAL versions must be the same).
     - Execution
 
         ```sh

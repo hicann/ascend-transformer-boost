@@ -68,6 +68,8 @@ ascend-transformer-boost
 
 ATB's APIs guarantee ABI compatibility for one year forward and backward. Without involving new features, if a caller upgrades to any ATB version released within one year, no compatibility issues will occur. Due to adjustments in the CANN package directory structure, ATB version 8.5 and the master branch must be used with toolkit version 8.5 or higher.
 
+The toolkit in the master and weekly builds may not yet have a matching NNAL package. Use a formal release version that provides a matching NNAL package (the toolkit, ops, and NNAL versions must be the same).
+
 ### Quick Installation of CANN Software
 
 This section provides example commands for quickly installing the CANN software. For more installation steps, see the [Detailed Installation Guide](#detailed-cann-installation-guide).
