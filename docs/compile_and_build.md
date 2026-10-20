@@ -60,15 +60,14 @@ The basic ATB build command is `bash build.sh`. The default build mode generates
    - `uninstall.sh`: uninstallation script
    - `build.sh`: build script
    - `release.sh`: automatic build and packaging script
-2. `include/atb` directory
    - `set_env.sh`: ATB environment variable settings
-3. `output` directory
+2. `output` directory
    - `version.info`: version information
    - `{arch}/Ascend-cann-atb_{version}_linux-{arch}.run`: built ATB package
-4. `output/atb/cxx_abi_0/lib` directory (or `output/atb/cxx_abi_1/lib`, depending on the ABI version)
+3. `output/atb/cxx_abi_0/lib` directory (or `output/atb/cxx_abi_1/lib`, depending on the ABI version)
    - `libatb.so`: dynamic link library file of the Transformer acceleration library
    - `libasdops.so`: dynamic link library file of the operator package
-5. `ops_configs` directory
+4. `ops_configs` directory
    - `atb_ops_info.ini`: description file of the operator input and output specifications
 
 ## Configuration Files
