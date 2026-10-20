@@ -23,18 +23,11 @@ using AscendC::HardEvent;
 class KernelMultinomial {
 public:
     __aicore__ inline KernelMultinomial() {}
-    __aicore__ inline void Init(__gm__ uint8_t *x,
-                                __gm__ uint8_t *z,
-                                uint32_t realLastDim,
-                                uint32_t expandLastDim,
-                                uint64_t firstDim,
-                                float *randValList,
-                                uint32_t numSamples,
-                                uint32_t numSamplesMax,
-                                uint32_t perCoreRunNum,
-                                uint32_t nlElePerCorePerRun,
-                                uint32_t lElePerCoreLastRun,
-                                uint32_t tempUbEleAligened) {
+    __aicore__ inline void Init(__gm__ uint8_t *x, __gm__ uint8_t *z, uint32_t realLastDim, uint32_t expandLastDim,
+                                uint64_t firstDim, float *randValList, uint32_t numSamples, uint32_t numSamplesMax,
+                                uint32_t perCoreRunNum, uint32_t nlElePerCorePerRun, uint32_t lElePerCoreLastRun,
+                                uint32_t tempUbEleAligened)
+    {
         realLastDim_ = realLastDim;
         firstDim_ = firstDim;
         expandLastDim_ = expandLastDim;
@@ -161,6 +154,7 @@ private:
         AscendC::LocalTensor<int32_t> output = outputBuf_.Get<int32_t>();
         DataCopy(zGm_[0], output, 8); // 8 for 32 bytes / sizeof(int32_t)
     }
+
 private:
     AscendC::TPipe pipe_;
     AscendC::TQue<AscendC::QuePosition::VECIN, BUFFER_NUM> xQue_, vecIn_;
@@ -179,11 +173,11 @@ private:
     uint32_t nlElePerCorePerRun_;
     uint32_t lElePerCoreLastRun_;
     uint32_t tempUbEleAligened_;
-    uint32_t flagCount_[64] = {0};
+    uint32_t flagCount_[AsdOps::MAX_RAND_NUM] = {0};
     uint32_t realLastDimTemp_ = 0;
-    float* tilingUb_{nullptr};
+    float *tilingUb_{nullptr};
 };
-}
+} // namespace
 
 inline __aicore__ void InitTilingData(const __gm__ uint8_t *p_tilingdata, AsdOps::MultinomialTilingData *tilingdata)
 {
@@ -198,7 +192,7 @@ inline __aicore__ void InitTilingData(const __gm__ uint8_t *p_tilingdata, AsdOps
     tilingdata->lElePerCoreLastRun = (*(const __gm__ uint32_t *)(p_tilingdata + 32));
     tilingdata->tempUbEleAligened = (*(const __gm__ uint32_t *)(p_tilingdata + 36));
     for (uint32_t i = 0; i < tilingdata->numSamplesMax; i++) {
-        tilingdata->randValList[i] = (*(const __gm__ float *)(p_tilingdata + 40 + i *sizeof(float)));
+        tilingdata->randValList[i] = (*(const __gm__ float *)(p_tilingdata + 40 + i * sizeof(float)));
     }
 #else
     AscendC::TPipe pipe;
@@ -221,19 +215,13 @@ inline __aicore__ void InitTilingData(const __gm__ uint8_t *p_tilingdata, AsdOps
 #endif
 }
 
-extern "C" __global__ __aicore__ void multinomial(GM_ADDR x, GM_ADDR z, GM_ADDR workspace, GM_ADDR tiling) {
+extern "C" __global__ __aicore__ void multinomial(GM_ADDR x, GM_ADDR z, GM_ADDR workspace, GM_ADDR tiling)
+{
     AsdOps::MultinomialTilingData tiling_data;
     InitTilingData(tiling, &(tiling_data));
     KernelMultinomial op;
-    op.Init(x, z, tiling_data.realLastDim,
-            tiling_data.expandLastDim,
-            tiling_data.firstDim,
-            tiling_data.randValList,
-            tiling_data.numSamples,
-            tiling_data.numSamplesMax,
-            tiling_data.perCoreRunNum,
-            tiling_data.nlElePerCorePerRun,
-            tiling_data.lElePerCoreLastRun,
-            tiling_data.tempUbEleAligened);
+    op.Init(x, z, tiling_data.realLastDim, tiling_data.expandLastDim, tiling_data.firstDim, tiling_data.randValList,
+            tiling_data.numSamples, tiling_data.numSamplesMax, tiling_data.perCoreRunNum,
+            tiling_data.nlElePerCorePerRun, tiling_data.lElePerCoreLastRun, tiling_data.tempUbEleAligened);
     op.Process(workspace);
 }
